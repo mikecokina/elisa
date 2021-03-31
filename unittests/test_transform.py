@@ -37,7 +37,7 @@ class TransformBinarySystemPropertiesTestCase(ElisaTestCase):
         generate_test(valid_values, BinarySystemProperties.argument_of_periastron, expected, 4)
 
     def test_argument_of_periastron_raise(self):
-        generate_raise_test(self, "98.2", BinarySystemProperties.argument_of_periastron, "is not")
+        generate_raise_test(self, "9dsg.2", BinarySystemProperties.argument_of_periastron, "did not parse")
 
     def test_phase_shift(self):
         self.assertTrue(BinarySystemProperties.phase_shift(9.1234) == 9.1234)
@@ -49,7 +49,7 @@ class TransformBinarySystemPropertiesTestCase(ElisaTestCase):
         generate_test(valid_values, BinarySystemProperties.primary_minimum_time, expected)
 
     def test_primary_minimum_time_raise(self):
-        generate_raise_test(self, "98.2", BinarySystemProperties.primary_minimum_time, "not convertible")
+        generate_raise_test(self, "92", BinarySystemProperties.primary_minimum_time, "not convertible")
 
 
 class TransformSystemPropertiesTestCase(ElisaTestCase):
