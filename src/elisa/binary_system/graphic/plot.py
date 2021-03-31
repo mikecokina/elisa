@@ -286,9 +286,9 @@ class Plot(object):
         orbital_position_container.build(components_distance=components_distance, components='both',
                                          build_pulsations=not subtract_equilibrium)
 
+        components = butils.component_to_list(components_to_plot)
         orbital_position_container.flatt_it()
 
-        components = butils.component_to_list(components_to_plot)
         com = {'primary': 0.0, 'secondary': components_distance}
         for component in components:
             correct_face_orientation(getattr(orbital_position_container, component), com=com[component])
@@ -321,10 +321,11 @@ class Plot(object):
                 f'points_{component}': points,
                 f'{component}_triangles': faces
             })
+            args = (phase, com[component], self.binary.semi_major_axis)
             surface_kwargs.update({
                 f'{component}_cmap': plot.add_colormap_to_plt_kwargs(
                     colormap, star, scale=scale, unit=unit, subtract_equilibrium=subtract_equilibrium,
-                    model_scale=self.binary.semi_major_axis
+
                 )
             })
 

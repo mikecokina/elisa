@@ -6,8 +6,7 @@ from elisa.ld import limb_darkening_factor
 from elisa.pulse import container_ops
 
 
-def add_colormap_to_plt_kwargs(colormap, star, scale='linear', unit='default', subtract_equilibrium=False,
-                               model_scale=1.0):
+def add_colormap_to_plt_kwargs(colormap, star, scale='linear', unit='default', subtract_equilibrium=False, *args):
     """
     Returns a colormap that can be passed to surface plot kwargs.
 
@@ -36,8 +35,8 @@ def add_colormap_to_plt_kwargs(colormap, star, scale='linear', unit='default', s
     if subtract_equilibrium:
         if not star.has_pulsations():
             raise ZeroDivisionError('You are trying to display surface colormap with `subtract_equilibrium`=True but '
-                                    'surface of the star does not pulsate.')
-        # container_ops.generate_harmonics(star, com_x=com_x, phase=phase, time=system.time)
+                                    'surface of the star does not oscillate.')
+        phase, com_x, sma = args
         # container_ops.complex_displacement(star, scale=model_scale)
         star.build_pulsations()
     retval = colorbar_fn[colormap](star, scale, unit, subtract_equilibrium)

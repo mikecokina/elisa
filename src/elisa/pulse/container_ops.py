@@ -30,6 +30,7 @@ def generate_harmonics(star_container, com_x, phase, time):
     exponential = dict()
     norm_constant = dict()
     for mode_index, mode in star_container.pulsations.items():
+        # TODO: beware of this in case you want use the container at different phase
         exponential[mode_index] = putils.generate_time_exponential(mode, time)
 
         # generating harmonics Y_m^l and Y_m+1^l for star and spot points

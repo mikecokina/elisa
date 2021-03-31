@@ -100,6 +100,7 @@ class OrbitalPositionContainer(PositionContainer):
         self.build_mesh(components_distance, component)
         self.build_from_points(components_distance, component)
 
+        self.build_harmonics(component, components_distance)
         if build_pulsations:
             self.build_pulsations(component, components_distance)
         return self
@@ -182,6 +183,9 @@ class OrbitalPositionContainer(PositionContainer):
     # TODO: soon to be deprecated
     def build_temperature_perturbations(self, components_distance, component):
         return temperature.build_temperature_perturbations(self, components_distance, component)
+
+    def build_harmonics(self, component, components_distance):
+        return pulsations.build_harmonics(self, component, components_distance)
 
     def build_pulsations(self, component, components_distance):
         return pulsations.build_pulsations(self, component, components_distance)
