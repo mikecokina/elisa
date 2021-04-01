@@ -72,7 +72,7 @@ class BinarySystem(System):
 
     Each component instance will after initialization contain following attributes:
 
-        :critical_potential: float; potential of the star required to fill its Roche lobe
+        :critical_surface_potential: float; potential of the star required to fill its Roche lobe
         :equivalent_radius: float; radius of a sphere with the same volume as a component (in SMA units)
         :filling_factor: float: calculated as (Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter})
 

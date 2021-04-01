@@ -224,6 +224,8 @@ v0.5
     - ablility to filter flat chain to be within specific interval of parameters using AnalyticsTask.filter_chain
       function. This method is suitable for examining multiple solutions.
     - ability to evaluate R^2 for set of model parameters using function AnalyticsTask.coefficient_of_determination.
+    - adding ability to load from json in "radius"-based format that describes the size of the star with `equivalent_radius`
+      instead of polar gravity `polar_log_g` in "standard" format
 
 
 **Fixes**

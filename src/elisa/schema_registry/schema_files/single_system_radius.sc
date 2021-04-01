@@ -68,7 +68,7 @@
         "mass",
         "t_eff",
         "gravity_darkening",
-        "polar_radius",
+        "equivalent_radius",
         "metallicity"
       ],
       "properties": {
@@ -97,8 +97,8 @@
         "metallicity": {
           "type": "number"
         },
-        "polar_radius": {"anyOf": [
-          {"type": "number"},
+        "equivalent_radius": {"anyOf": [
+          {"type": "number", "minimum": 0.0},
           {"type": "string"}
         ]},
         "spots": {

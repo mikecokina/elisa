@@ -245,7 +245,7 @@ class SingleSystemSerializersTestCase(ElisaTestCase):
                 "gravity_darkening": 0.32,
                 "discretization_factor": 5,
                 "metallicity": 0.0,
-                "polar_radius": 1.0
+                "equivalent_radius": 1.0
             }
         }
         cls._get_std(data)

@@ -369,7 +369,7 @@ class StdSingleSystemmSchemaRegistryTestCase(utils.ElisaTestCase):
                 "gravity_darkening": 0.32,
                 "discretization_factor": 5,
                 "metallicity": 0.0,
-                "polar_radius": 6.96340e8
+                "equivalent_radius": 6.96340e8
             }
         }
         self.assertTrue(validate_single_json(props))
@@ -389,7 +389,7 @@ class StdSingleSystemmSchemaRegistryTestCase(utils.ElisaTestCase):
                 "gravity_darkening": 0.32,
                 "discretization_factor": 5,
                 "metallicity": 0.0,
-                "polar_radius": 6.96340e8,
+                "equivalent_radius": 6.96340e8,
                 "polar_log_g": 2.43775
             }
         }
@@ -447,7 +447,7 @@ class StdSingleSystemmSchemaRegistryTestCase(utils.ElisaTestCase):
                 "gravity_darkening": 0.32,
                 "discretization_factor": 5,
                 "metallicity": 0.0,
-                "polar_radius": 6.96340e8,
+                "equivalent_radius": 6.96340e8,
                 "spots": [
                     {
                         "longitude": 10,

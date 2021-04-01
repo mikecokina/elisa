@@ -54,7 +54,7 @@ class SingleSystem(System):
 
     Each component instance will after initialization contain following attributes:
 
-        :critical_potential: float; potential of the star required to fill its Roche lobe
+        :critical_surface_potential: float; potential of the star required to fill its Roche lobe
         :equivalent_radius: float; radius of a sphere with the same volume as a component
         :polar_radius: float; radius of a star towards the pole of the star
         :equatorial_radius: float; radius of a star towards the pole of the star
@@ -209,7 +209,8 @@ class SingleSystem(System):
     @classmethod
     def from_json(cls, data, _verify=True, _kind_of=None):
         """
-        Create instance of BinarySystem from JSON in form such as::
+        Create instance of BinarySystem from JSON in `standard` or `radius` format. Example of a `standard` format of
+        parameters::
 
             {
                 "system": {
@@ -229,7 +230,25 @@ class SingleSystem(System):
                 }
             }
 
-        Currently, this approach require values in default units.
+        Example of a `radius` format of parameters::
+
+            {
+                "system": {
+                    "inclination": 90.0,
+                    "rotation_period": 10.1,
+                    "gamma": 10000,
+                    "reference_time": 0.5,
+                    "phase_shift": 0.0
+                },
+                "star": {
+                    "mass": 1.0,
+                    "t_eff": 5772.0,
+                    "gravity_darkening": 0.32,
+                    "discretization_factor": 5,
+                    "metallicity": 0.0,
+                    "equivalent_radius": "1.0 solRad"
+                }
+            }
 
         Default units::
 
@@ -249,6 +268,7 @@ class SingleSystem(System):
                 "semi_major_axis": [solRad],
                 "mass_ratio": [dimensionless]
                 "polar_log_g": [dex(m*s-2)]
+                "equivalent_radius": [solRad]
             }
 
         :return: elisa.single_system.system.SingleSystem

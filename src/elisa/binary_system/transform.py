@@ -76,7 +76,7 @@ class RadialVelocityObserverProperties(SystemProperties):
         :return: float;
         """
         if not value > 0:
-            raise ValueError(f"Invalid value of propery `mass_ratio`. Expected > 0, given {value}")
+            raise ValueError(f"Invalid value of property `mass_ratio`. Expected > 0, given {value}")
         return np.float(value)
 
     @staticmethod
