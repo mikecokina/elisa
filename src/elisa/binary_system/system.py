@@ -15,6 +15,7 @@ from . import (
     radius as bsradius,
     model
 )
+from . container import OrbitalPositionContainer
 
 from .. base.error import MorphologyError
 from .. base.container import SystemPropertiesContainer
@@ -415,6 +416,26 @@ class BinarySystem(System):
                     data[key][param] = content['value']
 
         return BinarySystem.from_json(data=data)
+
+    def build_container(self, phase=None, time=None):
+        """
+        Function returns `OrbitalPositionContainer` with fully built model binary system at user-defined photometric
+        phase or time of observation.
+
+        :param time: float; JD
+        :param phase: float; photometric phase
+        :return: elisa.binary_system.container.OrbitalPositionContainer;
+        """
+        if phase is not None and time is not None:
+            raise ValueError('Please specify whether you want to build your container EITHER at given photometric '
+                             '`phase` or at given `time`.')
+        phase = phase if time is None else utils.jd_to_phase(time, period=self.period, t0=self.primary_minimum_time)
+
+        position = self.calculate_orbital_motion(input_argument=phase, return_nparray=False, calculate_from='phase')[0]
+        orbital_position_container = OrbitalPositionContainer.from_binary_system(self, position)
+        orbital_position_container.build()
+
+        return orbital_position_container
 
     def to_json(self):
         """

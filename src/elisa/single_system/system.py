@@ -12,6 +12,7 @@ from . import (
     radius as sradius,
     utils as sys_utils
 )
+from . container import SystemContainer
 from .. logger import getLogger
 from .. import const
 from .. import (
@@ -283,6 +284,26 @@ class SingleSystem(System):
 
         star = Star(**data_cp["star"])
         return cls(star=star, **data_cp["system"])
+
+    def build_container(self, phase=None, time=None):
+        """
+        Function returns `OrbitalPositionContainer` with fully built model binary system at user-defined photometric
+        phase or time of observation.
+
+        :param time: float; JD
+        :param phase: float; photometric phase
+        :return: elisa.binary_system.container.OrbitalPositionContainer;
+        """
+        if phase is not None and time is not None:
+            raise ValueError('Please specify whether you want to build your container EITHER at given photometric '
+                             '`phase` or at given `time`.')
+        phase = phase if time is None else utils.jd_to_phase(time, period=self.period, t0=self.reference_time)
+
+        position = self.calculate_lines_of_sight(input_argument=phase, return_nparray=False, calculate_from='phase')[0]
+        position_container = SystemContainer.from_single_system(self, position)
+        position_container.build()
+
+        return position_container
 
     @classmethod
     def is_property(cls, kwargs):
