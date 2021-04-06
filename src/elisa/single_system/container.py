@@ -17,7 +17,7 @@ from .. logger import getLogger
 logger = getLogger("single_system.container")
 
 
-class RotationalPositionContainer(PositionContainer):
+class SinglePositionContainer(PositionContainer):
     def __init__(self, star: StarContainer, position, **properties):
         super().__init__(position=position)
         self._components = ['star']

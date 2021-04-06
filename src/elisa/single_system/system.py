@@ -12,7 +12,7 @@ from . import (
     radius as sradius,
     utils as sys_utils
 )
-from . container import SystemContainer
+from . container import SinglePositionContainer
 from .. logger import getLogger
 from .. import const
 from .. import (
@@ -300,7 +300,7 @@ class SingleSystem(System):
         phase = phase if time is None else utils.jd_to_phase(time, period=self.period, t0=self.reference_time)
 
         position = self.calculate_lines_of_sight(input_argument=phase, return_nparray=False, calculate_from='phase')[0]
-        position_container = SystemContainer.from_single_system(self, position)
+        position_container = SinglePositionContainer.from_single_system(self, position)
         position_container.build()
 
         return position_container

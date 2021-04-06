@@ -2,7 +2,7 @@ import numpy as np
 
 from ... logger import getLogger
 from ... import const
-from .. container import RotationalPositionContainer
+from .. container import SinglePositionContainer
 from . import utils as crv_utils, c_managed
 from ... observer.mp_manager import manage_observations
 
@@ -36,7 +36,7 @@ def prep_initial_system(single):
     :return: elisa.single_system.container.SystemContainer;
     """
     from_this = dict(single_system=single, position=const.Position(0, np.nan, 0.0, np.nan, 0.0))
-    initial_system = RotationalPositionContainer.from_single_system(**from_this)
+    initial_system = SinglePositionContainer.from_single_system(**from_this)
     initial_system.build()
     return initial_system
 

@@ -4,7 +4,7 @@ from elisa.logger import getLogger
 
 from ... const import Position
 from ... graphic import graphics
-from .. container import RotationalPositionContainer
+from .. container import SinglePositionContainer
 from .. import utils as sutils
 
 logger = getLogger('single_system.graphic.animation')
@@ -47,7 +47,7 @@ class Animation(object):
         mult = np.array([-1, -1, 1.0])[None, :]
         for pos_idx, position in enumerate(orbital_motion):
             from_this = dict(single_system=self.single, position=self.defpos)
-            on_pos = RotationalPositionContainer.from_single_system(**from_this)
+            on_pos = SinglePositionContainer.from_single_system(**from_this)
             on_pos.time = 86400 * self.single.rotation_period * position.phase
             on_pos.build()
             on_pos = sutils.move_sys_onpos(on_pos, position, on_copy=False)

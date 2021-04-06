@@ -7,7 +7,7 @@ from elisa.base.container import (
     SystemPropertiesContainer
 )
 from elisa.binary_system.container import OrbitalPositionContainer
-from elisa.single_system.container import RotationalPositionContainer
+from elisa.single_system.container import SinglePositionContainer
 from elisa.binary_system.system import BinarySystem
 from elisa.const import Position
 from unittests import utils as testutils
@@ -92,7 +92,7 @@ class IndempotenceTestCase(ElisaTestCase):
         self.assertTrue(len(flatt_1.primary.points) == len(flatt_2.primary.points))
 
     def test_single_position_container_is_indempotent(self):
-        system = RotationalPositionContainer.from_single_system(self.single, Position(0, None, 0.0, None, 0.0))
+        system = SinglePositionContainer.from_single_system(self.single, Position(0, None, 0.0, None, 0.0))
         system.build()
         flatt_1 = system.flatt_it()
         flatt_2 = system.flatt_it()

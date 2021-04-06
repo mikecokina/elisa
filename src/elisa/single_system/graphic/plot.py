@@ -1,6 +1,6 @@
 import numpy as np
 
-from .. container import RotationalPositionContainer
+from .. container import SinglePositionContainer
 from ... import units as u
 from ... base import transform
 from ... base.graphics import plot
@@ -69,7 +69,7 @@ class Plot(object):
         azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \
             if azimuth is not None else np.degrees(azim) - 90
 
-        position_container = RotationalPositionContainer.from_single_system(self.single, self.defpos)
+        position_container = SinglePositionContainer.from_single_system(self.single, self.defpos)
         position_container.build_mesh()
         position_container.build_pulsations()
 
@@ -112,7 +112,7 @@ class Plot(object):
         azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \
             if azimuth is not None else np.degrees(azim) - 90
 
-        position_container = RotationalPositionContainer.from_single_system(self.single, self.defpos)
+        position_container = SinglePositionContainer.from_single_system(self.single, self.defpos)
         position_container.build_mesh()
         position_container.build_faces()
 
@@ -174,7 +174,7 @@ class Plot(object):
         single_position = self.single.orbit.rotational_motion(phase=phase)[0]
         single_position = Position(0, np.nan, single_position[0], single_position[1], single_position[2])
 
-        position_container = RotationalPositionContainer.from_single_system(self.single, self.defpos)
+        position_container = SinglePositionContainer.from_single_system(self.single, self.defpos)
         position_container.set_on_position_params(single_position)
         position_container.build(phase=phase)
         correct_face_orientation(position_container.star, com=0)
