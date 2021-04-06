@@ -6,16 +6,23 @@ from elisa.ld import limb_darkening_factor
 from elisa.pulse import container_ops
 
 
-def add_colormap_to_plt_kwargs(colormap, star, scale='linear', unit='default', subtract_equilibrium=False, *args):
+def add_colormap_to_plt_kwargs(*args, **kwargs):
     """
     Returns a colormap that can be passed to surface plot kwargs.
 
-    :param colormap: str; 'gravity_acceleration', 'temperature', 'velocity', 'radial_velocity', 'normal_radiance',
+    :param args: tuple;
+    :**args options**:
+        * **colormap** *: str; 'gravity_acceleration', 'temperature', 'velocity', 'radial_velocity', 'normal_radiance',
                           'radiance'
-    :param star: elisa.base.container.StarContainer;
-    :param scale: str; log or linear
-    :param unit: astropy.units.Unit;
-    :param subtract_equilibrium: bool; if True; equilibrium values are subtracted from surface colormap
+        * **star** *:  elisa.base.container.StarContainer;
+        * **phase** *:  float; photometric phase
+        * **com_x** *:  float; centre of mass
+        * **system_scale** *:  float; scaling factor of a system
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * **scale** *: str; `log` or `linear`
+        * **unit** *: astropy.units.Unit;
+        * **subtract_equilibrium** *: bool; if True; equilibrium values are subtracted from surface colormap
     :return: numpy.array;
     """
     colorbar_fn = {
@@ -26,6 +33,12 @@ def add_colormap_to_plt_kwargs(colormap, star, scale='linear', unit='default', s
         'normal_radiance': norm_radiance_cmap,
         'radiance': radiance_cmap,
     }
+
+    colormap, star, phase, com_x, system_scale = args
+    scale = kwargs.get('scale', 'linear')
+    unit = kwargs.get('unit', 'default')
+    subtract_equilibrium = kwargs.get('subtract_equilibrium', False)
+
     retval = None
     if colormap is None:
         return retval
@@ -36,7 +49,7 @@ def add_colormap_to_plt_kwargs(colormap, star, scale='linear', unit='default', s
         if not star.has_pulsations():
             raise ZeroDivisionError('You are trying to display surface colormap with `subtract_equilibrium`=True but '
                                     'surface of the star does not oscillate.')
-        phase, com_x, sma = args
+
         # container_ops.complex_displacement(star, scale=model_scale)
         star.build_pulsations()
     retval = colorbar_fn[colormap](star, scale, unit, subtract_equilibrium)

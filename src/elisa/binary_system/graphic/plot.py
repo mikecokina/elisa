@@ -321,13 +321,10 @@ class Plot(object):
                 f'points_{component}': points,
                 f'{component}_triangles': faces
             })
-            args = (phase, com[component], self.binary.semi_major_axis)
-            surface_kwargs.update({
-                f'{component}_cmap': plot.add_colormap_to_plt_kwargs(
-                    colormap, star, scale=scale, unit=unit, subtract_equilibrium=subtract_equilibrium,
 
-                )
-            })
+            args = (colormap, star, phase, com[component], self.binary.semi_major_axis)
+            kwargs = dict(scale=scale, unit=unit, subtract_equilibrium=subtract_equilibrium)
+            surface_kwargs.update({f'{component}_cmap': plot.add_colormap_to_plt_kwargs(*args, **kwargs)})
 
             face_mask = locals().get(f'face_mask_{component}')
             face_mask = np.ones(star.faces.shape[0], dtype=bool) if face_mask is None else face_mask
