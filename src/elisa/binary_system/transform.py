@@ -27,7 +27,8 @@ class BinarySystemProperties(SystemProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float;
         """
-        if isinstance(value, units.Quantity):
+        if isinstance(value, (units.Quantity, str)):
+            value = units.Quantity(value) if isinstance(value, str) else value
             value = np.float64(value.to(units.ARC_UNIT))
         elif isinstance(value, WHEN_FLOAT64):
             value = np.float64((value * units.deg).to(units.ARC_UNIT))
@@ -75,7 +76,7 @@ class RadialVelocityObserverProperties(SystemProperties):
         :return: float;
         """
         if not value > 0:
-            raise ValueError(f"Invalid value of propery `mass_ratio`. Expected > 0, given {value}")
+            raise ValueError(f"Invalid value of property `mass_ratio`. Expected > 0, given {value}")
         return np.float(value)
 
     @staticmethod
@@ -86,7 +87,8 @@ class RadialVelocityObserverProperties(SystemProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float;
         """
-        if isinstance(value, units.Quantity):
+        if isinstance(value, (units.Quantity, str)):
+            value = units.Quantity(value) if isinstance(value, str) else value
             value = np.float64(value.to(units.solRad))
         elif isinstance(value, WHEN_FLOAT64):
             value = np.float64(value)

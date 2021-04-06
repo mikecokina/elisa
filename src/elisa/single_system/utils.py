@@ -1,4 +1,5 @@
 import numpy as np
+from copy import copy
 
 from jsonschema import (
     validate,
@@ -94,7 +95,7 @@ def resolve_json_kind(data):
     :return: str; `std` or `radius`
     """
     polar_g = data['star'].get('polar_log_g')
-    polar_radius = data['star'].get('polar_radius')
+    polar_radius = data['star'].get('equivalent_radius')
 
     if polar_g:
         return "std"
@@ -111,10 +112,21 @@ def transform_json_radius_to_std(data):
     :param data: Dict;
     :return: Dict;
     """
-    mass = (BodyProperties.mass(data['star']['mass']) * units.MASS_UNIT).to(units.kg).value
-    radius = (SystemProperties.semi_major_axis(data['star'].pop('polar_radius'))
-              * units.DISTANCE_UNIT).to(units.m).value
+    def equatorial_to_polar_radius(r_eq, period, mass):
+        k = 2 * np.power(const.PI, 2) * np.power(r_eq, 3) / (const.G * mass * np.power(period, 2))
+        return 1 / (1 - k)
 
-    data['star']['polar_log_g'] = np.log10(const.G * mass / np.power(radius, 2))
+    def polar_from_equatorial_radius(r_eq, period, mass):
+        rho = equatorial_to_polar_radius(r_eq, period, mass)
+        return r_eq / np.power(rho, 2.0/3.0)
+
+    mass = (BodyProperties.mass(data['star']['mass']) * units.MASS_UNIT).to(units.kg).value
+    # default unit of radius is the same as for the semi-major axis
+    radius = (SystemProperties.semi_major_axis(data['star'].pop('equivalent_radius'))
+              * units.DISTANCE_UNIT).to(units.m).value
+    period = (SystemProperties.period(copy(data["system"]["rotation_period"])) * units.PERIOD_UNIT).to(units.s).value
+
+    polar_radius = polar_from_equatorial_radius(radius, period, mass)
+    data['star']['polar_log_g'] = np.log10(const.G * mass / np.power(polar_radius, 2))
 
     return data
