@@ -435,6 +435,7 @@ class BinarySystem(System):
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self, position)
         orbital_position_container.build()
 
+        logger.info('Orbital position container was successfully built at photometric phase {phase:.2f}.')
         return orbital_position_container
 
     def to_json(self):
