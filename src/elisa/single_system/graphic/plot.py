@@ -176,7 +176,7 @@ class Plot(object):
 
         position_container = SinglePositionContainer.from_single_system(self.single, self.defpos)
         position_container.set_on_position_params(single_position)
-        position_container.build(phase=phase)
+        position_container.build(phase=phase, build_pulsations=not subtract_equilibrium)
         correct_face_orientation(position_container.star, com=0)
         position_container.flatt_it()
 

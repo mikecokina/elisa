@@ -7,13 +7,13 @@ from ... pulse.container_ops import (
 
 def build_harmonics(system, component, components_distance):
     """
-       adds pre-calculated harmonics for the respective pulsation modes
+    Adds pre-calculated harmonics for the respective pulsation modes
 
-       :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
-       :param component: Union[str, None];
-       :param components_distance: float;
-       :return: elisa.binary_system.contaier.OrbitalPositionContainer; instance
-       """
+    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    :param component: Union[str, None];
+    :param components_distance: float;
+    :return: elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    """
     components = bsutils.component_to_list(component)
     for component in components:
         star = getattr(system, component)

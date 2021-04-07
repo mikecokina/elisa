@@ -82,6 +82,7 @@ class SinglePositionContainer(PositionContainer):
         self.build_surface()
         self.build_from_points()
 
+        self.build_harmonics()
         if build_pulsations:
             self.build_pulsations()
         return self
@@ -136,6 +137,9 @@ class SinglePositionContainer(PositionContainer):
     # TODO: soon to be deprecated
     def build_temperature_perturbations(self):
         return temperature.build_temperature_perturbations(self)
+
+    def build_harmonics(self):
+        return pulsations.build_harmonics(self)
 
     def build_pulsations(self):
         return pulsations.build_pulsations(self)
