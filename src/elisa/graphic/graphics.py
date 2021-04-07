@@ -306,7 +306,7 @@ def binary_surface(**kwargs):
         * **face_mask_secondary** * -- array[bool]: mask to select which faces to display
         * **elevation** * -- float; in degree - elevation of camera
         * **azimuth** * -- float; camera azimuth
-        * **units** * -- str; units of gravity acceleration colormap  `SI` or `cgs`
+        * **unit** * -- str; units of gravity acceleration colormap  `SI` or `cgs`
         * **scale** * -- str; `linear` or `log`
         * **axis_unit** * -- Union[astropy.unit, dimensionless]; - axis units
         * **colorbar_orientation** * -- str; `horizontal` or `vertical` (default)
