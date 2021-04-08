@@ -50,7 +50,8 @@ def add_colormap_to_plt_kwargs(*args, **kwargs):
             raise ZeroDivisionError('You are trying to display surface colormap with `subtract_equilibrium`=True but '
                                     'surface of the star does not oscillate.')
 
-        # container_ops.complex_displacement(star, scale=model_scale)
+        container_ops.complex_displacement(star, scale=model_scale)
+        container_ops.position_perturbation(star, com_x, phase, update_container=True, return_perturbation=False)
     retval = colorbar_fn[colormap](star, scale, unit, subtract_equilibrium)
 
     return retval

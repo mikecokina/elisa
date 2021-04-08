@@ -68,7 +68,6 @@ class Animation(object):
             on_pos.build(components_distance=position.distance)
             distances_to_com = {'primary': position.distance * self.binary.mass_ratio / (1 + self.binary.mass_ratio),
                                 'secondary': position.distance / (1 + self.binary.mass_ratio)}
-            on_pos.flatt_it()
             on_pos.primary.points[:, 0] -= distances_to_com['primary']
             on_pos.secondary.points[:, 0] -= distances_to_com['secondary']
 

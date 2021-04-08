@@ -82,6 +82,7 @@ class SinglePositionContainer(PositionContainer):
         self.build_surface()
         self.build_from_points()
 
+        self.flatt_it()
         self.build_harmonics()
         if build_pulsations:
             self.build_pulsations()

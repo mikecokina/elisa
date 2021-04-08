@@ -55,7 +55,7 @@ def compute_pulsating_light_curve(*args):
         initial_system.build_from_points()
 
         on_pos = ssutils.move_sys_onpos(initial_system, position)
-        normal_radiance, ld_cfs = utils.prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
+        normal_radiance, ld_cfs = utils.prep_surface_params(initial_system.copy(), **kwargs)
 
         star = on_pos.star
 

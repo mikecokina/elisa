@@ -287,7 +287,6 @@ class Plot(object):
                                          build_pulsations=not subtract_equilibrium)
 
         components = butils.component_to_list(components_to_plot)
-        orbital_position_container.flatt_it()
 
         com = {'primary': 0.0, 'secondary': components_distance}
         for component in components:

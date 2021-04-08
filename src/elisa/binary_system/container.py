@@ -100,6 +100,7 @@ class OrbitalPositionContainer(PositionContainer):
         self.build_mesh(components_distance, component)
         self.build_from_points(components_distance, component)
 
+        self.flatt_it()
         self.build_harmonics(component, components_distance)
         if build_pulsations:
             self.build_pulsations(component, components_distance)

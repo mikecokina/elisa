@@ -11,6 +11,8 @@ from .. import utils as sutils
 from .. curves import utils as crv_utils
 from ... observer.observer import Observer
 
+from elisa.pulse import container_ops
+
 
 class Plot(object):
     """
@@ -178,7 +180,6 @@ class Plot(object):
         position_container.set_on_position_params(single_position)
         position_container.build(phase=phase, build_pulsations=not subtract_equilibrium)
         correct_face_orientation(position_container.star, com=0)
-        position_container.flatt_it()
 
         # calculating radiances
         o = Observer(passband=['bolometric', ], system=self.single)
@@ -195,16 +196,16 @@ class Plot(object):
         position_container = sutils.move_sys_onpos(position_container, single_position)
 
         star_container = getattr(position_container, 'star')
-        points, faces = star_container.points, star_container.faces
-
-        surface_kwargs.update({
-            'points': points,
-            'triangles': faces
-        })
 
         args = (colormap, star_container, phase, 0.0, 1.0)
         kwargs = dict(scale=scale, unit=unit, subtract_equilibrium=subtract_equilibrium)
         surface_kwargs.update({'cmap': plot.add_colormap_to_plt_kwargs(*args, **kwargs)})
+
+        points, faces = star_container.points, star_container.faces
+        surface_kwargs.update({
+            'points': points,
+            'triangles': faces
+        })
 
         face_mask = np.ones(star_container.faces.shape[0], dtype=bool) if face_mask is None else face_mask
         surface_kwargs['triangles'] = surface_kwargs['triangles'][face_mask]

@@ -58,6 +58,6 @@ def produce_curves_wo_pulsations(single, initial_system, phases, curve_fn, crv_l
             * ** phases ** * - numpy.array
     :return: Dict; calculated curves
     """
-    crv_utils.prep_surface_params(initial_system.flatt_it(), return_values=False, write_to_containers=True, **kwargs)
+    crv_utils.prep_surface_params(initial_system, return_values=False, write_to_containers=True, **kwargs)
     fn_args = (single, initial_system, crv_labels, curve_fn)
     return manage_observations(fn=c_managed.produce_curves_wo_pulsations_mp, fn_args=fn_args, position=phases, **kwargs)

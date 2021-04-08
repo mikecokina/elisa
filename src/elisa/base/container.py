@@ -530,12 +530,6 @@ class StarContainer(object):
         for prop in props_list:
             setattr(self, prop, self.get_flatten_parameter(prop))
 
-        # if self.has_pulsations():
-        #     setattr(self, 'points_spherical', self.get_flatten_parameter('points_spherical'))
-        #     mode = self.pulsations[0]
-        #     to_concat = [mode.points, ] + [s_points for s_points in mode.spot_points.values()]
-        #     setattr(mode, 'points', np.concatenate(to_concat, axis=0))
-
         self._flatten = True
         return self
 
