@@ -40,27 +40,22 @@ def generate_time_exponential(mode, time):
     return np.exp(complex(0, -exponent))
 
 
-def tilt_mode_coordinates(points, spot_points, phi, theta):
+def tilt_mode_coordinates(points, phi, theta):
     """
     Function tilts spherical coordinates to desired position described by `phi`, `theta`.
 
     :param points: numpy.array;
-    :param spot_points: Dict;
     :param phi: float; azimuthal coordinate of the new polar axis
     :param theta: float; latitude of the new polar axis
-    :return: Tuple;
+    :return: numpy.array;
     """
     if theta != 0 or phi != 0:
         tilted_phi, tilted_theta = utils.rotation_in_spherical(points[:, 1], points[:, 2], phi, theta)
         ret_points = np.column_stack((points[:, 0], tilted_phi, tilted_theta))
 
-        ret_spot_points = dict()
-        for spot_idx, spoints in spot_points.items():
-            tilted_phi, tilted_theta = utils.rotation_in_spherical(spoints[:, 1], spoints[:, 2], phi, theta)
-            ret_spot_points[spot_idx] = np.column_stack((spoints[:, 0], tilted_phi, tilted_theta))
-        return ret_points, ret_spot_points
+        return ret_points
     else:
-        return points, spot_points
+        return points
 
 
 def derotate_surface_points(points_to_derotate, phi, theta, com_x):

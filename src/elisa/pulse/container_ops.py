@@ -16,12 +16,14 @@ def generate_harmonics(star_container, com_x, phase, time):
     :param time: float; time of the observation
     :return: elisa.base.container.StarContainer; Star container with updated harmonics
     """
-    star_container.points_spherical, points_spot = \
+    if not star_container.is_flat():
+        raise ValueError('Pulsations can be calculated only on flattened container.')
+    star_container.points_spherical = \
         star_container.transform_points_to_spherical_coordinates(kind='points', com_x=com_x)
 
     tilt_phi, tilt_theta = putils.generate_tilt_coordinates(star_container, phase)
-    tilted_points, tilted_points_spot = putils.tilt_mode_coordinates(
-        star_container.points_spherical, points_spot, tilt_phi, tilt_theta
+    tilted_points = putils.tilt_mode_coordinates(
+        star_container.points_spherical, tilt_phi, tilt_theta
     )
 
     # assigning tilted points in spherical coordinates only to the first mode (the rest will share the same points)
@@ -57,47 +59,6 @@ def generate_harmonics(star_container, com_x, phase, time):
         mode.point_harmonics_derivatives = derivatives
         mode.face_harmonics_derivatives = np.mean(derivatives[:, star_container.faces], axis=1)
 
-    if not star_container.is_flat():
-        for spot_idx, spot in star_container.spots.items():
-            spot.points_spherical = points_spot[spot_idx]
-
-        # assigning tilted points in spherical coordinates only to the first mode (the rest will share the same points)
-        star_container.pulsations[0].spot_points = tilted_points_spot
-
-        for mode_index, mode in star_container.pulsations.items():
-            spot_harmonics, spot_harmonics_derivatives = dict(), dict()
-            for spot_idx, spoints in tilted_points_spot.items():
-                # generating harmonics Y_m^l and Y_m+1^l for star and spot points
-                spot_harmonics[spot_idx] = np.zeros((2, spoints.shape[0]), dtype=np.complex)
-                spot_harmonics[spot_idx][0] = pulsations.spherical_harmonics(mode, spoints, exponential[mode_index])
-
-                if mode.m != mode.l:
-                    spot_harmonics[spot_idx][1] = pulsations.spherical_harmonics(
-                        mode, spoints, exponential[mode_index], order=mode.m + 1, degree=mode.l)
-
-                # generating derivatives of spherical harmonics by phi an theta
-                spot_harmonics_derivatives[spot_idx] = np.zeros((2, spoints.shape[0]), dtype=np.complex)
-                spot_harmonics_derivatives[spot_idx][0] = \
-                    pulsations.diff_spherical_harmonics_by_phi(mode, spot_harmonics[spot_idx])
-                spot_harmonics_derivatives[spot_idx][1] = \
-                    pulsations.diff_spherical_harmonics_by_theta(
-                        mode, spot_harmonics[spot_idx], spoints[:, 1], spoints[:, 2]
-                    )
-
-                # renormalizing horizontal amplitude to 1
-                spot_harmonics_derivatives[spot_idx] *= norm_constant[mode_index]
-
-            # assignment of harmonics to mode instance variables
-            mode.spot_point_harmonics = {spot_idx: hrm[0] for spot_idx, hrm in spot_harmonics.items()}
-            mode.spot_face_harmonics = {spot_idx: np.mean(spoth[star_container.spots[spot_idx].faces], axis=1)
-                                        for spot_idx, spoth in mode.spot_point_harmonics.items()}
-
-            mode.spot_point_harmonics_derivatives = spot_harmonics_derivatives
-            mode.spot_face_harmonics_derivatives = {
-                spot_idx: np.mean(spoth[:, star_container.spots[spot_idx].faces], axis=1)
-                for spot_idx, spoth in spot_harmonics_derivatives.items()
-            }
-
     return star_container
 
 
@@ -128,20 +89,14 @@ def complex_displacement(star, scale):
     :param scale: float;
     :return: base.container.StarContainer;
     """
+    if not star.is_flat():
+        raise ValueError('Pulsations can be calculated only on flattened container.')
+
     for mode_index, mode in star.pulsations.items():
         mode.complex_displacement = kinematics.calculate_displacement_coordinates(
             mode, star.pulsations[0].points, mode.point_harmonics, mode.point_harmonics_derivatives,
             scale=scale
         )
-
-        if star.is_flat():
-            continue
-
-        for spot_idx, spoints in star.pulsations[0].spot_points.items():
-            mode.spot_complex_displacement[spot_idx] = kinematics.calculate_displacement_coordinates(
-                mode, spoints, mode.spot_point_harmonics[spot_idx], mode.spot_point_harmonics_derivatives[spot_idx],
-                scale=scale
-            )
 
     return star
 
@@ -155,7 +110,7 @@ def position_perturbation(star, com_x, phase, update_container=True, return_pert
     :param phase: float;
     :param update_container: bool; if True, perturbation is incorporated into star.points
     :param return_perturbation: bool; if True, calculated displacement (in cartesian coordinates) is returned
-    :return: Union[Tuple[numpy.array, dict], None];
+    :return: Union[numpy.array, None];
     """
     # initializing cumulative variables for displacement
     tilt_phi, tilt_theta = putils.generate_tilt_coordinates(star, phase)
@@ -174,32 +129,7 @@ def position_perturbation(star, com_x, phase, update_container=True, return_pert
     if update_container:
         setattr(star, 'points', points)
 
-    # function will terminate here if the container is flat
-    if star.is_flat():
-        return displacement, dict() if return_perturbation else None
-
-    spot_displacement = dict()
-    tilt_displacement_spots_sph = {spot_idx: np.zeros(spot.shape, dtype=np.float64)
-                                   for spot_idx, spot in star.pulsations[0].spot_points.items()}
-
-    for mode_index, mode in star.pulsations.items():
-        for spot_idx, spoints in star.pulsations[0].spot_points.items():
-            tilt_displacement_spots_sph[spot_idx] += kinematics.calculate_mode_angular_displacement(
-                mode.spot_complex_displacement[spot_idx]
-            )
-
-    spot_points = dict()
-    for spot_idx, spot in star.spots.items():
-        spot_points[spot_idx] = putils.derotate_surface_points(
-            star.pulsations[0].spot_points[spot_idx] + tilt_displacement_spots_sph[spot_idx],
-            tilt_phi, tilt_theta, com_x)
-
-        if return_perturbation:
-            spot_displacement[spot_idx] = spot_points[spot_idx] - getattr(spot, 'points')
-        if update_container:
-            setattr(spot, 'points', spot_points[spot_idx])
-
-    return displacement, spot_displacement if return_perturbation else None
+    return displacement if return_perturbation else None
 
 
 def velocity_perturbation(star, phase, update_container=False, return_perturbation=False):
@@ -220,27 +150,4 @@ def velocity_perturbation(star, phase, update_container=False, return_perturbati
     if update_container:
         star.velocities += velocity_pert
 
-    # function will terminate here if the container is flat
-    if star.is_flat():
-        return velocity_pert, dict() if return_perturbation else None
-
-    # calculating perturbed velocity in spherical coordinates
-    tilt_velocity_spots_sph = {
-        spot_idx: np.sum([kinematics.calculate_mode_angular_derivatives(
-                displacement=mode.spot_complex_displacement[spot_idx], angular_frequency=mode.angular_frequency
-            ) for mode in star.pulsations.values()], axis=0)
-        for spot_idx in star.pulsations[0].spot_points
-    }
-
-    spot_velocity_pert = dict()
-    for spot_idx, spot in star.spots.items():
-        spot_velocity_pert[spot_idx] = putils.derotate_surface_displacements(
-            tilt_velocity_spots_sph[spot_idx], star.pulsations[0].spot_points[spot_idx],
-            star.spots[spot_idx].points_spherical, tilt_phi, tilt_theta
-        )
-        spot_velocity_pert[spot_idx] = spot_velocity_pert[spot_idx][spot.faces].mean(axis=1)
-
-        if update_container:
-            spot.velocities += spot_velocity_pert[spot_idx]
-
-    return velocity_pert, spot_velocity_pert if return_perturbation else None
+    return velocity_pert if return_perturbation else None

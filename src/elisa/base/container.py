@@ -540,7 +540,7 @@ class StarContainer(object):
         :param kind: str; `points` or `face_centres` or other variable containing cartesian
                           points in both star and spot containers
         :param com_x: float;
-        :return: Tuple; spherical coordinates of star variable, dictionary of spherical coordinates of spot variable
+        :return: numpy.array; spherical coordinates of star variable
         """
         # separating variables to convert
         centres_cartesian = copy(getattr(self, kind))
@@ -550,20 +550,7 @@ class StarContainer(object):
 
         # conversion
         centres = utils.cartesian_to_spherical(centres_cartesian)
-
-        centres_spot = dict()
-        if not self._flatten:
-            # separating variables to convert
-            centres_spot_cartesian = {spot_idx: copy(getattr(spot, kind)) for spot_idx, spot in self.spots.items()}
-
-            for spot_index, spot in self.spots.items():
-                # transforming variables
-                centres_spot_cartesian[spot_index][:, 0] -= com_x
-
-                # conversion
-                centres_spot[spot_index] = utils.cartesian_to_spherical(centres_spot_cartesian[spot_index])
-
-        return centres, centres_spot
+        return centres
 
     def assign_radii(self, star):
         self.polar_radius = getattr(star, 'polar_radius')

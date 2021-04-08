@@ -49,20 +49,14 @@ class PulsationMode(object):
 
         # surface related aux variables
         self.points = None
-        self.spot_points = None
 
         self.point_harmonics = None
         self.face_harmonics = None
-        self.spot_point_harmonics = None
-        self.spot_face_harmonics = None
 
         self.point_harmonics_derivatives = None
         self.face_harmonics_derivatives = None
-        self.spot_point_harmonics_derivatives = None
-        self.spot_face_harmonics_derivatives = None
 
         self.complex_displacement = None
-        self.spot_complex_displacement = dict()
 
         self.init_properties(**kwargs)
 
