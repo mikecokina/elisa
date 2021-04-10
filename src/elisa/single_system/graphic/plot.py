@@ -201,10 +201,9 @@ class Plot(object):
         kwargs = dict(scale=scale, unit=unit, subtract_equilibrium=subtract_equilibrium)
         surface_kwargs.update({'cmap': plot.add_colormap_to_plt_kwargs(*args, **kwargs)})
 
-        points, faces = star_container.points, star_container.faces
         surface_kwargs.update({
-            'points': points,
-            'triangles': faces
+            'points': star_container.points,
+            'triangles': star_container.faces
         })
 
         face_mask = np.ones(star_container.faces.shape[0], dtype=bool) if face_mask is None else face_mask

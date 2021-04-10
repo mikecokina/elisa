@@ -58,7 +58,7 @@ def tilt_mode_coordinates(points, phi, theta):
         return points
 
 
-def derotate_surface_points(points_to_derotate, phi, theta, com_x):
+def derotate_surface_points(points_to_derotate, phi, theta):
     """
     Derotating surface points  into the base coordinate system after surface displacement for misalligned mode is
     calculated.
@@ -66,7 +66,6 @@ def derotate_surface_points(points_to_derotate, phi, theta, com_x):
     :param points_to_derotate: numpy.array; surface points in tilted spherical coordinates
     :param phi: float; azimuthal tilt of the input coordinate system
     :param theta: float; latitudinal tilt of the input coordinate system
-    :param com_x: float;
     :return: numpy.array;
     """
     derot_phi, derot_theta = \
@@ -75,8 +74,6 @@ def derotate_surface_points(points_to_derotate, phi, theta, com_x):
                                       phi, theta)
     derot_points = np.column_stack((points_to_derotate[:, 0], derot_phi, derot_theta))
     points = utils.spherical_to_cartesian(derot_points)
-    # TODO: this will not always work!!! container can be already rotated, solve it
-    points[:, 0] += com_x
 
     return points
 

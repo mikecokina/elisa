@@ -94,8 +94,7 @@ def complex_displacement(star, scale):
 
     for mode_index, mode in star.pulsations.items():
         mode.complex_displacement = kinematics.calculate_displacement_coordinates(
-            mode, star.pulsations[0].points, mode.point_harmonics, mode.point_harmonics_derivatives,
-            scale=scale
+            mode, star.pulsations[0].points, mode.point_harmonics, mode.point_harmonics_derivatives, scale=scale
         )
 
     return star
@@ -122,7 +121,7 @@ def position_perturbation(star, com_x, phase, update_container=True, return_pert
 
     points = putils.derotate_surface_points(
         star.pulsations[0].points + tilt_displacement_sph,
-        tilt_phi, tilt_theta, com_x
+        tilt_phi, tilt_theta
     )
     if return_perturbation:
         displacement = points - getattr(star, 'points')

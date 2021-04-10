@@ -39,6 +39,10 @@ def add_colormap_to_plt_kwargs(*args, **kwargs):
     unit = kwargs.get('unit', 'default')
     subtract_equilibrium = kwargs.get('subtract_equilibrium', False)
 
+    if star.has_pulsations():
+        container_ops.complex_displacement(star, scale=model_scale)
+        container_ops.position_perturbation(star, com_x, phase, update_container=True, return_perturbation=False)
+
     retval = None
     if colormap is None:
         return retval
@@ -50,8 +54,6 @@ def add_colormap_to_plt_kwargs(*args, **kwargs):
             raise ZeroDivisionError('You are trying to display surface colormap with `subtract_equilibrium`=True but '
                                     'surface of the star does not oscillate.')
 
-        container_ops.complex_displacement(star, scale=model_scale)
-        container_ops.position_perturbation(star, com_x, phase, update_container=True, return_perturbation=False)
     retval = colorbar_fn[colormap](star, scale, unit, subtract_equilibrium)
 
     return retval
@@ -99,7 +101,7 @@ def v_cmap(star, scale, unit, subtract_equilibrium):
     :return: numpy.array;
     """
     phase = 0
-    velocities = container_ops.velocity_perturbation(star, phase, update_container=True, return_perturbation=True)[0] \
+    velocities = container_ops.velocity_perturbation(star, phase, update_container=True, return_perturbation=True) \
         if subtract_equilibrium else getattr(star, 'velocities')
     velocities = np.linalg.norm(velocities, axis=1)
     unt = units.km / units.s if unit == 'default' else unit

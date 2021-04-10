@@ -314,16 +314,16 @@ class Plot(object):
 
         for component in components:
             star = getattr(orbital_position_container, component)
-            points, faces = star.points, star.faces
-
-            surface_kwargs.update({
-                f'points_{component}': points,
-                f'{component}_triangles': faces
-            })
 
             args = (colormap, star, phase, com[component], self.binary.semi_major_axis)
             kwargs = dict(scale=scale, unit=unit, subtract_equilibrium=subtract_equilibrium)
+
             surface_kwargs.update({f'{component}_cmap': plot.add_colormap_to_plt_kwargs(*args, **kwargs)})
+
+            surface_kwargs.update({
+                f'points_{component}': star.points,
+                f'{component}_triangles': star.faces
+            })
 
             face_mask = locals().get(f'face_mask_{component}')
             face_mask = np.ones(star.faces.shape[0], dtype=bool) if face_mask is None else face_mask
