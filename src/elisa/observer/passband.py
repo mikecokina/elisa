@@ -56,9 +56,18 @@ def bolometric(x):
 class PassbandContainer(object):
     def __init__(self, table, passband):
         """
+        Data container used for storing passband response curves. Fully initialized PassbandContainers contain following
+        attributes:
+
+            - left_bandwidth, right_bandwidth: left and right wavelength boundary of the passband
+            - table: pandas.DataFrame; dataframe containing a `wavelength` column with corresponding `throughput` values
+                                       defining a given passband
+            - passband: name of the passband
+
+        The response curve is stored in a pandas.DataFrame
         Setup PassbandContainier object. It carres dependedncies of throughputs on wavelengths for given passband.
 
-        :param table: pandads.DataFrame;
+        :param table: pandas.DataFrame;
         :param passband: str;
         """
         self.left_bandwidth = np.nan
