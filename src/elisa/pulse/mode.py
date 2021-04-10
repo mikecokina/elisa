@@ -40,9 +40,6 @@ class PulsationMode(object):
         # phase shift in radians between surface geometry
         # perturbation and temperature perturbations
 
-        # here the time-independent, renormalized associated Legendree polynomial is stored
-        self.rals = None
-
         # dimensionless normalized amplitudes
         self.radial_amplitude = None
         self.horizontal_amplitude = None
@@ -57,6 +54,8 @@ class PulsationMode(object):
         self.face_harmonics_derivatives = None
 
         self.complex_displacement = None
+
+        self.tilt_phi, self.tilt_theta = None, None
 
         self.init_properties(**kwargs)
 

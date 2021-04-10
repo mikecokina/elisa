@@ -284,7 +284,7 @@ class Plot(object):
         orbital_position_container.set_on_position_params(orbital_position, potentials["primary"][0],
                                                           potentials["secondary"][0])
         orbital_position_container.build(components_distance=components_distance, components='both',
-                                         build_pulsations=not subtract_equilibrium)
+                                         build_pulsations=True)
 
         components = butils.component_to_list(components_to_plot)
 

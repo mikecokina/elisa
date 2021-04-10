@@ -1,6 +1,6 @@
 import numpy as np
 
-from elisa import units, settings
+from elisa import units, settings, utils
 from elisa.utils import transform_values
 from elisa.ld import limb_darkening_factor
 from elisa.pulse import container_ops
@@ -26,6 +26,7 @@ def add_colormap_to_plt_kwargs(*args, **kwargs):
     :return: numpy.array;
     """
     colorbar_fn = {
+        'radius': r_cmap,
         'gravity_acceleration': g_cmap,
         'temperature': t_cmap,
         'velocity': v_cmap,
@@ -39,10 +40,6 @@ def add_colormap_to_plt_kwargs(*args, **kwargs):
     unit = kwargs.get('unit', 'default')
     subtract_equilibrium = kwargs.get('subtract_equilibrium', False)
 
-    if star.has_pulsations():
-        container_ops.complex_displacement(star, scale=model_scale)
-        container_ops.position_perturbation(star, com_x, phase, update_container=True, return_perturbation=False)
-
     retval = None
     if colormap is None:
         return retval
@@ -54,9 +51,34 @@ def add_colormap_to_plt_kwargs(*args, **kwargs):
             raise ZeroDivisionError('You are trying to display surface colormap with `subtract_equilibrium`=True but '
                                     'surface of the star does not oscillate.')
 
-    retval = colorbar_fn[colormap](star, scale, unit, subtract_equilibrium)
+    retval = colorbar_fn[colormap](star, scale, unit, subtract_equilibrium, model_scale)
 
     return retval
+
+
+def r_cmap(star, scale, unit, subtract_equilibrium, model_scale):
+    """
+    Returning the radius of the points as a colormap.
+
+    :param star: elisa.base.container.StarContainer;
+    :param scale: str; log or linear
+    :param unit: astropy.units.Unit;
+    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
+    :param model_scale: float; scale of the system
+    :return:
+    """
+    if not subtract_equilibrium:
+        value = star.points_spherical[:, 0]
+    else:
+        points_unperturbed = utils.spherical_to_cartesian(star.points_spherical)
+        perturbation = container_ops.position_perturbation(star, None, update_container=False, return_perturbation=True)
+
+        value = utils.cartesian_to_spherical(points_unperturbed + perturbation)[:, 0] - star.points_spherical[:, 0]
+
+    value = value[star.faces].mean(axis=1) * model_scale
+    unt = units.DISTANCE_UNIT if unit == 'default' else unit
+    value = transform_values(value, units.DISTANCE_UNIT, unt)
+    return to_log(value, scale)
 
 
 def g_cmap(star, scale, unit, subtract_equilibrium):

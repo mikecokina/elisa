@@ -1,8 +1,9 @@
 import numpy as np
 
 from . import utils as putils
-from .surface import kinematics
+from . surface import kinematics
 from . import pulsations
+from elisa import utils
 
 
 def generate_harmonics(star_container, com_x, phase, time):
@@ -21,9 +22,10 @@ def generate_harmonics(star_container, com_x, phase, time):
     star_container.points_spherical = \
         star_container.transform_points_to_spherical_coordinates(kind='points', com_x=com_x)
 
-    tilt_phi, tilt_theta = putils.generate_tilt_coordinates(star_container, phase)
+    star_container.pulsations[0].tilt_phi, star_container.pulsations[0].tilt_theta = \
+        putils.generate_tilt_coordinates(star_container, phase)
     tilted_points = putils.tilt_mode_coordinates(
-        star_container.points_spherical, tilt_phi, tilt_theta
+        star_container.points_spherical, star_container.pulsations[0].tilt_phi, star_container.pulsations[0].tilt_theta
     )
 
     # assigning tilted points in spherical coordinates only to the first mode (the rest will share the same points)
@@ -75,7 +77,7 @@ def incorporate_pulsations_to_model(star_container, com_x, phase, scale=1.0):
     # calculating kinematics quantities
     complex_displacement(star_container, scale=scale)
 
-    position_perturbation(star_container, com_x, phase, update_container=True, return_perturbation=False)
+    position_perturbation(star_container, com_x, update_container=True, return_perturbation=False)
     velocity_perturbation(star_container, phase, update_container=True, return_perturbation=False)
     return star_container
 
@@ -100,19 +102,16 @@ def complex_displacement(star, scale):
     return star
 
 
-def position_perturbation(star, com_x, phase, update_container=True, return_perturbation=False):
+def position_perturbation(star, com_x, update_container=True, return_perturbation=False):
     """
     Calculates the deformation of the surface mesh due to the pulsations.
 
     :param star: base.container.StarContainer;
     :param com_x: float; x-component of system's centre of mass
-    :param phase: float;
     :param update_container: bool; if True, perturbation is incorporated into star.points
     :param return_perturbation: bool; if True, calculated displacement (in cartesian coordinates) is returned
     :return: Union[numpy.array, None];
     """
-    # initializing cumulative variables for displacement
-    tilt_phi, tilt_theta = putils.generate_tilt_coordinates(star, phase)
     displacement = None
 
     tilt_displacement_sph = np.sum([
@@ -121,12 +120,13 @@ def position_perturbation(star, com_x, phase, update_container=True, return_pert
 
     points = putils.derotate_surface_points(
         star.pulsations[0].points + tilt_displacement_sph,
-        tilt_phi, tilt_theta
+        star.pulsations[0].tilt_phi, star.pulsations[0].tilt_theta
     )
     if return_perturbation:
-        displacement = points - getattr(star, 'points')
+        displacement = points - utils.spherical_to_cartesian(getattr(star, 'points_spherical'))
     if update_container:
-        setattr(star, 'points', points)
+        # star.points += displacement
+        setattr(star, 'points', points + np.array([com_x, 0, 0]))
 
     return displacement if return_perturbation else None
 
