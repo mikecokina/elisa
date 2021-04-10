@@ -32,10 +32,29 @@ class Observables(object):
 class Observer(object):
     def __init__(self, passband=None, system=None):
         """
-        Initializer for observer class.
+        The observer class is responsible for the calculation of synthetic observations. Initialization of the Observer
+        class instance requires the initialized System instance (SingleSystem, BinarySystem) and in case of light curves
+        a (set of) passband(s) in which the observation should be produced.
 
-        :param passband: string; for valid filter name see settings.py file
-        :param system: system instance (BinarySystem or SingleSystem)
+        List of available passbands is accessible via:
+        ::
+
+            from elisa import settings
+
+            settings.PASSBANDS
+
+        This class currently supports calculation of light curves (lc) and radial velocity curves (rv) using functions
+        `observer_instance.lc` or `observer_instance.rv` (see documentation for the respective function for
+        further details).
+
+        After initialization, the following attributes are available for each instances of Observer class:
+
+            - left_bandwidth, right_bandwidth: the smallest interval of wavelengths encompassing all desired passbands
+            - passband: {passband1: PassbandContainer, ...}, dictionary containing the PassbandContainer (response curve of
+              the filter) corresponding to each passband.
+
+        :param passband: Union[string, list]; for valid filter name see settings.py file
+        :param system: Union[SingleSystem, BinarySystem]; system instance (BinarySystem or SingleSystem)
         """
         if passband is None:
             passband = list()
@@ -71,13 +90,13 @@ class Observer(object):
     def init_passband(self, passband):
         """
         Passband initializing method for Observer instance.
-        During initialialization `self.passband` Dict is fill in way::
+        During initialialization `self.passband` Dict is filled in following manner::
 
             {`passband`: PassbandContainer()}
 
-        and global left and right passband bandwidth is set.
-        If there is several passband defined on different intervals, e.g. ([350, 650], [450, 750]) then global limits
-        are total boarder values, in example case as [350, 750].
+        and global left and right passband bandwidth are set.
+        If case of several passband defined on different intervals, e.g. ([350, 650], [450, 750]), the global limits
+        are total boarder values, in this example: [350, 750].
 
         :param passband: Union[str; Iterable[str]]
         """
@@ -96,10 +115,8 @@ class Observer(object):
 
     def setup_bandwidth(self, left_bandwidth, right_bandwidth):
         """
-        Find whether supplied left and right bandwidth are in currently set boundaries and nothing has to be done
-        or any is out of current bound and related has to be changed to higher (`right_bandwidth`)
-        or lower (`left_bandwidth`).
-
+        Find whether supplied left and right bandwidth are within currently set boundaries. If not, the supplied
+        `left_bandwidth` and `right_bandwidth` are assigned as a new global wavelength boundaries.
 
         :param left_bandwidth: float;
         :param right_bandwidth: float;
@@ -112,7 +129,7 @@ class Observer(object):
     @staticmethod
     def get_passband_df(passband):
         """
-        Read content o passband table (csv file) based on passband name.
+        Read content of passband table (csv file) based on passband name.
 
         :param passband: str;
         :return: pandas.DataFrame;
@@ -127,18 +144,21 @@ class Observer(object):
     def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False,
            from_time=None, to_time=None, time_step=None, times=None):
         """
-        Method for simulated observation. Based on input parameters and supplied Observer system on initialization
-        will compute light curve.
+        Method for simulated light curve observation. Computes a light curve based on input parameters and the System
+        supplied during initialization of the Observer instance. Returns light curves for each passband defined in the
+        Observer instance. Times of observations can be supplied in either time or phase domain.
 
-        :param from_time: float;
-        :param to_time: float;
-        :param time_step: float;
-        :param times: Iterable float;
-        :param normalize: bool;
-        :param from_phase: float;
-        :param to_phase: float;
-        :param phase_step: float;
-        :param phases: Iterable float;
+        :param from_time: float; starting time of the observation
+        :param to_time: float; end time of the observation
+        :param time_step: float; time increment of the observations
+        :param times: Iterable float; array of times at which to perform an observations, if this parameter is provided
+                                      the suplied 'from_time`, `to_time` `time_step` becomes irrelevant
+        :param normalize: bool; if True, the output is normalized to maximum=1
+        :param from_phase: float; starting phase of the observation
+        :param to_phase: float; end phase of the observation
+        :param phase_step: float; phase increment of the observations
+        :param phases: Iterable float; array of phases at which to perform an observations, if this parameter is
+                                       provided the supplied 'from_phase`, `to_phase` `phase_step` becomes irrelevant
         :return: Dict;
         """
         phases = self.manage_time_series(from_phase, to_phase, phase_step, phases, from_time, to_time, time_step, times)
@@ -181,16 +201,22 @@ class Observer(object):
     def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False, method=None,
            from_time=None, to_time=None, time_step=None, times=None):
         """
-        Method for synthetic observations of radial velocity curves.
+        Method for simulated radial velocity curve observation. Computes a radial velocity curve based on input
+        parameters and the System supplied during initialization of the Observer instance. Times of observations
+        can be supplied in either time or phase domain.
 
-        :param from_time: float;
-        :param to_time: float;
-        :param time_step: float;
-        :param times: Iterable float;
-        :param from_phase: float;
-        :param to_phase: float;
-        :param phase_step: float;
-        :param phases: Iterable float;
+        :param from_time: float; starting time of the observation
+        :param to_time: float; end time of the observation
+        :param time_step: float; time increment of the observations
+        :param times: Iterable float; array of times at which to perform an observations, if this parameter is provided
+                                      the suplied 'from_time`, `to_time` `time_step` becomes irrelevant
+
+        :param from_phase: float; starting phase of the observation
+        :param to_phase: float; end phase of the observation
+        :param phase_step: float; phase increment of the observations
+        :param phases: Iterable float; array of phases at which to perform an observations, if this parameter is
+                                       provided the supplied 'from_phase`, `to_phase` `phase_step` becomes irrelevant
+
         :param normalize: bool;
         :param method: str; method for calculation of radial velocities, `kinematic` or `radiometric`
         :return: Tuple[numpy.array, numpy.array, numpy.array]; phases, primary rv, secondary rv
@@ -291,8 +317,8 @@ class Observer(object):
         phases_supplied = not (phases is None and (from_phase is None or to_phase is None or phase_step is None))
         times_supplied = not (times is None and (from_time is None or to_time is None or time_step is None))
 
-        message = "Please pick arguments from phase-related parameters: `from_phase`, 'to_phase`, " \
-                  "`phase_step` or `phases` or from time-related parameters: `from_time`, `to_time`, " \
+        message = "Please pick arguments either from phase-domain: `from_phase`, 'to_phase`, " \
+                  "`phase_step` or `phases` or from time-domain parameters: `from_time`, `to_time`, " \
                   "`time_step` or `times`."
         if not (phases_supplied or times_supplied):
             raise ValueError("Missing arguments. " + message)
