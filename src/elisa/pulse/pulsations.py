@@ -39,12 +39,7 @@ def diff_spherical_harmonics_by_phi(mode, harmonics):
     :return: numpy.array;
     """
     retval = (0 + 1j) * mode.m * harmonics[0]
-    # retval = (0 + 1j) * harmonics[0]
     return retval
-
-
-def dy_dphi_norm(mode):
-    return mode.m if mode.m != 0 else 1.0
 
 
 def diff_spherical_harmonics_by_theta(mode, harmonics, phis, thetas):
@@ -149,9 +144,9 @@ def assign_amplitudes(star_container, normalization_constant=1.0):
         amplitude = mode.amplitude / mode.angular_frequency
 
         mode.radial_amplitude = amplitude / np.sqrt(mode.horizontal_to_radial_amplitude_ratio**2 + 1)
-        mode.horizontal_amplitude = mode.horizontal_to_radial_amplitude_ratio * mode.radial_amplitude / r_equiv
+        mode.horizontal_amplitude = mode.horizontal_to_radial_amplitude_ratio * mode.radial_amplitude
 
-        surf_ampl = mode.horizontal_amplitude
+        surf_ampl = mode.horizontal_amplitude / r_equiv
         if surf_ampl > settings.SURFACE_DISPLACEMENT_TOL:
             prec = int(- np.log10(surf_ampl) + 2)
             if not settings.SUPPRESS_WARNINGS:

@@ -96,7 +96,8 @@ def complex_displacement(star, scale):
 
     for mode_index, mode in star.pulsations.items():
         mode.complex_displacement = kinematics.calculate_displacement_coordinates(
-            mode, star.pulsations[0].points, mode.point_harmonics, mode.point_harmonics_derivatives, scale=scale
+            mode, star.pulsations[0].points, mode.point_harmonics, mode.point_harmonics_derivatives,
+            star.equivalent_radius, scale=scale
         )
 
     return star
@@ -143,6 +144,7 @@ def velocity_perturbation(star, update_container=False, return_perturbation=Fals
     )
     velocity_pert = velocity_pert[star.faces].mean(axis=1)
 
+    # TODO: you are adding spherical with cartesian!!
     if update_container:
         star.velocities += velocity_pert
 

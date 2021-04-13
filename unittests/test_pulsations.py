@@ -13,14 +13,14 @@ from unittests.utils import ElisaTestCase
 from unittests import utils as testutils
 
 STAR_PARAMS = {
-            'mass': 2.15 * u.solMass,
-            't_eff': 10000 * u.K,
-            'gravity_darkening': 1.0,
-            'discretization_factor': 3,
-            'albedo': 0.6,
-            'metallicity': 0.0,
-            'polar_log_g': 4.4 * u.dex(u.cm / u.s ** 2)
-        }
+    'mass': 2.15 * u.solMass,
+    't_eff': 10000 * u.K,
+    'gravity_darkening': 1.0,
+    'discretization_factor': 3,
+    'albedo': 0.6,
+    'metallicity': 0.0,
+    'polar_log_g': 4.4 * u.dex(u.cm / u.s ** 2)
+}
 
 SYSTEM_PARMAS = {'gamma': 0 * u.km / u.s,
                  'inclination': 80 * u.deg,
@@ -121,15 +121,42 @@ class PulsatingStarInitTestCase(ElisaTestCase):
                 assert_almost_equal(test_val, 1.0, 2)
 
 
-# class TestPulsationModule(ElisaTestCase):
-#     def setUp(self):
-#         super(TestPulsationModule, self).setUp()
-#         self.base_path = os.path.dirname(os.path.abspath(__file__))
-#
-#     def prepare_system(self, pulsations):
-#         star = Star(pulsations=pulsations, **STAR_PARAMS)
-#         return SingleSystem(star=star, **SYSTEM_PARMAS)
-#
+class TestPulsationModule(ElisaTestCase):
+    def setUp(self):
+        super(TestPulsationModule, self).setUp()
+        self.base_path = os.path.dirname(os.path.abspath(__file__))
+
+    def prepare_system(self, pulsations):
+        star = Star(pulsations=pulsations, **STAR_PARAMS)
+        return SingleSystem(star=star, **SYSTEM_PARMAS)
+
+    def test_complex_displacement_amplitudes(self):
+        pulse_meta = [{
+            'l': 5,
+            'm': 2,
+            'amplitude': 1 * u.m / u.s,
+            'frequency': 1 / u.d,
+            'start_phase': 0.0,
+            'horizontal_to_radial_amplitude_ratio': 1.0
+        }]
+
+        single = self.prepare_system(pulsations=pulse_meta)
+        system_container = SingleSystem.build_container(single, phase=0)
+
+        r_eq = single.star.equivalent_radius
+
+        mode = system_container.star.pulsations[0]
+        theta = mode.points[:, 2]
+
+        radial = np.mean(np.abs(mode.complex_displacement[:, 0])**2)**0.5
+        dphi = np.abs(mode.complex_displacement[:, 1])
+        dtheta = np.abs(mode.complex_displacement[:, 2])
+
+        horizontal = r_eq * np.mean((dtheta**2 + (np.sin(theta)*dphi)**2))**0.5
+        ratio = horizontal / radial
+        pass
+
+
 #     def test_displacement(self):
 #         """Test if mode displacement is within range."""
 #         pulse_meta = [{

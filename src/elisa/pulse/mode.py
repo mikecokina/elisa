@@ -41,11 +41,11 @@ class PulsationMode(object):
         # perturbation and temperature perturbations
 
         # dimensionless normalized amplitudes
-        self.radial_amplitude = None
-        self.horizontal_amplitude = None
+        self.radial_amplitude = None  # in distance units
+        self.horizontal_amplitude = None  # in distance units
 
         # surface related aux variables
-        self.points = None
+        self.points = None  # rotated spherical coordinates aligned with pulsation axis
 
         self.point_harmonics = None
         self.face_harmonics = None
@@ -61,6 +61,7 @@ class PulsationMode(object):
 
         self.angular_frequency = c.FULL_ARC * self.frequency
         # spherical harmonics renormalization constant to rms = 1
+        # TODO: this is a constant
         self.renorm_const = 2 * c.PI ** 0.5
         self.validate_mode()
 

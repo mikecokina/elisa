@@ -4,7 +4,7 @@ from ... import settings
 
 
 # ________________________complex angular coordinates_______________________
-def calculate_displacement_coordinates(mode, points, harmonics, harmonics_derivatives, scale=1.0):
+def calculate_displacement_coordinates(mode, points, harmonics, harmonics_derivatives, radius, scale=1.0):
     """
     Calculates surface displacement caused by given `mode`.
 
@@ -12,13 +12,16 @@ def calculate_displacement_coordinates(mode, points, harmonics, harmonics_deriva
     :param points: numpy.array; in spherical coordinates
     :param harmonics: numpy.array; Y_l^m
     :param harmonics_derivatives: numpy.array; [dY/dphi, dY/dtheta]
+    :param radius: float; equivalent radius of the component
     :param scale: numpy.float; scale of the perturbations
     :return: numpy.array; complex
     """
     if settings.PULSATION_MODEL == 'uniform':
         radial_displacement = calculate_radial_displacement(mode, harmonics) / scale
-        phi_displacement = calculate_phi_displacement(mode, points[:, 2], harmonics_derivatives[0])
-        theta_displacement = calculate_theta_displacement(mode, harmonics_derivatives[1])
+        phi_displacement, theta_displacement = \
+            calculate_horizontal_displacements(mode, points[:, 2], harmonics_derivatives, radius)
+        # phi_displacement = calculate_phi_displacement(mode, points[:, 2], harmonics_derivatives[0])
+        # theta_displacement = calculate_theta_displacement(mode, harmonics_derivatives[1])
 
         return np.column_stack((radial_displacement, phi_displacement, theta_displacement))
     else:
@@ -44,6 +47,20 @@ def calculate_radial_displacement(mode, harmonics):
     :return: numpy.array; complex
     """
     return mode.radial_amplitude * harmonics
+
+
+def calculate_horizontal_displacements(mode, thetas, harmonics_derivatives, radius):
+    # lambda - distance along phi
+    # nu - distance along theta coordinate
+    phi_amp = np.abs(harmonics_derivatives[0])
+    d_lamda = radius * np.sin(thetas) * phi_amp
+    theta_amp = np.abs(harmonics_derivatives[1])
+    d_nu = radius * theta_amp
+
+    dr = np.sqrt(np.mean(np.power(d_lamda, 2) + np.power(d_nu, 2)))
+    corr_factor = mode.horizontal_amplitude / dr
+
+    return corr_factor * harmonics_derivatives[0], corr_factor * harmonics_derivatives[1]
 
 
 def calculate_phi_displacement(mode, thetas, harmonics_derivatives):

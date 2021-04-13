@@ -87,7 +87,7 @@ def derotate_surface_displacements(velocity, tilted_points, points, axis_phi, ax
     :param points: numpy.array; unperturbed surface points in spherical coordinates
     :param axis_theta: float;
     :param axis_phi: float;
-    :return: numpy.array;
+    :return: numpy.array; perturbations in spherical coordinates aligned with rotation axis
     """
     pert_phis, pert_thetas = utils.derotation_in_spherical(
         phi=tilted_points[:, 1] + velocity[:, 1],
