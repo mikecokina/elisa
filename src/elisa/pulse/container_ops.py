@@ -77,8 +77,8 @@ def incorporate_pulsations_to_model(star_container, com_x, phase, scale=1.0):
     # calculating kinematics quantities
     complex_displacement(star_container, scale=scale)
 
-    position_perturbation(star_container, com_x, update_container=True, return_perturbation=False)
-    velocity_perturbation(star_container, phase, update_container=True, return_perturbation=False)
+    position_perturbation(star_container, update_container=True, return_perturbation=False)
+    velocity_perturbation(star_container, update_container=True, return_perturbation=False)
     return star_container
 
 
@@ -102,12 +102,11 @@ def complex_displacement(star, scale):
     return star
 
 
-def position_perturbation(star, com_x, update_container=True, return_perturbation=False):
+def position_perturbation(star, update_container=True, return_perturbation=False):
     """
     Calculates the deformation of the surface mesh due to the pulsations.
 
     :param star: base.container.StarContainer;
-    :param com_x: float; x-component of system's centre of mass
     :param update_container: bool; if True, perturbation is incorporated into star.points
     :param return_perturbation: bool; if True, calculated displacement (in cartesian coordinates) is returned
     :return: Union[numpy.array, None];
@@ -125,15 +124,12 @@ def position_perturbation(star, com_x, update_container=True, return_perturbatio
     if return_perturbation:
         displacement = points - utils.spherical_to_cartesian(getattr(star, 'points_spherical'))
     if update_container:
-        # star.points += displacement
-        setattr(star, 'points', points + np.array([com_x, 0, 0]))
+        setattr(star, 'points', points + star.com)
 
     return displacement if return_perturbation else None
 
 
-def velocity_perturbation(star, phase, update_container=False, return_perturbation=False):
-    tilt_phi, tilt_theta = putils.generate_tilt_coordinates(star, phase)
-
+def velocity_perturbation(star, update_container=False, return_perturbation=False):
     # calculating perturbed velocity in spherical coordinates
     tilt_velocity_sph = np.sum([
         kinematics.calculate_mode_angular_derivatives(
@@ -142,7 +138,8 @@ def velocity_perturbation(star, phase, update_container=False, return_perturbati
     ], axis=0)
 
     velocity_pert = putils.derotate_surface_displacements(
-        tilt_velocity_sph, star.pulsations[0].points, star.points_spherical, tilt_phi, tilt_theta
+        tilt_velocity_sph, star.pulsations[0].points, star.points_spherical,
+        star.pulsations[0].tilt_phi, star.pulsations[0].tilt_theta
     )
     velocity_pert = velocity_pert[star.faces].mean(axis=1)
 

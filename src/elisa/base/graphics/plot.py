@@ -71,7 +71,7 @@ def r_cmap(star, scale, unit, subtract_equilibrium, model_scale):
         value = star.points_spherical[:, 0]
     else:
         points_unperturbed = utils.spherical_to_cartesian(star.points_spherical)
-        perturbation = container_ops.position_perturbation(star, None, update_container=False, return_perturbation=True)
+        perturbation = container_ops.position_perturbation(star, update_container=False, return_perturbation=True)
 
         value = utils.cartesian_to_spherical(points_unperturbed + perturbation)[:, 0] - star.points_spherical[:, 0]
 
@@ -81,7 +81,7 @@ def r_cmap(star, scale, unit, subtract_equilibrium, model_scale):
     return to_log(value, scale)
 
 
-def g_cmap(star, scale, unit, subtract_equilibrium):
+def g_cmap(star, scale, unit, subtract_equilibrium, model_scale):
     """
     Returning gravity acceleration colormap.
 
@@ -97,7 +97,7 @@ def g_cmap(star, scale, unit, subtract_equilibrium):
     return to_log(value, scale)
 
 
-def t_cmap(star, scale, unit, subtract_equilibrium):
+def t_cmap(star, scale, unit, subtract_equilibrium, model_scale):
     """
     Returning temperature colormap.
 
@@ -112,7 +112,7 @@ def t_cmap(star, scale, unit, subtract_equilibrium):
     return to_log(value, scale)
 
 
-def v_cmap(star, scale, unit, subtract_equilibrium):
+def v_cmap(star, scale, unit, subtract_equilibrium, model_scale):
     """
     Returning speed colormap.
 
@@ -120,18 +120,18 @@ def v_cmap(star, scale, unit, subtract_equilibrium):
     :param scale: str; log or linear
     :param unit: astropy.units.Unit;
     :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
+    :param model_scale: float; scale of the system
     :return: numpy.array;
     """
-    phase = 0
-    velocities = container_ops.velocity_perturbation(star, phase, update_container=True, return_perturbation=True) \
+    velocities = container_ops.velocity_perturbation(star, update_container=True, return_perturbation=True) \
         if subtract_equilibrium else getattr(star, 'velocities')
-    velocities = np.linalg.norm(velocities, axis=1)
-    unt = units.km / units.s if unit == 'default' else unit
+    velocities = np.linalg.norm(velocities, axis=1) * model_scale
+    unt = units.m / units.s if unit == 'default' else unit
     value = transform_values(velocities, units.VELOCITY_UNIT, unt)
     return to_log(value, scale)
 
 
-def v_rad_cmap(star, scale, unit, subtract_equilibrium):
+def v_rad_cmap(star, scale, unit, subtract_equilibrium, model_scale):
     """
     Returning radial velocity colormap (with respect to the observer).
 
@@ -142,14 +142,14 @@ def v_rad_cmap(star, scale, unit, subtract_equilibrium):
     :return: numpy.array;
     """
     velocities = getattr(star, 'velocities')[:, 0]
-    unt = units.km / units.s if unit == 'default' else unit
+    unt = units.m / units.s if unit == 'default' else unit
     value = transform_values(velocities, units.VELOCITY_UNIT, unt)
     if scale in ['log', 'logarithmic']:
         raise Warning("`log` scale is not allowed for radial velocity colormap.")
     return value
 
 
-def norm_radiance_cmap(star, scale, unit, subtract_equilibrium):
+def norm_radiance_cmap(star, scale, unit, subtract_equilibrium, model_scale):
     """
     Returning radiance in the direction of surface normal vector.
 
@@ -164,7 +164,7 @@ def norm_radiance_cmap(star, scale, unit, subtract_equilibrium):
     return to_log(value, scale)
 
 
-def radiance_cmap(star, scale, unit, subtract_equilibrium):
+def radiance_cmap(star, scale, unit, subtract_equilibrium, model_scale):
     """
     Returning radiance in the direction of the observer.
 
