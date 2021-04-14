@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from numpy.testing import assert_array_equal, assert_almost_equal, assert_array_less
+from numpy.testing import assert_array_equal, assert_almost_equal
 
 from elisa import units as u
 from elisa import utils
@@ -131,13 +131,14 @@ class TestPulsationModule(ElisaTestCase):
         return SingleSystem(star=star, **SYSTEM_PARMAS)
 
     def test_complex_displacement_amplitudes(self):
+        in_ratio = 2
         pulse_meta = [{
-            'l': 5,
+            'l': 10,
             'm': 2,
             'amplitude': 1 * u.m / u.s,
             'frequency': 1 / u.d,
             'start_phase': 0.0,
-            'horizontal_to_radial_amplitude_ratio': 1.0
+            'horizontal_to_radial_amplitude_ratio': in_ratio
         }]
 
         single = self.prepare_system(pulsations=pulse_meta)
@@ -154,7 +155,7 @@ class TestPulsationModule(ElisaTestCase):
 
         horizontal = r_eq * np.mean((dtheta**2 + (np.sin(theta)*dphi)**2))**0.5
         ratio = horizontal / radial
-        pass
+        self.assertTrue(abs(ratio - in_ratio) < 0.1)
 
 
 #     def test_displacement(self):

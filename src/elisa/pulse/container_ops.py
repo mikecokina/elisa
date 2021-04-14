@@ -137,7 +137,17 @@ def position_perturbation(star, update_container=True, return_perturbation=False
     return displacement if return_perturbation else None
 
 
-def velocity_perturbation(star, update_container=False, return_perturbation=False):
+def velocity_perturbation(star, update_container=False, return_perturbation=False, spherical_perturbation=False):
+    """
+    Calculates velocity perturbation on a surface of a pulsating star.
+
+    :param star: base.container.StarContainer;
+    :param update_container: bool; if true, the perturbations are added into surface element velocities
+    :param return_perturbation: bool; if True, velocity perturbation itself is returned
+    :param spherical_perturbation: bool; if True, velocity perturbation in spherical coordinates (d_r, d_phi, d_theta)
+                                         is returned.
+    :return: Union[None, numpy.array];
+    """
     # calculating perturbed velocity in spherical coordinates
     tilt_velocity_sph = np.sum([
         kinematics.calculate_mode_angular_derivatives(
@@ -149,12 +159,14 @@ def velocity_perturbation(star, update_container=False, return_perturbation=Fals
         tilt_velocity_sph, star.pulsations[0].points, star.points_spherical,
         star.pulsations[0].tilt_phi, star.pulsations[0].tilt_theta
     )
-    # velocity_pert_sph = tilt_velocity_sph
     velocity_pert = putils.transform_spherical_displacement_to_cartesian(velocity_pert_sph, star.points, star.com[0])
-    # velocity_pert = velocity_pert_sph
+
     velocity_pert = velocity_pert[star.faces].mean(axis=1)
 
     if update_container:
         star.velocities += velocity_pert
 
-    return velocity_pert if return_perturbation else None
+    if return_perturbation:
+        return velocity_pert_sph[star.faces].mean(axis=1) if spherical_perturbation else velocity_pert
+    else:
+        return None
