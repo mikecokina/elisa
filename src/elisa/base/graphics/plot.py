@@ -3,7 +3,7 @@ import numpy as np
 from elisa import units, settings, utils
 from elisa.utils import transform_values
 from elisa.ld import limb_darkening_factor
-from elisa.pulse import container_ops
+from elisa.pulse import container_ops, utils as putils
 
 
 def add_colormap_to_plt_kwargs(*args, **kwargs):
@@ -27,6 +27,7 @@ def add_colormap_to_plt_kwargs(*args, **kwargs):
     """
     colorbar_fn = {
         'radius': r_cmap,
+        'horizontal_displacement': horizonatal_displacement_cmap,
         'gravity_acceleration': g_cmap,
         'temperature': t_cmap,
         'velocity': v_cmap,
@@ -68,13 +69,34 @@ def r_cmap(star, scale, unit, subtract_equilibrium, model_scale):
     :return:
     """
     if not subtract_equilibrium:
-        value = star.points_spherical[:, 0]
+        value = utils.cartesian_to_spherical(points=star.points)[:, 0]
     else:
-        points_unperturbed = utils.spherical_to_cartesian(star.points_spherical)
-        perturbation = container_ops.position_perturbation(star, update_container=False, return_perturbation=True)
+        args = (star, False, True, True)
+        perturbation = container_ops.position_perturbation(*args)
+        value = perturbation[:, 0]
 
-        value = utils.cartesian_to_spherical(points_unperturbed + perturbation)[:, 0] - star.points_spherical[:, 0]
+    value = value[star.faces].mean(axis=1) * model_scale
+    unt = units.DISTANCE_UNIT if unit == 'default' else unit
+    value = transform_values(value, units.DISTANCE_UNIT, unt)
+    return to_log(value, scale)
 
+
+def horizonatal_displacement_cmap(star, scale, unit, subtract_equilibrium, model_scale):
+    """
+
+    :param star:
+    :param scale:
+    :param unit:
+    :param subtract_equilibrium:
+    :param model_scale:
+    :return:
+    """
+    if not subtract_equilibrium and not star.has_pulsations():
+        raise ValueError('Argument `subtract_equilibrium` is relevant only for stars with pulsations.')
+    args = (star, False, True, True)
+    perturbation = container_ops.position_perturbation(*args)
+
+    value = putils.horizontal_component(perturbation, star.points_spherical)
     value = value[star.faces].mean(axis=1) * model_scale
     unt = units.DISTANCE_UNIT if unit == 'default' else unit
     value = transform_values(value, units.DISTANCE_UNIT, unt)

@@ -66,16 +66,15 @@ def derotate_surface_points(points_to_derotate, phi, theta):
     :param points_to_derotate: numpy.array; surface points in tilted spherical coordinates
     :param phi: float; azimuthal tilt of the input coordinate system
     :param theta: float; latitudinal tilt of the input coordinate system
-    :return: numpy.array;
+    :return: numpy.array; derotated points in spherical coordinates
     """
     derot_phi, derot_theta = \
         utils.derotation_in_spherical(points_to_derotate[:, 1],
                                       points_to_derotate[:, 2],
                                       phi, theta)
     derot_points = np.column_stack((points_to_derotate[:, 0], derot_phi, derot_theta))
-    points = utils.spherical_to_cartesian(derot_points)
 
-    return points
+    return derot_points
 
 
 def derotate_surface_displacements(velocity, tilted_points, points, axis_phi, axis_theta):
@@ -128,3 +127,21 @@ def transform_spherical_displacement_to_cartesian(sph_displacement, surf_points,
     matrix[:, 0, 2], matrix[:, 1, 2], matrix[:, 2, 2] = points[:, 2] / r, 0.0, -r_xy
 
     return np.sum(matrix * sph_displacement[:, :, None], axis=1)
+
+
+def horizontal_component(displacement, points):
+    """
+    Returns abs value of the horizontal displacement.
+
+    :param displacement: numpy.array; dr, dphi, dtheta
+    :param points: numpy.array; r, phi, theta
+    :param thetas: numpy.array:
+    :return:
+    """
+    # lambda - distance in theta
+    # TODO: avoid using sin
+    d_lambda = points[:, 0] * np.sin(points[:, 2]) * displacement[:, 1]
+    # nu - distance along theta
+    d_nu = points[:, 0] * displacement[:, 2]
+
+    return np.sqrt(np.power(d_lambda, 2) + np.power(d_nu, 2))

@@ -3,7 +3,7 @@ import numpy as np
 from . import utils as putils
 from . surface import kinematics
 from . import pulsations
-from elisa import utils
+from elisa import utils, const
 
 
 def generate_harmonics(star_container, com_x, phase, time):
@@ -103,13 +103,14 @@ def complex_displacement(star, scale):
     return star
 
 
-def position_perturbation(star, update_container=True, return_perturbation=False):
+def position_perturbation(star, update_container=True, return_perturbation=False, spherical_perturbation=False):
     """
     Calculates the deformation of the surface mesh due to the pulsations.
 
     :param star: base.container.StarContainer;
     :param update_container: bool; if True, perturbation is incorporated into star.points
     :param return_perturbation: bool; if True, calculated displacement (in cartesian coordinates) is returned
+    :param spherical_perturbation: bool; if True, perturbations are returned in spherical coordinates
     :return: Union[numpy.array, None];
     """
     displacement = None
@@ -118,12 +119,18 @@ def position_perturbation(star, update_container=True, return_perturbation=False
         kinematics.calculate_mode_angular_displacement(mode.complex_displacement) for mode in star.pulsations.values()
     ], axis=0)
 
-    points = putils.derotate_surface_points(
+    points_spherical = putils.derotate_surface_points(
         star.pulsations[0].points + tilt_displacement_sph,
         star.pulsations[0].tilt_phi, star.pulsations[0].tilt_theta
     )
+
+    points = utils.spherical_to_cartesian(points_spherical)
     if return_perturbation:
-        displacement = points - utils.spherical_to_cartesian(getattr(star, 'points_spherical'))
+        if spherical_perturbation:
+            displacement = points_spherical - getattr(star, 'points_spherical')
+            displacement[displacement[:, 1] > const.PI, 1] -= const.FULL_ARC
+        else:
+            points - getattr(star, 'points')
     if update_container:
         setattr(star, 'points', points + star.com)
 

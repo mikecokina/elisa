@@ -23,6 +23,7 @@ CMAPS = {'temperature': cm.jet_r,
          'radius': cm.jet,
          'normal_radiance': cm.hot,
          'radiance': cm.hot,
+         'horizontal_displacement': cm.jet,
          }
 
 
@@ -457,7 +458,8 @@ def set_colorbar_label(colorbar, colorbar_name, unit, scale, extra=''):
         'radial_velocity': r'v$_{rad}$',
         'normal_radiance': r'I$_{norm}$',
         'radiance': 'I',
-        'radius': '$r$'
+        'radius': '$r$',
+        'horizontal_displacement': r'$d r_{horizontal}$',
     }
     def_unit = {
         'temperature': 'K',
@@ -466,7 +468,8 @@ def set_colorbar_label(colorbar, colorbar_name, unit, scale, extra=''):
         'radial_velocity': '$m\,s^{-1}$',
         'normal_radiance': '$W.sr^{-1}.m^{-2}$',
         'radiance': '$W.sr^{-1}.m^{-2}$',
-        'radius': '$m$'
+        'radius': '$m$',
+        'horizontal_displacement': r'$m$',
     }
     unt = def_unit[colorbar_name] if unit == 'default' else unit
     if scale == 'linear':
