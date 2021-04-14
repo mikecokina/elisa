@@ -38,8 +38,7 @@ def diff_spherical_harmonics_by_phi(mode, harmonics):
     :param harmonics: List; [Y_l^m, Y_l^m+1]
     :return: numpy.array;
     """
-    retval = (0 + 1j) * mode.m * harmonics[0]
-    return retval
+    return (0 + 1j) * mode.m * harmonics[0]
 
 
 def diff_spherical_harmonics_by_theta(mode, harmonics, phis, thetas):

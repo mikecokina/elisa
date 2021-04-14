@@ -97,7 +97,7 @@ def complex_displacement(star, scale):
     for mode_index, mode in star.pulsations.items():
         mode.complex_displacement = kinematics.calculate_displacement_coordinates(
             mode, star.pulsations[0].points, mode.point_harmonics, mode.point_harmonics_derivatives,
-            star.equivalent_radius, scale=scale
+            star.points_spherical[:, 0], scale=scale
         )
 
     return star
@@ -145,13 +145,15 @@ def velocity_perturbation(star, update_container=False, return_perturbation=Fals
         ) for mode in star.pulsations.values()
     ], axis=0)
 
-    velocity_pert = putils.derotate_surface_displacements(
+    velocity_pert_sph = putils.derotate_surface_displacements(
         tilt_velocity_sph, star.pulsations[0].points, star.points_spherical,
         star.pulsations[0].tilt_phi, star.pulsations[0].tilt_theta
     )
+    # velocity_pert_sph = tilt_velocity_sph
+    velocity_pert = putils.transform_spherical_displacement_to_cartesian(velocity_pert_sph, star.points, star.com[0])
+    # velocity_pert = velocity_pert_sph
     velocity_pert = velocity_pert[star.faces].mean(axis=1)
 
-    # TODO: you are adding spherical with cartesian!!
     if update_container:
         star.velocities += velocity_pert
 

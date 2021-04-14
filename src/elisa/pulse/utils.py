@@ -68,13 +68,14 @@ def derotate_surface_points(points_to_derotate, phi, theta):
     :param theta: float; latitudinal tilt of the input coordinate system
     :return: numpy.array; derotated points in spherical coordinates
     """
-    derot_phi, derot_theta = \
-        utils.derotation_in_spherical(points_to_derotate[:, 1],
-                                      points_to_derotate[:, 2],
-                                      phi, theta)
-    derot_points = np.column_stack((points_to_derotate[:, 0], derot_phi, derot_theta))
-
-    return derot_points
+    if theta != 0 or phi != 0:
+        derot_phi, derot_theta = \
+            utils.derotation_in_spherical(points_to_derotate[:, 1],
+                                          points_to_derotate[:, 2],
+                                          phi, theta)
+        return np.column_stack((points_to_derotate[:, 0], derot_phi, derot_theta))
+    else:
+        return points_to_derotate
 
 
 def derotate_surface_displacements(velocity, tilted_points, points, axis_phi, axis_theta):
@@ -88,19 +89,27 @@ def derotate_surface_displacements(velocity, tilted_points, points, axis_phi, ax
     :param axis_phi: float;
     :return: numpy.array; perturbations in spherical coordinates aligned with rotation axis
     """
-    pert_phis, pert_thetas = utils.derotation_in_spherical(
-        phi=tilted_points[:, 1] + velocity[:, 1],
-        theta=tilted_points[:, 2] + velocity[:, 2],
-        phi_rotation=axis_phi,
-        theta_rotation=axis_theta
-    )
+    if axis_theta != 0 or axis_phi != 0:
+        pert_phis, pert_thetas = utils.derotation_in_spherical(
+            phi=tilted_points[:, 1] + velocity[:, 1],
+            theta=tilted_points[:, 2] + velocity[:, 2],
+            phi_rotation=axis_phi,
+            theta_rotation=axis_theta
+        )
 
-    crit_amplitude = const.PI
-    d_phi = pert_phis - points[:, 1]
-    d_phi[d_phi > crit_amplitude] -= const.FULL_ARC
-    d_theta = (pert_thetas - points[:, 2])
+        crit_amplitude = const.PI
+        d_phi = pert_phis - points[:, 1]
+        d_phi[d_phi > crit_amplitude] -= const.FULL_ARC
 
-    return np.column_stack((velocity[:, 0], d_phi, d_theta))
+        # treating singularities on poles
+        pole_idx = np.array([np.argmax(points[:, 2]), np.argmin(points[:, 2])])
+        d_phi[pole_idx] = d_phi.mean()
+
+        d_theta = (pert_thetas - points[:, 2])
+
+        return np.column_stack((velocity[:, 0], d_phi, d_theta))
+    else:
+        return velocity
 
 
 def transform_spherical_displacement_to_cartesian(sph_displacement, surf_points, com_x):

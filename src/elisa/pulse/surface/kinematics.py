@@ -20,8 +20,6 @@ def calculate_displacement_coordinates(mode, points, harmonics, harmonics_deriva
         radial_displacement = calculate_radial_displacement(mode, harmonics) / scale
         phi_displacement, theta_displacement = \
             calculate_horizontal_displacements(mode, points[:, 2], harmonics_derivatives, radius)
-        # phi_displacement = calculate_phi_displacement(mode, points[:, 2], harmonics_derivatives[0])
-        # theta_displacement = calculate_theta_displacement(mode, harmonics_derivatives[1])
 
         return np.column_stack((radial_displacement, phi_displacement, theta_displacement))
     else:
@@ -50,46 +48,30 @@ def calculate_radial_displacement(mode, harmonics):
 
 
 def calculate_horizontal_displacements(mode, thetas, harmonics_derivatives, radius):
+    """
+    Calculate angular horizontal components of displacement.
+
+    :param mode: PulsationMode;
+    :param thetas: numpy.array; 1D
+    :param harmonics_derivatives: numpy.array; column-wise - dY/dphi, dY/dtheta
+    :param radius:
+    :return:
+    """
+    sin_theta = np.sin(thetas)
     # lambda - distance along phi
     # nu - distance along theta coordinate
     phi_amp = np.abs(harmonics_derivatives[0])
-    d_lamda = radius * np.sin(thetas) * phi_amp
+    d_lamda = radius * sin_theta * phi_amp
     theta_amp = np.abs(harmonics_derivatives[1])
     d_nu = radius * theta_amp
 
     dr = np.sqrt(np.mean(np.power(d_lamda, 2) + np.power(d_nu, 2)))
     corr_factor = mode.horizontal_amplitude / dr
 
-    return corr_factor * harmonics_derivatives[0], corr_factor * harmonics_derivatives[1]
-
-
-def calculate_phi_displacement(mode, thetas, harmonics_derivatives):
-    """
-    Displacement of azimuthal coordinates.
-
-    :param mode: PulsationMode;
-    :param thetas: numpy.array
-    :param harmonics_derivatives: numpy.array; dY/dphi
-    :return: numpy.array; complex
-    """
-    sin_thetas = np.sin(thetas)
-    sin_test = sin_thetas != 0.0
-    retval = np.zeros(thetas.shape, dtype=np.complex128)
-    retval[sin_test] = \
-        mode.horizontal_amplitude * harmonics_derivatives[sin_test] \
-        / sin_thetas[sin_test]
-    return retval
-
-
-def calculate_theta_displacement(mode, harmonics_derivatives):
-    """
-    Displacement in latitude.
-
-    :param harmonics_derivatives: numpy.array; dY/dtheta
-    :param mode: PulsationMode;
-    :return: numpy.array; complex
-    """
-    return mode.horizontal_amplitude * harmonics_derivatives
+    theta_test = sin_theta != 0
+    phi_retval = np.zeros(thetas.shape, dtype=np.complex128)
+    phi_retval[theta_test] = corr_factor * harmonics_derivatives[0, theta_test] / sin_theta[theta_test]
+    return phi_retval, corr_factor * harmonics_derivatives[1]
 
 
 # ________________________velocity coordinates_______________________
