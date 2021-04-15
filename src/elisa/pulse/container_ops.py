@@ -79,6 +79,7 @@ def incorporate_pulsations_to_model(star_container, com_x, phase, scale=1.0):
 
     position_perturbation(star_container, update_container=True, return_perturbation=False)
     velocity_perturbation(star_container, update_container=True, return_perturbation=False)
+    gravity_acc_perturbation(star_container, update_container=True, return_perturbation=False)
     return star_container
 
 
@@ -172,7 +173,7 @@ def velocity_perturbation(star, update_container=False, return_perturbation=Fals
 
 
 def gravity_acc_perturbation(star, update_container=False, return_perturbation=False, spherical_perturbation=False):
-    # calculating perturbed velocity in spherical coordinates
+    # calculating perturbed acceleration in tilted spherical coordinates
     tilt_acc_sph = np.sum([
         kinematics.calculate_mode_second_derivatives(
             displacement=mode.complex_displacement, angular_frequency=mode.angular_frequency
@@ -186,5 +187,12 @@ def gravity_acc_perturbation(star, update_container=False, return_perturbation=F
     acc_pert = putils.transform_spherical_displacement_to_cartesian(acc_pert_sph, star.points, star.com[0])
     acc_pert = acc_pert[star.faces].mean(axis=1)
 
-    # if update_container:
-    #     star.log_g += np.log10(np.power(10, star.log_g) + np.linalg.nacc_pert
+    if update_container:
+        g_eq = - np.power(10, star.log_g)[:, None] * star.normals
+        total_acc = np.linalg.norm(g_eq + acc_pert, axis=1)
+        star.log_g = np.log10(total_acc)
+
+    if return_perturbation:
+        return acc_pert_sph[star.faces].mean(axis=1) if spherical_perturbation else acc_pert
+    else:
+        return None

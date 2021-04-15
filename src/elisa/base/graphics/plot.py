@@ -31,6 +31,7 @@ def add_colormap_to_plt_kwargs(*args, **kwargs):
         'gravity_acceleration': g_cmap,
         'temperature': t_cmap,
         'velocity': v_cmap,
+        'horizontal_acceleration': horizontal_g_pert_cmap,
         'v_r_perturbed': v_rad_pert_cmap,
         'v_horizontal_perturbed': v_horizontal_pert_cmap,
         'radial_velocity': v_rad_cmap,
@@ -105,37 +106,6 @@ def horizonatal_displacement_cmap(star, scale, unit, subtract_equilibrium, model
     return to_log(value, scale)
 
 
-def g_cmap(star, scale, unit, subtract_equilibrium, model_scale):
-    """
-    Returning gravity acceleration colormap.
-
-    :param star: elisa.base.container.StarContainer;
-    :param scale: str; log or linear
-    :param unit: astropy.units.Unit;
-    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
-    :return: numpy.array;
-    """
-    log_g = getattr(star, 'log_g')
-    g = np.power(10, log_g)
-    value = transform_values(g, units.ACCELERATION_UNIT, unit)
-    return to_log(value, scale)
-
-
-def t_cmap(star, scale, unit, subtract_equilibrium, model_scale):
-    """
-    Returning temperature colormap.
-
-    :param star: elisa.base.container.StarContainer;
-    :param scale: str; log or linear
-    :param unit: astropy.units.Unit;
-    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
-    :return: numpy.array;
-    """
-    temperatures = getattr(star, 'temperatures')
-    value = transform_values(temperatures, units.TEMPERATURE_UNIT, unit)
-    return to_log(value, scale)
-
-
 def v_cmap(star, scale, unit, subtract_equilibrium, model_scale):
     """
     Returning speed colormap.
@@ -194,6 +164,65 @@ def v_horizontal_pert_cmap(star, scale, unit, subtract_equilibrium, model_scale)
     velocities = putils.horizontal_component(velocities, face_centres_sph) * model_scale
     unt = units.m / units.s if unit == 'default' else unit
     value = transform_values(velocities, units.VELOCITY_UNIT, unt)
+    return to_log(value, scale)
+
+
+def g_cmap(star, scale, unit, subtract_equilibrium, model_scale):
+    """
+    Returning gravity acceleration colormap.
+
+    :param star: elisa.base.container.StarContainer;
+    :param scale: str; log or linear
+    :param unit: astropy.units.Unit;
+    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
+    :return: numpy.array;
+    """
+    if subtract_equilibrium:
+        if scale in ['log', 'logarithmic']:
+            raise ValueError('Logarithmic scale is not permitted with the `subtract_equilibrium` = True.')
+        args = (star, False, True, True)
+        g = container_ops.gravity_acc_perturbation(*args)[:, 0]
+    else:
+        log_g = getattr(star, 'log_g')
+        g = np.power(10, log_g)
+    value = transform_values(g, units.ACCELERATION_UNIT, unit)
+    return to_log(value, scale)
+
+
+def horizontal_g_pert_cmap(star, scale, unit, subtract_equilibrium, model_scale):
+    """
+    Returning horizontal component of the acceleration perturbation.
+
+    :param star: elisa.base.container.StarContainer;
+    :param scale: str; log or linear
+    :param unit: astropy.units.Unit;
+    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
+    :param model_scale: float; scale of the system
+    :return: numpy.array;
+    """
+    if not subtract_equilibrium and not star.has_pulsations():
+        raise ValueError('`horizontal_acceleration` colormap is relevant only for stars with pulsations.')
+    args = (star, False, True, True)
+    acceleration = container_ops.gravity_acc_perturbation(*args)
+    face_centres_sph = utils.cartesian_to_spherical(star.face_centres)
+    acceleration = putils.horizontal_component(acceleration, face_centres_sph, treat_poles=True) * model_scale
+    unt = units.ACCELERATION_UNIT if unit == 'default' else unit
+    value = transform_values(acceleration, units.ACCELERATION_UNIT, unt)
+    return to_log(value, scale)
+
+
+def t_cmap(star, scale, unit, subtract_equilibrium, model_scale):
+    """
+    Returning temperature colormap.
+
+    :param star: elisa.base.container.StarContainer;
+    :param scale: str; log or linear
+    :param unit: astropy.units.Unit;
+    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
+    :return: numpy.array;
+    """
+    temperatures = getattr(star, 'temperatures')
+    value = transform_values(temperatures, units.TEMPERATURE_UNIT, unit)
     return to_log(value, scale)
 
 

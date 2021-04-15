@@ -138,7 +138,7 @@ def transform_spherical_displacement_to_cartesian(sph_displacement, surf_points,
     return np.sum(matrix * sph_displacement[:, :, None], axis=1)
 
 
-def horizontal_component(displacement, points):
+def horizontal_component(displacement, points, treat_poles=False):
     """
     Returns abs value of the horizontal displacement.
 
@@ -153,4 +153,8 @@ def horizontal_component(displacement, points):
     # nu - distance along theta
     d_nu = points[:, 0] * displacement[:, 2]
 
-    return np.sqrt(np.power(d_lambda, 2) + np.power(d_nu, 2))
+    distance = np.sqrt(np.power(d_lambda, 2) + np.power(d_nu, 2))
+    if treat_poles:
+        distance[distance >= 10*distance.mean()] = distance.mean()
+
+    return distance

@@ -17,11 +17,12 @@ from . import utils as gutils
 
 
 CMAPS = {'temperature': cm.jet_r,
-         'gravity_acceleration': cm.jet,
          'velocity': cm.jet,
          'radial_velocity': cm.jet,
          'v_r_perturbed': cm.jet,
          'v_horizontal_perturbed': cm.jet,
+         'gravity_acceleration': cm.jet,
+         'horizontal_acceleration': cm.jet,
          'radius': cm.jet,
          'normal_radiance': cm.hot,
          'radiance': cm.hot,
@@ -464,6 +465,7 @@ def set_colorbar_label(colorbar, colorbar_name, unit, scale, extra=''):
         'radiance': 'I',
         'radius': '$r$',
         'horizontal_displacement': r'$d r_{horizontal}$',
+        'horizontal_acceleration': r'$g_{horizontal}$',
     }
     def_unit = {
         'temperature': 'K',
@@ -476,6 +478,7 @@ def set_colorbar_label(colorbar, colorbar_name, unit, scale, extra=''):
         'radiance': '$W.sr^{-1}.m^{-2}$',
         'radius': '$m$',
         'horizontal_displacement': r'$m$',
+        'horizontal_acceleration': r'$m\,s^{-2}$',
     }
     unt = def_unit[colorbar_name] if unit == 'default' else unit
     if scale == 'linear':
