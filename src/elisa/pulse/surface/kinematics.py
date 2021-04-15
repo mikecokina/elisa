@@ -3,7 +3,7 @@ import numpy as np
 from ... import settings
 
 
-def calculate_horizontal_displacements(mode, thetas, harmonics_derivatives, radius):
+def calculate_horizontal_displacements(mode, thetas, harmonics_derivatives, radius, scale):
     """
     Calculate angular horizontal components of displacement.
 
@@ -13,6 +13,7 @@ def calculate_horizontal_displacements(mode, thetas, harmonics_derivatives, radi
     :param radius:
     :return:
     """
+    # TODO: remove this sin
     sin_theta = np.sin(thetas)
     # lambda - distance along phi
     # nu - distance along theta coordinate
@@ -22,7 +23,7 @@ def calculate_horizontal_displacements(mode, thetas, harmonics_derivatives, radi
     d_nu = radius * theta_amp
 
     dr = np.sqrt(np.mean(np.power(d_lamda, 2) + np.power(d_nu, 2)))
-    corr_factor = mode.horizontal_amplitude / dr
+    corr_factor = mode.horizontal_amplitude / (dr * scale)
 
     theta_test = sin_theta != 0
     phi_retval = np.zeros(thetas.shape, dtype=np.complex128)
@@ -46,11 +47,11 @@ def calculate_displacement_coordinates(mode, points, harmonics, harmonics_deriva
     if settings.PULSATION_MODEL == 'uniform':
         radial_displacement = calculate_radial_displacement(mode, harmonics) / scale
         phi_displacement, theta_displacement = \
-            calculate_horizontal_displacements(mode, points[:, 2], harmonics_derivatives, radius)
+            calculate_horizontal_displacements(mode, points[:, 2], harmonics_derivatives, radius, scale)
 
         return np.column_stack((radial_displacement, phi_displacement, theta_displacement))
     else:
-        raise NotImplementedError(f'Pulsation model: {settings.PULSATION_MODEL} not implemented.')
+        raise NotImplementedError(f'Pulsation model: {settings.PULSATION_MODEL} is not implemented.')
 
 
 def calculate_mode_angular_displacement(displacement):
