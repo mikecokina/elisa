@@ -72,7 +72,8 @@ def r_cmap(star, scale, unit, subtract_equilibrium, model_scale):
     :return:
     """
     if not subtract_equilibrium:
-        value = utils.cartesian_to_spherical(points=star.points)[:, 0]
+        points = star.points - star.com[None, :]
+        value = utils.cartesian_to_spherical(points)[:, 0]
     else:
         args = (star, False, True, True)
         perturbation = container_ops.position_perturbation(*args)

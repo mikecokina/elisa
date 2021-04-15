@@ -238,7 +238,7 @@ def get_discrete_horizon(binary=None, phase=0.0, threshold=-1e-6, polar=False):
 
     position = Position(*((0,) + tuple(binary.orbit.orbital_motion(phase=phase)[0])))
     position_container = _horizon_base_component(binary, position, analytic=False)
-    position_container.correct_mesh(component="primary")
+    position_container.correct_mesh(component="primary", components_distance=position_container.position.distance)
     star = position_container.primary
     visible_projection = utils.get_visible_projection(star)
 

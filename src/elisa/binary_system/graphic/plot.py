@@ -305,12 +305,11 @@ class Plot(object):
         )
 
         distances_to_com = orbital_position.distance * self.binary.mass_ratio / (1 + self.binary.mass_ratio)
-        orbital_position_container.primary.points[:, 0] -= distances_to_com
-        orbital_position_container.secondary.points[:, 0] -= distances_to_com
-        orbital_position_container.primary.face_centres[:, 0] -= distances_to_com
-        orbital_position_container.secondary.face_centres[:, 0] -= distances_to_com
 
         orbital_position_container = butils.move_sys_onpos(orbital_position_container, orbital_position, on_copy=True)
+        scom = orbital_position_container.secondary.com
+        dir_to_secondary = scom / np.linalg.norm(scom)
+        pos_correction = distances_to_com * dir_to_secondary
 
         for component in components:
             star = getattr(orbital_position_container, component)
@@ -321,7 +320,7 @@ class Plot(object):
             surface_kwargs.update({f'{component}_cmap': plot.add_colormap_to_plt_kwargs(*args, **kwargs)})
 
             surface_kwargs.update({
-                f'points_{component}': star.points,
+                f'points_{component}': star.points - pos_correction[None, :],
                 f'{component}_triangles': star.faces
             })
 

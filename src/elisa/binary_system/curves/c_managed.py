@@ -199,7 +199,7 @@ def _update_surface_in_ecc_orbits(system, orbital_position, new_geometry_test):
         system.rebuild_symmetric_detached_mesh(component="all", components_distance=orbital_position.distance)
         system.build_velocities(components_distance=orbital_position.distance, component="all")
         system.build_faces_orientation(component="all", components_distance=orbital_position.distance)
-        system.correct_mesh("all")
+        system.correct_mesh(component="all", components_distance=orbital_position.distance)
         system.build_surface_areas(component="all")
 
     return system

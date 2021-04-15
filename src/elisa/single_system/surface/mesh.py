@@ -411,6 +411,6 @@ def correct_mesh(system):
     :return: elisa.single_system.container.SystemContainer;
     """
     star = getattr(system, 'star')
-    correct_component_mesh(star, correction_factors=CORRECTION_FACTORS)
+    correct_component_mesh(star, com=0.0, correction_factors=CORRECTION_FACTORS)
 
     return system

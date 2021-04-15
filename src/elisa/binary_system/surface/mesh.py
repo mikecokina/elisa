@@ -1156,7 +1156,7 @@ def add_spots_to_mesh(system, components_distance, component="all"):
         incorporate_spots_mesh(star, component_com=component_com[component])
 
 
-def correct_mesh(system, component='all'):
+def correct_mesh(system, components_distance=None, component='all'):
     """
     Correcting the underestimation of the surface due to the discretization.
 
@@ -1166,9 +1166,10 @@ def correct_mesh(system, component='all'):
     """
     components = bsutils.component_to_list(component)
 
+    com = {'primary': 0, 'secondary': components_distance}
     for component in components:
         star = getattr(system, component)
-        correct_component_mesh(star, correction_factors=CORRECTION_FACTORS[system.morphology])
+        correct_component_mesh(star, com=com[component], correction_factors=CORRECTION_FACTORS[system.morphology])
 
     return system
 
