@@ -4,7 +4,6 @@ from .. import utils as bsutils
 from ... utils import is_empty
 from ... logger import getLogger
 from ... base.surface import gravity as bgravity
-from ... pulse import pulsations
 from ... import (
     umpy as up,
     const
@@ -160,8 +159,14 @@ def build_surface_gravity(system, components_distance, component="all"):
                                               synchronicity=synchronicity, mass_ratio=mass_ratio)
         g_acc_vector = scaling_factor * p_grad
 
-        g_acc_vector_spot = dict()
+        gravity = np.mean(np.linalg.norm(g_acc_vector, axis=1)[faces], axis=1) if star.symmetry_test else \
+            np.mean(np.linalg.norm(g_acc_vector, axis=1), axis=1)
+        setattr(star, 'potential_gradient_magnitudes', gravity[star.face_symmetry_vector]) \
+            if star.symmetry_test() else setattr(star, 'potential_gradient_magnitudes', gravity)
+        setattr(star, 'log_g', np.log10(star.potential_gradient_magnitudes))
+
         if star.has_spots():
+            g_acc_vector_spot = dict()
             for spot_index, spot in star.spots.items():
                 logger.debug(f'calculating surface SI unit gravity of {component} component / {spot_index} spot')
                 logger.debug(f'calculating distribution of potential gradient '
@@ -171,19 +176,6 @@ def build_surface_gravity(system, components_distance, component="all"):
                                                       synchronicity=synchronicity, mass_ratio=mass_ratio)
                 g_acc_vector_spot.update({spot_index: scaling_factor * p_grad})
 
-        # if star.has_pulsations():
-        #     g_acc_vector, g_acc_vector_spot = \
-        #         pulsations.incorporate_gravity_perturbation(star, g_acc_vector, g_acc_vector_spot,
-        #                                                     phase=system.position.phase)
-
-        gravity = np.mean(np.linalg.norm(g_acc_vector, axis=1)[faces], axis=1) if star.symmetry_test else \
-            np.mean(np.linalg.norm(g_acc_vector, axis=1), axis=1)
-        setattr(star, 'potential_gradient_magnitudes', gravity[star.face_symmetry_vector]) \
-            if star.symmetry_test() else setattr(star, 'potential_gradient_magnitudes', gravity)
-        setattr(star, 'log_g', np.log10(star.potential_gradient_magnitudes))
-
-        if star.has_spots():
-            for spot_index, spot in star.spots.items():
                 setattr(spot, 'potential_gradient_magnitudes',
                         np.mean(np.linalg.norm(g_acc_vector_spot[spot_index], axis=1)[spot.faces], axis=1))
                 setattr(spot, 'log_g', np.log10(spot.potential_gradient_magnitudes))
