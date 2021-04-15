@@ -308,6 +308,7 @@ class StarContainer(object):
                  points=None,
                  normals=None,
                  velocities=None,
+                 accelerations=None,
                  indices=None,
                  faces=None,
                  temperatures=None,
@@ -326,6 +327,7 @@ class StarContainer(object):
         self.normals = normals
         self.faces = faces
         self.velocities = velocities
+        self.accelerations = accelerations
         self.temperatures = temperatures
         self.log_g = log_g
         self.coverage = coverage

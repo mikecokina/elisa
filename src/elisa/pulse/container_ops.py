@@ -150,7 +150,7 @@ def velocity_perturbation(star, update_container=False, return_perturbation=Fals
     """
     # calculating perturbed velocity in spherical coordinates
     tilt_velocity_sph = np.sum([
-        kinematics.calculate_mode_angular_derivatives(
+        kinematics.calculate_mode_derivatives(
             displacement=mode.complex_displacement, angular_frequency=mode.angular_frequency
         ) for mode in star.pulsations.values()
     ], axis=0)
@@ -160,7 +160,6 @@ def velocity_perturbation(star, update_container=False, return_perturbation=Fals
         star.pulsations[0].tilt_phi, star.pulsations[0].tilt_theta
     )
     velocity_pert = putils.transform_spherical_displacement_to_cartesian(velocity_pert_sph, star.points, star.com[0])
-
     velocity_pert = velocity_pert[star.faces].mean(axis=1)
 
     if update_container:
@@ -170,3 +169,22 @@ def velocity_perturbation(star, update_container=False, return_perturbation=Fals
         return velocity_pert_sph[star.faces].mean(axis=1) if spherical_perturbation else velocity_pert
     else:
         return None
+
+
+def gravity_acc_perturbation(star, update_container=False, return_perturbation=False, spherical_perturbation=False):
+    # calculating perturbed velocity in spherical coordinates
+    tilt_acc_sph = np.sum([
+        kinematics.calculate_mode_second_derivatives(
+            displacement=mode.complex_displacement, angular_frequency=mode.angular_frequency
+        ) for mode in star.pulsations.values()
+    ], axis=0)
+
+    acc_pert_sph = putils.derotate_surface_displacements(
+        tilt_acc_sph, star.pulsations[0].points, star.points_spherical,
+        star.pulsations[0].tilt_phi, star.pulsations[0].tilt_theta
+    )
+    acc_pert = putils.transform_spherical_displacement_to_cartesian(acc_pert_sph, star.points, star.com[0])
+    acc_pert = acc_pert[star.faces].mean(axis=1)
+
+    # if update_container:
+    #     star.log_g += np.log10(np.power(10, star.log_g) + np.linalg.nacc_pert
