@@ -786,8 +786,7 @@ def derotation_in_spherical(phi, theta, phi_rotation, theta_rotation):
     sin_axis_theta = up.sin(theta_rotation)
     cos_axis_theta = up.cos(theta_rotation)
 
-    # theta_new = up.arccos(np.round(cos_theta * cos_axis_theta - cos_phi * sin_theta * sin_axis_theta, 10))
-    theta_new = up.arccos(cos_theta * cos_axis_theta - cos_phi * sin_theta * sin_axis_theta)
+    theta_new = up.arccos(np.round(cos_theta * cos_axis_theta - cos_phi * sin_theta * sin_axis_theta, 10))
     phi_new = up.arctan2(sin_phi * sin_theta, cos_phi * sin_theta * cos_axis_theta +
                          cos_theta * sin_axis_theta)
     return (phi_new + phi_rotation) % const.FULL_ARC, theta_new
