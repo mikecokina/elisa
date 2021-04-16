@@ -284,6 +284,24 @@ def around_axis_rotation(theta, vector, axis, inverse=False, degrees=False):
     return up.matmul(vector, matrix)
 
 
+def rotate_item(vector, position, inclination):
+    """
+    Transfer vector(s) from corotating reference frame to observers frame.
+
+    :param vector: numpy.array;
+    :param position: elisa.const.Position;
+    :param inclination: float;
+    :return: numpy.array
+    """
+    correction = np.sign(const.LINE_OF_SIGHT[0]) * const.HALF_PI
+    args = (position.azimuth - correction, vector, "z", False, False)
+    vector = around_axis_rotation(*args)
+
+    inverse = False if const.LINE_OF_SIGHT[0] == 1 else True
+    args = (const.HALF_PI - inclination, vector, "y", inverse, False)
+    return around_axis_rotation(*args)
+
+
 def average_spacing_cgal(data, neighbours=6):
     """
     Average Spacing - calculates average distance between points using average distances to `neighbours` number of
@@ -768,7 +786,8 @@ def derotation_in_spherical(phi, theta, phi_rotation, theta_rotation):
     sin_axis_theta = up.sin(theta_rotation)
     cos_axis_theta = up.cos(theta_rotation)
 
-    theta_new = up.arccos(np.round(cos_theta * cos_axis_theta - cos_phi * sin_theta * sin_axis_theta, 10))
+    # theta_new = up.arccos(np.round(cos_theta * cos_axis_theta - cos_phi * sin_theta * sin_axis_theta, 10))
+    theta_new = up.arccos(cos_theta * cos_axis_theta - cos_phi * sin_theta * sin_axis_theta)
     phi_new = up.arctan2(sin_phi * sin_theta, cos_phi * sin_theta * cos_axis_theta +
                          cos_theta * sin_axis_theta)
     return (phi_new + phi_rotation) % const.FULL_ARC, theta_new

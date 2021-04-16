@@ -164,7 +164,8 @@ def velocity_perturbation(star, scale, update_container=False, return_perturbati
         star.pulsations[0].tilt_phi, star.pulsations[0].tilt_theta
     )
     velocity_pert_sph[:, 0] *= scale
-    velocity_pert = putils.transform_spherical_displacement_to_cartesian(velocity_pert_sph, star.points, star.com[0])
+    points_cartesian = utils.spherical_to_cartesian(star.points_spherical)
+    velocity_pert = putils.transform_spherical_displacement_to_cartesian(velocity_pert_sph, points_cartesian, 0.0)
     velocity_pert = velocity_pert[star.faces].mean(axis=1)
 
     if update_container:

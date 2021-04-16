@@ -114,15 +114,7 @@ class PositionContainer(object):
         :return:
         """
         prop_value = getattr(container, prop)
-
-        correction = np.sign(const.LINE_OF_SIGHT[0]) * const.HALF_PI
-        args = (self.position.azimuth - correction, prop_value, "z", False,
-                False)
-        prop_value = utils.around_axis_rotation(*args)
-
-        inverse = False if const.LINE_OF_SIGHT[0] == 1 else True
-        args = (const.HALF_PI - self.inclination, prop_value, "y", inverse, False)
-        prop_value = utils.around_axis_rotation(*args)
+        prop_value = utils.rotate_item(prop_value, self.position, self.inclination)
         setattr(container, prop, prop_value)
 
     def add_secular_velocity(self):
