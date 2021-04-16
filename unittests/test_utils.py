@@ -419,6 +419,6 @@ class TestElisaEngineUtils(ElisaTestCase):
             phi=transf_phis, theta=transf_thetas, phi_rotation=phi_rot, theta_rotation=theta_rot
 
         )
-        precision = 10
+        precision = 7
         assert_array_equal(np.round(phis, precision), np.round(new_phis, precision))
         assert_array_equal(np.round(thetas, precision), np.round(new_thetas, precision))

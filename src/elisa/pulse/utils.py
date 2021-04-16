@@ -101,10 +101,6 @@ def derotate_surface_displacements(velocity, tilted_points, points, axis_phi, ax
         d_phi = pert_phis - points[:, 1]
         d_phi[d_phi > crit_amplitude] -= const.FULL_ARC
 
-        # treating singularities on poles
-        pole_idx = np.array([np.argmax(points[:, 2]), np.argmin(points[:, 2])])
-        d_phi[pole_idx] = d_phi.mean()
-
         d_theta = (pert_thetas - points[:, 2])
 
         return np.column_stack((velocity[:, 0], d_phi, d_theta))
@@ -159,3 +155,15 @@ def horizontal_component(displacement, points, treat_poles=False):
         distance[distance >= 10*distance.mean()] = distance.mean()
 
     return distance
+
+
+def pole_neighbours(star):
+    poles = np.array([star.points_spherical[:, 2].argmax(), star.points_spherical[:, 2].argmin()], dtype=np.int)
+    neighbour_idx = np.empty(2, dtype=np.int)
+    for ii, pole in enumerate(poles):
+        in_face = (pole == star.faces).any(axis=1)
+        polar_face = (star.faces[in_face])[0]
+        neighbour_idx[ii] = (polar_face[pole != polar_face])[0]
+
+    star.pole_idx = poles
+    star.pole_idx_neighbour = neighbour_idx

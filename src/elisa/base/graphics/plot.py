@@ -190,8 +190,8 @@ def v_horizontal_pert_cmap(star, scale, unit, subtract_equilibrium, model_scale,
         raise ValueError('`v_horizontal_perturbed` colormap is relevant only for stars with pulsations.')
     args = (star, model_scale, False, True, True)
     velocities = container_ops.velocity_perturbation(*args)
-    face_centres_sph = utils.cartesian_to_spherical(star.face_centres)
-    velocities = putils.horizontal_component(velocities, face_centres_sph) * model_scale
+    face_centres_sph = star.points_spherical[star.faces].mean(axis=1)
+    velocities = putils.horizontal_component(velocities, face_centres_sph, treat_poles=True) * model_scale
     unt = units.m / units.s if unit == 'default' else unit
     value = transform_values(velocities, units.VELOCITY_UNIT, unt)
     return to_log(value, scale)

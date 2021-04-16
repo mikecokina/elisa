@@ -77,6 +77,9 @@ def incorporate_pulsations_to_model(star_container, com_x, phase, scale=1.0):
     # calculating kinematics quantities
     complex_displacement(star_container, scale=scale)
 
+    # treating polar regions
+    putils.pole_neighbours(star_container)
+
     position_perturbation(star_container, com_x=com_x, update_container=True, return_perturbation=False)
     velocity_perturbation(star_container, scale=scale, update_container=True, return_perturbation=False)
     gravity_acc_perturbation(star_container, update_container=True, return_perturbation=False)
@@ -163,9 +166,11 @@ def velocity_perturbation(star, scale, update_container=False, return_perturbati
         tilt_velocity_sph, star.pulsations[0].points, star.points_spherical,
         star.pulsations[0].tilt_phi, star.pulsations[0].tilt_theta
     )
+    velocity_pert_sph[star.pole_idx] = velocity_pert_sph[star.pole_idx_neighbour]
     velocity_pert_sph[:, 0] *= scale
     points_cartesian = utils.spherical_to_cartesian(star.points_spherical)
     velocity_pert = putils.transform_spherical_displacement_to_cartesian(velocity_pert_sph, points_cartesian, 0.0)
+
     velocity_pert = velocity_pert[star.faces].mean(axis=1)
 
     if update_container:
@@ -192,8 +197,7 @@ def gravity_acc_perturbation(star, update_container=False, return_perturbation=F
     acc_pert = putils.transform_spherical_displacement_to_cartesian(acc_pert_sph, star.points, star.com[0])
 
     # treating singularities at poles
-    poles = np.array([star.points_spherical[:, 2].argmin(), star.points_spherical[:, 2].argmax()])
-    acc_pert[poles] = np.array([0, 0, 0])
+    acc_pert[star.pole_idx] = acc_pert[star.pole_idx_neighbour]
 
     acc_pert = acc_pert[star.faces].mean(axis=1)
 

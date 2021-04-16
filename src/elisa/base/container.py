@@ -342,6 +342,10 @@ class StarContainer(object):
         self.face_symmetry_vector = np.array([])
         self.base_symmetry_faces_number = 0
 
+        # aux variables for treating singularities at poles
+        self.pole_idx = np.array([])
+        self.pole_idx_neighbour = np.array([])
+
         # those are used only if case of spots are NOT used ------------------------------------------------------------
         self.base_symmetry_points = np.array([])
         self.base_symmetry_faces = np.array([])
