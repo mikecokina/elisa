@@ -183,6 +183,17 @@ def velocity_perturbation(star, scale, update_container=False, return_perturbati
 
 
 def gravity_acc_perturbation(star, update_container=False, return_perturbation=False, spherical_perturbation=False):
+    """
+    Calculates acceleration perturbation on a surface of a pulsating star.
+
+    :param star: base.container.StarContainer;
+    :param scale: float; scaling factor of the system (a in case of BinarySystem)
+    :param update_container: bool; if true, the perturbations are added into surface element velocities
+    :param return_perturbation: bool; if True, velocity perturbation itself is returned
+    :param spherical_perturbation: bool; if True, velocity perturbation in spherical coordinates (d_r, d_phi, d_theta)
+                                         is returned.
+    :return:
+    """
     # calculating perturbed acceleration in tilted spherical coordinates
     tilt_acc_sph = np.sum([
         kinematics.calculate_mode_second_derivatives(
