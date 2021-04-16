@@ -75,7 +75,7 @@ def r_cmap(star, scale, unit, subtract_equilibrium, model_scale):
         points = star.points - star.com[None, :]
         value = utils.cartesian_to_spherical(points)[:, 0]
     else:
-        args = (star, False, True, True)
+        args = (star, 0.0, False, True, True)
         perturbation = container_ops.position_perturbation(*args)
         value = perturbation[:, 0]
 
@@ -97,7 +97,7 @@ def horizonatal_displacement_cmap(star, scale, unit, subtract_equilibrium, model
     """
     if not subtract_equilibrium and not star.has_pulsations():
         raise ValueError('Horizontal displacement colormap is relevant only for stars with pulsations.')
-    args = (star, False, True, True)
+    args = (star, 0.0, False, True, True)
     perturbation = container_ops.position_perturbation(*args)
 
     value = putils.horizontal_component(perturbation, star.points_spherical)

@@ -77,7 +77,7 @@ def incorporate_pulsations_to_model(star_container, com_x, phase, scale=1.0):
     # calculating kinematics quantities
     complex_displacement(star_container, scale=scale)
 
-    position_perturbation(star_container, update_container=True, return_perturbation=False)
+    position_perturbation(star_container, com_x=com_x, update_container=True, return_perturbation=False)
     velocity_perturbation(star_container, update_container=True, return_perturbation=False)
     gravity_acc_perturbation(star_container, update_container=True, return_perturbation=False)
     return star_container
@@ -104,10 +104,11 @@ def complex_displacement(star, scale):
     return star
 
 
-def position_perturbation(star, update_container=True, return_perturbation=False, spherical_perturbation=False):
+def position_perturbation(star, com_x=0, update_container=True, return_perturbation=False, spherical_perturbation=False):
     """
     Calculates the deformation of the surface mesh due to the pulsations.
 
+    :param com_x: float; x coordinate of the compotnents centre of mass in corotating frame
     :param star: base.container.StarContainer;
     :param update_container: bool; if True, perturbation is incorporated into star.points
     :param return_perturbation: bool; if True, calculated displacement (in cartesian coordinates) is returned
@@ -131,9 +132,10 @@ def position_perturbation(star, update_container=True, return_perturbation=False
             displacement = points_spherical - getattr(star, 'points_spherical')
             displacement[displacement[:, 1] > const.PI, 1] -= const.FULL_ARC
         else:
-            points - getattr(star, 'points')
+            points - utils.spherical_to_cartesian(star.points_spherical)
     if update_container:
-        setattr(star, 'points', points + star.com)
+        com = np.array([com_x, 0, 0])
+        setattr(star, 'points', points + com[None, :])
 
     return displacement if return_perturbation else None
 
