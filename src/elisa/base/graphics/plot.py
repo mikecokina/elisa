@@ -118,9 +118,9 @@ def v_cmap(star, scale, unit, subtract_equilibrium, model_scale):
     :param model_scale: float; scale of the system
     :return: numpy.array;
     """
-    velocities = container_ops.velocity_perturbation(star, update_container=False, return_perturbation=True) \
-        if subtract_equilibrium else getattr(star, 'velocities')
-    velocities = np.linalg.norm(velocities, axis=1) * model_scale
+    args = (star, model_scale, False, True, False)
+    velocities = container_ops.velocity_perturbation(*args) if subtract_equilibrium else getattr(star, 'velocities')
+    velocities = np.linalg.norm(velocities, axis=1)
     unt = units.m / units.s if unit == 'default' else unit
     value = transform_values(velocities, units.VELOCITY_UNIT, unt)
     return to_log(value, scale)

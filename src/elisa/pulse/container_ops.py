@@ -78,7 +78,7 @@ def incorporate_pulsations_to_model(star_container, com_x, phase, scale=1.0):
     complex_displacement(star_container, scale=scale)
 
     position_perturbation(star_container, com_x=com_x, update_container=True, return_perturbation=False)
-    velocity_perturbation(star_container, update_container=True, return_perturbation=False)
+    velocity_perturbation(star_container, scale=scale, update_container=True, return_perturbation=False)
     gravity_acc_perturbation(star_container, update_container=True, return_perturbation=False)
     return star_container
 
@@ -140,11 +140,12 @@ def position_perturbation(star, com_x=0, update_container=True, return_perturbat
     return displacement if return_perturbation else None
 
 
-def velocity_perturbation(star, update_container=False, return_perturbation=False, spherical_perturbation=False):
+def velocity_perturbation(star, scale, update_container=False, return_perturbation=False, spherical_perturbation=False):
     """
     Calculates velocity perturbation on a surface of a pulsating star.
 
     :param star: base.container.StarContainer;
+    :param scale: float; scaling factor of the system (a in case of BinarySystem)
     :param update_container: bool; if true, the perturbations are added into surface element velocities
     :param return_perturbation: bool; if True, velocity perturbation itself is returned
     :param spherical_perturbation: bool; if True, velocity perturbation in spherical coordinates (d_r, d_phi, d_theta)
@@ -162,6 +163,7 @@ def velocity_perturbation(star, update_container=False, return_perturbation=Fals
         tilt_velocity_sph, star.pulsations[0].points, star.points_spherical,
         star.pulsations[0].tilt_phi, star.pulsations[0].tilt_theta
     )
+    velocity_pert_sph[:, 0] *= scale
     velocity_pert = putils.transform_spherical_displacement_to_cartesian(velocity_pert_sph, star.points, star.com[0])
     velocity_pert = velocity_pert[star.faces].mean(axis=1)
 

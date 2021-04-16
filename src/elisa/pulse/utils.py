@@ -145,10 +145,11 @@ def horizontal_component(displacement, points, treat_poles=False):
     :param displacement: numpy.array; dr, dphi, dtheta
     :param points: numpy.array; r, phi, theta
     :param thetas: numpy.array:
+    :param treat_poles: bool; remove invalid values for faces in contact with pole
     :return:
     """
     # lambda - distance in theta
-    # TODO: avoid using sin
+    # TODO: avoid using sine
     d_lambda = points[:, 0] * np.sin(points[:, 2]) * displacement[:, 1]
     # nu - distance along theta
     d_nu = points[:, 0] * displacement[:, 2]
