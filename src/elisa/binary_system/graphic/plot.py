@@ -314,7 +314,8 @@ class Plot(object):
         for component in components:
             star = getattr(orbital_position_container, component)
 
-            args = (colormap, star, phase, com[component], self.binary.semi_major_axis)
+            args = (colormap, star, phase, com[component], self.binary.semi_major_axis, self.binary.inclination,
+                    orbital_position_container.position)
             kwargs = dict(scale=scale, unit=colorbar_unit, subtract_equilibrium=subtract_equilibrium)
 
             surface_kwargs.update({f'{component}_cmap': plot.add_colormap_to_plt_kwargs(*args, **kwargs)})

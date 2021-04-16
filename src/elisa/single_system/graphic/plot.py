@@ -197,7 +197,7 @@ class Plot(object):
 
         star_container = getattr(position_container, 'star')
 
-        args = (colormap, star_container, phase, 0.0, 1.0)
+        args = (colormap, star_container, phase, 0.0, 1.0, self.single.inclination, position_container.position)
         kwargs = dict(scale=scale, unit=colorbar_unit, subtract_equilibrium=subtract_equilibrium)
         surface_kwargs.update({'cmap': plot.add_colormap_to_plt_kwargs(*args, **kwargs)})
 

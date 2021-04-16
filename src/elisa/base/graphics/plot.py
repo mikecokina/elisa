@@ -18,6 +18,8 @@ def add_colormap_to_plt_kwargs(*args, **kwargs):
         * **phase** *:  float; photometric phase
         * **com_x** *:  float; centre of mass
         * **system_scale** *:  float; scaling factor of a system
+        * **inclination** *:  float; inclination of a system
+        * **position** *:  float; elisa.const.Position
     :param kwargs: Dict;
     :**kwargs options**:
         * **scale** *: str; `log` or `linear`
@@ -39,7 +41,7 @@ def add_colormap_to_plt_kwargs(*args, **kwargs):
         'radiance': radiance_cmap,
     }
 
-    colormap, star, phase, com_x, model_scale = args
+    colormap, star, phase, com_x, model_scale, inclination, position = args
     scale = kwargs.get('scale', 'linear')
     unit = kwargs.get('unit', 'default')
     subtract_equilibrium = kwargs.get('subtract_equilibrium', False)
@@ -55,12 +57,12 @@ def add_colormap_to_plt_kwargs(*args, **kwargs):
             raise ZeroDivisionError('You are trying to display surface colormap with `subtract_equilibrium`=True but '
                                     'surface of the star does not oscillate.')
 
-    retval = colorbar_fn[colormap](star, scale, unit, subtract_equilibrium, model_scale)
+    retval = colorbar_fn[colormap](star, scale, unit, subtract_equilibrium, model_scale, inclination, position)
 
     return retval
 
 
-def r_cmap(star, scale, unit, subtract_equilibrium, model_scale):
+def r_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
     """
     Returning the radius of the points as a colormap.
 
@@ -85,7 +87,7 @@ def r_cmap(star, scale, unit, subtract_equilibrium, model_scale):
     return to_log(value, scale)
 
 
-def horizonatal_displacement_cmap(star, scale, unit, subtract_equilibrium, model_scale):
+def horizonatal_displacement_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
     """
 
     :param star:
@@ -107,7 +109,7 @@ def horizonatal_displacement_cmap(star, scale, unit, subtract_equilibrium, model
     return to_log(value, scale)
 
 
-def v_cmap(star, scale, unit, subtract_equilibrium, model_scale):
+def v_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
     """
     Returning speed colormap.
 
@@ -126,7 +128,34 @@ def v_cmap(star, scale, unit, subtract_equilibrium, model_scale):
     return to_log(value, scale)
 
 
-def v_rad_pert_cmap(star, scale, unit, subtract_equilibrium, model_scale):
+def v_rad_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
+    """
+    Returning radial velocity colormap (with respect to the observer).
+
+    :param star: elisa.base.container.StarContainer;
+    :param scale: str; log or linear
+    :param unit: astropy.units.Unit;
+    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
+    :param model_scale: float; scale of the system
+    :param inclination: float;
+    :param position: Position;
+    :return: numpy.array;
+    """
+    if subtract_equilibrium:
+        args = (star, model_scale, False, True, False)
+        velocities = container_ops.velocity_perturbation(*args)
+        velocities = utils.rotate_item(velocities, position, inclination)
+    else:
+        velocities = getattr(star, 'velocities')
+    velocities = velocities[:, 0]
+    unt = units.m / units.s if unit == 'default' else unit
+    value = transform_values(velocities, units.VELOCITY_UNIT, unt)
+    if scale in ['log', 'logarithmic']:
+        raise Warning("`log` scale is not allowed for radial velocity colormap.")
+    return value
+
+
+def v_rad_pert_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
     """
     Returning radial component of the velocity perturbation.
 
@@ -146,7 +175,7 @@ def v_rad_pert_cmap(star, scale, unit, subtract_equilibrium, model_scale):
     return to_log(value, scale)
 
 
-def v_horizontal_pert_cmap(star, scale, unit, subtract_equilibrium, model_scale):
+def v_horizontal_pert_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
     """
     Returning horizontal component of the velocity perturbation.
 
@@ -168,7 +197,7 @@ def v_horizontal_pert_cmap(star, scale, unit, subtract_equilibrium, model_scale)
     return to_log(value, scale)
 
 
-def g_cmap(star, scale, unit, subtract_equilibrium, model_scale):
+def g_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
     """
     Returning gravity acceleration colormap.
 
@@ -190,7 +219,7 @@ def g_cmap(star, scale, unit, subtract_equilibrium, model_scale):
     return to_log(value, scale)
 
 
-def horizontal_g_pert_cmap(star, scale, unit, subtract_equilibrium, model_scale):
+def horizontal_g_pert_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
     """
     Returning horizontal component of the acceleration perturbation.
 
@@ -212,7 +241,7 @@ def horizontal_g_pert_cmap(star, scale, unit, subtract_equilibrium, model_scale)
     return to_log(value, scale)
 
 
-def t_cmap(star, scale, unit, subtract_equilibrium, model_scale):
+def t_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
     """
     Returning temperature colormap.
 
@@ -227,27 +256,7 @@ def t_cmap(star, scale, unit, subtract_equilibrium, model_scale):
     return to_log(value, scale)
 
 
-def v_rad_cmap(star, scale, unit, subtract_equilibrium, model_scale):
-    """
-    Returning radial velocity colormap (with respect to the observer).
-
-    :param star: elisa.base.container.StarContainer;
-    :param scale: str; log or linear
-    :param unit: astropy.units.Unit;
-    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
-    :return: numpy.array;
-    """
-    args = (star, model_scale, False, True, False)
-    velocities = container_ops.velocity_perturbation(*args) if subtract_equilibrium else getattr(star, 'velocities')
-    velocities = velocities[:, 0]
-    unt = units.m / units.s if unit == 'default' else unit
-    value = transform_values(velocities, units.VELOCITY_UNIT, unt)
-    if scale in ['log', 'logarithmic']:
-        raise Warning("`log` scale is not allowed for radial velocity colormap.")
-    return value
-
-
-def norm_radiance_cmap(star, scale, unit, subtract_equilibrium, model_scale):
+def norm_radiance_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
     """
     Returning radiance in the direction of surface normal vector.
 
@@ -262,7 +271,7 @@ def norm_radiance_cmap(star, scale, unit, subtract_equilibrium, model_scale):
     return to_log(value, scale)
 
 
-def radiance_cmap(star, scale, unit, subtract_equilibrium, model_scale):
+def radiance_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
     """
     Returning radiance in the direction of the observer.
 
