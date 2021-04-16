@@ -211,7 +211,7 @@ def g_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, po
         if scale in ['log', 'logarithmic']:
             raise ValueError('Logarithmic scale is not permitted with the `subtract_equilibrium` = True.')
         args = (star, False, True, True)
-        g = container_ops.gravity_acc_perturbation(*args)[:, 0]
+        g = container_ops.gravity_acc_perturbation(*args)[:, 0] * model_scale
     else:
         log_g = getattr(star, 'log_g')
         g = np.power(10, log_g)
@@ -234,7 +234,7 @@ def horizontal_g_pert_cmap(star, scale, unit, subtract_equilibrium, model_scale,
         raise ValueError('`horizontal_acceleration` colormap is relevant only for stars with pulsations.')
     args = (star, False, True, True)
     acceleration = container_ops.gravity_acc_perturbation(*args)
-    face_centres_sph = utils.cartesian_to_spherical(star.face_centres)
+    face_centres_sph = star.points_spherical[star.faces].mean(axis=1)
     acceleration = putils.horizontal_component(acceleration, face_centres_sph, treat_poles=True) * model_scale
     unt = units.ACCELERATION_UNIT if unit == 'default' else unit
     value = transform_values(acceleration, units.ACCELERATION_UNIT, unt)

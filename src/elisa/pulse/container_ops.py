@@ -194,7 +194,10 @@ def gravity_acc_perturbation(star, update_container=False, return_perturbation=F
         tilt_acc_sph, star.pulsations[0].points, star.points_spherical,
         star.pulsations[0].tilt_phi, star.pulsations[0].tilt_theta
     )
-    acc_pert = putils.transform_spherical_displacement_to_cartesian(acc_pert_sph, star.points, star.com[0])
+    acc_pert_sph[star.pole_idx] = acc_pert_sph[star.pole_idx_neighbour]
+
+    points_cartesian = utils.spherical_to_cartesian(star.points_spherical)
+    acc_pert = putils.transform_spherical_displacement_to_cartesian(acc_pert_sph, points_cartesian, 0.0)
 
     # treating singularities at poles
     acc_pert[star.pole_idx] = acc_pert[star.pole_idx_neighbour]

@@ -158,6 +158,12 @@ def horizontal_component(displacement, points, treat_poles=False):
 
 
 def pole_neighbours(star):
+    """
+    Finds indices of both poles and their neighbours.
+
+    :param star: StarContainer
+    :return:
+    """
     poles = np.array([star.points_spherical[:, 2].argmax(), star.points_spherical[:, 2].argmin()], dtype=np.int)
     neighbour_idx = np.empty(2, dtype=np.int)
     for ii, pole in enumerate(poles):
