@@ -139,8 +139,8 @@ def v_rad_pert_cmap(star, scale, unit, subtract_equilibrium, model_scale):
     """
     if not subtract_equilibrium and not star.has_pulsations():
         raise ValueError('`v_r_perturbed` is relevant only for stars with pulsations.')
-    args = (star, False, True, True)
-    velocities = container_ops.velocity_perturbation(*args)[:, 0] * model_scale
+    args = (star, model_scale, False, True, True)
+    velocities = container_ops.velocity_perturbation(*args)[:, 0]
     unt = units.m / units.s if unit == 'default' else unit
     value = transform_values(velocities, units.VELOCITY_UNIT, unt)
     return to_log(value, scale)
@@ -159,7 +159,7 @@ def v_horizontal_pert_cmap(star, scale, unit, subtract_equilibrium, model_scale)
     """
     if not subtract_equilibrium and not star.has_pulsations():
         raise ValueError('`v_horizontal_perturbed` colormap is relevant only for stars with pulsations.')
-    args = (star, False, True, True)
+    args = (star, model_scale, False, True, True)
     velocities = container_ops.velocity_perturbation(*args)
     face_centres_sph = utils.cartesian_to_spherical(star.face_centres)
     velocities = putils.horizontal_component(velocities, face_centres_sph) * model_scale
@@ -237,9 +237,9 @@ def v_rad_cmap(star, scale, unit, subtract_equilibrium, model_scale):
     :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
     :return: numpy.array;
     """
-    velocities = container_ops.velocity_perturbation(star, update_container=True, return_perturbation=True) \
-        if subtract_equilibrium else getattr(star, 'velocities')
-    velocities = velocities[:, 0] * model_scale
+    args = (star, model_scale, False, True, False)
+    velocities = container_ops.velocity_perturbation(*args) if subtract_equilibrium else getattr(star, 'velocities')
+    velocities = velocities[:, 0]
     unt = units.m / units.s if unit == 'default' else unit
     value = transform_values(velocities, units.VELOCITY_UNIT, unt)
     if scale in ['log', 'logarithmic']:
