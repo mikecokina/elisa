@@ -7,6 +7,7 @@ from . binary_system.system import BinarySystem
 from . single_system.system import SingleSystem
 from . base.star import Star
 from . observer.observer import Observer
+from . analytics.dataset.base import LCData, RVData
 from . import units
 
 

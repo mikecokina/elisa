@@ -152,6 +152,26 @@ class DataSet(metaclass=ABCMeta):
 class RVData(DataSet):
     """
     Child class of elisa.analytics.dataset.base.Dataset class storing radial velocity measurement.
+    RVData instance can be initialized in two different ways:
+
+    - directly in code, using numpy arrays as x and y values, astropy.units to specify corresponding units and a
+      reference magnitude of the object. Example:
+
+      ::
+
+        from elisa import RVData
+
+        lc_data = RVData(x_data, x_unit, y_data, y_err, y_unit)
+    
+    - loading directly from a file:
+
+      ::
+
+        rv_data = RVData.load_from_file(
+            filename,
+            x_unit, y_unit,
+            data_columns = (0, 1, 2)  # column indices containing x_data, y_data, y_err arrays
+        )
 
     Input parameters:
 
@@ -215,6 +235,27 @@ class RVData(DataSet):
 class LCData(DataSet):
     """
         Child class of elisa.analytics.dataset.base.Dataset class storing light curves.
+        LCData instance can be initialized in two different ways:
+
+        - directly in code, using numpy arrays as x and y values, astropy.units to specify corresponding units and a
+          reference magnitude of the object. Example:
+
+          ::
+
+            from elisa import LCData
+
+            lc_data = LCData(x_data, x_unit, y_data, y_err, y_unit, reference_magnitude)
+
+        - loading directly from a file:
+
+          ::
+
+            lc_data = LCData.load_from_file(
+                filename,
+                x_unit, y_unit,
+                reference_magnitude,
+                data_columns = (0, 1, 2)  # column indices containing x_data, y_data, y_err arrays
+            )
 
         Input parameters:
 
