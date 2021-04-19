@@ -47,7 +47,7 @@ def generate_phase_shift(shift):
     :param shift: float; rad
     :return: numpy.complex;
     """
-    return np.expand_dims(complex(0, -shift))
+    return np.exp(complex(0, -shift))
 
 
 def tilt_mode_coordinates(points, phi, theta):

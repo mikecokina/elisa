@@ -1,6 +1,7 @@
 import numpy as np
 
 from ... import settings
+from .. utils import generate_phase_shift, horizontal_component
 
 
 def calculate_horizontal_displacements(mode, thetas, harmonics_derivatives, radius, scale):
@@ -97,3 +98,18 @@ def calculate_mode_second_derivatives(displacement, angular_frequency):
     :return: numpy.array;
     """
     return - angular_frequency**2 * np.real(displacement)
+
+
+# _______________________temperature_perturbation_______________________
+def calculate_temperature_pert_factor(mode, radii):
+    """
+    Returns perturbation factor (delta T = T_factor * T) for surface temperature based on a treatment in Townsend 2003.
+
+    :param mode: PulsationMode;
+    :param radii: numpy.array; surface points
+    :return: numpy.array;
+    """
+    hrm_shift = np.real(generate_phase_shift(mode.temperature_phase_lag) * mode.complex_displacement[:, 0]) / radii
+    return mode.temperature_amplitude * hrm_shift
+
+
