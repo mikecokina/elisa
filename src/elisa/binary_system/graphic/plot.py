@@ -333,7 +333,7 @@ class Plot(object):
 
             if normals:
                 surface_kwargs.update({
-                    f'{component}_centres': star.face_centres[face_mask],
+                    f'{component}_centres': star.face_centres[face_mask] - pos_correction[None, :],
                     f'{component}_arrows': star.normals[face_mask]
                 })
 

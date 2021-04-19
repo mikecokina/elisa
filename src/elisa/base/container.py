@@ -454,7 +454,7 @@ class StarContainer(object):
         Calculates areas for all faces on the surface including spots and assigns values to its corresponding variables.
         """
         self.areas = self.calculate_areas()
-        if self.has_spots():
+        if self.has_spots() and not self.is_flat():
             for spot_index, spot_instance in self.spots.items():
                 spot_instance.areas = spot_instance.calculate_areas()
 

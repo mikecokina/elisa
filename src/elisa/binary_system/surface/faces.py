@@ -298,8 +298,6 @@ def compute_all_surface_areas(system, component):
 def build_faces_orientation(system, components_distance, component="all"):
     """
     Compute face orientation (normals) for each face.
-    If pulsations are present, than calculate renormalized associated Legendree polynomials (rALS)
-    for each pulsation mode.
 
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param component: str; `primary` or `secondary`
@@ -340,7 +338,7 @@ def set_all_normals(star_container, com):
     else:
         star_container.normals = calculate_normals(points, faces, cntrs, com)
 
-    if star_container.has_spots():
+    if star_container.has_spots() and not star_container.is_flat():
         for spot_index in star_container.spots:
             star_container.spots[spot_index].normals = calculate_normals(star_container.spots[spot_index].points,
                                                                          star_container.spots[spot_index].faces,
