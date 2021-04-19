@@ -83,6 +83,7 @@ def incorporate_pulsations_to_model(star_container, com_x, phase, scale=1.0):
     position_perturbation(star_container, com_x=com_x, update_container=True, return_perturbation=False)
     velocity_perturbation(star_container, scale=scale, update_container=True, return_perturbation=False)
     gravity_acc_perturbation(star_container, update_container=True, return_perturbation=False)
+
     return star_container
 
 
@@ -224,3 +225,7 @@ def gravity_acc_perturbation(star, update_container=False, return_perturbation=F
         return acc_pert_sph[star.faces].mean(axis=1) if spherical_perturbation else acc_pert
     else:
         return None
+
+
+def temp_perturbation(star, scale, update_container=False, return_perturbation=False):
+    pass

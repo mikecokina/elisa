@@ -4,8 +4,6 @@ from .. import utils, const, umpy as up
 from .. umpy import sph_harm
 from .. import settings
 from .. logger import getLogger
-from . import utils as putils
-from . surface.kinematics import calculate_displacement_coordinates
 
 logger = getLogger('pulse.pulsations')
 
@@ -79,50 +77,6 @@ def horizontal_displacement_normalization(derivatives, harmonics):
                    np.sum(np.power(np.abs(derivatives[0]), 2) + np.power(np.abs(derivatives[1]), 2)))
 
 
-def incorporate_gravity_perturbation(star_container, g_acc_vector, g_acc_vector_spot, phase):
-    """
-
-    :param star_container: base.container.StarContainer;
-    :param g_acc_vector: numpy.array;
-    :param g_acc_vector_spot: Dict;
-    :param phase: float;
-    :return: Tuple;
-    """
-    g_sph = utils.cartesian_to_spherical(g_acc_vector)
-    g_sph_spot = {spot_idx: utils.cartesian_to_spherical(g_acc) for spot_idx, g_acc in g_acc_vector_spot.items()}
-
-    tilt_phi, tilt_theta = putils.generate_tilt_coordinates(star_container, phase)
-    tilted_acc, tilted_acc_spot = \
-        putils.tilt_mode_coordinates(g_sph, g_sph_spot, tilt_phi, tilt_theta)
-
-    tilted_points, tilted_points_spot = star_container.pulsations[0].points, star_container.pulsations[0].spot_points
-
-    g_pert = up.zeros(tilted_points.shape)
-    g_pert_spot = {spot_idx: up.zeros(spot.shape) for spot_idx, spot in tilted_points_spot.items()}
-
-    for mode_index, mode in star_container.pulsations.items():
-        g_pert += calculate_acc_pert(mode, tilted_points, mode.point_harmonics, mode.point_harmonics_derivatives)
-
-        for spot_idx, spoints in tilted_points_spot.items():
-            g_pert_spot[spot_idx] += calculate_acc_pert(mode, tilted_points_spot[spot_idx],
-                                                        mode.spot_point_harmonics[spot_idx],
-                                                        mode.spot_point_harmonics_derivatives[spot_idx])
-
-    g_acc_vector = putils.derotate_surface_points(tilted_acc + g_pert,
-                                                  star_container.pulsations[0].mode_axis_phi,
-                                                  star_container.pulsations[0].mode_axis_theta,
-                                                  com_x=0.0)
-
-    for spot_idx, spot in star_container.spots.items():
-        g_acc_vector_spot[spot_idx] = \
-            putils.derotate_surface_points(tilted_acc_spot[spot_idx] + g_pert_spot[spot_idx],
-                                           star_container.pulsations[0].mode_axis_phi,
-                                           star_container.pulsations[0].mode_axis_theta,
-                                           com_x=0.0)
-
-    return g_acc_vector, g_acc_vector_spot
-
-
 def assign_amplitudes(star_container, normalization_constant=1.0):
     """
     Assigns amplitude of radial and horizontal motion for given modes.
@@ -145,6 +99,8 @@ def assign_amplitudes(star_container, normalization_constant=1.0):
         mode.radial_amplitude = amplitude / np.sqrt(mode.horizontal_to_radial_amplitude_ratio**2 + 1)
         mode.horizontal_amplitude = mode.horizontal_to_radial_amplitude_ratio * mode.radial_amplitude
 
+        mode.temperature_amplitude = temp_amplitude(mode)
+
         surf_ampl = mode.horizontal_amplitude / r_equiv
         if surf_ampl > settings.SURFACE_DISPLACEMENT_TOL:
             prec = int(- np.log10(surf_ampl) + 2)
@@ -156,69 +112,20 @@ def assign_amplitudes(star_container, normalization_constant=1.0):
                                f'discretization. Use this result with caution.')
 
 
-def calculate_acc_pert(mode, points, harmonics, harmonics_derivatives):
+def temp_amplitude(mode):
     """
-    Calculate perturbation of surface acceleration.
+    Returns temperature perturbation amplitude in form of the scalar therm in eq 22 in Townsend 2003:
 
-    :param mode: elisa.pulse.mode.Mode;
-    :param points: numpy.array;
-    :param harmonics: numpy.array; Y_l^m
-    :param harmonics_derivatives: numpy.array; [dY/dphi, dY/dtheta]
-    :return: numpy.array;
-    """
-    return - mode.angular_frequency ** 2 * \
-           calculate_displacement_coordinates(mode, points, harmonics, harmonics_derivatives)
+    delta T = temp_amplitude * (delta r / r) * T;
+    temp_amplitude = nabla_ad * (Kl(l+1) - 4 1/K)  where K is our horizontal to radial amplitude ratio
 
-
-def incorporate_temperature_perturbations(star_container, com_x, phase, time):
-    """
-    Introduces temperature perturbations to star container.
-
-    :param star_container: elisa.base.container.StarContainer
-    :param com_x: float; centre of mass
-    :param phase: float;
-    :param time: float;
+    :param mode: PulsationMode;
     :return: float;
     """
-    centres, spot_centres = star_container.transform_points_to_spherical_coordinates(kind='face_centres', com_x=com_x)
+    return const.IDEAL_ADIABATIC_GRADIENT * (
+        mode.horizontal_to_radial_amplitude_ratio * mode.l * (mode.l + 1) - 4 -
+        1 / mode.horizontal_to_radial_amplitude_ratio
+    )
 
-    tilt_phi, tilt_theta = putils.generate_tilt_coordinates(star_container, phase)
-    tilted_centres, tilted_spot_centres = putils.tilt_mode_coordinates(centres, spot_centres, tilt_phi, tilt_theta)
-
-    t_pert = up.zeros(centres.shape[0])
-    t_pert_spots = {spot_idx: up.zeros(spot.shape[0]) for spot_idx, spot in spot_centres.items()}
-
-    for mode_index, mode in star_container.pulsations.items():
-        exponential = putils.generate_time_exponential(mode, time)
-        harmonics = spherical_harmonics(mode, tilted_centres, exponential)
-        spot_harmonics = {spot_idx: spherical_harmonics(mode, spotp, exponential)
-                          for spot_idx, spotp in tilted_spot_centres.items()}
-
-        t_pert += calculate_temperature_perturbation(mode, star_container.temperatures, harmonics)
-        for spot_idx, t_s in t_pert_spots.items():
-            t_s += calculate_temperature_perturbation(mode, star_container.spots[spot_idx].temperatures,
-                                                      spot_harmonics[spot_idx])
-
-    star_container.temperatures += t_pert
-    for spot_idx, spot in star_container.spots.items():
-        spot.temperatures += t_pert_spots[spot_idx]
-    return star_container
-
-
-def calculate_temperature_perturbation(mode, temperatures, rals, adiabatic_gradient=None):
-    """
-    Calculates temperature perturbation caused by given `mode`.
-
-    :param mode: elisa.pulse.mode.Mode;
-    :param temperatures: numpy.array;
-    :param rals: numpy.array;
-    :param adiabatic_gradient: Union[None, float]; if None default value from constants is used
-    :return:
-    """
-    ad_g = const.IDEAL_ADIABATIC_GRADIENT if adiabatic_gradient is None else float(adiabatic_gradient)
-    l_val = mode.l
-    h, eps = mode.horizontal_amplitude, mode.radial_amplitude
-
-    return ad_g * temperatures * (h * l_val * (l_val + 1) - 4 - (1 / h)) * eps * np.real(rals)
 
 

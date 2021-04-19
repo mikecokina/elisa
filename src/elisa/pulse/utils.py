@@ -40,6 +40,16 @@ def generate_time_exponential(mode, time):
     return np.exp(complex(0, -exponent))
 
 
+def generate_phase_shift(shift):
+    """
+    Returns factor that can shift complex displacement by an arbitrary angular phase `shift`.
+
+    :param shift: float; rad
+    :return: numpy.complex;
+    """
+    return np.expand_dims(complex(0, -shift))
+
+
 def tilt_mode_coordinates(points, phi, theta):
     """
     Function tilts spherical coordinates to desired position described by `phi`, `theta`.
