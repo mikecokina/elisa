@@ -51,13 +51,8 @@ class PulsationMode(object):
         self.points = None  # rotated spherical coordinates aligned with pulsation axis
 
         self.point_harmonics = None
-        self.face_harmonics = None
-
         self.point_harmonics_derivatives = None
-        self.face_harmonics_derivatives = None
-
         self.complex_displacement = None
-
         self.tilt_phi, self.tilt_theta = None, None
 
         self.init_properties(**kwargs)

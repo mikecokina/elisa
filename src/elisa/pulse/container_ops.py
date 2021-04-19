@@ -56,10 +56,7 @@ def generate_harmonics(star_container, com_x, phase, time):
 
         # assignment of harmonics to mode instance variables
         mode.point_harmonics = harmonics[0]
-        mode.face_harmonics = np.mean(mode.point_harmonics[star_container.faces], axis=1)
-
         mode.point_harmonics_derivatives = derivatives
-        mode.face_harmonics_derivatives = np.mean(derivatives[:, star_container.faces], axis=1)
 
     return star_container
 
