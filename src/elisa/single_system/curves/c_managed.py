@@ -48,7 +48,11 @@ def produce_curves_with_pulsations_mp(*args):
     curves = {key: np.zeros(phase_batch.shape) for key in crv_labels}
 
     for pos_idx, position in enumerate(rotational_motion):
-        pass
+        system = initial_system.copy()
+        system.set_on_position_params(position)
+        system.set_time()
+
+        system
 
 
 def compute_pulsating_light_curve(*args):

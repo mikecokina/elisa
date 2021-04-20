@@ -99,10 +99,13 @@ class OrbitalPositionContainer(PositionContainer):
         self.build_from_points(components_distance, component)
 
         self.flatt_it()
-        self.build_harmonics(component, components_distance)
         if build_pulsations:
-            self.build_pulsations(component, components_distance)
+            self.build_pulsations(components_distance=components_distance, component=component)
         return self
+
+    def build_pulsations(self, components_distance=None, component="all"):
+        self.build_harmonics(components_distance=components_distance, component=component)
+        self.build_perturbations(components_distance=components_distance, component=component)
 
     def build_from_points(self, components_distance=None, component="all"):
         """
@@ -186,8 +189,8 @@ class OrbitalPositionContainer(PositionContainer):
     def build_harmonics(self, component, components_distance):
         return pulsations.build_harmonics(self, component, components_distance)
 
-    def build_pulsations(self, component, components_distance):
-        return pulsations.build_pulsations(self, component, components_distance)
+    def build_perturbations(self, component, components_distance):
+        return pulsations.build_perturbations(self, component, components_distance)
 
     def _components_distance(self, components_distance):
         return components_distance if components_distance is not None else self.position.distance

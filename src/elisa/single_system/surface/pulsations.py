@@ -14,7 +14,7 @@ def build_harmonics(system):
         system.star = generate_harmonics(system.star, com_x=0, phase=system.position.phase, time=system.time)
 
 
-def build_pulsations(system):
+def build_perturbations(system):
     """
     Adds pulsations to stellar model.
 

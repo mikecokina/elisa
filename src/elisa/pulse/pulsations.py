@@ -118,11 +118,10 @@ def temp_amplitude(mode):
     :param mode: PulsationMode;
     :return: float;
     """
-    # TODO: not valid for radial
     return const.IDEAL_ADIABATIC_GRADIENT * (
         mode.horizontal_to_radial_amplitude_ratio * mode.l * (mode.l + 1) - 4 -
         1 / mode.horizontal_to_radial_amplitude_ratio
-    ) if mode.l > 0 else const.IDEAL_ADIABATIC_GRADIENT  # placeholder
+    )
 
 
 

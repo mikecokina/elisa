@@ -73,7 +73,7 @@ class Plot(object):
 
         position_container = SinglePositionContainer.from_single_system(self.single, self.defpos)
         position_container.build_mesh()
-        position_container.build_pulsations()
+        position_container.build_perturbations()
 
         mesh = position_container.star.get_flatten_parameter('points')
         denominator = (1 * axis_unit.to(u.DISTANCE_UNIT))

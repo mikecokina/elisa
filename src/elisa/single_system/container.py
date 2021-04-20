@@ -83,10 +83,13 @@ class SinglePositionContainer(PositionContainer):
         self.build_from_points()
 
         self.flatt_it()
-        self.build_harmonics()
         if build_pulsations:
             self.build_pulsations()
         return self
+
+    def build_pulsations(self):
+        self.build_harmonics()
+        self.build_perturbations()
 
     def build_surface(self):
         """
@@ -142,8 +145,8 @@ class SinglePositionContainer(PositionContainer):
     def build_harmonics(self):
         return pulsations.build_harmonics(self)
 
-    def build_pulsations(self):
-        return pulsations.build_pulsations(self)
+    def build_perturbations(self):
+        return pulsations.build_perturbations(self)
 
     def _phase(self, phase):
         return phase if phase is not None else self.position.phase

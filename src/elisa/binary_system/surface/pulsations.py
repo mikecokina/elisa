@@ -23,7 +23,7 @@ def build_harmonics(system, component, components_distance):
             generate_harmonics(star, com_x=com_x, phase=phase, time=system.time)
 
 
-def build_pulsations(system, component, components_distance):
+def build_perturbations(system, component, components_distance):
     """
     adds position perturbations to container mesh
 
