@@ -7,10 +7,6 @@ from .. logger import getLogger
 
 logger = getLogger('pulse.pulsations')
 
-"""
-File containing functions dealing with pulsations.
-"""
-
 
 def spherical_harmonics(mode, points, time_exponential, order=None, degree=None):
     """

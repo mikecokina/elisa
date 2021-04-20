@@ -30,7 +30,7 @@ class SinglePositionContainer(PositionContainer):
             setattr(self, key, val)
 
         # calculating a time that elapsed since t0
-        self.time = self.set_time()
+        self.set_time()
 
         # setting centre of mass
         self.set_com()
@@ -43,7 +43,8 @@ class SinglePositionContainer(PositionContainer):
         setattr(self.star, 'com', np.array([0, 0, 0]))
 
     def set_time(self):
-        return 86400 * self.rotation_period * self.position.phase
+        setattr(self, 'time', 86400 * self.rotation_period * self.position.phase)
+        return getattr(self, 'time')
 
     @classmethod
     def from_single_system(cls, single_system, position):
