@@ -48,7 +48,8 @@ class Animation(object):
         for pos_idx, position in enumerate(orbital_motion):
             from_this = dict(single_system=self.single, position=self.defpos)
             on_pos = SinglePositionContainer.from_single_system(**from_this)
-            on_pos.time = 86400 * self.single.rotation_period * position.phase
+            on_pos.set_on_position_params(position)
+            on_pos.set_time()
             on_pos.build()
             on_pos = sutils.move_sys_onpos(on_pos, position, on_copy=False)
 

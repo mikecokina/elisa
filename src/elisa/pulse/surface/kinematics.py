@@ -87,7 +87,7 @@ def calculate_mode_derivatives(displacement, angular_frequency):
     :param angular_frequency: np.float;
     :return: numpy.array;
     """
-    return angular_frequency * np.imag(displacement)
+    return - angular_frequency * np.imag(displacement)
 
 
 # _______________________acceleration coordinates_______________________
