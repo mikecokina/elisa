@@ -96,6 +96,7 @@ class PulsatingStarInitTestCase(ElisaTestCase):
             'amplitude': 1 * u.m / u.s,
             'frequency': 1 / u.d,
             'start_phase': 0.0,
+            'temperature_amplitude_factor': 1.0
         }]
 
         time = 0

@@ -142,3 +142,13 @@ class PulsationModeProperties(SystemProperties):
         :return: float;
         """
         return deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
+
+    @staticmethod
+    def temperature_amplitude(value):
+        """
+        Returns the ratio between the temperature and displacement amplitude.
+
+        :param value: float;
+        :return: float;
+        """
+        return quantity_transform(value, u.ARC_UNIT, WHEN_FLOAT64)

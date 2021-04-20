@@ -15,7 +15,7 @@ class PulsationMode(object):
     MANDATORY_KWARGS = ["l", "m", "amplitude", "frequency"]
 
     OPTIONAL_KWARGS = ["start_phase", 'mode_axis_theta', 'mode_axis_phi', 'temperature_perturbation_phase_shift',
-                       'horizontal_to_radial_amplitude_ratio', 'temperature_phase_lag']
+                       'horizontal_to_radial_amplitude_ratio', 'temperature_phase_lag', 'temperature_amplitude_factor']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, **kwargs):
@@ -38,14 +38,13 @@ class PulsationMode(object):
         self.temperature_perturbation_phase_shift = settings.DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT
         self.horizontal_to_radial_amplitude_ratio = None
         self.temperature_phase_lag = c.PI / 3.0
+        self.temperature_amplitude_factor = None
         # phase shift in radians between surface geometry
         # perturbation and temperature perturbations
 
         # dimensionless normalized amplitudes
         self.radial_amplitude = None  # in distance units
         self.horizontal_amplitude = None  # in distance units
-
-        self.temperature_amplitude = None
 
         # surface related aux variables
         self.points = None  # rotated spherical coordinates aligned with pulsation axis

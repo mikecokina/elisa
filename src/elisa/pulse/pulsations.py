@@ -91,7 +91,11 @@ def assign_amplitudes(star_container, normalization_constant=1.0):
         mode.radial_amplitude = amplitude / np.sqrt(mode.horizontal_to_radial_amplitude_ratio**2 + 1)
         mode.horizontal_amplitude = mode.horizontal_to_radial_amplitude_ratio * mode.radial_amplitude
 
-        mode.temperature_amplitude = temp_amplitude(mode)
+        if mode.temperature_amplitude_factor is None:
+            if mode.l == 0:
+                raise ValueError('Parameter `temperature_amplitude_factor` needs to be supplied in case of In case '
+                                 'radial modes.')
+            mode.temperature_amplitude_factor = temp_amplitude(mode)
 
         surf_ampl = mode.horizontal_amplitude / r_equiv
         if surf_ampl > settings.SURFACE_DISPLACEMENT_TOL:

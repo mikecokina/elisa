@@ -112,6 +112,6 @@ def calculate_temperature_pert_factor(mode, radii):
     :return: numpy.array;
     """
     hrm_shift = np.real(generate_phase_shift(mode.temperature_phase_lag) * mode.complex_displacement[:, 0]) / radii
-    return mode.temperature_amplitude * hrm_shift
+    return mode.temperature_amplitude_factor * hrm_shift
 
 
