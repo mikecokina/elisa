@@ -55,8 +55,9 @@ def generate_harmonics(star_container, com_x, phase, time):
                                                                       tilted_points[:, 2])
 
         # renormalizing horizontal amplitude to 1
-        norm_constant[mode_index] = pulsations.horizontal_displacement_normalization(derivatives, harmonics)
-        derivatives *= norm_constant[mode_index]
+        if mode.l > 0:
+            norm_constant[mode_index] = pulsations.horizontal_displacement_normalization(derivatives, harmonics)
+            derivatives *= norm_constant[mode_index]
 
         # assignment of harmonics to mode instance variables
         mode.point_harmonics = harmonics[0]

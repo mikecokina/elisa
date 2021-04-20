@@ -14,6 +14,8 @@ def calculate_horizontal_displacements(mode, thetas, harmonics_derivatives, radi
     :param radius:
     :return:
     """
+    if mode.l == 0:
+        return np.zeros(thetas.shape[0]), np.zeros(thetas.shape[0])
     # TODO: remove this sin
     sin_theta = np.sin(thetas)
     # lambda - distance along phi
