@@ -37,7 +37,7 @@ def generate_time_exponential(mode, time):
     :return: float; complex time dependent exponential
     """
     exponent = mode.angular_frequency * time + mode.start_phase
-    return np.exp(complex(0, -exponent))
+    return np.exp(complex(0, exponent))
 
 
 def generate_phase_shift(shift):
@@ -47,7 +47,7 @@ def generate_phase_shift(shift):
     :param shift: float; rad
     :return: numpy.complex;
     """
-    return np.exp(complex(0, -shift))
+    return np.exp(complex(0, shift))
 
 
 def tilt_mode_coordinates(points, phi, theta):
