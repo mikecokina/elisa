@@ -40,6 +40,17 @@ def produce_curves_wo_pulsations_mp(*args):
     return curves
 
 
+def produce_curves_with_pulsations_mp(*args):
+    single, initial_system, phase_batch, crv_labels, curves_fn, kwargs = args
+    position_method = kwargs.pop("position_method")
+
+    rotational_motion = position_method(input_argument=phase_batch, return_nparray=False, calculate_from='phase')
+    curves = {key: np.zeros(phase_batch.shape) for key in crv_labels}
+
+    for pos_idx, position in enumerate(rotational_motion):
+        pass
+
+
 def compute_pulsating_light_curve(*args):
     single, system_container, phase_batch, kwargs = args
 

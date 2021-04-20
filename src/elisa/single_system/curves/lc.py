@@ -33,16 +33,22 @@ def compute_light_curve_without_pulsations(single, **kwargs):
 
 
 def compute_light_curve_with_pulsations(single, **kwargs):
-    from_this = dict(single_system=single, position=const.Position(0, np.nan, 0.0, np.nan, 0.0))
-    initial_system = SinglePositionContainer.from_single_system(**from_this)
-    initial_system.build_surface()
+    """
+    Compute light curve for single star objects without pulsations.
 
+    :param single: elisa.single_system.system.SinarySystem;
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** * - float
+        * ** right_bandwidth ** * - float
+        * ** position_method** * - function definition; to evaluate orbital positions
+    :return: Dict[str, numpy.array];
+    """
+    initial_system = c_router.prep_initial_system(single, **dict(do_pulsations=False))
+
+    lc_labels = list(kwargs["passband"].keys())
     phases = kwargs.pop("phases")
 
-    fn_args = single, initial_system
-    band_curves = manage_observations(fn=c_managed.compute_pulsating_light_curve,
-                                      fn_args=fn_args,
-                                      position=phases,
-                                      **kwargs)
-
-    return band_curves
+    args = single, initial_system, phases, lc_point.compute_lc_on_pos, lc_labels
+    return c_router.produce_curves_with_pulsations(*args, **kwargs)

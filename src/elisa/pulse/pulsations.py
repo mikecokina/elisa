@@ -57,14 +57,6 @@ def diff_spherical_harmonics_by_theta(mode, harmonics, phis, thetas):
     return derivative
 
 
-def dy_dtheta_norm(mode):
-    # TODO: this is not correct!!!
-    l = mode.l
-    m = mode.m
-
-    return np.sqrt(0.25*(5*(l-m)*(l+m+1) + (l+m)*(l-m+1)))
-
-
 def horizontal_displacement_normalization(derivatives, harmonics):
     """
     Normalizes the RMS of horizontal displacement of the given pulsation to 1.
@@ -122,10 +114,11 @@ def temp_amplitude(mode):
     :param mode: PulsationMode;
     :return: float;
     """
+    # TODO: not valid for radial
     return const.IDEAL_ADIABATIC_GRADIENT * (
         mode.horizontal_to_radial_amplitude_ratio * mode.l * (mode.l + 1) - 4 -
         1 / mode.horizontal_to_radial_amplitude_ratio
-    )
+    ) if mode.l > 0 else const.IDEAL_ADIABATIC_GRADIENT  # placeholder
 
 
 
