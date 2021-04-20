@@ -1,7 +1,7 @@
 import numpy as np
 
 from .. import const as c, units as u
-from .. base.transform import SystemProperties, deg_transform, WHEN_FLOAT64
+from .. base.transform import SystemProperties, quantity_transform, deg_transform, WHEN_FLOAT64
 
 
 class PulsationModeProperties(SystemProperties):
@@ -81,7 +81,7 @@ class PulsationModeProperties(SystemProperties):
         :param value: float;
         :return: float;
         """
-        return deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
 
     @staticmethod
     def mode_axis_theta(value):
