@@ -36,7 +36,7 @@ def compute_light_curve_with_pulsations(single, **kwargs):
     """
     Compute light curve for single star objects without pulsations.
 
-    :param single: elisa.single_system.system.SinarySystem;
+    :param single: elisa.single_system.system.SingleSystem;
     :param kwargs: Dict;
     :**kwargs options**:
         * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
