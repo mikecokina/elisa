@@ -37,7 +37,7 @@ def compute_rv_curve_with_pulsations(single, **kwargs):
     :param kwargs: Dict;
     :return: Dict[str, numpy.array];
     """
-    initial_system = c_router.prep_initial_system(single)
+    initial_system = c_router.prep_initial_system(single, **dict(do_pulsations=False))
     rv_labels = ['star', ]
     args = single, initial_system, kwargs.pop("phases"), rv_point.compute_rv_at_pos, rv_labels
     return c_router.produce_curves_with_pulsations(*args, **kwargs)

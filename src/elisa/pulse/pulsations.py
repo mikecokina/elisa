@@ -88,9 +88,9 @@ def assign_amplitudes(star_container, normalization_constant=1.0):
         mode.horizontal_amplitude = mode.horizontal_to_radial_amplitude_ratio * mode.radial_amplitude
 
         if mode.temperature_amplitude_factor is None:
-            if mode.l == 0:
+            if mode.l == 0 or mode.horizontal_to_radial_amplitude_ratio == 0.0:
                 raise ValueError('Parameter `temperature_amplitude_factor` needs to be supplied in case of In case '
-                                 'radial modes.')
+                                 'radial modes or in case of modes with radial motion .')
             mode.temperature_amplitude_factor = temp_amplitude(mode)
 
         surf_ampl = mode.horizontal_amplitude / r_equiv

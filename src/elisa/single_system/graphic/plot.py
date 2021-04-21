@@ -178,6 +178,7 @@ class Plot(object):
 
         position_container = SinglePositionContainer.from_single_system(self.single, self.defpos)
         position_container.set_on_position_params(single_position)
+        position_container.set_time()
         position_container.build(phase=phase, build_pulsations=True)
         correct_face_orientation(position_container.star, com=0)
 
