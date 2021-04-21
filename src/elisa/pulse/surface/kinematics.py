@@ -2,6 +2,7 @@ import numpy as np
 
 from ... import settings
 from .. utils import generate_phase_shift
+from .. pulsations import temp_amplitude
 
 
 def calculate_horizontal_displacements(mode, thetas, harmonics_derivatives, radius, scale):
@@ -111,7 +112,10 @@ def calculate_temperature_pert_factor(mode, radii):
     :param radii: numpy.array; surface points
     :return: numpy.array;
     """
-    hrm_shift = np.real(generate_phase_shift(mode.temperature_phase_lag) * mode.complex_displacement[:, 0]) / radii
-    return mode.temperature_amplitude_factor * hrm_shift
+    # hrm_shift = np.real(generate_phase_shift(mode.temperature_phase_lag) * mode.complex_displacement[:, 0]) / radii
+    hrm_shift = np.real(generate_phase_shift(mode.temperature_phase_lag) * mode.complex_displacement[:, 0])
+    if mode.temperature_amplitude_factor is None:
+        return temp_amplitude(mode) * hrm_shift / radii
+    return mode.temperature_amplitude_factor * hrm_shift / mode.radial_amplitude
 
 
