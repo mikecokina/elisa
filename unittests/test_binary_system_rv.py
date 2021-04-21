@@ -139,11 +139,11 @@ class BinaryRadialCurvesConsistencyTestCase(ElisaTestCase):
 
         # from matplotlib import pyplot as plt
         # # plt.plot(self.phases, rvdict1['primary']-rvdict2['primary'], c='r')
-        # plt.plot(self.phases, rvdict1['primary'], c='r')
-        # plt.plot(self.phases, rvdict2['primary'], c='r', linestyle='dashed')
+        # plt.plot(phases, rvdict1['primary'], c='r')
+        # plt.plot(phases, rvdict2['primary'], c='r', linestyle='dashed')
         # # plt.plot(self.phases, rvdict1['secondary']-rvdict2['secondary'], c='b')
-        # plt.plot(self.phases, rvdict1['secondary'], c='b')
-        # plt.plot(self.phases, rvdict2['secondary'], c='b', linestyle='dashed')
+        # plt.plot(phases, rvdict1['secondary'], c='b')
+        # plt.plot(phases, rvdict2['secondary'], c='b', linestyle='dashed')
         # plt.show()
 
     def test_rv_consistency_circular_detached(self):

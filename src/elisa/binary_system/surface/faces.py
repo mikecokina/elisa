@@ -374,13 +374,13 @@ def build_velocities(system, components_distance, component='all'):
         omega = star.synchronicity * omega_orb
 
         # orbital velocity + rotational velocity
-        p_velocities = velocities[_component] + np.cross(points, omega, axisa=1)
+        p_velocities = velocities[_component] + np.cross(omega[None, :], points, axisa=1)
         star.velocities = np.mean(p_velocities[star.faces], axis=1)
 
         if star.has_spots():
             for spot_inst in star.spots.values():
                 points = (spot_inst.points - com_x[_component][None, :]) * system.semi_major_axis
-                p_velocities = velocities[_component] + np.cross(points, omega, axisa=1)
+                p_velocities = velocities[_component] + np.cross(omega[None, :], points, axisa=1)
                 spot_inst.velocities = np.mean(p_velocities[spot_inst.faces], axis=1)
 
     return system
