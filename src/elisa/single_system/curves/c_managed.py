@@ -1,23 +1,20 @@
 import numpy as np
 
 from . import utils
-from ... import ld
-from ... import settings
 from ... single_system import (
     utils as ssutils,
-    surface
 )
 
 
 def produce_curves_wo_pulsations_mp(*args):
     """
-    Calculates LC for single system without pulsations (surface geometry is not changed).
+    Calculates curve for single system without pulsations (surface geometry is not changed).
 
     :param args: Tuple;
     :**args options**:
         * ** single_system ** * - elisa.single_system.system.SingleSystem
         * ** system_container ** * - elisa.single_system.container.SystemContainer
-        * ** phases ** * - array; phases in which to calculate LC
+        * ** phases ** * - array; phases in which to calculate curves
         * ** crv_labels ** * - List;
         * ** curves_fn ** * - function to calculate curve points at given orbital positions
         * ** kwargs ** * - Dict;
@@ -41,6 +38,19 @@ def produce_curves_wo_pulsations_mp(*args):
 
 
 def produce_curves_with_pulsations_mp(*args):
+    """
+    Calculates curve for single system with pulsations.
+
+    :param args:
+    :**args options**:
+        * ** single_system ** * - elisa.single_system.system.SingleSystem
+        * ** system_container ** * - elisa.single_system.container.SystemContainer
+        * ** phases ** * - array; phases in which to calculate curves
+        * ** crv_labels ** * - List;
+        * ** curves_fn ** * - function to calculate curve points at given orbital positions
+        * ** kwargs ** * - Dict;
+    :return:
+    """
     single, initial_system, phase_batch, crv_labels, curves_fn, kwargs = args
     position_method = kwargs.pop("position_method")
 
