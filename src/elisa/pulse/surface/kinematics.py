@@ -104,15 +104,16 @@ def calculate_mode_second_derivatives(displacement, angular_frequency):
 
 
 # _______________________temperature_perturbation_______________________
-def calculate_temperature_pert_factor(mode):
+def calculate_temperature_pert_factor(mode, scale):
     """
     Returns perturbation factor (delta T = T_factor * T) for surface temperature based on a treatment in Townsend 2003.
 
     :param mode: PulsationMode;
-    :param r_eq: float; equivalent radius
+    :param scale: float; system scale
     :return: numpy.array;
     """
     hrm_shift = np.real(generate_phase_shift(mode.temperature_phase_lag) * mode.complex_displacement[:, 0])
-    return mode.temperature_amplitude_factor * hrm_shift / mode.radial_amplitude
+    return mode.temperature_amplitude_factor * hrm_shift * scale / mode.radial_amplitude
+
 
 

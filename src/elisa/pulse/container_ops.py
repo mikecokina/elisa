@@ -85,7 +85,7 @@ def incorporate_pulsations_to_model(star_container, com_x, phase, scale=1.0):
     position_perturbation(star_container, com_x=com_x, update_container=True, return_perturbation=False)
     velocity_perturbation(star_container, scale=scale, update_container=True, return_perturbation=False)
     gravity_acc_perturbation(star_container, update_container=True, return_perturbation=False)
-    temp_perturbation(star_container, update_container=True, return_perturbation=False)
+    temp_perturbation(star_container, update_container=True, return_perturbation=False, scale=scale)
 
     # recalculating normals and areas
     set_all_surface_centres(star_container)
@@ -235,7 +235,7 @@ def gravity_acc_perturbation(star, update_container=False, return_perturbation=F
         return None
 
 
-def temp_perturbation(star, update_container=False, return_perturbation=False):
+def temp_perturbation(star, update_container=False, return_perturbation=False, scale=1.0):
     """
     Calculates temperature perturbation on a surface of a pulsating star.
 
@@ -244,7 +244,7 @@ def temp_perturbation(star, update_container=False, return_perturbation=False):
     :param return_perturbation:
     :return:
     """
-    temp_pert = np.sum([kinematics.calculate_temperature_pert_factor(mode)
+    temp_pert = np.sum([kinematics.calculate_temperature_pert_factor(mode, scale)
                         for mode in star.pulsations.values()], axis=0)
 
     temp_pert = temp_pert[star.faces].mean(axis=1) * star.temperatures

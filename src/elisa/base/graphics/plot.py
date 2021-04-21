@@ -251,8 +251,8 @@ def t_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, po
     :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
     :return: numpy.array;
     """
-    temperatures = container_ops.temp_perturbation(star, update_container=False, return_perturbation=True) \
-        if subtract_equilibrium else getattr(star, 'temperatures')
+    args = (star, False, True, model_scale)
+    temperatures = container_ops.temp_perturbation(*args) if subtract_equilibrium else getattr(star, 'temperatures')
     value = transform_values(temperatures, units.TEMPERATURE_UNIT, unit)
     return to_log(value, scale)
 
