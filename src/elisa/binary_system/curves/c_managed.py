@@ -139,6 +139,53 @@ def produce_circ_spotty_async_curves_mp(*args):
     return curves
 
 
+def produce_circ_pulsating_curves_mp(*args):
+    """
+    Curve generator function for circular pulsating systems.
+
+    :param args: Tuple;
+
+    ::
+
+        Tuple[
+                binary: elisa.binary_system.BinarySystem,
+                initial_system: elisa.binary_system.container.OrbitalPositionContainer, system container with built
+                phase_batch: numpy.array; phases at which to calculate curves,
+                crv_labels: List;
+                curves_fn: function to calculate curve points at given orbital positions,
+                kwargs: Dict,
+            ]
+    :return:
+    """
+    binary, initial_system, phase_batch, crv_labels, curves_fn, kwargs = args
+
+    position_method = kwargs.pop("position_method")
+    orbital_motion = position_method(input_argument=phase_batch, return_nparray=False, calculate_from='phase')
+    # is in eclipse test eval
+    ecl_boundaries = dynamic.get_eclipse_boundaries(binary, 1.0)
+    azimuths = [position.azimuth for position in orbital_motion]
+    in_eclipse = dynamic.in_eclipse_test(azimuths, ecl_boundaries)
+
+    curves = {key: np.zeros(phase_batch.shape) for key in crv_labels}
+
+    for pos_idx, position in enumerate(orbital_motion):
+        on_pos = initial_system.copy()
+        on_pos.set_on_position_params(position)
+        on_pos.set_time()
+
+        on_pos.build_pulsations(components_distance=position.distance)
+        crv_utils.prep_surface_params(on_pos, return_values=False, write_to_containers=True, **kwargs)
+
+        on_pos = bsutils.move_sys_onpos(on_pos, position, on_copy=False, recalculate_velocities=False)
+
+        compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=in_eclipse[pos_idx],
+                                 return_values=False, write_to_containers=True)
+
+        curves = curves_fn(curves, pos_idx, crv_labels, on_pos)
+
+    return curves
+
+
 def integrate_eccentric_curve_exactly(*args):
     """
     Curve generator function for exact integration of eccentric orbits.

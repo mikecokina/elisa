@@ -45,7 +45,7 @@ def compute_light_curve_with_pulsations(single, **kwargs):
         * ** position_method** * - function definition; to evaluate orbital positions
     :return: Dict[str, numpy.array];
     """
-    initial_system = c_router.prep_initial_system(single, **dict(do_pulsations=False))
+    initial_system = c_router.prep_initial_system(single, **dict(build_pulsations=False))
 
     lc_labels = list(kwargs["passband"].keys())
     phases = kwargs.pop("phases")

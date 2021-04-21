@@ -37,7 +37,7 @@ def prep_initial_system(single, **kwargs):
     """
     from_this = dict(single_system=single, position=const.Position(0, np.nan, 0.0, np.nan, 0.0))
     initial_system = SinglePositionContainer.from_single_system(**from_this)
-    do_pulsations = kwargs.get('do_pulsations', True)
+    do_pulsations = kwargs.get('build_pulsations', True)
     initial_system.build(do_pulsations)
     return initial_system
 
