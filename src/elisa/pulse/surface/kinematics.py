@@ -88,7 +88,7 @@ def calculate_mode_derivatives(displacement, angular_frequency):
     :param angular_frequency: np.float;
     :return: numpy.array;
     """
-    return - angular_frequency * np.imag(displacement)
+    return angular_frequency * np.imag(displacement)
 
 
 # _______________________acceleration coordinates_______________________
@@ -104,18 +104,15 @@ def calculate_mode_second_derivatives(displacement, angular_frequency):
 
 
 # _______________________temperature_perturbation_______________________
-def calculate_temperature_pert_factor(mode, radii):
+def calculate_temperature_pert_factor(mode):
     """
     Returns perturbation factor (delta T = T_factor * T) for surface temperature based on a treatment in Townsend 2003.
 
     :param mode: PulsationMode;
-    :param radii: numpy.array; surface points
+    :param r_eq: float; equivalent radius
     :return: numpy.array;
     """
-    # hrm_shift = np.real(generate_phase_shift(mode.temperature_phase_lag) * mode.complex_displacement[:, 0]) / radii
     hrm_shift = np.real(generate_phase_shift(mode.temperature_phase_lag) * mode.complex_displacement[:, 0])
-    if mode.temperature_amplitude_factor is None:
-        return temp_amplitude(mode) * hrm_shift / radii
     return mode.temperature_amplitude_factor * hrm_shift / mode.radial_amplitude
 
 

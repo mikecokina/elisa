@@ -244,7 +244,7 @@ def temp_perturbation(star, update_container=False, return_perturbation=False):
     :param return_perturbation:
     :return:
     """
-    temp_pert = np.sum([kinematics.calculate_temperature_pert_factor(mode, star.points_spherical[:, 0])
+    temp_pert = np.sum([kinematics.calculate_temperature_pert_factor(mode)
                         for mode in star.pulsations.values()], axis=0)
 
     temp_pert = temp_pert[star.faces].mean(axis=1) * star.temperatures
