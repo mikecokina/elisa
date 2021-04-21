@@ -53,7 +53,8 @@ class OrbitalPositionContainer(PositionContainer):
         self.rotate_property(self.secondary, 'com')
 
     def set_time(self):
-        return 86400 * self.period * self.position.phase
+        setattr(self, 'time', 86400 * self.period * self.position.phase)
+        return getattr(self, 'time')
 
     @classmethod
     def from_binary_system(cls, binary_system, position):

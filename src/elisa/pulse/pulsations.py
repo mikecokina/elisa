@@ -1,6 +1,6 @@
 import numpy as np
 
-from .. import utils, const, umpy as up
+from .. import const
 from .. umpy import sph_harm
 from .. import settings
 from .. logger import getLogger
