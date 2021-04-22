@@ -29,6 +29,7 @@ class Animation(object):
         :param scale: str; `linear` or `log`, scale of the colormap
         :param colormap: str; `temperature`, `gravity_acceleration`, `velocity`, `radial_velocity` or None
         :param savepath: str; animation will be stored to `savepath`
+        :param subtract_equilibrium: bool; equilibrium part of the quantity is removed (for pulsations)
         """
         anim_kwargs = dict()
 
@@ -61,30 +62,6 @@ class Animation(object):
             args = (colormap, star, position.phase, 0.0, 1.0, self.single.inclination, on_pos.position)
             kwargs = dict(scale=scale, unit='default', subtract_equilibrium=subtract_equilibrium)
             cmap.append(plot.add_colormap_to_plt_kwargs(*args, **kwargs))
-
-            # if colormap == 'gravity_acceleration':
-            #     log_g = star.log_g
-            #     value = log_g if units == 'SI' else log_g + 2
-            #     val_to_append = value if scale == 'log' else np.power(10, value)
-            #     cmap.append(val_to_append)
-            #
-            # elif colormap == 'temperature':
-            #     temperatures = star.temperatures
-            #     val_to_append = temperatures if scale == 'linear' else np.log10(temperatures)
-            #     cmap.append(val_to_append)
-            #
-            # elif colormap == 'velocity':
-            #     velocities = np.linalg.norm(getattr(star, 'velocities'), axis=1)
-            #     velocities = velocities / 1000.0 if units == 'SI' else velocities * 1000.0
-            #     val_to_append = velocities if scale == 'linear' else np.log10(velocities)
-            #     cmap.append(val_to_append)
-            #
-            # elif colormap == 'radial_velocity':
-            #     velocities = getattr(star, 'velocities')[:, 0]
-            #     velocities = velocities / 1000.0 if units == 'SI' else velocities * 1000.0
-            #     cmap.append(velocities)
-            #     if scale == 'log':
-            #         raise Warning("`log` scale is not allowed for radial velocity colormap.")
 
         anim_kwargs.update({
             'start_phase': start_phase,

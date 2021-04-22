@@ -306,7 +306,6 @@ class StarContainer(object):
                  temperatures=None,
                  log_g=None,
                  coverage=None,
-                 rals=None,
                  face_centres=None,
                  metallicity=None,
                  areas=None,
@@ -324,7 +323,6 @@ class StarContainer(object):
         self.log_g = log_g
         self.coverage = coverage
         self.indices = indices
-        self.rals = rals
         self.face_centres = face_centres
         self.metallicity = metallicity
         self.areas = areas
