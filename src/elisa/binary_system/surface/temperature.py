@@ -507,22 +507,3 @@ def get_distance_matrix_shape(system, vis_test):
     shape_reduced = (np.sum(vis_test['primary'][:system.primary.base_symmetry_faces_number]),
                      np.sum(vis_test['secondary'][:system.secondary.base_symmetry_faces_number]))
     return shape, shape_reduced
-
-
-def build_temperature_perturbations(system, components_distance, component):
-    """
-    adds position perturbations to container mesh
-
-    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
-    :param components_distance: float;
-    :param component: Union[str, None];
-    :return:
-    """
-    components = bsutils.component_to_list(component)
-    for component in components:
-        star = getattr(system, component)
-        if star.has_pulsations():
-            phase = bsutils.calculate_rotational_phase(system, component)
-            com_x = 0 if component == 'primary' else components_distance
-            star = pulsations.incorporate_temperature_perturbations(star, com_x=com_x, phase=phase, time=system.time)
-    return system

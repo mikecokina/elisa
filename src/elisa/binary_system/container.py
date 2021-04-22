@@ -183,10 +183,6 @@ class OrbitalPositionContainer(PositionContainer):
         components_distance = self._components_distance(components_distance)
         return temperature.build_temperature_distribution(self, components_distance, component)
 
-    # TODO: soon to be deprecated
-    def build_temperature_perturbations(self, components_distance, component):
-        return temperature.build_temperature_perturbations(self, components_distance, component)
-
     def build_harmonics(self, component, components_distance):
         return pulsations.build_harmonics(self, component, components_distance)
 
