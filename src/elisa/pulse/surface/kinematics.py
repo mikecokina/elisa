@@ -2,7 +2,6 @@ import numpy as np
 
 from ... import settings
 from .. utils import generate_phase_shift
-from .. pulsations import temp_amplitude
 
 
 def calculate_horizontal_displacements(mode, thetas, harmonics_derivatives, radius, scale):

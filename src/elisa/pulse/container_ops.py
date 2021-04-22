@@ -84,7 +84,7 @@ def incorporate_pulsations_to_model(star_container, com_x, phase, scale=1.0):
 
     position_perturbation(star_container, com_x=com_x, update_container=True, return_perturbation=False)
     velocity_perturbation(star_container, scale=scale, update_container=True, return_perturbation=False)
-    gravity_acc_perturbation(star_container, update_container=True, return_perturbation=False)
+    gravity_acc_perturbation(star_container, scale=scale, update_container=True, return_perturbation=False)
     temp_perturbation(star_container, update_container=True, return_perturbation=False, scale=scale)
 
     # recalculating normals and areas
@@ -176,9 +176,9 @@ def velocity_perturbation(star, scale, update_container=False, return_perturbati
         star.pulsations[0].tilt_phi, star.pulsations[0].tilt_theta
     )
     velocity_pert_sph[star.pole_idx] = velocity_pert_sph[star.pole_idx_neighbour]
-    velocity_pert_sph[:, 0] *= scale
     points_cartesian = utils.spherical_to_cartesian(star.points_spherical)
-    velocity_pert = putils.transform_spherical_displacement_to_cartesian(velocity_pert_sph, points_cartesian, 0.0)
+    args = (velocity_pert_sph, points_cartesian, 0.0)
+    velocity_pert = putils.transform_spherical_displacement_to_cartesian(*args) * scale
 
     velocity_pert = velocity_pert[star.faces].mean(axis=1)
 
@@ -186,12 +186,16 @@ def velocity_perturbation(star, scale, update_container=False, return_perturbati
         star.velocities += velocity_pert
 
     if return_perturbation:
-        return velocity_pert_sph[star.faces].mean(axis=1) if spherical_perturbation else velocity_pert
+        if spherical_perturbation:
+            velocity_pert_sph[:, 0] *= scale
+            return velocity_pert_sph[star.faces].mean(axis=1)
+        else:
+            return velocity_pert
     else:
         return None
 
 
-def gravity_acc_perturbation(star, update_container=False, return_perturbation=False, spherical_perturbation=False):
+def gravity_acc_perturbation(star, scale, update_container=False, return_perturbation=False, spherical_perturbation=False):
     """
     Calculates acceleration perturbation on a surface of a pulsating star.
 
@@ -215,9 +219,8 @@ def gravity_acc_perturbation(star, update_container=False, return_perturbation=F
         star.pulsations[0].tilt_phi, star.pulsations[0].tilt_theta
     )
     acc_pert_sph[star.pole_idx] = acc_pert_sph[star.pole_idx_neighbour]
-
     points_cartesian = utils.spherical_to_cartesian(star.points_spherical)
-    acc_pert = putils.transform_spherical_displacement_to_cartesian(acc_pert_sph, points_cartesian, 0.0)
+    acc_pert = putils.transform_spherical_displacement_to_cartesian(acc_pert_sph, points_cartesian, 0.0) * scale
 
     # treating singularities at poles
     acc_pert[star.pole_idx] = acc_pert[star.pole_idx_neighbour]
@@ -230,7 +233,11 @@ def gravity_acc_perturbation(star, update_container=False, return_perturbation=F
         star.log_g = np.log10(total_acc)
 
     if return_perturbation:
-        return acc_pert_sph[star.faces].mean(axis=1) if spherical_perturbation else acc_pert
+        if spherical_perturbation:
+            acc_pert_sph[:, 0] *= scale
+            return acc_pert_sph[star.faces].mean(axis=1)
+        else:
+            return acc_pert
     else:
         return None
 
