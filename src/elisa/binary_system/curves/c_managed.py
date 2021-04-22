@@ -124,7 +124,15 @@ def produce_circ_spotty_async_curves_mp(*args):
         initial_system.build_temperature_distribution(components_distance=orbital_position.distance,
                                                       component='all')
 
-        on_pos = bsutils.move_sys_onpos(initial_system, orbital_position, on_copy=True)
+        if initial_system.has_pulsations():
+            on_pos = initial_system.copy()
+            on_pos.flatt_it()
+            on_pos.build_pulsations(components_distance=orbital_position.distance, component='all')
+            on_copy, sys_to_rotate = False, on_pos
+        else:
+            on_copy, sys_to_rotate = True, initial_system
+
+        on_pos = bsutils.move_sys_onpos(sys_to_rotate, orbital_position, on_copy=on_copy)
 
         # if None of components has to be rebuilt, use previously computed radiances and limbdarkening when available
         require_build_test = require_build is not None
