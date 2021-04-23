@@ -65,6 +65,9 @@ class OrbitalPositionContainer(PositionContainer):
         secondary.assign_radii(binary_system.secondary)
         return cls(primary, secondary, position, **binary_system.properties_serializer())
 
+    def is_flat(self):
+        return self.primary.is_flat() and self.secondary.is_flat()
+
     def copy(self):
         return deepcopy(self)
 
@@ -99,7 +102,7 @@ class OrbitalPositionContainer(PositionContainer):
         self.build_mesh(components_distance, component)
         self.build_from_points(components_distance, component)
 
-        self.flatt_it()
+        self.flat_it()
         if build_pulsations:
             self.build_pulsations(components_distance=components_distance, component=component)
         return self

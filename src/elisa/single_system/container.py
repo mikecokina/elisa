@@ -61,6 +61,9 @@ class SinglePositionContainer(PositionContainer):
     def has_pulsations(self):
         return self.star.has_pulsations()
 
+    def is_flat(self):
+        return self.star.is_flat()
+
     def build(self, build_pulsations=True, **kwargs):
         """
         Main method to build binary star system from parameters given on init of SingleStar.
@@ -83,7 +86,7 @@ class SinglePositionContainer(PositionContainer):
         self.build_surface()
         self.build_from_points()
 
-        self.flatt_it()
+        self.flat_it()
         if build_pulsations:
             self.build_pulsations()
         return self

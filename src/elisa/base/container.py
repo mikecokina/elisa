@@ -76,7 +76,11 @@ class PositionContainer(object):
     def build_temperature_distribution(self, *args, **kwargs):
         pass
 
-    def flatt_it(self):
+    @abstractmethod
+    def is_flat(self):
+        pass
+
+    def flat_it(self):
         # naive implementation of idempotence
         if self._flatten:
             return self
@@ -84,7 +88,7 @@ class PositionContainer(object):
         for component in self._components:
             star_container = getattr(self, component)
             if star_container.has_spots() or star_container.has_pulsations():
-                star_container.flatt_it()
+                star_container.flat_it()
 
         self._flatten = True
         return self
@@ -510,10 +514,10 @@ class StarContainer(object):
             list_to_concat[1:] = [list_to_concat[index+1] + lengths[index] for index in self.spots]
         return np.concatenate(list_to_concat, axis=0)
 
-    def flatt_it(self):
+    def flat_it(self):
         """
         Make properties "points", "normals", "faces", "temperatures", "log_g", "rals", "centers", "areas"
-        of container flatt. It means all properties of start and spots are put together.
+        of container flat. It means all properties of start and spots are put together.
 
         :return: self
         """

@@ -126,7 +126,7 @@ def produce_circ_spotty_async_curves_mp(*args):
 
         if initial_system.has_pulsations():
             on_pos = initial_system.copy()
-            on_pos.flatt_it()
+            on_pos.flat_it()
             on_pos.build_pulsations(components_distance=orbital_position.distance, component='all')
             on_copy, sys_to_rotate = False, on_pos
         else:
