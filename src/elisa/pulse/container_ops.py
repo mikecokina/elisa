@@ -66,11 +66,10 @@ def generate_harmonics(star_container, com_x, phase, time):
     return star_container
 
 
-def incorporate_pulsations_to_model(star_container, com_x, phase, scale=1.0):
+def incorporate_pulsations_to_model(star_container, com_x, scale=1.0):
     """
     Function adds perturbation to the surface mesh due to pulsations.
 
-    :param phase: numpy.float; (0, 1)
     :param star_container: base.container.StarContainer;
     :param com_x: float;
     :param scale: numpy.float; scale of the perturbations

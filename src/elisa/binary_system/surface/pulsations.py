@@ -38,5 +38,5 @@ def build_perturbations(system, component, components_distance):
         if star.has_pulsations():
             phase = bsutils.calculate_rotational_phase(system, component)
             com_x = 0 if component == 'primary' else components_distance
-            incorporate_pulsations_to_model(star, com_x=com_x, phase=phase, scale=system.semi_major_axis)
+            incorporate_pulsations_to_model(star, com_x=com_x, scale=system.semi_major_axis)
     return system

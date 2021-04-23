@@ -22,6 +22,6 @@ def build_perturbations(system):
     :return: elisa.single_system.contaier.SinglePositionContainer; instance
     """
     if system.star.has_pulsations():
-        args = system.star, 0.0, system.position.phase, 1.0
+        args = system.star, 0.0, 1.0
         system.star = incorporate_pulsations_to_model(*args)
     return system
