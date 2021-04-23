@@ -5,6 +5,7 @@ from numpy.testing import assert_array_equal, assert_almost_equal, assert_array_
 from elisa import units as u
 from elisa import utils
 from elisa import const
+from elisa import Observer
 
 from elisa.base.star import Star
 from elisa.single_system.system import SingleSystem
@@ -49,6 +50,8 @@ BINARY_SYSTEM = {
     'primary_minimum_time': 0 * u.d,
     'phase_shift': 0.0,
 }
+
+TOL = 1e-3
 
 
 class PulsatingStarInitTestCase(ElisaTestCase):
@@ -151,13 +154,13 @@ class TestPulsationModule(ElisaTestCase):
         super(TestPulsationModule, self).setUp()
         self.base_path = os.path.dirname(os.path.abspath(__file__))
 
-    def prepare_system(self, pulsations):
-        star = Star(pulsations=pulsations, **STAR_PARAMS)
+    def prepare_system(self, pulse_meta):
+        star = Star(pulsations=pulse_meta, **STAR_PARAMS)
         return SingleSystem(star=star, **SYSTEM_PARMAS)
 
-    def prepare_binary(self, pulsations):
-        primary = Star(pulsations=pulsations, **BINARY_STAR)
-        secondary = Star(pulsations=pulsations, **BINARY_STAR)
+    def prepare_binary(self, pulse_meta):
+        primary = Star(pulsations=pulse_meta, **BINARY_STAR)
+        secondary = Star(pulsations=pulse_meta, **BINARY_STAR)
         return BinarySystem(primary=primary, secondary=secondary, **BINARY_SYSTEM)
 
     def test_complex_displacement_amplitudes(self):
@@ -171,7 +174,7 @@ class TestPulsationModule(ElisaTestCase):
             'horizontal_to_radial_amplitude_ratio': in_ratio
         }]
 
-        single = self.prepare_system(pulsations=pulse_meta)
+        single = self.prepare_system(pulse_meta)
         system_container = SingleSystem.build_container(single, phase=0)
 
         r_eq = single.star.equivalent_radius
@@ -202,7 +205,7 @@ class TestPulsationModule(ElisaTestCase):
         }]
         overshoot = 2.0  # this value may change for different modes
 
-        single = self.prepare_system(pulsations=pulse_meta)
+        single = self.prepare_system(pulse_meta)
         system_container = SingleSystem.build_container(single, phase=0.2854)
 
         # displacement
@@ -225,21 +228,86 @@ class TestPulsationModule(ElisaTestCase):
         assert_array_less(acc, overshoot * a_amp)
         assert_array_less(a_amp, acc.max())
 
+        # teff
+        t_ampl = pulse_meta[0]['temperature_amplitude_factor'] * system_container.star.t_eff
+        args = (system_container.star, 1.0, False, True)
+        ts = np.abs(container_ops.temp_perturbation(*args))
+        assert_array_less(ts, overshoot * t_ampl)
+        assert_array_less(t_ampl, ts.max())
+
+    def test_single_pulsating_lc(self):
+        freq = 15
+        pulse_meta = [{
+            'l': 2,
+            'm': 1,
+            'amplitude': 100 * u.m / u.s,
+            'frequency': freq / u.d,
+            'start_phase': 0.0,
+            'horizontal_to_radial_amplitude_ratio': 0.0,
+            'temperature_amplitude_factor': 0.01
+        }]
+
+        single = self.prepare_system(pulse_meta)
+        o = Observer(passband=['Generic.Bessell.V', ], system=single)
+
+        phases = np.linspace(0.0, 1 / (freq * single.rotation_period))
+
+        expected = testutils.load_light_curve("single.pulsating.v.json")
+        expected_phases = expected[0]
+        expected_flux = testutils.normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
+
+        obtained = o.lc(phases=phases)
+        obtained_phases = obtained[0]
+        obtained_flux = testutils.normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
+
+        self.assertTrue(np.all(np.abs(np.round(obtained_phases, 3) - np.round(expected_phases, 3)) < TOL))
+        self.assertTrue(np.all(np.abs(np.round(obtained_flux, 3) - np.round(expected_flux, 3)) < TOL))
+
+        # o.plot.phase_curve()
+
+    def test_single_pulsating_rv(self):
+        freq = 15
+        pulse_meta = [{
+            'l': 1,
+            'm': 1,
+            'amplitude': 1 * u.km / u.s,
+            'frequency': freq / u.d,
+            'start_phase': 0.0,
+            'horizontal_to_radial_amplitude_ratio': 0.0,
+            'temperature_amplitude_factor': 0.01
+        }]
+
+        single = self.prepare_system(pulse_meta)
+        o = Observer(system=single)
+
+        phases = np.linspace(0.0, 1 / (freq * single.period), 50)
+
+        expected = testutils.load_radial_curve("single.pulsating.json")
+        expected_rv = testutils.normalize_single_rv_for_unittests(expected["star"])
+
+        obtained = o.rv(phases=phases, method='radiometric')
+        obtained_rv = testutils.normalize_single_rv_for_unittests(obtained[1]['star'])
+
+        assert_array_equal(np.round(expected_rv, 3), np.round(obtained_rv, 3))
+
+        # o.plot.rv_curve()
+
     def test_kinematics_binary(self):
         amplitude = 1.0
         freq = 1
         omega = const.FULL_ARC * freq
         pulse_meta = [{
-            'l': 10,
+            'l': 4,
             'm': 2,
             'amplitude': amplitude * u.m / u.s,
             'frequency': freq / u.s,
             'start_phase': 0.0,
-            'horizontal_to_radial_amplitude_ratio': 1.0
+            'horizontal_to_radial_amplitude_ratio': 1.0,
+            'temperature_amplitude_factor': 0.01
         }]
         overshoot = 2.0  # this value may change for different modes
 
-        binary = self.prepare_binary(pulsations=pulse_meta)
+        binary = self.prepare_binary(pulse_meta)
         system_container = BinarySystem.build_container(binary, phase=0.6741)
 
         # displacement
@@ -261,3 +329,70 @@ class TestPulsationModule(ElisaTestCase):
         acc = np.abs(container_ops.gravity_acc_perturbation(*args)[:, 0])
         assert_array_less(acc, overshoot * a_amp)
         assert_array_less(a_amp, acc.max())
+
+        # teff
+        t_ampl = pulse_meta[0]['temperature_amplitude_factor'] * system_container.secondary.t_eff
+        args = (system_container.secondary, binary.semi_major_axis, False, True)
+        ts = np.abs(container_ops.temp_perturbation(*args))
+        assert_array_less(ts, overshoot * t_ampl)
+        assert_array_less(t_ampl, ts.max())
+
+    def test_binary_pulsating_lc(self):
+        freq = 15
+        pulse_meta = [{
+            'l': 2,
+            'm': 1,
+            'amplitude': 100 * u.m / u.s,
+            'frequency': freq / u.d,
+            'start_phase': 0.0,
+            'horizontal_to_radial_amplitude_ratio': 0.0,
+            'temperature_amplitude_factor': 0.01
+        }]
+
+        binary = self.prepare_binary(pulse_meta)
+        o = Observer(passband=['Generic.Bessell.V', ], system=binary)
+
+        start_phase = 0.025
+        phases = np.linspace(start_phase, start_phase + 2 / (freq * binary.period), 10)
+
+        expected = testutils.load_light_curve("binary.pulsating.v.json")
+        expected_phases = expected[0]
+        expected_flux = testutils.normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
+
+        obtained = o.lc(phases=phases)
+        obtained_phases = obtained[0]
+        obtained_flux = testutils.normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
+
+        self.assertTrue(np.all(np.abs(np.round(obtained_phases, 3) - np.round(expected_phases, 3)) < TOL))
+        self.assertTrue(np.all(np.abs(np.round(obtained_flux, 3) - np.round(expected_flux, 3)) < TOL))
+
+        # o.plot.phase_curve()
+
+    def test_binary_pulsating_rv(self):
+        freq = 15
+        pulse_meta = [{
+            'l': 1,
+            'm': 1,
+            'amplitude': 5 * u.km / u.s,
+            'frequency': freq / u.d,
+            'start_phase': 0.0,
+            'horizontal_to_radial_amplitude_ratio': 0.0,
+            'temperature_amplitude_factor': 0.01
+        }]
+
+        binary = self.prepare_binary(pulse_meta)
+        o = Observer(system=binary)
+
+        start_phase = 0.05
+        phases = np.linspace(start_phase, start_phase + 2 / (freq * binary.period), 10)
+
+        expected = testutils.load_radial_curve("binary.pulsating.json")
+        expected_rvp, expected_rvs = testutils.normalize_rv_for_unittests(expected["primary"], expected["secondary"])
+
+        obtained = o.rv(phases=phases, method='radiometric')
+        obtained_rvp, obtained_rvs = testutils.normalize_rv_for_unittests(obtained[1]['primary'], obtained[1]['secondary'])
+
+        assert_array_equal(np.round(expected_rvp, 3), np.round(obtained_rvp, 3))
+        assert_array_equal(np.round(expected_rvs, 3), np.round(obtained_rvs, 3))
+
+        # o.plot.rv_curve()

@@ -85,7 +85,7 @@ def incorporate_pulsations_to_model(star_container, com_x, phase, scale=1.0):
     position_perturbation(star_container, com_x=com_x, update_container=True, return_perturbation=False)
     velocity_perturbation(star_container, scale=scale, update_container=True, return_perturbation=False)
     gravity_acc_perturbation(star_container, scale=scale, update_container=True, return_perturbation=False)
-    temp_perturbation(star_container, update_container=True, return_perturbation=False, scale=scale)
+    temp_perturbation(star_container, scale=scale, update_container=True, return_perturbation=False)
 
     # recalculating normals and areas
     set_all_surface_centres(star_container)
@@ -242,11 +242,12 @@ def gravity_acc_perturbation(star, scale, update_container=False, return_perturb
         return None
 
 
-def temp_perturbation(star, update_container=False, return_perturbation=False, scale=1.0):
+def temp_perturbation(star, scale=1.0, update_container=False, return_perturbation=False):
     """
     Calculates temperature perturbation on a surface of a pulsating star.
 
     :param star: base.container.StarContainer;
+    :param scale: numpy.float; scale of the system
     :param update_container: bool; if true, the perturbations are added into surface element temperatures
     :param return_perturbation:
     :return:
