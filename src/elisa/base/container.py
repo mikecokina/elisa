@@ -76,9 +76,8 @@ class PositionContainer(object):
     def build_temperature_distribution(self, *args, **kwargs):
         pass
 
-    @abstractmethod
     def is_flat(self):
-        pass
+        return self._flatten
 
     def flat_it(self):
         # naive implementation of idempotence
