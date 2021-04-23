@@ -175,7 +175,7 @@ def normalize_rv_for_unittests(primary, secondary):
 
 
 def normalize_single_rv_for_unittests(rv):
-    return np.max(np.abs(rv))
+    return rv / np.max(np.abs(rv))
 
 
 def dump_lc_observation_to_json(observation, filename):
