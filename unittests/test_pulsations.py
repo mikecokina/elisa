@@ -1,10 +1,11 @@
 import os
+import os.path as op
 import numpy as np
 from numpy.testing import assert_array_equal, assert_almost_equal, assert_array_less
 
 from elisa import units as u
 from elisa import utils
-from elisa import const
+from elisa import const, settings
 from elisa import Observer
 
 from elisa.base.star import Star
@@ -153,6 +154,11 @@ class TestPulsationModule(ElisaTestCase):
     def setUp(self):
         super(TestPulsationModule, self).setUp()
         self.base_path = os.path.dirname(os.path.abspath(__file__))
+        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
+        settings.configure(**{
+            "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
+            "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
+        })
 
     def prepare_system(self, pulse_meta):
         star = Star(pulsations=pulse_meta, **STAR_PARAMS)
