@@ -14,7 +14,8 @@ def init_bolometric_passband():
     """
     df = pd.DataFrame(
         {settings.PASSBAND_DATAFRAME_THROUGHPUT: [1.0, 1.0],
-         settings.PASSBAND_DATAFRAME_WAVE: [50.0, 2000000.0]})
+         settings.PASSBAND_DATAFRAME_WAVE: [50.0, 2000000.0]}
+    )
     right_bandwidth = sys.float_info.max
     left_bandwidth = 0.0
     bol_passband = PassbandContainer(table=df, passband='bolometric')
