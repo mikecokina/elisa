@@ -225,6 +225,7 @@ class LCFit(object):
         return self.result
 
     def set_result(self, result):
+        result = eval_constraint_in_dict(result)
         self.result = result
         self.flat_result = parameters.deserialize_result(self.result)
 
