@@ -17,6 +17,9 @@ logger = getLogger('analytics.dataset.base')
 
 
 class DataSet(metaclass=ABCMeta):
+    """
+    Abstract class dedicated to store eny synthetic or observational data.
+    """
     TRANSFORM_PROPERTIES_CLS = None
     ID = 1
 
@@ -48,6 +51,13 @@ class DataSet(metaclass=ABCMeta):
 
     @staticmethod
     def check_data_validity(**kwargs):
+        """
+        Function makes sure that the data in the initialized data container are valid (i.e shapes are the same,
+        not containing invalid numbers).
+
+        :param kwargs:
+        :return:
+        """
         if not np.shape(kwargs['x_data']) == np.shape(kwargs['y_data']):
             raise ValueError('`x_data` and `y_data` are not of the same shape.')
         if 'y_err' in kwargs.keys() and not utils.is_empty(kwargs['y_err']):
@@ -100,8 +110,8 @@ class DataSet(metaclass=ABCMeta):
         """
         Function converts DataSet with x_data in time unit to dimensionless phases according to an ephemeris.
 
-        :param period: float;
-        :param t0: float;
+        :param period: float; period according to which fold the data
+        :param t0: float; reference time to consider as phase = 0
         :param centre: float; phase curve will be centered around this phase
         :return:
         """
@@ -112,15 +122,23 @@ class DataSet(metaclass=ABCMeta):
         """
         Function converts DataSet with x_data in dimensionless phases to time according to an ephemeris.
 
-        :param period:
-        :param t0:
-        :param to_unit:
+        :param period: float; period according to which fold the data
+        :param t0: float; reference time to consider as phase = 0
+        :param to_unit: unit to assign the transformed data
         :return:
         """
         self.x_data = self.x_data * period + t0
         self.x_unit = to_unit
 
     def smooth(self, method='central_moving_average', **kwargs):
+        """
+        Convenient function to perform  smoothing of the phased data using various smoothing method.
+
+        :param method: str; central_moving_average - assign the average value to the centre of the bin defined by the
+                                                     their number `n_bins` and radius `radius`
+        :param kwargs: see diferent smoothing methods
+        :return:
+        """
         available_methods = ['central_moving_average']
         if method == 'central_moving_average':
             n_bins = kwargs.get('n_bins', 100)
@@ -196,7 +214,7 @@ class RVData(DataSet):
 
 class LCData(DataSet):
     """
-        Child class of elisa.analytics.dataset.base.Dataset class storing radial velocity measurement.
+        Child class of elisa.analytics.dataset.base.Dataset class storing light curves.
 
         Input parameters:
 
@@ -206,7 +224,9 @@ class LCData(DataSet):
         :param x_unit: astropy.unit.Unit; if `None` or `astropy.unit.dimensionless_unscaled` is given,
                                           the `x_data` are regarded as phases, otherwise if unit is convertible
                                           to days, the `x_data` are regarded to be in JD
-        :param y_unit: astropy.unit.Unit; velocity unit of the observed flux and its errors
+        :param y_unit: astropy.unit.Unit; unit of the observed flux and its errors
+        :param reference_magnitude: in case that hte input data are in magnitudes, the user can provide a reference
+                                    magnitude to use during magnitude to relative flux conversion
     """
     MANDATORY_KWARGS = settings.DATASET_MANDATORY_KWARGS
     OPTIONAL_KWARGS = settings.DATASET_OPTIONAL_KWARGS + ['reference_magnitude', 'passband']
