@@ -20,8 +20,8 @@ def generate_tilt_coordinates(star_container, phase):
     :param phase: float; rotational orbital phase of the star
     :return: Tuple[float, float];
     """
-    phi_corr = phase_correction(phase, star_container.synchronicity)
-    # we presume that all modes have the same tilt
+    phi_corr = phase_correction(phase, star_container.synchronicity) \
+        if not star_container.pulsations[0].tidally_locked else 0.0    # we presume that all modes have the same tilt
     phi = star_container.pulsations[0].mode_axis_phi + phi_corr
     theta = star_container.pulsations[0].mode_axis_theta
     return phi, theta

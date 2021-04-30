@@ -142,3 +142,16 @@ class PulsationModeProperties(SystemProperties):
         :return: float;
         """
         return deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
+
+    @staticmethod
+    def tidally_locked(value):
+        """
+        Defines whether the pulsation mode is fixed with respect to the tidal axis. If false, the mode axis will drift
+        with the stellar surface.
+
+        :param value: bool;
+        :return: bool
+        """
+        if not isinstance(value, bool):
+            raise TypeError('Parameter `tidally_locked` can contain only boolean')
+        return value
