@@ -121,7 +121,7 @@ def move_sys_onpos(init_system, orbital_position, primary_potential=None, second
     Following methods are applied::
 
         system.set_on_position_params()
-        system.flatt_it()
+        system.flat_it()
         system.apply_rotation()
         system.add_secular_velocity()
         system.calculate_face_angles()
@@ -140,7 +140,7 @@ def move_sys_onpos(init_system, orbital_position, primary_potential=None, second
     system.set_on_position_params(orbital_position, primary_potential, secondary_potential)
     if recalculate_velocities:
         system.build_velocities(components_distance=orbital_position.distance, component='all')
-    system.flatt_it()
+    system.flat_it()
     system.apply_rotation()
     system.add_secular_velocity()
     system.calculate_face_angles(line_of_sight=const.LINE_OF_SIGHT)

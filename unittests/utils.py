@@ -167,11 +167,15 @@ def normalize_lc_for_unittests(flux_arr):
     return np.array(flux_arr) / max(flux_arr)
 
 
-def normalize_lv_for_unittests(primary, secondary):
+def normalize_rv_for_unittests(primary, secondary):
     _max = np.max(np.abs([primary, secondary]))
     primary /= _max
     secondary /= _max
     return primary, secondary
+
+
+def normalize_single_rv_for_unittests(rv):
+    return rv / np.max(np.abs(rv))
 
 
 def dump_lc_observation_to_json(observation, filename):
@@ -185,6 +189,12 @@ def dump_lc_observation_to_json(observation, filename):
 def dump_rv_observation_to_json(observation, filename):
     dct = {'phases': list(observation[0]), 'primary': list(observation[1]['primary']),
            'secondary': list(observation[1]['secondary'])}
+    with open(filename, 'w') as outfile:
+        json.dump(dct, outfile, indent=4)
+
+
+def dump_single_rv_observation_to_json(observation, filename):
+    dct = {'phases': list(observation[0]), 'star': list(observation[1]['star'])}
     with open(filename, 'w') as outfile:
         json.dump(dct, outfile, indent=4)
 

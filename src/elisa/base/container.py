@@ -76,7 +76,10 @@ class PositionContainer(object):
     def build_temperature_distribution(self, *args, **kwargs):
         pass
 
-    def flatt_it(self):
+    def is_flat(self):
+        return self._flatten
+
+    def flat_it(self):
         # naive implementation of idempotence
         if self._flatten:
             return self
@@ -84,7 +87,7 @@ class PositionContainer(object):
         for component in self._components:
             star_container = getattr(self, component)
             if star_container.has_spots() or star_container.has_pulsations():
-                star_container.flatt_it()
+                star_container.flat_it()
 
         self._flatten = True
         return self
@@ -306,7 +309,6 @@ class StarContainer(object):
                  temperatures=None,
                  log_g=None,
                  coverage=None,
-                 rals=None,
                  face_centres=None,
                  metallicity=None,
                  areas=None,
@@ -324,7 +326,6 @@ class StarContainer(object):
         self.log_g = log_g
         self.coverage = coverage
         self.indices = indices
-        self.rals = rals
         self.face_centres = face_centres
         self.metallicity = metallicity
         self.areas = areas
@@ -454,7 +455,7 @@ class StarContainer(object):
         Calculates areas for all faces on the surface including spots and assigns values to its corresponding variables.
         """
         self.areas = self.calculate_areas()
-        if self.has_spots():
+        if self.has_spots() and not self.is_flat():
             for spot_index, spot_instance in self.spots.items():
                 spot_instance.areas = spot_instance.calculate_areas()
 
@@ -512,10 +513,10 @@ class StarContainer(object):
             list_to_concat[1:] = [list_to_concat[index+1] + lengths[index] for index in self.spots]
         return np.concatenate(list_to_concat, axis=0)
 
-    def flatt_it(self):
+    def flat_it(self):
         """
         Make properties "points", "normals", "faces", "temperatures", "log_g", "rals", "centers", "areas"
-        of container flatt. It means all properties of start and spots are put together.
+        of container flat. It means all properties of start and spots are put together.
 
         :return: self
         """

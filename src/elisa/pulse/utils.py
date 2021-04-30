@@ -2,15 +2,14 @@ import numpy as np
 from .. import const, utils
 
 
-def phase_correction(phase):
+def phase_correction(phase, synchronicity):
     """
     Calculate phase correction for mode axis drift.
 
     :param phase: float; rotation phase of the star
     :return: float;
     """
-    # return (synchronicity - 1) * phase * const.FULL_ARC if synchronicity is not np.nan else phase * const.FULL_ARC
-    return phase * const.FULL_ARC
+    return (synchronicity - 1) * phase * const.FULL_ARC if synchronicity is not np.nan else phase * const.FULL_ARC
 
 
 def generate_tilt_coordinates(star_container, phase):
@@ -21,7 +20,7 @@ def generate_tilt_coordinates(star_container, phase):
     :param phase: float; rotational orbital phase of the star
     :return: Tuple[float, float];
     """
-    phi_corr = phase_correction(phase)
+    phi_corr = phase_correction(phase, star_container.synchronicity)
     # we presume that all modes have the same tilt
     phi = star_container.pulsations[0].mode_axis_phi + phi_corr
     theta = star_container.pulsations[0].mode_axis_theta
@@ -38,6 +37,16 @@ def generate_time_exponential(mode, time):
     """
     exponent = mode.angular_frequency * time + mode.start_phase
     return np.exp(complex(0, -exponent))
+
+
+def generate_phase_shift(shift):
+    """
+    Returns factor that can shift complex displacement by an arbitrary angular phase `shift`.
+
+    :param shift: float; rad
+    :return: numpy.complex;
+    """
+    return np.exp(complex(0, -shift))
 
 
 def tilt_mode_coordinates(points, phi, theta):

@@ -435,7 +435,7 @@ class BinarySystem(System):
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self, position)
         orbital_position_container.build()
 
-        logger.info('Orbital position container was successfully built at photometric phase {phase:.2f}.')
+        logger.info(f'Orbital position container was successfully built at photometric phase {phase:.2f}.')
         return orbital_position_container
 
     def to_json(self):
@@ -1172,6 +1172,7 @@ class BinarySystem(System):
         """
         fn_arr = (self._compute_circular_synchronous_lightcurve,
                   self._compute_circular_spotty_asynchronous_lightcurve,
+                  self._compute_circular_pulsating_lightcurve,
                   self._compute_eccentric_spotty_lightcurve,
                   self._compute_eccentric_lightcurve)
         curve_fn = c_router.resolve_curve_method(self, fn_arr)
@@ -1183,6 +1184,9 @@ class BinarySystem(System):
 
     def _compute_circular_spotty_asynchronous_lightcurve(self, **kwargs):
         return lc.compute_circular_spotty_asynchronous_lightcurve(self, **kwargs)
+
+    def _compute_circular_pulsating_lightcurve(self, **kwargs):
+        return lc.compute_circular_pulsating_lightcurve(self, **kwargs)
 
     def _compute_eccentric_spotty_lightcurve(self, **kwargs):
         return lc.compute_eccentric_spotty_lightcurve(self, **kwargs)
@@ -1197,6 +1201,7 @@ class BinarySystem(System):
         if kwargs['method'] == 'radiometric':
             fn_arr = (self._compute_circular_synchronous_rv_curve,
                       self._compute_circular_spotty_asynchronous_rv_curve,
+                      self._compute_circular_pulsating_rv_curve,
                       self._compute_eccentric_spotty_rv_curve,
                       self._compute_eccentric_rv_curve_no_spots)
             curve_fn = c_router.resolve_curve_method(self, fn_arr)
@@ -1209,6 +1214,9 @@ class BinarySystem(System):
 
     def _compute_circular_spotty_asynchronous_rv_curve(self, **kwargs):
         return rv.compute_circular_spotty_asynchronous_rv_curve(self, **kwargs)
+
+    def _compute_circular_pulsating_rv_curve(self, **kwargs):
+        return rv.compute_circular_pulsating_rv_curve(self, **kwargs)
 
     def _compute_eccentric_spotty_rv_curve(self, **kwargs):
         return rv.compute_eccentric_spotty_rv_curve(self, **kwargs)

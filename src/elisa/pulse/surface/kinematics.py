@@ -1,6 +1,7 @@
 import numpy as np
 
 from ... import settings
+from .. utils import generate_phase_shift
 
 
 def calculate_horizontal_displacements(mode, thetas, harmonics_derivatives, radius, scale):
@@ -13,6 +14,8 @@ def calculate_horizontal_displacements(mode, thetas, harmonics_derivatives, radi
     :param radius:
     :return:
     """
+    if mode.l == 0:
+        return np.zeros(thetas.shape[0]), np.zeros(thetas.shape[0])
     # TODO: remove this sin
     sin_theta = np.sin(thetas)
     # lambda - distance along phi
@@ -84,7 +87,7 @@ def calculate_mode_derivatives(displacement, angular_frequency):
     :param angular_frequency: np.float;
     :return: numpy.array;
     """
-    return - angular_frequency * np.imag(displacement)
+    return angular_frequency * np.imag(displacement)
 
 
 # _______________________acceleration coordinates_______________________
@@ -97,3 +100,19 @@ def calculate_mode_second_derivatives(displacement, angular_frequency):
     :return: numpy.array;
     """
     return - angular_frequency**2 * np.real(displacement)
+
+
+# _______________________temperature_perturbation_______________________
+def calculate_temperature_pert_factor(mode, scale):
+    """
+    Returns perturbation factor (delta T = T_factor * T) for surface temperature based on a treatment in Townsend 2003.
+
+    :param mode: PulsationMode;
+    :param scale: float; system scale
+    :return: numpy.array;
+    """
+    hrm_shift = np.real(generate_phase_shift(mode.temperature_phase_lag) * mode.complex_displacement[:, 0])
+    return mode.temperature_amplitude_factor * hrm_shift * scale / mode.radial_amplitude
+
+
+

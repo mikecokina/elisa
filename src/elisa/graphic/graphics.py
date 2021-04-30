@@ -624,7 +624,7 @@ def binary_surface_anim(**kwargs):
                                 triangles=_faces[ii][frame_number],
                                 antialiased=True, shade=False, color=_clr[ii])
             if kwargs.get('colormap', False):
-                p.set_cmap(cmap=cm.jet)
+                p.set_cmap(cmap=CMAPS[kwargs.get('colormap', cm.jet)])
                 p.set_array(_cmaps[ii][frame_number])
 
             ax.text(-kwargs['axis_lim'], 0.9*kwargs['axis_lim'], 0.8*kwargs['axis_lim'],
@@ -676,6 +676,7 @@ def binary_surface_anim(**kwargs):
             plot[1].set_array(cmaps[1][0])
 
     args = (points, faces, clr, cmaps, plot)
+    plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     ani = animation.FuncAnimation(fig, update_plot, kwargs['n_frames'], fargs=args, interval=20)
     plt.show() if not kwargs['savepath'] else ani.save(kwargs['savepath'], writer='ffmpeg', fps=20, dpi=300)
 
@@ -698,7 +699,7 @@ def single_surface_anim(**kwargs):
                                 triangles=_faces[ii][frame_number],
                                 antialiased=True, shade=False, color=_clr[ii])
             if kwargs.get('colormap', False):
-                p.set_cmap(cmap=cm.jet)
+                p.set_cmap(cmap=CMAPS[kwargs.get('colormap', cm.jet)])
                 p.set_array(_cmaps[ii][frame_number])
 
             ax.text(-kwargs['axis_lim'], 0.9 * kwargs['axis_lim'], 0.8 * kwargs['axis_lim'],
@@ -729,6 +730,7 @@ def single_surface_anim(**kwargs):
         plot[0].set_array(cmaps[0][0])
 
     args = (points, faces, clr, cmaps, plot)
+    plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     ani = animation.FuncAnimation(fig, update_plot, kwargs['n_frames'], fargs=args, interval=20)
     plt.show() if not kwargs['savepath'] else ani.save(kwargs['savepath'], writer='ffmpeg', fps=20, dpi=300)
 

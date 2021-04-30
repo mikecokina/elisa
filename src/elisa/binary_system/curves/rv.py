@@ -96,6 +96,26 @@ def compute_circular_spotty_asynchronous_rv_curve(binary, **kwargs):
     return c_router.produce_circular_spotty_async_curves(binary, rv_point.compute_rv_at_pos, rv_labels, **kwargs)
 
 
+def compute_circular_pulsating_rv_curve(binary, **kwargs):
+    """
+    Function returns rv curve of pulsating systems with circular orbits.
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * ** passband ** - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** - float
+        * ** right_bandwidth ** - float
+        * ** atlas ** - str
+    :return: Dict; rv for each component
+    """
+    initial_system = c_router.prep_initial_system(binary, **dict(build_pulsations=False))
+
+    rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
+    args = (binary, initial_system, rv_point.compute_rv_at_pos, rv_labels)
+    return c_router.produce_circular_pulsating_curves(*args, **kwargs)
+
+
 def compute_eccentric_rv_curve_no_spots(binary, **kwargs):
     """
     General function for generating rv curves of binaries with eccentric orbit and no spots.

@@ -19,7 +19,7 @@ def move_sys_onpos(system, position, on_copy=True):
     Following methods are applied::
 
         system.set_on_position_params()
-        system.flatt_it()
+        system.flat_it()
         system.apply_rotation()
         system.apply_darkside_filter()
 
@@ -31,7 +31,7 @@ def move_sys_onpos(system, position, on_copy=True):
     if on_copy:
         system = system.copy()
     system.set_on_position_params(position)
-    system.flatt_it()
+    system.flat_it()
     system.apply_rotation()
     system.add_secular_velocity()
     system.calculate_face_angles(line_of_sight=const.LINE_OF_SIGHT)

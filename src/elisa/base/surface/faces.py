@@ -131,7 +131,7 @@ def set_all_surface_centres(star):
     Calculates all surface centres for given body(including spots) and assign to object as `face_centers` property
     """
     star.face_centres = calculate_surface_centres(star.points, star.faces)
-    if star.has_spots():
+    if star.has_spots() and not star.is_flat():
         for spot_index, spot_instance in star.spots.items():
             spot_instance.face_centres = calculate_surface_centres(spot_instance.points, spot_instance.faces)
     return star

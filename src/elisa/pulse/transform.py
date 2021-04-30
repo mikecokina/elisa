@@ -1,7 +1,7 @@
 import numpy as np
 
 from .. import const as c, units as u
-from .. base.transform import SystemProperties
+from .. base.transform import SystemProperties, quantity_transform, deg_transform, WHEN_FLOAT64
 
 
 class PulsationModeProperties(SystemProperties):
@@ -81,9 +81,7 @@ class PulsationModeProperties(SystemProperties):
         :param value: float;
         :return: float;
         """
-        if not isinstance(value, (int, np.int, float, np.float)):
-            raise TypeError('Start_phase is not (numpy.)int or (numpy.)float')
-        return value
+        return quantity_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
 
     @staticmethod
     def mode_axis_theta(value):
@@ -94,13 +92,7 @@ class PulsationModeProperties(SystemProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.units.units.Quantity]
         :return: float;
         """
-        if isinstance(value, u.Quantity):
-            retval = np.float64(value.to(u.ARC_UNIT))
-        elif isinstance(value, (int, np.int, float, np.float)):
-            retval = np.float64((value*u.deg).to(u.ARC_UNIT))
-        else:
-            raise TypeError('Input of variable `mode_axis_theta` is not (numpy.)int or '
-                            '(numpy.)float nor astropy.unit.quantity.u.Quantity instance.')
+        retval = deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
         if not 0 <= retval < c.PI:
             raise ValueError(f'Value of `mode_axis_theta`: {retval} is outside bounds (0, pi).')
 
@@ -115,15 +107,7 @@ class PulsationModeProperties(SystemProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float;
         """
-        if isinstance(value, u.Quantity):
-            retval = np.float64(value.to(u.ARC_UNIT))
-        elif isinstance(value, (int, np.int, float, np.float)):
-            retval = np.float64((value * u.deg).to(u.ARC_UNIT))
-        else:
-            raise TypeError('Input of variable `mode_axis_phi` is not (numpy.)int or '
-                            '(numpy.)float nor astropy.unit.quantity.Quantity instance.')
-
-        return retval
+        return deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
 
     @staticmethod
     def temperature_perturbation_phase_shift(value):
@@ -148,3 +132,13 @@ class PulsationModeProperties(SystemProperties):
         if not isinstance(value, (int, np.int, float, np.float)):
             raise TypeError('Parameter is not is not (numpy.)int or (numpy.)float')
         return value
+
+    @staticmethod
+    def temperature_phase_lag(value):
+        """
+        Returns phase lag between displacement and temperature perturbation.
+
+        :param value: float;
+        :return: float;
+        """
+        return deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)

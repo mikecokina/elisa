@@ -298,8 +298,6 @@ def compute_all_surface_areas(system, component):
 def build_faces_orientation(system, components_distance, component="all"):
     """
     Compute face orientation (normals) for each face.
-    If pulsations are present, than calculate renormalized associated Legendree polynomials (rALS)
-    for each pulsation mode.
 
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param component: str; `primary` or `secondary`
@@ -340,7 +338,7 @@ def set_all_normals(star_container, com):
     else:
         star_container.normals = calculate_normals(points, faces, cntrs, com)
 
-    if star_container.has_spots():
+    if star_container.has_spots() and not star_container.is_flat():
         for spot_index in star_container.spots:
             star_container.spots[spot_index].normals = calculate_normals(star_container.spots[spot_index].points,
                                                                          star_container.spots[spot_index].faces,
@@ -376,13 +374,13 @@ def build_velocities(system, components_distance, component='all'):
         omega = star.synchronicity * omega_orb
 
         # orbital velocity + rotational velocity
-        p_velocities = velocities[_component] + np.cross(points, omega, axisa=1)
+        p_velocities = velocities[_component] + np.cross(omega[None, :], points, axisa=1)
         star.velocities = np.mean(p_velocities[star.faces], axis=1)
 
         if star.has_spots():
             for spot_inst in star.spots.values():
                 points = (spot_inst.points - com_x[_component][None, :]) * system.semi_major_axis
-                p_velocities = velocities[_component] + np.cross(points, omega, axisa=1)
+                p_velocities = velocities[_component] + np.cross(omega[None, :], points, axisa=1)
                 spot_inst.velocities = np.mean(p_velocities[spot_inst.faces], axis=1)
 
     return system

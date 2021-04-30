@@ -3,10 +3,12 @@ import numpy as np
 from copy import copy
 from .. container import OrbitalPositionContainer
 from .. import utils as butils, dynamic
-from ... import umpy as up
 from ... const import Position
 from ... logger import getLogger
 from ... graphic import graphics
+from ... base.graphics import plot
+from .. curves import utils as crv_utils
+from ... observer.observer import Observer
 
 logger = getLogger('binary_system.graphic.animation')
 
@@ -18,7 +20,7 @@ class Animation(object):
         self.binary = instance
 
     def orbital_motion(self, start_phase=-0.5, stop_phase=0.5, phase_step=0.01, units='cgs', scale='linear',
-                       colormap=None, savepath=None, separate_colormaps=None):
+                       colormap=None, savepath=None, separate_colormaps=None, subtract_equilibrium=False):
         """
         Function creates animation of the orbital motion.
 
@@ -30,6 +32,7 @@ class Animation(object):
         :param colormap: str; `temperature`, `gravity_acceleration`, `velocity`, `radial_velocity` or None
         :param savepath: str; animation will be stored to `savepath`
         :param separate_colormaps: bool; if True, figure will contain separate colormap for each component
+        :param subtract_equilibrium: bool; equilibrium part of the quantity is removed (for pulsations)
         """
         anim_kwargs = dict()
 
@@ -57,7 +60,6 @@ class Animation(object):
         potentials = self.binary.correct_potentials(phases, component="all", iterations=2)
 
         logger.info('calculating surface parameters (points, faces, colormap)')
-        mult = np.array([-1, -1, 1.0])[None, :]
         for pos_idx, position in enumerate(orbital_motion):
             from_this = dict(binary_system=self.binary, position=self.defpos)
             on_pos = OrbitalPositionContainer.from_binary_system(**from_this)
@@ -66,6 +68,20 @@ class Animation(object):
             on_pos.set_on_position_params(position, potentials["primary"][pos_idx],
                                           potentials["secondary"][pos_idx])
             on_pos.build(components_distance=position.distance)
+
+            # calculating radiances
+            o = Observer(passband=['bolometric', ], system=self.binary)
+            atm_kwargs = dict(
+                passband=o.passband,
+                left_bandwidth=o.left_bandwidth,
+                right_bandwidth=o.right_bandwidth,
+            )
+
+            crv_utils.prep_surface_params(
+                system=on_pos, write_to_containers=True, **atm_kwargs
+            )
+
+            com = {'primary': 0.0, 'secondary': position.distance}
             distances_to_com = {'primary': position.distance * self.binary.mass_ratio / (1 + self.binary.mass_ratio),
                                 'secondary': position.distance / (1 + self.binary.mass_ratio)}
             on_pos.primary.points[:, 0] -= distances_to_com['primary']
@@ -76,28 +92,12 @@ class Animation(object):
 
             for component in components:
                 star = getattr(on_pos, component)
-                points[component][pos_idx], faces[component][pos_idx] = mult * star.points, star.faces
+                points[component][pos_idx], faces[component][pos_idx] = star.points, star.faces
 
-                if colormap == 'gravity_acceleration':
-                    log_g = star.log_g
-                    value = log_g if units == 'SI' else log_g + 2
-                    cmap[component][pos_idx] = value if scale == 'log' else up.power(10, value)
-
-                elif colormap == 'temperature':
-                    temperatures = star.temperatures
-                    cmap[component][pos_idx] = temperatures if scale == 'linear' else up.log10(temperatures)
-
-                elif colormap == 'velocity':
-                    velocities = np.linalg.norm(getattr(star, 'velocities'), axis=1)
-                    velocities = velocities / 1000.0 if units == 'SI' else velocities * 1000.0
-                    cmap[component][pos_idx] = velocities if scale == 'linear' else up.log10(velocities)
-
-                elif colormap == 'radial_velocity':
-                    velocities = getattr(star, 'velocities')[:, 0]
-                    velocities = velocities / 1000.0 if units == 'SI' else velocities * 1000.0
-                    cmap[component][pos_idx] = velocities
-                    if scale == 'log':
-                        raise Warning("`log` scale is not allowed for radial velocity colormap.")
+                args = (colormap, star, position.phase, com[component], self.binary.semi_major_axis,
+                        self.binary.inclination, on_pos.position)
+                kwargs = dict(scale=scale, unit='default', subtract_equilibrium=subtract_equilibrium)
+                cmap[component][pos_idx] = plot.add_colormap_to_plt_kwargs(*args, **kwargs)
 
         anim_kwargs.update({
             'morphology': self.binary.morphology,

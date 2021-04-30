@@ -6,6 +6,7 @@ from ... const import Position
 from ... graphic import graphics
 from .. container import SinglePositionContainer
 from .. import utils as sutils
+from ... base.graphics import plot
 
 logger = getLogger('single_system.graphic.animation')
 
@@ -17,7 +18,7 @@ class Animation(object):
         self.single = instance
 
     def rotational_motion(self, start_phase=-0.5, stop_phase=0.5, phase_step=0.01, units='cgs', scale='linear',
-                          colormap=None, savepath=None):
+                          colormap=None, savepath=None, subtract_equilibrium=False):
         """
         Function creates animation of the rotational motion.
 
@@ -28,6 +29,7 @@ class Animation(object):
         :param scale: str; `linear` or `log`, scale of the colormap
         :param colormap: str; `temperature`, `gravity_acceleration`, `velocity`, `radial_velocity` or None
         :param savepath: str; animation will be stored to `savepath`
+        :param subtract_equilibrium: bool; equilibrium part of the quantity is removed (for pulsations)
         """
         anim_kwargs = dict()
 
@@ -48,7 +50,8 @@ class Animation(object):
         for pos_idx, position in enumerate(orbital_motion):
             from_this = dict(single_system=self.single, position=self.defpos)
             on_pos = SinglePositionContainer.from_single_system(**from_this)
-            on_pos.time = 86400 * self.single.rotation_period * position.phase
+            on_pos.set_on_position_params(position)
+            on_pos.set_time()
             on_pos.build()
             on_pos = sutils.move_sys_onpos(on_pos, position, on_copy=False)
 
@@ -56,29 +59,9 @@ class Animation(object):
             points.append(mult * star.points)
             faces.append(star.faces)
 
-            if colormap == 'gravity_acceleration':
-                log_g = star.log_g
-                value = log_g if units == 'SI' else log_g + 2
-                val_to_append = value if scale == 'log' else np.power(10, value)
-                cmap.append(val_to_append)
-
-            elif colormap == 'temperature':
-                temperatures = star.temperatures
-                val_to_append = temperatures if scale == 'linear' else np.log10(temperatures)
-                cmap.append(val_to_append)
-
-            elif colormap == 'velocity':
-                velocities = np.linalg.norm(getattr(star, 'velocities'), axis=1)
-                velocities = velocities / 1000.0 if units == 'SI' else velocities * 1000.0
-                val_to_append = velocities if scale == 'linear' else np.log10(velocities)
-                cmap.append(val_to_append)
-
-            elif colormap == 'radial_velocity':
-                velocities = getattr(star, 'velocities')[:, 0]
-                velocities = velocities / 1000.0 if units == 'SI' else velocities * 1000.0
-                cmap.append(velocities)
-                if scale == 'log':
-                    raise Warning("`log` scale is not allowed for radial velocity colormap.")
+            args = (colormap, star, position.phase, 0.0, 1.0, self.single.inclination, on_pos.position)
+            kwargs = dict(scale=scale, unit='default', subtract_equilibrium=subtract_equilibrium)
+            cmap.append(plot.add_colormap_to_plt_kwargs(*args, **kwargs))
 
         anim_kwargs.update({
             'start_phase': start_phase,

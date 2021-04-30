@@ -151,8 +151,8 @@ class Plot(object):
 
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
         orbital_position_container.build_mesh(components_distance=components_distance)
-        orbital_position_container.build_pulsations(component=components_to_plot,
-                                                    components_distance=components_distance)
+        orbital_position_container.build_perturbations(component=components_to_plot,
+                                                       components_distance=components_distance)
 
         if components_to_plot in ['primary', 'both']:
             binary_mesh_kwargs.update({
@@ -283,9 +283,10 @@ class Plot(object):
         
         orbital_position_container.set_on_position_params(orbital_position, potentials["primary"][0],
                                                           potentials["secondary"][0])
+
+        orbital_position_container.set_time()
         orbital_position_container.build(components_distance=components_distance, components='both',
                                          build_pulsations=True)
-
         components = butils.component_to_list(components_to_plot)
 
         com = {'primary': 0.0, 'secondary': components_distance}
@@ -333,7 +334,7 @@ class Plot(object):
 
             if normals:
                 surface_kwargs.update({
-                    f'{component}_centres': star.face_centres[face_mask],
+                    f'{component}_centres': star.face_centres[face_mask] - pos_correction[None, :],
                     f'{component}_arrows': star.normals[face_mask]
                 })
 

@@ -53,7 +53,8 @@ class OrbitalPositionContainer(PositionContainer):
         self.rotate_property(self.secondary, 'com')
 
     def set_time(self):
-        return 86400 * self.period * self.position.phase
+        setattr(self, 'time', 86400 * self.period * self.position.phase)
+        return getattr(self, 'time')
 
     @classmethod
     def from_binary_system(cls, binary_system, position):
@@ -98,11 +99,14 @@ class OrbitalPositionContainer(PositionContainer):
         self.build_mesh(components_distance, component)
         self.build_from_points(components_distance, component)
 
-        self.flatt_it()
-        self.build_harmonics(component, components_distance)
+        self.flat_it()
         if build_pulsations:
-            self.build_pulsations(component, components_distance)
+            self.build_pulsations(components_distance=components_distance, component=component)
         return self
+
+    def build_pulsations(self, components_distance=None, component="all"):
+        self.build_harmonics(components_distance=components_distance, component=component)
+        self.build_perturbations(components_distance=components_distance, component=component)
 
     def build_from_points(self, components_distance=None, component="all"):
         """
@@ -179,15 +183,11 @@ class OrbitalPositionContainer(PositionContainer):
         components_distance = self._components_distance(components_distance)
         return temperature.build_temperature_distribution(self, components_distance, component)
 
-    # TODO: soon to be deprecated
-    def build_temperature_perturbations(self, components_distance, component):
-        return temperature.build_temperature_perturbations(self, components_distance, component)
-
     def build_harmonics(self, component, components_distance):
         return pulsations.build_harmonics(self, component, components_distance)
 
-    def build_pulsations(self, component, components_distance):
-        return pulsations.build_pulsations(self, component, components_distance)
+    def build_perturbations(self, component, components_distance):
+        return pulsations.build_perturbations(self, component, components_distance)
 
     def _components_distance(self, components_distance):
         return components_distance if components_distance is not None else self.position.distance

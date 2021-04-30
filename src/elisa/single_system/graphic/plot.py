@@ -73,7 +73,7 @@ class Plot(object):
 
         position_container = SinglePositionContainer.from_single_system(self.single, self.defpos)
         position_container.build_mesh()
-        position_container.build_pulsations()
+        position_container.build_perturbations()
 
         mesh = position_container.star.get_flatten_parameter('points')
         denominator = (1 * axis_unit.to(u.DISTANCE_UNIT))
@@ -178,6 +178,7 @@ class Plot(object):
 
         position_container = SinglePositionContainer.from_single_system(self.single, self.defpos)
         position_container.set_on_position_params(single_position)
+        position_container.set_time()
         position_container.build(phase=phase, build_pulsations=True)
         correct_face_orientation(position_container.star, com=0)
 
