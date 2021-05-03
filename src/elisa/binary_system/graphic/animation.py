@@ -20,7 +20,8 @@ class Animation(object):
         self.binary = instance
 
     def orbital_motion(self, start_phase=-0.5, stop_phase=0.5, phase_step=0.01, units='cgs', scale='linear',
-                       colormap=None, savepath=None, separate_colormaps=None, subtract_equilibrium=False):
+                       colormap=None, savepath=None, separate_colormaps=None, subtract_equilibrium=False,
+                       plot_axis=True):
         """
         Function creates animation of the orbital motion.
 
@@ -33,6 +34,7 @@ class Animation(object):
         :param savepath: str; animation will be stored to `savepath`
         :param separate_colormaps: bool; if True, figure will contain separate colormap for each component
         :param subtract_equilibrium: bool; equilibrium part of the quantity is removed (for pulsations)
+        :param plot_axis: bool; if False, axis will be hidden
         """
         anim_kwargs = dict()
 
@@ -85,7 +87,7 @@ class Animation(object):
             distances_to_com = {'primary': position.distance * self.binary.mass_ratio / (1 + self.binary.mass_ratio),
                                 'secondary': position.distance / (1 + self.binary.mass_ratio)}
             on_pos.primary.points[:, 0] -= distances_to_com['primary']
-            on_pos.secondary.points[:, 0] -= distances_to_com['secondary']
+            on_pos.secondary.points[:, 0] -= distances_to_com['primary']
 
             on_pos = butils.move_sys_onpos(on_pos, position, potentials["primary"][pos_idx],
                                            potentials["secondary"][pos_idx], on_copy=False)
@@ -111,10 +113,11 @@ class Animation(object):
             'faces_secondary': faces['secondary'],
             'primary_cmap': cmap['primary'],
             'secondary_cmap': cmap['secondary'],
-            'axis_lim': 0.7,
+            'axis_lim': 1.3*np.max((distances_to_com['primary'], distances_to_com['secondary'])),
             'savepath': savepath,
             'colormap': colormap,
             "separate_colormaps": separate_colormaps,
+            "plot_axis": plot_axis
         })
         logger.debug('Passing parameters to graphics module')
         graphics.binary_surface_anim(**anim_kwargs)

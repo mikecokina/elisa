@@ -630,6 +630,9 @@ def binary_surface_anim(**kwargs):
             ax.text(-kwargs['axis_lim'], 0.9*kwargs['axis_lim'], 0.8*kwargs['axis_lim'],
                     f"{kwargs['phases'][frame_number]%1.0:.2f}")
 
+            if not kwargs['plot_axis']:
+                ax.set_axis_off()
+
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection='3d')
     ax.set_box_aspect([1, 1, 1])
