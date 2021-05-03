@@ -189,7 +189,7 @@ class LCPlot(object):
         self.fit = instance
         self.data = data
 
-    def model(self, start_phase=-0.6, stop_phase=0.6, number_of_points=300, discretization=3,
+    def model(self, start_phase=-0.6, stop_phase=0.6, number_of_points=300, discretization=5,
               separation=0.1, data_frac_to_normalize=0.1, normalization_kind='maximum', plot_legend=True, loc=1,
               return_figure_instance=False, **kwargs):
         """
