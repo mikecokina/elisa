@@ -111,7 +111,9 @@ def calculate_temperature_pert_factor(mode, scale):
     :param scale: float; system scale
     :return: numpy.array;
     """
-    hrm_shift = np.real(generate_phase_shift(mode.temperature_phase_lag) * mode.complex_displacement[:, 0])
+    hrm_shift = np.real(
+        generate_phase_shift(mode.temperature_perturbation_phase_shift) * mode.complex_displacement[:, 0]
+    )
     return mode.temperature_amplitude_factor * hrm_shift * scale / mode.radial_amplitude
 
 

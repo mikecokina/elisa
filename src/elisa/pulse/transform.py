@@ -117,9 +117,7 @@ class PulsationModeProperties(SystemProperties):
         :param value: float; phase shift in radians
         :return:
         """
-        if not isinstance(value, (int, np.int, float, np.float)):
-            raise TypeError('Start_phase is not (numpy.)int or (numpy.)float')
-        return value
+        return deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
 
     @staticmethod
     def horizontal_to_radial_amplitude_ratio(value):
@@ -132,16 +130,6 @@ class PulsationModeProperties(SystemProperties):
         if not isinstance(value, (int, np.int, float, np.float)):
             raise TypeError('Parameter is not is not (numpy.)int or (numpy.)float')
         return value
-
-    @staticmethod
-    def temperature_phase_lag(value):
-        """
-        Returns phase lag between displacement and temperature perturbation.
-
-        :param value: float;
-        :return: float;
-        """
-        return deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
 
     @staticmethod
     def tidally_locked(value):
