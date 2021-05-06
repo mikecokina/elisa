@@ -172,7 +172,7 @@ class TestPulsationModule(ElisaTestCase):
     def test_complex_displacement_amplitudes(self):
         in_ratio = 2
         pulse_meta = [{
-            'l': 5,
+            'l': 10,
             'm': 2,
             'amplitude': 1 * u.m / u.s,
             'frequency': 1 / u.d,
