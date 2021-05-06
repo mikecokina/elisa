@@ -627,6 +627,9 @@ def binary_surface_anim(**kwargs):
                 p.set_cmap(cmap=CMAPS[kwargs.get('colormap', cm.jet)])
                 p.set_array(_cmaps[ii][frame_number])
 
+            if kwargs['edges']:
+                p.set_edgecolor('black')
+
             ax.text(-kwargs['axis_lim'], 0.9*kwargs['axis_lim'], 0.8*kwargs['axis_lim'],
                     f"{kwargs['phases'][frame_number]%1.0:.2f}")
 
@@ -678,6 +681,13 @@ def binary_surface_anim(**kwargs):
             plot[0].set_array(cmaps[0][0])
             plot[1].set_array(cmaps[1][0])
 
+    if kwargs.get('edges', False):
+        if kwargs['separate_colormaps']:
+            plot[0].set_edgecolor('black')
+            plot[1].set_edgecolor('black')
+        else:
+            plot[0].set_edgecolor('black')
+
     args = (points, faces, clr, cmaps, plot)
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     ani = animation.FuncAnimation(fig, update_plot, kwargs['n_frames'], fargs=args, interval=20)
@@ -704,6 +714,10 @@ def single_surface_anim(**kwargs):
             if kwargs.get('colormap', False):
                 p.set_cmap(cmap=CMAPS[kwargs.get('colormap', cm.jet)])
                 p.set_array(_cmaps[ii][frame_number])
+                p.set_clim(cmap_limits[0], cmap_limits[1])
+
+            if kwargs['edges']:
+                p.set_edgecolor('black')
 
             ax.text(-kwargs['axis_lim'], 0.9 * kwargs['axis_lim'], 0.8 * kwargs['axis_lim'],
                     f"{kwargs['phases'][frame_number]%1.0:.2f}")
@@ -720,7 +734,7 @@ def single_surface_anim(**kwargs):
 
     clr = ['g', 'r']
     cmaps = []
-
+    cmap_limits = (np.min(kwargs['cmap']), np.max(kwargs['cmap']))
     points = [kwargs['points']]
     faces = [kwargs['faces']]
 

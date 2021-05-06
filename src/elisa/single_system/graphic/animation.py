@@ -7,6 +7,9 @@ from ... graphic import graphics
 from .. container import SinglePositionContainer
 from .. import utils as sutils
 from ... base.graphics import plot
+from .. curves import utils as crv_utils
+from ... observer.observer import Observer
+
 
 logger = getLogger('single_system.graphic.animation')
 
@@ -18,7 +21,7 @@ class Animation(object):
         self.single = instance
 
     def rotational_motion(self, start_phase=-0.5, stop_phase=0.5, phase_step=0.01, units='cgs', scale='linear',
-                          colormap=None, savepath=None, subtract_equilibrium=False):
+                          colormap=None, savepath=None, plot_axis=True, subtract_equilibrium=False, edges=False):
         """
         Function creates animation of the rotational motion.
 
@@ -30,6 +33,8 @@ class Animation(object):
         :param colormap: str; `temperature`, `gravity_acceleration`, `velocity`, `radial_velocity` or None
         :param savepath: str; animation will be stored to `savepath`
         :param subtract_equilibrium: bool; equilibrium part of the quantity is removed (for pulsations)
+        :param plot_axis: bool; if False, axis will be hidden
+        :param edges: bool; highlight edges of surface faces
         """
         anim_kwargs = dict()
 
@@ -45,18 +50,30 @@ class Animation(object):
         orbital_motion = \
             self.single.calculate_lines_of_sight(input_argument=phases, return_nparray=False, calculate_from='phase')
 
+        # calculating radiances
+        o = Observer(passband=['bolometric', ], system=self.single)
+        atm_kwargs = dict(
+            passband=o.passband,
+            left_bandwidth=o.left_bandwidth,
+            right_bandwidth=o.right_bandwidth,
+        )
+
         logger.info('calculating surface parameters (points, faces, colormap)')
-        mult = np.array([-1, -1, 1.0])[None, :]
         for pos_idx, position in enumerate(orbital_motion):
             from_this = dict(single_system=self.single, position=self.defpos)
             on_pos = SinglePositionContainer.from_single_system(**from_this)
             on_pos.set_on_position_params(position)
             on_pos.set_time()
             on_pos.build()
+
+            crv_utils.prep_surface_params(
+                system=on_pos, write_to_containers=True, **atm_kwargs
+            )
+
             on_pos = sutils.move_sys_onpos(on_pos, position, on_copy=False)
 
             star = getattr(on_pos, 'star')
-            points.append(mult * star.points)
+            points.append(star.points)
             faces.append(star.faces)
 
             args = (colormap, star, position.phase, 0.0, 1.0, self.single.inclination, on_pos.position)
@@ -73,7 +90,9 @@ class Animation(object):
             'cmap': cmap,
             'axis_lim': 1.2 * np.max(points[0]),
             'savepath': savepath,
-            'colormap': colormap
+            'colormap': colormap,
+            "plot_axis": plot_axis,
+            'edges': edges
         })
         logger.debug('Passing parameters to graphics module')
         graphics.single_surface_anim(**anim_kwargs)

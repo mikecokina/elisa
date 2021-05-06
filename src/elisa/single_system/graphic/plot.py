@@ -11,8 +11,6 @@ from .. import utils as sutils
 from .. curves import utils as crv_utils
 from ... observer.observer import Observer
 
-from elisa.pulse import container_ops
-
 
 class Plot(object):
     """
