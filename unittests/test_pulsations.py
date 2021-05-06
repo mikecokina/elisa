@@ -172,7 +172,7 @@ class TestPulsationModule(ElisaTestCase):
     def test_complex_displacement_amplitudes(self):
         in_ratio = 2
         pulse_meta = [{
-            'l': 10,
+            'l': 5,
             'm': 2,
             'amplitude': 1 * u.m / u.s,
             'frequency': 1 / u.d,
@@ -191,10 +191,12 @@ class TestPulsationModule(ElisaTestCase):
         radial = np.mean(np.abs(mode.complex_displacement[:, 0])**2)**0.5
         dphi = np.abs(mode.complex_displacement[:, 1])
         dtheta = np.abs(mode.complex_displacement[:, 2])
+        horizontal = np.sqrt(dtheta**2 + (np.sin(theta)*dphi)**2)
 
-        horizontal = r_eq * np.mean((dtheta**2 + (np.sin(theta)*dphi)**2))**0.5
-        ratio = horizontal / radial
-        self.assertTrue(abs(ratio - in_ratio) < 0.1)
+        horizontal = r_eq * np.mean(horizontal**2)**0.5
+
+        ratio = (horizontal / radial)
+        self.assertTrue(abs(ratio - in_ratio) < 0.05)
 
     def test_kinematics_single(self):
         amplitude = 1.0
