@@ -21,7 +21,7 @@ class Animation(object):
 
     def orbital_motion(self, start_phase=-0.5, stop_phase=0.5, phase_step=0.01, units='cgs', scale='linear',
                        colormap=None, savepath=None, separate_colormaps=None, subtract_equilibrium=False,
-                       plot_axis=True):
+                       plot_axis=True, edges=False):
         """
         Function creates animation of the orbital motion.
 
@@ -35,6 +35,7 @@ class Animation(object):
         :param separate_colormaps: bool; if True, figure will contain separate colormap for each component
         :param subtract_equilibrium: bool; equilibrium part of the quantity is removed (for pulsations)
         :param plot_axis: bool; if False, axis will be hidden
+        :param edges: bool; highlight edges of surface faces
         """
         anim_kwargs = dict()
 
@@ -117,7 +118,8 @@ class Animation(object):
             'savepath': savepath,
             'colormap': colormap,
             "separate_colormaps": separate_colormaps,
-            "plot_axis": plot_axis
+            "plot_axis": plot_axis,
+            "edges": edges
         })
         logger.debug('Passing parameters to graphics module')
         graphics.binary_surface_anim(**anim_kwargs)

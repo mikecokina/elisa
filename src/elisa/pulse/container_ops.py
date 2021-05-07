@@ -115,7 +115,8 @@ def complex_displacement(star, scale):
     return star
 
 
-def position_perturbation(star, com_x=0, update_container=True, return_perturbation=False, spherical_perturbation=False):
+def position_perturbation(star, com_x=0, update_container=True, return_perturbation=False,
+                          spherical_perturbation=False):
     """
     Calculates the deformation of the surface mesh due to the pulsations.
 
