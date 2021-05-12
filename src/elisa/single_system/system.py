@@ -285,13 +285,14 @@ class SingleSystem(System):
         star = Star(**data_cp["star"])
         return cls(star=star, **data_cp["system"])
 
-    def build_container(self, phase=None, time=None):
+    def build_container(self, phase=None, time=None, build_pulsations=True):
         """
         Function returns `OrbitalPositionContainer` with fully built model binary system at user-defined photometric
         phase or time of observation.
 
         :param time: float; JD
         :param phase: float; photometric phase
+        :param build_pulsations: bool;
         :return: elisa.binary_system.container.OrbitalPositionContainer;
         """
         if phase is not None and time is not None:
@@ -301,7 +302,7 @@ class SingleSystem(System):
 
         position = self.calculate_lines_of_sight(input_argument=phase, return_nparray=False, calculate_from='phase')[0]
         position_container = SinglePositionContainer.from_single_system(self, position)
-        position_container.build()
+        position_container.build(build_pulsations=build_pulsations)
 
         logger.info('Orbital position container was successfully built at photometric phase {phase:.2f}.')
         return position_container

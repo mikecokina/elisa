@@ -364,7 +364,7 @@ def corner(mcmc_fit_instance, flat_chain=None, variable_labels=None, normalizati
     flat_chain_reduced = np.empty((flat_chain.shape[0], len(variable_labels)))
     plot_units = PLOT_UNITS if plot_units is None else plot_units
     for ii, lbl in enumerate(variable_labels):
-        idx = mcmc_fit_instance.variable_labels.index(lbl)
+        idx = variable_labels.index(lbl)
         if lbl in plot_units.keys():
             unt = u.Unit(flat_result[lbl]['unit'])
             flat_chain_reduced[:, ii] = (flat_chain[:, idx] * unt).to(plot_units[lbl]).value

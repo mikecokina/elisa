@@ -691,7 +691,7 @@ def binary_surface_anim(**kwargs):
     args = (points, faces, clr, cmaps, plot)
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     ani = animation.FuncAnimation(fig, update_plot, kwargs['n_frames'], fargs=args, interval=20)
-    plt.show() if not kwargs['savepath'] else ani.save(kwargs['savepath'], writer='ffmpeg', fps=20, dpi=300)
+    plt.show() if not kwargs['savepath'] else ani.save(kwargs['savepath'], writer='ffmpeg', fps=30, dpi=300)
 
 
 def single_surface_anim(**kwargs):

@@ -417,13 +417,14 @@ class BinarySystem(System):
 
         return BinarySystem.from_json(data=data)
 
-    def build_container(self, phase=None, time=None):
+    def build_container(self, phase=None, time=None, build_pulsations=True):
         """
         Function returns `OrbitalPositionContainer` with fully built model binary system at user-defined photometric
         phase or time of observation.
 
         :param time: float; JD
         :param phase: float; photometric phase
+        :param build_pulsations: bool;
         :return: elisa.binary_system.container.OrbitalPositionContainer;
         """
         if phase is not None and time is not None:
@@ -433,7 +434,7 @@ class BinarySystem(System):
 
         position = self.calculate_orbital_motion(input_argument=phase, return_nparray=False, calculate_from='phase')[0]
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self, position)
-        orbital_position_container.build()
+        orbital_position_container.build(build_pulsations=build_pulsations)
 
         logger.info(f'Orbital position container was successfully built at photometric phase {phase:.2f}.')
         return orbital_position_container
