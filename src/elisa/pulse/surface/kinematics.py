@@ -22,9 +22,10 @@ def calculate_horizontal_displacements(mode, thetas, harmonics_derivatives, radi
 
     # lambda - distance along phi
     # nu - distance along theta coordinate
-    phi_amp = np.zeros(thetas.shape, dtype=np.float)
-    phi_amp[theta_test] = np.abs(harmonics_derivatives[0, theta_test]) / np.power(sin_theta[theta_test], 2)
-    d_lamda = radius * sin_theta * phi_amp
+    phi_displacement = np.zeros(thetas.shape, dtype=np.complex128)
+    phi_displacement[theta_test] = harmonics_derivatives[0, theta_test] / np.power(sin_theta[theta_test], 2)
+
+    d_lamda = radius * sin_theta * np.abs(phi_displacement)
     theta_amp = np.abs(harmonics_derivatives[1])
     d_nu = radius * theta_amp
 
@@ -32,7 +33,7 @@ def calculate_horizontal_displacements(mode, thetas, harmonics_derivatives, radi
     corr_factor = mode.horizontal_amplitude / (dr * scale)
 
     phi_retval = np.zeros(thetas.shape, dtype=np.complex128)
-    phi_retval[theta_test] = corr_factor * phi_amp[theta_test]
+    phi_retval[theta_test] = corr_factor * phi_displacement[theta_test]
     return phi_retval, corr_factor * harmonics_derivatives[1]
 
 

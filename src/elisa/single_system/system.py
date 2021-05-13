@@ -304,7 +304,7 @@ class SingleSystem(System):
         position_container = SinglePositionContainer.from_single_system(self, position)
         position_container.build(build_pulsations=build_pulsations)
 
-        logger.info('Orbital position container was successfully built at photometric phase {phase:.2f}.')
+        logger.info(f'Orbital position container was successfully built at photometric phase {phase:.2f}.')
         return position_container
 
     @classmethod
