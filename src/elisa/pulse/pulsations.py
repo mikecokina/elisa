@@ -109,7 +109,7 @@ def temp_amplitude(mode):
     Returns temperature perturbation amplitude in form of the scalar therm in eq 22 in Townsend 2003:
 
     delta T = temp_amplitude * (delta r / r) * T;
-    temp_amplitude = nabla_ad * (Kl(l+1) - 4 1/K)  where K is our horizontal to radial amplitude ratio
+    temp_amplitude = nabla_ad * (Kl(l+1) - 4 - 1/K)  where K is our horizontal to radial amplitude ratio
 
     :param mode: PulsationMode;
     :return: float;

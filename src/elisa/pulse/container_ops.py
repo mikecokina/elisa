@@ -152,7 +152,8 @@ def position_perturbation(star, com_x=0, update_container=True, return_perturbat
     return displacement if return_perturbation else None
 
 
-def velocity_perturbation(star, scale, update_container=False, return_perturbation=False, spherical_perturbation=False):
+def velocity_perturbation(star, scale, update_container=False, return_perturbation=False, spherical_perturbation=False,
+                          point_perturbations=False):
     """
     Calculates velocity perturbation on a surface of a pulsating star.
 
@@ -162,6 +163,7 @@ def velocity_perturbation(star, scale, update_container=False, return_perturbati
     :param return_perturbation: bool; if True, velocity perturbation itself is returned
     :param spherical_perturbation: bool; if True, velocity perturbation in spherical coordinates (d_r, d_phi, d_theta)
                                          is returned.
+    :param point_perturbations: bool; if True perturbations on surface pints are returned instead face averaged values
     :return: Union[None, numpy.array];
     """
     # calculating perturbed velocity in spherical coordinates
@@ -180,23 +182,23 @@ def velocity_perturbation(star, scale, update_container=False, return_perturbati
     args = (velocity_pert_sph, points_cartesian, 0.0)
     velocity_pert = putils.transform_spherical_displacement_to_cartesian(*args) * scale
 
-    velocity_pert = velocity_pert[star.faces].mean(axis=1)
+    velocity_pert_face = velocity_pert[star.faces].mean(axis=1)
 
     if update_container:
-        star.velocities += velocity_pert
+        star.velocities += velocity_pert_face
 
     if return_perturbation:
         if spherical_perturbation:
             velocity_pert_sph[:, 0] *= scale
-            return velocity_pert_sph[star.faces].mean(axis=1)
+            return velocity_pert_sph[star.faces].mean(axis=1) if not point_perturbations else velocity_pert_sph
         else:
-            return velocity_pert
+            return velocity_pert if point_perturbations else velocity_pert_face
     else:
         return None
 
 
 def gravity_acc_perturbation(star, scale, update_container=False, return_perturbation=False,
-                             spherical_perturbation=False):
+                             spherical_perturbation=False, point_perturbations=False):
     """
     Calculates acceleration perturbation on a surface of a pulsating star.
 
@@ -206,6 +208,7 @@ def gravity_acc_perturbation(star, scale, update_container=False, return_perturb
     :param return_perturbation: bool; if True, velocity perturbation itself is returned
     :param spherical_perturbation: bool; if True, velocity perturbation in spherical coordinates (d_r, d_phi, d_theta)
                                          is returned.
+    :param point_perturbations: bool; if True perturbations on surface pints are returned instead face averaged values
     :return:
     """
     # calculating perturbed acceleration in tilted spherical coordinates
@@ -226,24 +229,24 @@ def gravity_acc_perturbation(star, scale, update_container=False, return_perturb
     # treating singularities at poles
     acc_pert[star.pole_idx] = acc_pert[star.pole_idx_neighbour]
 
-    acc_pert = acc_pert[star.faces].mean(axis=1)
+    acc_pert_face = acc_pert[star.faces].mean(axis=1)
 
     if update_container:
         g_eq = - np.power(10, star.log_g)[:, None] * star.normals
-        total_acc = np.linalg.norm(g_eq + acc_pert, axis=1)
+        total_acc = np.linalg.norm(g_eq + acc_pert_face, axis=1)
         star.log_g = np.log10(total_acc)
 
     if return_perturbation:
         if spherical_perturbation:
             acc_pert_sph[:, 0] *= scale
-            return acc_pert_sph[star.faces].mean(axis=1)
+            return acc_pert_sph[star.faces].mean(axis=1) if not point_perturbations else acc_pert_sph
         else:
-            return acc_pert
+            return acc_pert if point_perturbations else acc_pert_face
     else:
         return None
 
 
-def temp_perturbation(star, scale=1.0, update_container=False, return_perturbation=False):
+def temp_perturbation(star, scale=1.0, update_container=False, return_perturbation=False, point_perturbations=False):
     """
     Calculates temperature perturbation on a surface of a pulsating star.
 
@@ -251,14 +254,15 @@ def temp_perturbation(star, scale=1.0, update_container=False, return_perturbati
     :param scale: numpy.float; scale of the system
     :param update_container: bool; if true, the perturbations are added into surface element temperatures
     :param return_perturbation:
+    :param point_perturbations: bool; if True perturbations on surface pints are returned instead face averaged values
     :return:
     """
     temp_pert = np.sum([kinematics.calculate_temperature_pert_factor(mode, scale)
                         for mode in star.pulsations.values()], axis=0)
 
-    temp_pert = temp_pert[star.faces].mean(axis=1) * star.temperatures
+    temp_pert_face = temp_pert[star.faces].mean(axis=1) * star.temperatures
     if update_container:
-        star.temperatures += temp_pert
+        star.temperatures += temp_pert_face
 
     if return_perturbation:
-        return temp_pert
+        return temp_pert*star.t_eff if point_perturbations else temp_pert_face
