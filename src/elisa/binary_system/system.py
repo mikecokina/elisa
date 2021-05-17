@@ -1209,6 +1209,9 @@ class BinarySystem(System):
 
             kwargs = rv_base.include_passband_data_to_kwargs(**kwargs)
             return curve_fn(**kwargs)
+        else:
+            raise ValueError(f"Unknown RV computing method `{kwargs['method']}`. List of available methods: "
+                             f"[`kinematic`, `radiometric`].")
 
     def _compute_circular_synchronous_rv_curve(self, **kwargs):
         return rv.compute_circular_synchronous_rv_curve(self, **kwargs)
