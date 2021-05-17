@@ -187,7 +187,6 @@ class Plot(object):
         :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
                                              produced figure
         """
-
         binary_wireframe_kwargs = dict()
         inclination = transform.deg_transform(inclination, u.deg, when_float64=transform.WHEN_FLOAT64) \
             if inclination is not None else up.degrees(self.binary.inclination)
