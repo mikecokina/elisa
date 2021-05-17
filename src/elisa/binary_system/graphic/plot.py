@@ -305,12 +305,9 @@ class Plot(object):
             system=orbital_position_container, write_to_containers=True, **atm_kwargs
         )
 
-        distances_to_com = orbital_position.distance * self.binary.mass_ratio / (1 + self.binary.mass_ratio)
-
         orbital_position_container = butils.move_sys_onpos(orbital_position_container, orbital_position, on_copy=True)
-        scom = orbital_position_container.secondary.com
-        dir_to_secondary = scom / np.linalg.norm(scom)
-        pos_correction = distances_to_com * dir_to_secondary
+        args = (orbital_position.distance, self.binary.mass_ratio, orbital_position_container.secondary.com)
+        pos_correction = butils.correction_to_com(*args)
 
         for component in components:
             star = getattr(orbital_position_container, component)

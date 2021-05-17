@@ -244,3 +244,17 @@ def transform_json_community_to_std(data):
     data["secondary"].update({"mass": m2})
 
     return data
+
+
+def correction_to_com(distance, mass_ratio, scom):
+    """
+    Calculates the correction for com from primary-centered coordinate system to barycentric.
+
+    :param distance: float;
+    :param mass_ratio: float
+    :param scom: float; secondary component component of mass
+    :return: correction to com in primary-centered system
+    """
+    distances_to_com = distance * mass_ratio / (1 + mass_ratio)
+    dir_to_secondary = scom / np.linalg.norm(scom)
+    return distances_to_com * dir_to_secondary
