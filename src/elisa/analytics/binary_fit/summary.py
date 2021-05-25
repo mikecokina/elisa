@@ -698,8 +698,9 @@ def fit_rv_summary_with_error_propagation(fit_instance, path, percentiles):
     io_tools.write_propagated_ln(full_chain_results[:, param_columns['system@mass_ratio']], flat_params,
                                  'system@mass_ratio', 'Mass ratio (q=M_2/M_1):', write_fn, line_sep, '-')
 
-    sma = (full_chain_results[:, param_columns['system@asini']] *
-           u.DISTANCE_UNIT).to(u.solRad).value
+    # sma = (full_chain_results[:, param_columns['system@asini']] *
+    #        u.DISTANCE_UNIT).to(u.solRad).value
+    sma = full_chain_results[:, param_columns['system@asini']]
     io_tools.write_propagated_ln(sma, flat_params, 'system@asini', 'a*sin(i):', write_fn,
                                  line_sep, 'solRad')
 
