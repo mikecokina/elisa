@@ -22,7 +22,7 @@ logger = getLogger('analytics.binary_fit.summary')
 DASH_N = 126
 
 
-def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles):
+def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles, dimensionless_radii=True):
     """
     Function propagates errors of fitted parameters during MCMC fit by evaluating the corresponding
     chain.
@@ -30,8 +30,17 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles):
     :param fit_instance: elisa.analytics.binary_fit.lc_fit.LCFit
     :param path: str; results will be written here
     :param percentiles: List; [bottom, middle, top] percentiles used for the creation of confidence intervals
+    :param dimensionless_radii: if true, radii are provided in SMA units
     :return: None;
     """
+    def propagate_errors(radius, factor):
+        rel_rad = radius[1:] / radius[0]
+        rel_factor = factor[1:] / factor[0]
+        retval = np.empty(radius.shape)
+        retval[0] = radius[0] * factor[0]
+        retval[1:] = retval[0] * (rel_factor + rel_rad)
+        return retval
+
     f = None
     if path is not None:
         f = open(path, 'w')
@@ -132,12 +141,14 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles):
 
     sma = (full_chain_results[:, param_columns['system@semi_major_axis']] *
            u.DISTANCE_UNIT).to(u.solRad).value
+    sma_factor = sma if not dimensionless_radii else np.array([1.0, 0.0, 0.0])
+    sma_unit = 'solRad' if not dimensionless_radii else 'SMA'
     io_tools.write_propagated_ln(sma, flat_params, 'system@semi_major_axis', 'Semi major axis (a):', write_fn, line_sep,
                                  'solRad')
 
-    sma = (full_chain_results[:, param_columns['system@asini']] *
+    asini = (full_chain_results[:, param_columns['system@asini']] *
            u.DISTANCE_UNIT).to(u.solRad).value
-    io_tools.write_propagated_ln(sma, flat_params, 'system@asini', 'a*sin(i):', write_fn,
+    io_tools.write_propagated_ln(asini, flat_params, 'system@asini', 'a*sin(i):', write_fn,
                                  line_sep, 'solRad')
 
     incl = (full_chain_results[:, param_columns['system@inclination']] *
@@ -198,26 +209,25 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles):
                                      flat_params, f'{component}@polar_log_g', 'Polar gravity (log g):',
                                      write_fn, line_sep, 'log(cgs)')
 
-        r_equiv = full_chain_results[:, param_columns[f'{component}@equivalent_radius']]
+        r_equiv = propagate_errors(full_chain_results[:, param_columns[f'{component}@equivalent_radius']], sma_factor)
+        r_polar = propagate_errors(full_chain_results[:, param_columns[f'{component}@polar_radius']], sma_factor)
+        r_backw = propagate_errors(full_chain_results[:, param_columns[f'{component}@backward_radius']], sma_factor)
+        r_side = propagate_errors(full_chain_results[:, param_columns[f'{component}@side_radius']], sma_factor)
 
         io_tools.write_propagated_ln(r_equiv, flat_params, f'{component}@equivalent_radius',
-                                     'Equivalent radius (R_equiv):', write_fn, line_sep, 'sma')
+                                     'Equivalent radius (R_equiv):', write_fn, line_sep, sma_unit)
         write_fn(f"\nPeriastron radii{line_sep}")
 
-        r_polar = full_chain_results[:, param_columns[f'{component}@polar_radius']]
-        r_backw = full_chain_results[:, param_columns[f'{component}@backward_radius']]
-        r_side = full_chain_results[:, param_columns[f'{component}@side_radius']]
-
         io_tools.write_propagated_ln(r_polar, flat_params, f'{component}@polar_radius',
-                                     'Polar radius:', write_fn, line_sep, 'sma')
+                                     'Polar radius:', write_fn, line_sep, sma_unit)
         io_tools.write_propagated_ln(r_backw, flat_params, f'{component}@backw_radius',
-                                     'Backward radius:', write_fn, line_sep, 'sma')
+                                     'Backward radius:', write_fn, line_sep, sma_unit)
         io_tools.write_propagated_ln(r_side, flat_params, f'{component}@side_radius',
-                                     'Side radius:', write_fn, line_sep, 'sma')
+                                     'Side radius:', write_fn, line_sep, sma_unit)
         if fit_instance.morphology != 'over-contact':
-            r_forw = full_chain_results[:, param_columns[f'{component}@forward_radius']]
+            r_forw = propagate_errors(full_chain_results[:, param_columns[f'{component}@forward_radius']], sma_factor)
             io_tools.write_propagated_ln(r_forw, flat_params, f'{component}@forward_radius',
-                                         'Forward radius:', write_fn, line_sep, 'sma')
+                                         'Forward radius:', write_fn, line_sep, sma_unit)
 
         write_fn(f"\nAtmospheric parameters{line_sep}")
         io_tools.write_propagated_ln(full_chain_results[:, param_columns[f'{component}@t_eff']],
@@ -393,12 +403,13 @@ def evaluate_binary_params(*args):
     return full_chain
 
 
-def simple_lc_fit_summary(fit_instance, path):
+def simple_lc_fit_summary(fit_instance, path, dimensionless_radii=True):
     """
     Function returns or saves to file gives report on given fit with fitted or derived binary parameters.
 
     :param fit_instance: LCFit instance
     :param path: str;
+    :param dimensionless_radii: if true, radii are provided in SMA units
     :return:
     """
     f = None
@@ -427,10 +438,14 @@ def simple_lc_fit_summary(fit_instance, path):
         if 'system@mass_ratio' in result_dict:
             io_tools.write_param_ln(result_dict, 'system@mass_ratio', q_desig, write_fn, line_sep, 3)
             io_tools.write_param_ln(result_dict, 'system@semi_major_axis', a_desig, write_fn, line_sep, 3)
+            sma_factor = result_dict['system@semi_major_axis']['value'] if not dimensionless_radii else 1.0
+            sma_unit = str(result_dict['system@semi_major_axis']['unit']) if not dimensionless_radii else 'SMA'
         else:
             io_tools.write_ln(write_fn, q_desig, binary_instance.mass_ratio, '', '', '', 'derived', line_sep, 3)
             sma = (binary_instance.semi_major_axis * u.DISTANCE_UNIT).to(u.solRad).value
-            io_tools.write_ln(write_fn, a_desig, sma, '', '', 'AU', 'derived', line_sep, 3)
+            io_tools.write_ln(write_fn, a_desig, sma, '', '', 'solRad', 'derived', line_sep, 3)
+            sma_factor = (binary_instance.semi_major_axis * u.DISTANCE_UNIT).to(u.solRad).value
+            sma_unit = 'solRad' if not dimensionless_radii else 'SMA'
 
         io_tools.write_param_ln(result_dict, 'system@inclination', 'Inclination (i):', write_fn, line_sep, 2)
         io_tools.write_param_ln(result_dict, 'system@eccentricity', 'Eccentricity (e):', write_fn, line_sep, 2)
@@ -492,20 +507,21 @@ def simple_lc_fit_summary(fit_instance, path):
             io_tools.write_ln(write_fn, 'Polar gravity (log g):', polar_g, '-', '-', 'log(cgs)', 'Derived',
                               line_sep, 3)
 
-            io_tools.write_ln(write_fn, 'Equivalent radius (R_equiv):', star_instance.equivalent_radius,
-                              '-', '-', 'solRad', 'Derived', line_sep, 5)
+            io_tools.write_ln(write_fn, 'Equivalent radius (R_equiv):', star_instance.equivalent_radius*sma_factor,
+                              '-', '-', sma_unit, 'Derived', line_sep, 5)
 
             write_fn(f"\nPeriastron radii{line_sep}")
 
-            io_tools.write_ln(write_fn, 'Polar radius:', star_instance.polar_radius, '-', '-', 'solRad', 'Derived',
-                              line_sep, 5)
-            io_tools.write_ln(write_fn, 'Backward radius:', star_instance.backward_radius, '-', '-', 'solRad',
+            io_tools.write_ln(write_fn, 'Polar radius:', star_instance.polar_radius*sma_factor, '-', '-', sma_unit,
                               'Derived', line_sep, 5)
-            io_tools.write_ln(write_fn, 'Side radius:', star_instance.side_radius, '-', '-', 'solRad', 'Derived', line_sep, 5)
+            io_tools.write_ln(write_fn, 'Backward radius:', star_instance.backward_radius*sma_factor, '-', '-',
+                              sma_unit, 'Derived', line_sep, 5)
+            io_tools.write_ln(write_fn, 'Side radius:', star_instance.side_radius*sma_factor, '-', '-', sma_unit,
+                              'Derived', line_sep, 5)
 
             if getattr(star_instance, 'forward_radius', None) is not None:
-                io_tools.write_ln(write_fn, 'Forward radius:', star_instance.forward_radius, '-',
-                                  '-', 'solRad', 'Derived', line_sep, 5)
+                io_tools.write_ln(write_fn, 'Forward radius:', star_instance.forward_radius*sma_factor, '-',
+                                  '-', sma_unit, 'Derived', line_sep, 5)
 
             write_fn(f"\nAtmospheric parameters{line_sep}")
 

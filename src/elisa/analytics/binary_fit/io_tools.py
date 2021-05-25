@@ -77,7 +77,7 @@ def write_propagated_ln(values, fit_params, param_id, designation, write_fn, lin
         return
 
     aux = np.abs([values[1], values[2]])
-    aux[aux <= 1e-10] = 1e-10
+    aux[aux <= 1e-15] = 1e-15
     sig_figures = -int(np.log10(np.min(aux))//1) + 1
 
     values = np.round(values, sig_figures)
