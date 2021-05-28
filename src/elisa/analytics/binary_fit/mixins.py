@@ -22,10 +22,12 @@ class MCMCMixin(object):
         Renormalize values in chain if renormalization Dict is supplied.
         """
         retval = []
-        for ii, label in enumerate(all_lables):
+        for ii, label in enumerate(labels):
             if label in labels:
-                retval.append(parameters.renormalize_value(flat_chain[:, ii], normalization[label][0],
+                idx = all_lables.index(label)
+                retval.append(parameters.renormalize_value(flat_chain[:, idx], normalization[label][0],
                                                            normalization[label][1]))
+
         retval = np.column_stack(retval)
         return retval
 

@@ -364,10 +364,9 @@ def corner(mcmc_fit_instance, flat_chain=None, variable_labels=None, normalizati
     flat_chain_reduced = np.empty((flat_chain.shape[0], len(variable_labels)))
     plot_units = PLOT_UNITS if plot_units is None else plot_units
     for ii, lbl in enumerate(variable_labels):
-        idx = mcmc_fit_instance.variable_labels.index(lbl)
         if lbl in plot_units.keys():
             unt = u.Unit(flat_result[lbl]['unit'])
-            flat_chain_reduced[:, ii] = (flat_chain[:, idx] * unt).to(plot_units[lbl]).value
+            flat_chain_reduced[:, ii] = (flat_chain[:, ii] * unt).to(plot_units[lbl]).value
             flat_result[lbl]['value'] = (flat_result[lbl]['value'] * unt).to(plot_units[lbl]).value
             flat_result[lbl]["confidence_interval"]['min'] = \
                 (flat_result[lbl]["confidence_interval"]['min'] * unt).to(plot_units[lbl]).value
@@ -375,7 +374,7 @@ def corner(mcmc_fit_instance, flat_chain=None, variable_labels=None, normalizati
                 (flat_result[lbl]["confidence_interval"]['max'] * unt).to(plot_units[lbl]).value
             flat_result[lbl]['unit'] = plot_units[lbl].to_string()
         else:
-            flat_chain_reduced[:, ii] = flat_chain[:, idx]
+            flat_chain_reduced[:, ii] = flat_chain[:, ii]
 
     truths = [flat_result[lbl]['value'] for lbl in variable_labels] if truths is True else None
 
