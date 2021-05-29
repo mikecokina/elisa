@@ -191,7 +191,7 @@ class LCPlot(object):
 
     def model(self, start_phase=-0.6, stop_phase=0.6, number_of_points=300, discretization=5,
               separation=0.1, data_frac_to_normalize=0.1, normalization_kind='maximum', plot_legend=True, loc=1,
-              return_figure_instance=False, **kwargs):
+              return_figure_instance=False, rasterize=None, **kwargs):
         """
         Prepares data for plotting the model described by fit params or calculated by last run of fitting procedure.
 
@@ -290,7 +290,8 @@ class LCPlot(object):
             'lcs': lc_fit,
             'residuals': residuals,
             'legend': plot_legend,
-            'loc': loc
+            'loc': loc,
+            'rasterize': rasterize
         })
 
         logger.debug('Sending data to matplotlib interface.')
