@@ -10,7 +10,7 @@ from unittests.utils import (
     prepare_binary_system,
     BINARY_SYSTEM_PARAMS,
     SPOTS_META,
-    normalize_lv_for_unittests,
+    normalize_rv_for_unittests,
     load_radial_curve,
     APPROX_SETTINGS
 )
@@ -94,11 +94,11 @@ class BinaryRadialCurvesTestCase(ElisaTestCase):
 
     def do_comparison(self, system, file):
         rvdict = rv.com_radial_velocity(system, position_method=system.calculate_orbital_motion, phases=self.phases)
-        obtained_rvp, obtained_rvs = normalize_lv_for_unittests(rvdict['primary'], rvdict['secondary'])
+        obtained_rvp, obtained_rvs = normalize_rv_for_unittests(rvdict['primary'], rvdict['secondary'])
         expected = load_radial_curve(file)
 
         expected_rvp, expected_rvs = -1 * np.array(expected["primary"]), -1 * np.array(expected["secondary"])
-        expected_rvp, expected_rvs = normalize_lv_for_unittests(expected_rvp, expected_rvs)
+        expected_rvp, expected_rvs = normalize_rv_for_unittests(expected_rvp, expected_rvs)
 
         assert_array_equal(np.round(expected_rvp, 4), np.round(obtained_rvp, 4))
         assert_array_equal(np.round(expected_rvs, 4), np.round(obtained_rvs, 4))
@@ -131,19 +131,19 @@ class BinaryRadialCurvesConsistencyTestCase(ElisaTestCase):
         _, rvdict1 = o.rv(phases=phases, method='radiometric')
         _, rvdict2 = o.rv(phases=phases, method='kinematic')
 
-        rvdict1['primary'], rvdict1['secondary'] = normalize_lv_for_unittests(rvdict1['primary'], rvdict1['secondary'])
-        rvdict2['primary'], rvdict2['secondary'] = normalize_lv_for_unittests(rvdict2['primary'], rvdict2['secondary'])
+        rvdict1['primary'], rvdict1['secondary'] = normalize_rv_for_unittests(rvdict1['primary'], rvdict1['secondary'])
+        rvdict2['primary'], rvdict2['secondary'] = normalize_rv_for_unittests(rvdict2['primary'], rvdict2['secondary'])
 
         assert_array_less(np.abs(rvdict1['primary'] - rvdict2['primary']), desired_delta * np.ones(phases.shape))
         assert_array_less(np.abs(rvdict2['secondary'] - rvdict2['secondary']), desired_delta * np.ones(phases.shape))
 
         # from matplotlib import pyplot as plt
         # # plt.plot(self.phases, rvdict1['primary']-rvdict2['primary'], c='r')
-        # plt.plot(self.phases, rvdict1['primary'], c='r')
-        # plt.plot(self.phases, rvdict2['primary'], c='r', linestyle='dashed')
+        # plt.plot(phases, rvdict1['primary'], c='r')
+        # plt.plot(phases, rvdict2['primary'], c='r', linestyle='dashed')
         # # plt.plot(self.phases, rvdict1['secondary']-rvdict2['secondary'], c='b')
-        # plt.plot(self.phases, rvdict1['secondary'], c='b')
-        # plt.plot(self.phases, rvdict2['secondary'], c='b', linestyle='dashed')
+        # plt.plot(phases, rvdict1['secondary'], c='b')
+        # plt.plot(phases, rvdict2['secondary'], c='b', linestyle='dashed')
         # plt.show()
 
     def test_rv_consistency_circular_detached(self):

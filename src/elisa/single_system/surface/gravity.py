@@ -4,7 +4,6 @@ from ... import const as c
 from ... logger import getLogger
 from ... base.surface import gravity as bgravity
 from ... utils import is_empty
-from ... pulse import pulsations
 
 logger = getLogger("single_system.surface.gravity")
 
@@ -23,9 +22,14 @@ def build_surface_gravity(system_container):
     points, faces = bgravity.eval_args_for_magnitude_gradient(star_container)
 
     g_acc_vector = calculate_potential_gradient(points, system_container.angular_velocity, star_container.mass)
+    gravity = np.mean(np.linalg.norm(g_acc_vector, axis=1)[faces], axis=1)
 
-    g_acc_vector_spot = dict()
+    setattr(star_container, 'potential_gradient_magnitudes', gravity[star_container.face_symmetry_vector]) \
+        if star_container.symmetry_test() else setattr(star_container, 'potential_gradient_magnitudes', gravity)
+    setattr(star_container, 'log_g', np.log10(star_container.potential_gradient_magnitudes))
+
     if star_container.has_spots():
+        g_acc_vector_spot = dict()
         for spot_index, spot in star_container.spots.items():
             logger.debug(f'calculating surface SI unit gravity of {spot_index} spot')
             logger.debug(f'calculating distribution of potential gradient '
@@ -36,19 +40,6 @@ def build_surface_gravity(system_container):
                      calculate_potential_gradient(spot.points, system_container.angular_velocity, star_container.mass)}
             )
 
-    # # TODO: here implement pulsations
-    # if star_container.has_pulsations():
-    #     g_acc_vector, g_acc_vector_spot = \
-    #         pulsations.incorporate_gravity_perturbation(star_container, g_acc_vector, g_acc_vector_spot,
-    #                                                     phase=system_container.position.phase)
-
-    gravity = np.mean(np.linalg.norm(g_acc_vector, axis=1)[faces], axis=1)
-    setattr(star_container, 'potential_gradient_magnitudes', gravity[star_container.face_symmetry_vector]) \
-        if star_container.symmetry_test() else setattr(star_container, 'potential_gradient_magnitudes', gravity)
-    setattr(star_container, 'log_g', np.log10(star_container.potential_gradient_magnitudes))
-
-    if star_container.has_spots():
-        for spot_index, spot in star_container.spots.items():
             setattr(spot, 'potential_gradient_magnitudes',
                     np.mean(np.linalg.norm(g_acc_vector_spot[spot_index], axis=1)[spot.faces], axis=1))
             setattr(spot, 'log_g', np.log10(spot.potential_gradient_magnitudes))

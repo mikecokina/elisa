@@ -39,7 +39,6 @@ class OrbitalPositionContainer(PositionContainer):
 
     def set_on_position_params(self, position, primary_potential=None, secondary_potential=None):
         setattr(self, "position", position)
-        # TODO: make a setter for position where com will be recalculated
         self.set_com(position)
         if not utils.is_empty(primary_potential):
             setattr(self.primary, "surface_potential", primary_potential)
@@ -52,10 +51,10 @@ class OrbitalPositionContainer(PositionContainer):
         setattr(self.secondary, 'com', np.array([position.distance, 0, 0]))
         self.rotate_property(self.primary, 'com')
         self.rotate_property(self.secondary, 'com')
-        pass
 
     def set_time(self):
-        return 86400 * self.period * self.position.phase
+        setattr(self, 'time', 86400 * self.period * self.position.phase)
+        return getattr(self, 'time')
 
     @classmethod
     def from_binary_system(cls, binary_system, position):
@@ -100,10 +99,14 @@ class OrbitalPositionContainer(PositionContainer):
         self.build_mesh(components_distance, component)
         self.build_from_points(components_distance, component)
 
-        self.build_harmonics(component, components_distance)
+        self.flat_it()
         if build_pulsations:
-            self.build_pulsations(component, components_distance)
+            self.build_pulsations(components_distance=components_distance, component=component)
         return self
+
+    def build_pulsations(self, components_distance=None, component="all"):
+        self.build_harmonics(components_distance=components_distance, component=component)
+        self.build_perturbations(components_distance=components_distance, component=component)
 
     def build_from_points(self, components_distance=None, component="all"):
         """
@@ -141,7 +144,7 @@ class OrbitalPositionContainer(PositionContainer):
         self.build_velocities(components_distance, component)
         self.build_surface_gravity(components_distance, component)
         self.build_faces_orientation(components_distance, component)
-        self.correct_mesh(component)
+        self.correct_mesh(components_distance, component)
         self.build_surface_areas(component)
 
         return self
@@ -150,8 +153,8 @@ class OrbitalPositionContainer(PositionContainer):
         components_distance = self._components_distance(components_distance)
         return mesh.build_mesh(self, components_distance, component)
 
-    def correct_mesh(self, component="all"):
-        return mesh.correct_mesh(self, component=component)
+    def correct_mesh(self, components_distance=None, component="all"):
+        return mesh.correct_mesh(self, components_distance=components_distance, component=component)
 
     def rebuild_symmetric_detached_mesh(self, components_distance=None, component="all"):
         components_distance = self._components_distance(components_distance)
@@ -180,15 +183,11 @@ class OrbitalPositionContainer(PositionContainer):
         components_distance = self._components_distance(components_distance)
         return temperature.build_temperature_distribution(self, components_distance, component)
 
-    # TODO: soon to be deprecated
-    def build_temperature_perturbations(self, components_distance, component):
-        return temperature.build_temperature_perturbations(self, components_distance, component)
-
     def build_harmonics(self, component, components_distance):
         return pulsations.build_harmonics(self, component, components_distance)
 
-    def build_pulsations(self, component, components_distance):
-        return pulsations.build_pulsations(self, component, components_distance)
+    def build_perturbations(self, component, components_distance):
+        return pulsations.build_perturbations(self, component, components_distance)
 
     def _components_distance(self, components_distance):
         return components_distance if components_distance is not None else self.position.distance

@@ -13,7 +13,7 @@ def _calculate_rv_point(star):
     indices = getattr(star, 'indices')
     velocities = getattr(star, 'velocities')[indices]
     fluxes = crv_utils.calculate_surface_element_fluxes('rv_band', star)
-    return np.sign(const.LINE_OF_SIGHT[0]) * np.sum(velocities[:, 0] * fluxes) / np.sum(fluxes) \
+    return np.sum(velocities[:, 0] * fluxes) / np.sum(fluxes) \
         if np.sum(fluxes) != 0 else np.NaN
 
 

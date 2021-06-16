@@ -1,8 +1,13 @@
 import numpy as np
 
 from . import utils as putils
-from .surface import kinematics
+from . surface import kinematics
 from . import pulsations
+from elisa import utils, const
+from .. base.surface.faces import (
+    set_all_surface_centres,
+    calculate_normals
+)
 
 
 def generate_harmonics(star_container, com_x, phase, time):
@@ -16,12 +21,15 @@ def generate_harmonics(star_container, com_x, phase, time):
     :param time: float; time of the observation
     :return: elisa.base.container.StarContainer; Star container with updated harmonics
     """
-    star_container.points_spherical, points_spot = \
+    if not star_container.is_flat():
+        raise ValueError('Pulsations can be calculated only on flattened container.')
+    star_container.points_spherical = \
         star_container.transform_points_to_spherical_coordinates(kind='points', com_x=com_x)
 
-    tilt_phi, tilt_theta = putils.generate_tilt_coordinates(star_container, phase)
-    tilted_points, tilted_points_spot = putils.tilt_mode_coordinates(
-        star_container.points_spherical, points_spot, tilt_phi, tilt_theta
+    star_container.pulsations[0].tilt_phi, star_container.pulsations[0].tilt_theta = \
+        putils.generate_tilt_coordinates(star_container, phase)
+    tilted_points = putils.tilt_mode_coordinates(
+        star_container.points_spherical, star_container.pulsations[0].tilt_phi, star_container.pulsations[0].tilt_theta
     )
 
     # assigning tilted points in spherical coordinates only to the first mode (the rest will share the same points)
@@ -30,7 +38,7 @@ def generate_harmonics(star_container, com_x, phase, time):
     exponential = dict()
     norm_constant = dict()
     for mode_index, mode in star_container.pulsations.items():
-        # TODO: beware of this in case you want use the container at different phase
+        # beware of this in case you want use the container at different phase
         exponential[mode_index] = putils.generate_time_exponential(mode, time)
 
         # generating harmonics Y_m^l and Y_m+1^l for star and spot points
@@ -47,65 +55,21 @@ def generate_harmonics(star_container, com_x, phase, time):
                                                                       tilted_points[:, 2])
 
         # renormalizing horizontal amplitude to 1
-        norm_constant[mode_index] = pulsations.horizontal_displacement_normalization(derivatives, harmonics)
-        derivatives *= norm_constant[mode_index]
+        if mode.l > 0:
+            norm_constant[mode_index] = pulsations.horizontal_displacement_normalization(derivatives, harmonics)
+            derivatives *= norm_constant[mode_index]
 
         # assignment of harmonics to mode instance variables
         mode.point_harmonics = harmonics[0]
-        mode.face_harmonics = np.mean(mode.point_harmonics[star_container.faces], axis=1)
-
         mode.point_harmonics_derivatives = derivatives
-        mode.face_harmonics_derivatives = np.mean(derivatives[:, star_container.faces], axis=1)
-
-    if not star_container.is_flat():
-        for spot_idx, spot in star_container.spots.items():
-            spot.points_spherical = points_spot[spot_idx]
-
-        # assigning tilted points in spherical coordinates only to the first mode (the rest will share the same points)
-        star_container.pulsations[0].spot_points = tilted_points_spot
-
-        for mode_index, mode in star_container.pulsations.items():
-            spot_harmonics, spot_harmonics_derivatives = dict(), dict()
-            for spot_idx, spoints in tilted_points_spot.items():
-                # generating harmonics Y_m^l and Y_m+1^l for star and spot points
-                spot_harmonics[spot_idx] = np.zeros((2, spoints.shape[0]), dtype=np.complex)
-                spot_harmonics[spot_idx][0] = pulsations.spherical_harmonics(mode, spoints, exponential[mode_index])
-
-                if mode.m != mode.l:
-                    spot_harmonics[spot_idx][1] = pulsations.spherical_harmonics(
-                        mode, spoints, exponential[mode_index], order=mode.m + 1, degree=mode.l)
-
-                # generating derivatives of spherical harmonics by phi an theta
-                spot_harmonics_derivatives[spot_idx] = np.zeros((2, spoints.shape[0]), dtype=np.complex)
-                spot_harmonics_derivatives[spot_idx][0] = \
-                    pulsations.diff_spherical_harmonics_by_phi(mode, spot_harmonics[spot_idx])
-                spot_harmonics_derivatives[spot_idx][1] = \
-                    pulsations.diff_spherical_harmonics_by_theta(
-                        mode, spot_harmonics[spot_idx], spoints[:, 1], spoints[:, 2]
-                    )
-
-                # renormalizing horizontal amplitude to 1
-                spot_harmonics_derivatives[spot_idx] *= norm_constant[mode_index]
-
-            # assignment of harmonics to mode instance variables
-            mode.spot_point_harmonics = {spot_idx: hrm[0] for spot_idx, hrm in spot_harmonics.items()}
-            mode.spot_face_harmonics = {spot_idx: np.mean(spoth[star_container.spots[spot_idx].faces], axis=1)
-                                        for spot_idx, spoth in mode.spot_point_harmonics.items()}
-
-            mode.spot_point_harmonics_derivatives = spot_harmonics_derivatives
-            mode.spot_face_harmonics_derivatives = {
-                spot_idx: np.mean(spoth[:, star_container.spots[spot_idx].faces], axis=1)
-                for spot_idx, spoth in spot_harmonics_derivatives.items()
-            }
 
     return star_container
 
 
-def incorporate_pulsations_to_model(star_container, com_x, phase, scale=1.0):
+def incorporate_pulsations_to_model(star_container, com_x, scale=1.0):
     """
     Function adds perturbation to the surface mesh due to pulsations.
 
-    :param phase: numpy.float; (0, 1)
     :param star_container: base.container.StarContainer;
     :param com_x: float;
     :param scale: numpy.float; scale of the perturbations
@@ -114,8 +78,19 @@ def incorporate_pulsations_to_model(star_container, com_x, phase, scale=1.0):
     # calculating kinematics quantities
     complex_displacement(star_container, scale=scale)
 
-    position_perturbation(star_container, com_x, phase, update_container=True, return_perturbation=False)
-    velocity_perturbation(star_container, phase, update_container=True, return_perturbation=False)
+    # treating polar regions
+    putils.pole_neighbours(star_container)
+
+    position_perturbation(star_container, com_x=com_x, update_container=True, return_perturbation=False)
+    velocity_perturbation(star_container, scale=scale, update_container=True, return_perturbation=False)
+    gravity_acc_perturbation(star_container, scale=scale, update_container=True, return_perturbation=False)
+    temp_perturbation(star_container, scale=scale, update_container=True, return_perturbation=False)
+
+    # recalculating normals and areas
+    set_all_surface_centres(star_container)
+    args = (star_container.points, star_container.faces, star_container.face_centres, com_x)
+    star_container.normals = calculate_normals(*args)
+    star_container.calculate_all_areas()
     return star_container
 
 
@@ -128,119 +103,166 @@ def complex_displacement(star, scale):
     :param scale: float;
     :return: base.container.StarContainer;
     """
+    if not star.is_flat():
+        raise ValueError('Pulsations can be calculated only on flattened container.')
+
     for mode_index, mode in star.pulsations.items():
         mode.complex_displacement = kinematics.calculate_displacement_coordinates(
             mode, star.pulsations[0].points, mode.point_harmonics, mode.point_harmonics_derivatives,
-            scale=scale
+            star.points_spherical[:, 0], scale=scale
         )
-
-        if star.is_flat():
-            continue
-
-        for spot_idx, spoints in star.pulsations[0].spot_points.items():
-            mode.spot_complex_displacement[spot_idx] = kinematics.calculate_displacement_coordinates(
-                mode, spoints, mode.spot_point_harmonics[spot_idx], mode.spot_point_harmonics_derivatives[spot_idx],
-                scale=scale
-            )
 
     return star
 
 
-def position_perturbation(star, com_x, phase, update_container=True, return_perturbation=False):
+def position_perturbation(star, com_x=0, update_container=True, return_perturbation=False,
+                          spherical_perturbation=False):
     """
     Calculates the deformation of the surface mesh due to the pulsations.
 
+    :param com_x: float; x coordinate of the compotnents centre of mass in corotating frame
     :param star: base.container.StarContainer;
-    :param com_x: float; x-component of system's centre of mass
-    :param phase: float;
     :param update_container: bool; if True, perturbation is incorporated into star.points
     :param return_perturbation: bool; if True, calculated displacement (in cartesian coordinates) is returned
-    :return: Union[Tuple[numpy.array, dict], None];
+    :param spherical_perturbation: bool; if True, perturbations are returned in spherical coordinates
+    :return: Union[numpy.array, None];
     """
-    # initializing cumulative variables for displacement
-    tilt_phi, tilt_theta = putils.generate_tilt_coordinates(star, phase)
     displacement = None
 
     tilt_displacement_sph = np.sum([
         kinematics.calculate_mode_angular_displacement(mode.complex_displacement) for mode in star.pulsations.values()
     ], axis=0)
 
-    points = putils.derotate_surface_points(
+    points_spherical = putils.derotate_surface_points(
         star.pulsations[0].points + tilt_displacement_sph,
-        tilt_phi, tilt_theta, com_x
+        star.pulsations[0].tilt_phi, star.pulsations[0].tilt_theta
     )
+
+    points = utils.spherical_to_cartesian(points_spherical)
     if return_perturbation:
-        displacement = points - getattr(star, 'points')
+        if spherical_perturbation:
+            displacement = points_spherical - getattr(star, 'points_spherical')
+            displacement[displacement[:, 1] > const.PI, 1] -= const.FULL_ARC
+        else:
+            points - utils.spherical_to_cartesian(star.points_spherical)
     if update_container:
-        setattr(star, 'points', points)
+        com = np.array([com_x, 0, 0])
+        setattr(star, 'points', points + com[None, :])
 
-    # function will terminate here if the container is flat
-    if star.is_flat():
-        return displacement, dict() if return_perturbation else None
-
-    spot_displacement = dict()
-    tilt_displacement_spots_sph = {spot_idx: np.zeros(spot.shape, dtype=np.float64)
-                                   for spot_idx, spot in star.pulsations[0].spot_points.items()}
-
-    for mode_index, mode in star.pulsations.items():
-        for spot_idx, spoints in star.pulsations[0].spot_points.items():
-            tilt_displacement_spots_sph[spot_idx] += kinematics.calculate_mode_angular_displacement(
-                mode.spot_complex_displacement[spot_idx]
-            )
-
-    spot_points = dict()
-    for spot_idx, spot in star.spots.items():
-        spot_points[spot_idx] = putils.derotate_surface_points(
-            star.pulsations[0].spot_points[spot_idx] + tilt_displacement_spots_sph[spot_idx],
-            tilt_phi, tilt_theta, com_x)
-
-        if return_perturbation:
-            spot_displacement[spot_idx] = spot_points[spot_idx] - getattr(spot, 'points')
-        if update_container:
-            setattr(spot, 'points', spot_points[spot_idx])
-
-    return displacement, spot_displacement if return_perturbation else None
+    return displacement if return_perturbation else None
 
 
-def velocity_perturbation(star, phase, update_container=False, return_perturbation=False):
-    tilt_phi, tilt_theta = putils.generate_tilt_coordinates(star, phase)
+def velocity_perturbation(star, scale, update_container=False, return_perturbation=False, spherical_perturbation=False,
+                          point_perturbations=False):
+    """
+    Calculates velocity perturbation on a surface of a pulsating star.
 
+    :param star: base.container.StarContainer;
+    :param scale: float; scaling factor of the system (a in case of BinarySystem)
+    :param update_container: bool; if true, the perturbations are added into surface element velocities
+    :param return_perturbation: bool; if True, velocity perturbation itself is returned
+    :param spherical_perturbation: bool; if True, velocity perturbation in spherical coordinates (d_r, d_phi, d_theta)
+                                         is returned.
+    :param point_perturbations: bool; if True perturbations on surface pints are returned instead face averaged values
+    :return: Union[None, numpy.array];
+    """
     # calculating perturbed velocity in spherical coordinates
     tilt_velocity_sph = np.sum([
-        kinematics.calculate_mode_angular_derivatives(
+        kinematics.calculate_mode_derivatives(
             displacement=mode.complex_displacement, angular_frequency=mode.angular_frequency
         ) for mode in star.pulsations.values()
     ], axis=0)
 
-    velocity_pert = putils.derotate_surface_displacements(
-        tilt_velocity_sph, star.pulsations[0].points, star.points_spherical, tilt_phi, tilt_theta
+    velocity_pert_sph = putils.derotate_surface_displacements(
+        tilt_velocity_sph, star.pulsations[0].points, star.points_spherical,
+        star.pulsations[0].tilt_phi, star.pulsations[0].tilt_theta
     )
-    velocity_pert = velocity_pert[star.faces].mean(axis=1)
+    velocity_pert_sph[star.pole_idx] = velocity_pert_sph[star.pole_idx_neighbour]
+    points_cartesian = utils.spherical_to_cartesian(star.points_spherical)
+    args = (velocity_pert_sph, points_cartesian, 0.0)
+    velocity_pert = putils.transform_spherical_displacement_to_cartesian(*args) * scale
+
+    velocity_pert_face = velocity_pert[star.faces].mean(axis=1)
 
     if update_container:
-        star.velocities += velocity_pert
+        star.velocities += velocity_pert_face
 
-    # function will terminate here if the container is flat
-    if star.is_flat():
-        return velocity_pert, dict() if return_perturbation else None
+    if return_perturbation:
+        if spherical_perturbation:
+            velocity_pert_sph[:, 0] *= scale
+            return velocity_pert_sph[star.faces].mean(axis=1) if not point_perturbations else velocity_pert_sph
+        else:
+            return velocity_pert if point_perturbations else velocity_pert_face
+    else:
+        return None
 
-    # calculating perturbed velocity in spherical coordinates
-    tilt_velocity_spots_sph = {
-        spot_idx: np.sum([kinematics.calculate_mode_angular_derivatives(
-                displacement=mode.spot_complex_displacement[spot_idx], angular_frequency=mode.angular_frequency
-            ) for mode in star.pulsations.values()], axis=0)
-        for spot_idx in star.pulsations[0].spot_points
-    }
 
-    spot_velocity_pert = dict()
-    for spot_idx, spot in star.spots.items():
-        spot_velocity_pert[spot_idx] = putils.derotate_surface_displacements(
-            tilt_velocity_spots_sph[spot_idx], star.pulsations[0].spot_points[spot_idx],
-            star.spots[spot_idx].points_spherical, tilt_phi, tilt_theta
-        )
-        spot_velocity_pert[spot_idx] = spot_velocity_pert[spot_idx][spot.faces].mean(axis=1)
+def gravity_acc_perturbation(star, scale, update_container=False, return_perturbation=False,
+                             spherical_perturbation=False, point_perturbations=False):
+    """
+    Calculates acceleration perturbation on a surface of a pulsating star.
 
-        if update_container:
-            spot.velocities += spot_velocity_pert[spot_idx]
+    :param star: base.container.StarContainer;
+    :param scale: float; scaling factor of the system (a in case of BinarySystem)
+    :param update_container: bool; if true, the perturbations are added into surface element velocities
+    :param return_perturbation: bool; if True, velocity perturbation itself is returned
+    :param spherical_perturbation: bool; if True, velocity perturbation in spherical coordinates (d_r, d_phi, d_theta)
+                                         is returned.
+    :param point_perturbations: bool; if True perturbations on surface pints are returned instead face averaged values
+    :return:
+    """
+    # calculating perturbed acceleration in tilted spherical coordinates
+    tilt_acc_sph = np.sum([
+        kinematics.calculate_mode_second_derivatives(
+            displacement=mode.complex_displacement, angular_frequency=mode.angular_frequency
+        ) for mode in star.pulsations.values()
+    ], axis=0)
 
-    return velocity_pert, spot_velocity_pert if return_perturbation else None
+    acc_pert_sph = putils.derotate_surface_displacements(
+        tilt_acc_sph, star.pulsations[0].points, star.points_spherical,
+        star.pulsations[0].tilt_phi, star.pulsations[0].tilt_theta
+    )
+    acc_pert_sph[star.pole_idx] = acc_pert_sph[star.pole_idx_neighbour]
+    points_cartesian = utils.spherical_to_cartesian(star.points_spherical)
+    acc_pert = putils.transform_spherical_displacement_to_cartesian(acc_pert_sph, points_cartesian, 0.0) * scale
+
+    # treating singularities at poles
+    acc_pert[star.pole_idx] = acc_pert[star.pole_idx_neighbour]
+
+    acc_pert_face = acc_pert[star.faces].mean(axis=1)
+
+    if update_container:
+        g_eq = - np.power(10, star.log_g)[:, None] * star.normals
+        total_acc = np.linalg.norm(g_eq + acc_pert_face, axis=1)
+        star.log_g = np.log10(total_acc)
+
+    if return_perturbation:
+        if spherical_perturbation:
+            acc_pert_sph[:, 0] *= scale
+            return acc_pert_sph[star.faces].mean(axis=1) if not point_perturbations else acc_pert_sph
+        else:
+            return acc_pert if point_perturbations else acc_pert_face
+    else:
+        return None
+
+
+def temp_perturbation(star, scale=1.0, update_container=False, return_perturbation=False, point_perturbations=False):
+    """
+    Calculates temperature perturbation on a surface of a pulsating star.
+
+    :param star: base.container.StarContainer;
+    :param scale: numpy.float; scale of the system
+    :param update_container: bool; if true, the perturbations are added into surface element temperatures
+    :param return_perturbation:
+    :param point_perturbations: bool; if True perturbations on surface pints are returned instead face averaged values
+    :return:
+    """
+    temp_pert = np.sum([kinematics.calculate_temperature_pert_factor(mode, scale)
+                        for mode in star.pulsations.values()], axis=0)
+
+    temp_pert_face = temp_pert[star.faces].mean(axis=1) * star.temperatures
+    if update_container:
+        star.temperatures += temp_pert_face
+
+    if return_perturbation:
+        return temp_pert*star.t_eff if point_perturbations else temp_pert_face

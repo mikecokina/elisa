@@ -152,12 +152,18 @@ def split_points_of_spots_and_component(on_container, points, vertices_map):
         }
     """
     points = np.array(points)
-    component_points = {"object": points[up.where(np.array(vertices_map) == {'enum': -1})[0]]}
-    indices = set([int(val["enum"]) for val in vertices_map if val["enum"] > -1])
+    # component_points = {"object": points[up.where(np.array(vertices_map) == {'enum': -1})[0]]}
+    component_points = {"object": points[vertices_map == -1]}
+    # indices = set([int(val["enum"]) for val in vertices_map if val["enum"] > -1])
+    indices = np.unique(vertices_map[vertices_map > -1])
     remove_overlaped_spots_by_spot_index(on_container, indices)
+    # spots_points = {
+    #     f"{i}": points[up.where(np.array(vertices_map) == {'enum': i})[0]] for i in range(len(on_container.spots))
+    #     if len(up.where(np.array(vertices_map) == {'enum': i})[0]) > 0
+    # }
     spots_points = {
-        f"{i}": points[up.where(np.array(vertices_map) == {'enum': i})[0]] for i in range(len(on_container.spots))
-        if len(up.where(np.array(vertices_map) == {'enum': i})[0]) > 0
+        f"{i}": points[vertices_map == i] for i in range(len(on_container.spots))
+        if len(vertices_map[vertices_map == i]) > 0
     }
     return {**component_points, **spots_points}
 
@@ -213,58 +219,42 @@ def incorporate_spots_mesh(to_container, component_com):
         return to_container
     logger.debug(f"incorporating spot points to_container component {to_container.name} mesh")
 
-    vertices_map = [{"enum": -1} for _ in to_container.points]
+    # vertices_map = [{"enum": -1} for _ in to_container.points]
+    vertices_map = np.full(to_container.points.shape[0], -1)
     # `all_component_points` do not contain points of Any spot
     all_component_points = copy(to_container.points)
 
-    # neck = np.max(np.abs(to_container.points[:, 0] - component_com)) if neck is None else neck - component_com
     neck = np.max(np.abs(to_container.points[:, 0] - component_com))
-    # neck = np.min(all_component_points[:to_container.base_symmetry_points_number, 0])
-    # neck = np.min(all_component_points[:, 0])
 
     for spot_index, spot in to_container.spots.items():
         # average spacing in spot points
-        vertices_to_remove, vertices_test = [], []
         cos_max_angle_point = up.cos(spot.angular_radius + 0.30 * spot.discretization_factor)
         spot_center = spot.center - np.array([component_com, 0., 0.])
 
         # removing star points in spot
         # all component points means just points of component NOT merged points + spots
-        for ix, pt in enumerate(all_component_points):
-            surface_point = pt - np.array([component_com, 0., 0.])
-            cos_angle = \
-                up.inner(spot_center, surface_point) / (
-                    np.linalg.norm(spot_center) * np.linalg.norm(surface_point))
-            # skip all points of object outside of spot
-            if cos_angle < cos_max_angle_point or np.abs(np.abs(pt[0]) - neck) < 1e-9:
-                continue
-            # mark component point (NOT point of spot) for removal if is within the spot
-            vertices_to_remove.append(ix)
+
+        com_pts = all_component_points - np.array([component_com, 0., 0.])[None, :]
+        cos_angles = np.sum(np.multiply(spot_center[None, :], com_pts), axis=1) / (
+                    np.linalg.norm(spot_center) * np.linalg.norm(com_pts, axis=1))
+
+        # skip all points of object outside of spot
+        angular_dist_cond = cos_angles < cos_max_angle_point
+        # skip points near neck
+        neck_cond = np.abs(np.abs(com_pts[:, 0]) - neck) < 1e-9
+        in_condition = np.logical_or(angular_dist_cond, neck_cond)
+
+        vertices_to_keep = np.arange(com_pts.shape[0], dtype=np.int)[in_condition]
 
         # simplices of target object for testing whether point lying inside or not of spot boundary, removing
         # duplicate points on the spot border
-        # kedze vo vertice_map nie su body skvrny tak toto tu je zbytocne viac menej
-        vertices_to_remove = list(set(vertices_to_remove))
+        # vertices_to_remove = np.unique(vertices_to_remove)
+        vertices_to_keep = np.unique(vertices_to_keep)
+        all_component_points = all_component_points[vertices_to_keep]
+        vertices_map = vertices_map[vertices_to_keep]
 
-        # points and vertices_map update
-        _points, _vertices_map = list(), list()
-
-        for ix, vertex in list(zip(range(0, len(all_component_points)), all_component_points)):
-            if ix in vertices_to_remove:
-                # skip point if is marked for removal
-                continue
-
-            # append only points of currrent object that do not intervent to_container spot
-            # [current, since there should be already spot from previous iteration step]
-            _points.append(vertex)
-            _vertices_map.append({"enum": vertices_map[ix]["enum"]})
-
-        for vertex in spot.points:
-            _points.append(vertex)
-            _vertices_map.append({"enum": spot_index})
-
-        all_component_points = copy(_points)
-        vertices_map = copy(_vertices_map)
+        all_component_points = np.row_stack((all_component_points, spot.points))
+        vertices_map = np.concatenate((vertices_map, np.full(spot.points.shape[0], spot_index)))
 
     separated_points = split_points_of_spots_and_component(to_container, all_component_points, vertices_map)
     setup_body_points(to_container, separated_points)

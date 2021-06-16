@@ -237,6 +237,7 @@ v0.5
     - line-of-sight vector is switched from [1, 0, 0] to [-1, 0, 0] to make model consistent with radial velocity
       observations where negative value describes velocity of body moving towards the observer. Azimuth of the body is
       now measured with respect to y-axis. Observer is now located at [-inf, 0, 0]
+    - atmosphere models are interpolated using flux-based weights instead of temperature based weights
 
 v1.0
 ----

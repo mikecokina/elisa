@@ -76,7 +76,10 @@ class PositionContainer(object):
     def build_temperature_distribution(self, *args, **kwargs):
         pass
 
-    def flatt_it(self):
+    def is_flat(self):
+        return self._flatten
+
+    def flat_it(self):
         # naive implementation of idempotence
         if self._flatten:
             return self
@@ -84,7 +87,7 @@ class PositionContainer(object):
         for component in self._components:
             star_container = getattr(self, component)
             if star_container.has_spots() or star_container.has_pulsations():
-                star_container.flatt_it()
+                star_container.flat_it()
 
         self._flatten = True
         return self
@@ -114,15 +117,7 @@ class PositionContainer(object):
         :return:
         """
         prop_value = getattr(container, prop)
-
-        correction = np.sign(const.LINE_OF_SIGHT[0]) * const.HALF_PI
-        args = (self.position.azimuth - correction, prop_value, "z", False,
-                False)
-        prop_value = utils.around_axis_rotation(*args)
-
-        inverse = False if const.LINE_OF_SIGHT[0] == 1 else True
-        args = (const.HALF_PI - self.inclination, prop_value, "y", inverse, False)
-        prop_value = utils.around_axis_rotation(*args)
+        prop_value = utils.rotate_item(prop_value, self.position, self.inclination)
         setattr(container, prop, prop_value)
 
     def add_secular_velocity(self):
@@ -308,12 +303,12 @@ class StarContainer(object):
                  points=None,
                  normals=None,
                  velocities=None,
+                 accelerations=None,
                  indices=None,
                  faces=None,
                  temperatures=None,
                  log_g=None,
                  coverage=None,
-                 rals=None,
                  face_centres=None,
                  metallicity=None,
                  areas=None,
@@ -326,11 +321,11 @@ class StarContainer(object):
         self.normals = normals
         self.faces = faces
         self.velocities = velocities
+        self.accelerations = accelerations
         self.temperatures = temperatures
         self.log_g = log_g
         self.coverage = coverage
         self.indices = indices
-        self.rals = rals
         self.face_centres = face_centres
         self.metallicity = metallicity
         self.areas = areas
@@ -347,6 +342,10 @@ class StarContainer(object):
 
         self.face_symmetry_vector = np.array([])
         self.base_symmetry_faces_number = 0
+
+        # aux variables for treating singularities at poles
+        self.pole_idx = np.array([])
+        self.pole_idx_neighbour = np.array([])
 
         # those are used only if case of spots are NOT used ------------------------------------------------------------
         self.base_symmetry_points = np.array([])
@@ -456,7 +455,7 @@ class StarContainer(object):
         Calculates areas for all faces on the surface including spots and assigns values to its corresponding variables.
         """
         self.areas = self.calculate_areas()
-        if self.has_spots():
+        if self.has_spots() and not self.is_flat():
             for spot_index, spot_instance in self.spots.items():
                 spot_instance.areas = spot_instance.calculate_areas()
 
@@ -514,10 +513,10 @@ class StarContainer(object):
             list_to_concat[1:] = [list_to_concat[index+1] + lengths[index] for index in self.spots]
         return np.concatenate(list_to_concat, axis=0)
 
-    def flatt_it(self):
+    def flat_it(self):
         """
         Make properties "points", "normals", "faces", "temperatures", "log_g", "rals", "centers", "areas"
-        of container flatt. It means all properties of start and spots are put together.
+        of container flat. It means all properties of start and spots are put together.
 
         :return: self
         """
@@ -530,12 +529,6 @@ class StarContainer(object):
         for prop in props_list:
             setattr(self, prop, self.get_flatten_parameter(prop))
 
-        # if self.has_pulsations():
-        #     setattr(self, 'points_spherical', self.get_flatten_parameter('points_spherical'))
-        #     mode = self.pulsations[0]
-        #     to_concat = [mode.points, ] + [s_points for s_points in mode.spot_points.values()]
-        #     setattr(mode, 'points', np.concatenate(to_concat, axis=0))
-
         self._flatten = True
         return self
 
@@ -546,7 +539,7 @@ class StarContainer(object):
         :param kind: str; `points` or `face_centres` or other variable containing cartesian
                           points in both star and spot containers
         :param com_x: float;
-        :return: Tuple; spherical coordinates of star variable, dictionary of spherical coordinates of spot variable
+        :return: numpy.array; spherical coordinates of star variable
         """
         # separating variables to convert
         centres_cartesian = copy(getattr(self, kind))
@@ -556,20 +549,7 @@ class StarContainer(object):
 
         # conversion
         centres = utils.cartesian_to_spherical(centres_cartesian)
-
-        centres_spot = dict()
-        if not self._flatten:
-            # separating variables to convert
-            centres_spot_cartesian = {spot_idx: copy(getattr(spot, kind)) for spot_idx, spot in self.spots.items()}
-
-            for spot_index, spot in self.spots.items():
-                # transforming variables
-                centres_spot_cartesian[spot_index][:, 0] -= com_x
-
-                # conversion
-                centres_spot[spot_index] = utils.cartesian_to_spherical(centres_spot_cartesian[spot_index])
-
-        return centres, centres_spot
+        return centres
 
     def assign_radii(self, star):
         self.polar_radius = getattr(star, 'polar_radius')

@@ -266,7 +266,7 @@ class NaiveInterpolatedAtm(object):
         Compute interpolation weights between two models of atmoshperes.
         Weights are computet as::
 
-            (temperatures - bottom_temperatures) / (top_temperatures - bottom_temperatures)
+            (temperatures^4 - bottom_temperatures^4) / (top_temperatures^4 - bottom_temperatures^4)
 
         what means we use linear approach.
         If there is np.nan (it cames from same surounded values), such value is replaced with 1.0.
@@ -278,13 +278,11 @@ class NaiveInterpolatedAtm(object):
         :return: numpy.array[float];
         """
         with np.errstate(divide='ignore', invalid='ignore'):
-            top_temperatures = np.array([a.temperature for a in top_atm_containers])
-            bottom_temperatures = np.array([a.temperature for a in bottom_atm_containers])
-            # top_temperatures = Tensor(top_temperatures)
-            # bottom_temperatures = Tensor(bottom_temperatures)
-            # temperatures = Tensor(temperatures)
-            result = (temperatures - bottom_temperatures) / (top_temperatures - bottom_temperatures)
-            # result = result.to_ndarray()
+            top_temperatures4 = np.power(np.array([a.temperature for a in top_atm_containers]), 4)
+            bottom_temperatures4 = np.power(np.array([a.temperature for a in bottom_atm_containers]), 4)
+
+            result = (np.power(temperatures, 4) - bottom_temperatures4) / (top_temperatures4 - bottom_temperatures4)
+
             result[up.isnan(result)] = 1.0
             return result
 

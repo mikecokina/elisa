@@ -45,26 +45,28 @@ def resolve_curve_method(system, fn_array):
     spotty_test_eccentric = system.primary.has_spots() or system.secondary.has_spots()
 
     if is_circular:
-        if not asynchronous_spotty_test and not system.has_pulsations():
+        if asynchronous_spotty_test:
+            logger.debug('Calculating curve for circular binary system with with asynchronous spotty components.')
+            return fn_array[1]
+        elif system.has_pulsations():
+            logger.debug('Calculating curve for circular binary system with pulsations without asynchronous spots.')
+            return fn_array[2]
+        else:
             logger.debug('Calculating curve for circular binary system without '
                          'pulsations and without asynchronous spotty components.')
             return fn_array[0]
-        else:
-            logger.debug('Calculating curve for circular binary system with '
-                         'pulsations or with asynchronous spotty components.')
-            return fn_array[1]
     elif is_eccentric:
         if spotty_test_eccentric:
             logger.debug('Calculating curve for eccentric binary system with spotty components.')
-            return fn_array[2]
+            return fn_array[3]
         else:
             logger.debug('Calculating curve for eccentric binary system without spotty components.')
-            return fn_array[3]
+            return fn_array[4]
 
     raise NotImplementedError("Orbit type not implemented or invalid.")
 
 
-def prep_initial_system(binary):
+def prep_initial_system(binary, **kwargs):
     """
     Prepares base binary system from which curves will be calculated in case of circular synchronous binaries.
 
@@ -73,7 +75,8 @@ def prep_initial_system(binary):
     """
     from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
     initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
-    initial_system.build(components_distance=1.0)
+    do_pulsations = kwargs.get('build_pulsations', True)
+    initial_system.build(components_distance=1.0, build_pulsations=do_pulsations)
     return initial_system
 
 
@@ -96,7 +99,7 @@ def produce_circular_sync_curves(binary, initial_system, phases, curve_fn, crv_l
     :return: Dict; calculated curves
     """
 
-    crv_utils.prep_surface_params(initial_system.flatt_it(), return_values=False, write_to_containers=True, **kwargs)
+    crv_utils.prep_surface_params(initial_system, return_values=False, write_to_containers=True, **kwargs)
     fn_args = (binary, initial_system, crv_labels, curve_fn)
     return manage_observations(fn=c_managed.produce_circ_sync_curves_mp, fn_args=fn_args, position=phases, **kwargs)
 
@@ -106,7 +109,7 @@ def produce_circular_spotty_async_curves(binary, curve_fn, crv_labels, **kwargs)
     Function returns curve of assynchronous systems with circular orbits and spots.
 
     :param binary: elisa.binary_system.system.BinarySystem;
-    :param curve_fn: curve function
+    :param curve_fn: callable; curve function
     :param crv_labels: labels of the calculated curves (passbands, components,...)
     :param kwargs: Dict;
     :**kwargs options**:
@@ -137,6 +140,27 @@ def produce_circular_spotty_async_curves(binary, curve_fn, crv_labels, **kwargs)
     curves = manage_observations(fn=c_managed.produce_circ_spotty_async_curves_mp, fn_args=fn_args,
                                  position=orbital_motion, **kwargs)
     return curves
+
+
+def produce_circular_pulsating_curves(binary, initial_system, curve_fn, crv_labels, **kwargs):
+    """
+    Function returns curve of pulsating systems with circular orbits.
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param initial_system: elisa.binary_system.container.OrbitalPositionContainer;
+    :param curve_fn: callable; curve function
+    :param crv_labels: labels of the calculated curves (passbands, components,...)
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * ** passband ** * - Dict[str, elisa .observer.PassbandContainer]
+        * ** left_bandwidth ** * - float
+        * ** right_bandwidth ** * - float
+    :return: Dict; curves
+    """
+    phases = kwargs.pop("phases")
+    fn_args = (binary, initial_system, crv_labels, curve_fn)
+    args = (c_managed.produce_circ_pulsating_curves_mp, fn_args, phases)
+    return manage_observations(*args, **kwargs)
 
 
 def produce_ecc_curves_no_spots(binary, curve_fn, crv_labels, **kwargs):

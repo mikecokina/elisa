@@ -417,13 +417,14 @@ class BinarySystem(System):
 
         return BinarySystem.from_json(data=data)
 
-    def build_container(self, phase=None, time=None):
+    def build_container(self, phase=None, time=None, build_pulsations=True):
         """
         Function returns `OrbitalPositionContainer` with fully built model binary system at user-defined photometric
         phase or time of observation.
 
         :param time: float; JD
         :param phase: float; photometric phase
+        :param build_pulsations: bool;
         :return: elisa.binary_system.container.OrbitalPositionContainer;
         """
         if phase is not None and time is not None:
@@ -433,9 +434,9 @@ class BinarySystem(System):
 
         position = self.calculate_orbital_motion(input_argument=phase, return_nparray=False, calculate_from='phase')[0]
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self, position)
-        orbital_position_container.build()
+        orbital_position_container.build(build_pulsations=build_pulsations)
 
-        logger.info('Orbital position container was successfully built at photometric phase {phase:.2f}.')
+        logger.info(f'Orbital position container was successfully built at photometric phase {phase:.2f}.')
         return orbital_position_container
 
     def to_json(self):
@@ -1172,6 +1173,7 @@ class BinarySystem(System):
         """
         fn_arr = (self._compute_circular_synchronous_lightcurve,
                   self._compute_circular_spotty_asynchronous_lightcurve,
+                  self._compute_circular_pulsating_lightcurve,
                   self._compute_eccentric_spotty_lightcurve,
                   self._compute_eccentric_lightcurve)
         curve_fn = c_router.resolve_curve_method(self, fn_arr)
@@ -1183,6 +1185,9 @@ class BinarySystem(System):
 
     def _compute_circular_spotty_asynchronous_lightcurve(self, **kwargs):
         return lc.compute_circular_spotty_asynchronous_lightcurve(self, **kwargs)
+
+    def _compute_circular_pulsating_lightcurve(self, **kwargs):
+        return lc.compute_circular_pulsating_lightcurve(self, **kwargs)
 
     def _compute_eccentric_spotty_lightcurve(self, **kwargs):
         return lc.compute_eccentric_spotty_lightcurve(self, **kwargs)
@@ -1197,18 +1202,25 @@ class BinarySystem(System):
         if kwargs['method'] == 'radiometric':
             fn_arr = (self._compute_circular_synchronous_rv_curve,
                       self._compute_circular_spotty_asynchronous_rv_curve,
+                      self._compute_circular_pulsating_rv_curve,
                       self._compute_eccentric_spotty_rv_curve,
                       self._compute_eccentric_rv_curve_no_spots)
             curve_fn = c_router.resolve_curve_method(self, fn_arr)
 
             kwargs = rv_base.include_passband_data_to_kwargs(**kwargs)
             return curve_fn(**kwargs)
+        else:
+            raise ValueError(f"Unknown RV computing method `{kwargs['method']}`. List of available methods: "
+                             f"[`kinematic`, `radiometric`].")
 
     def _compute_circular_synchronous_rv_curve(self, **kwargs):
         return rv.compute_circular_synchronous_rv_curve(self, **kwargs)
 
     def _compute_circular_spotty_asynchronous_rv_curve(self, **kwargs):
         return rv.compute_circular_spotty_asynchronous_rv_curve(self, **kwargs)
+
+    def _compute_circular_pulsating_rv_curve(self, **kwargs):
+        return rv.compute_circular_pulsating_rv_curve(self, **kwargs)
 
     def _compute_eccentric_spotty_rv_curve(self, **kwargs):
         return rv.compute_eccentric_spotty_rv_curve(self, **kwargs)

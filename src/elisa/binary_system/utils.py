@@ -121,7 +121,7 @@ def move_sys_onpos(init_system, orbital_position, primary_potential=None, second
     Following methods are applied::
 
         system.set_on_position_params()
-        system.flatt_it()
+        system.flat_it()
         system.apply_rotation()
         system.add_secular_velocity()
         system.calculate_face_angles()
@@ -140,7 +140,7 @@ def move_sys_onpos(init_system, orbital_position, primary_potential=None, second
     system.set_on_position_params(orbital_position, primary_potential, secondary_potential)
     if recalculate_velocities:
         system.build_velocities(components_distance=orbital_position.distance, component='all')
-    system.flatt_it()
+    system.flat_it()
     system.apply_rotation()
     system.add_secular_velocity()
     system.calculate_face_angles(line_of_sight=const.LINE_OF_SIGHT)
@@ -244,3 +244,17 @@ def transform_json_community_to_std(data):
     data["secondary"].update({"mass": m2})
 
     return data
+
+
+def correction_to_com(distance, mass_ratio, scom):
+    """
+    Calculates the correction for com from primary-centered coordinate system to barycentric.
+
+    :param distance: float;
+    :param mass_ratio: float
+    :param scom: float; secondary component component of mass
+    :return: correction to com in primary-centered system
+    """
+    distances_to_com = distance * mass_ratio / (1 + mass_ratio)
+    dir_to_secondary = scom / np.linalg.norm(scom)
+    return distances_to_com * dir_to_secondary

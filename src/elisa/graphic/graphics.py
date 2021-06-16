@@ -17,11 +17,16 @@ from . import utils as gutils
 
 
 CMAPS = {'temperature': cm.jet_r,
-         'gravity_acceleration': cm.jet,
          'velocity': cm.jet,
          'radial_velocity': cm.jet,
+         'v_r_perturbed': cm.jet,
+         'v_horizontal_perturbed': cm.jet,
+         'gravity_acceleration': cm.jet,
+         'horizontal_acceleration': cm.jet,
+         'radius': cm.jet,
          'normal_radiance': cm.hot,
          'radiance': cm.hot,
+         'horizontal_displacement': cm.jet,
          }
 
 
@@ -454,16 +459,26 @@ def set_colorbar_label(colorbar, colorbar_name, unit, scale, extra=''):
         'gravity_acceleration': 'g',
         'velocity': 'v',
         'radial_velocity': r'v$_{rad}$',
+        'v_r_perturbed': r'$d v_r$',
+        'v_horizontal_perturbed': r'$d v_{horizontal}$',
         'normal_radiance': r'I$_{norm}$',
         'radiance': 'I',
+        'radius': '$r$',
+        'horizontal_displacement': r'$d r_{horizontal}$',
+        'horizontal_acceleration': r'$g_{horizontal}$',
     }
     def_unit = {
         'temperature': 'K',
         'gravity_acceleration': '$m\,s^{-2}$',
         'velocity': '$m\,s^{-1}$',
         'radial_velocity': '$m\,s^{-1}$',
+        'v_r_perturbed': '$m\,s^{-1}$',
+        'v_horizontal_perturbed': '$m\,s^{-1}$',
         'normal_radiance': '$W.sr^{-1}.m^{-2}$',
         'radiance': '$W.sr^{-1}.m^{-2}$',
+        'radius': '$m$',
+        'horizontal_displacement': r'$m$',
+        'horizontal_acceleration': r'$m\,s^{-2}$',
     }
     unt = def_unit[colorbar_name] if unit == 'default' else unit
     if scale == 'linear':
@@ -609,11 +624,17 @@ def binary_surface_anim(**kwargs):
                                 triangles=_faces[ii][frame_number],
                                 antialiased=True, shade=False, color=_clr[ii])
             if kwargs.get('colormap', False):
-                p.set_cmap(cmap=cm.jet)
+                p.set_cmap(cmap=CMAPS[kwargs.get('colormap', cm.jet)])
                 p.set_array(_cmaps[ii][frame_number])
+
+            if kwargs['edges']:
+                p.set_edgecolor('black')
 
             ax.text(-kwargs['axis_lim'], 0.9*kwargs['axis_lim'], 0.8*kwargs['axis_lim'],
                     f"{kwargs['phases'][frame_number]%1.0:.2f}")
+
+            if not kwargs['plot_axis']:
+                ax.set_axis_off()
 
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection='3d')
@@ -660,9 +681,17 @@ def binary_surface_anim(**kwargs):
             plot[0].set_array(cmaps[0][0])
             plot[1].set_array(cmaps[1][0])
 
+    if kwargs.get('edges', False):
+        if kwargs['separate_colormaps']:
+            plot[0].set_edgecolor('black')
+            plot[1].set_edgecolor('black')
+        else:
+            plot[0].set_edgecolor('black')
+
     args = (points, faces, clr, cmaps, plot)
+    plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     ani = animation.FuncAnimation(fig, update_plot, kwargs['n_frames'], fargs=args, interval=20)
-    plt.show() if not kwargs['savepath'] else ani.save(kwargs['savepath'], writer='ffmpeg', fps=20, dpi=300)
+    plt.show() if not kwargs['savepath'] else ani.save(kwargs['savepath'], writer='ffmpeg', fps=30, dpi=300)
 
 
 def single_surface_anim(**kwargs):
@@ -683,8 +712,12 @@ def single_surface_anim(**kwargs):
                                 triangles=_faces[ii][frame_number],
                                 antialiased=True, shade=False, color=_clr[ii])
             if kwargs.get('colormap', False):
-                p.set_cmap(cmap=cm.jet)
+                p.set_cmap(cmap=CMAPS[kwargs.get('colormap', cm.jet)])
                 p.set_array(_cmaps[ii][frame_number])
+                p.set_clim(cmap_limits[0], cmap_limits[1])
+
+            if kwargs['edges']:
+                p.set_edgecolor('black')
 
             ax.text(-kwargs['axis_lim'], 0.9 * kwargs['axis_lim'], 0.8 * kwargs['axis_lim'],
                     f"{kwargs['phases'][frame_number]%1.0:.2f}")
@@ -701,7 +734,7 @@ def single_surface_anim(**kwargs):
 
     clr = ['g', 'r']
     cmaps = []
-
+    cmap_limits = (np.min(kwargs['cmap']), np.max(kwargs['cmap']))
     points = [kwargs['points']]
     faces = [kwargs['faces']]
 
@@ -714,6 +747,7 @@ def single_surface_anim(**kwargs):
         plot[0].set_array(cmaps[0][0])
 
     args = (points, faces, clr, cmaps, plot)
+    plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     ani = animation.FuncAnimation(fig, update_plot, kwargs['n_frames'], fargs=args, interval=20)
     plt.show() if not kwargs['savepath'] else ani.save(kwargs['savepath'], writer='ffmpeg', fps=20, dpi=300)
 
@@ -867,8 +901,7 @@ def binary_lc_fit_plot(**kwargs):
     ax2 = fig.add_subplot(gs[1], sharex=ax1)
 
     for fltr, curve in kwargs['lcs'].items():
-        # rasterize = np.shape(kwargs['x_data'][fltr])[0] > 300 if kwargs.get['rasterize']
-        rasterize = False
+        rasterize = np.shape(kwargs['x_data'][fltr])[0] > 10000 if kwargs['rasterize'] is None else rasterize
         (dt_clr, clr) = (datapoint_clrs[fltr], datapoint_clrs[fltr]) if len(kwargs['lcs']) > 1 else ('blue', 'red')
 
         if kwargs['y_err'][fltr] is None:

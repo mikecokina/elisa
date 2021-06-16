@@ -124,7 +124,15 @@ def produce_circ_spotty_async_curves_mp(*args):
         initial_system.build_temperature_distribution(components_distance=orbital_position.distance,
                                                       component='all')
 
-        on_pos = bsutils.move_sys_onpos(initial_system, orbital_position, on_copy=True)
+        if initial_system.has_pulsations():
+            on_pos = initial_system.copy()
+            on_pos.flat_it()
+            on_pos.build_pulsations(components_distance=orbital_position.distance, component='all')
+            on_copy, sys_to_rotate = False, on_pos
+        else:
+            on_copy, sys_to_rotate = True, initial_system
+
+        on_pos = bsutils.move_sys_onpos(sys_to_rotate, orbital_position, on_copy=on_copy)
 
         # if None of components has to be rebuilt, use previously computed radiances and limbdarkening when available
         require_build_test = require_build is not None
@@ -135,6 +143,53 @@ def produce_circ_spotty_async_curves_mp(*args):
                                  return_values=False, write_to_containers=True)
 
         curves = curve_fn(curves, pos_idx, crv_labels, on_pos)
+
+    return curves
+
+
+def produce_circ_pulsating_curves_mp(*args):
+    """
+    Curve generator function for circular pulsating systems.
+
+    :param args: Tuple;
+
+    ::
+
+        Tuple[
+                binary: elisa.binary_system.BinarySystem,
+                initial_system: elisa.binary_system.container.OrbitalPositionContainer, system container with built
+                phase_batch: numpy.array; phases at which to calculate curves,
+                crv_labels: List;
+                curves_fn: function to calculate curve points at given orbital positions,
+                kwargs: Dict,
+            ]
+    :return:
+    """
+    binary, initial_system, phase_batch, crv_labels, curves_fn, kwargs = args
+
+    position_method = kwargs.pop("position_method")
+    orbital_motion = position_method(input_argument=phase_batch, return_nparray=False, calculate_from='phase')
+    # is in eclipse test eval
+    ecl_boundaries = dynamic.get_eclipse_boundaries(binary, 1.0)
+    azimuths = [position.azimuth for position in orbital_motion]
+    in_eclipse = dynamic.in_eclipse_test(azimuths, ecl_boundaries)
+
+    curves = {key: np.zeros(phase_batch.shape) for key in crv_labels}
+
+    for pos_idx, position in enumerate(orbital_motion):
+        on_pos = initial_system.copy()
+        on_pos.set_on_position_params(position)
+        on_pos.set_time()
+
+        on_pos.build_pulsations(components_distance=position.distance)
+        crv_utils.prep_surface_params(on_pos, return_values=False, write_to_containers=True, **kwargs)
+
+        on_pos = bsutils.move_sys_onpos(on_pos, position, on_copy=False, recalculate_velocities=False)
+
+        compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=in_eclipse[pos_idx],
+                                 return_values=False, write_to_containers=True)
+
+        curves = curves_fn(curves, pos_idx, crv_labels, on_pos)
 
     return curves
 
@@ -199,7 +254,7 @@ def _update_surface_in_ecc_orbits(system, orbital_position, new_geometry_test):
         system.rebuild_symmetric_detached_mesh(component="all", components_distance=orbital_position.distance)
         system.build_velocities(components_distance=orbital_position.distance, component="all")
         system.build_faces_orientation(component="all", components_distance=orbital_position.distance)
-        system.correct_mesh("all")
+        system.correct_mesh(component="all", components_distance=orbital_position.distance)
         system.build_surface_areas(component="all")
 
     return system

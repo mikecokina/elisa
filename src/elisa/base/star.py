@@ -125,7 +125,7 @@ class Star(Body):
         self.metallicity = np.nan
         self.polar_log_g = np.nan
         self.gravity_darkening = np.nan
-        self._pulsations = dict()
+        self._pulsations = list()
 
         self.side_radius = np.nan
         self.forward_radius = np.nan
@@ -220,7 +220,9 @@ class Star(Body):
 
         :return:
         """
-        if pulsations:
+        if pulsations in [None, []]:
+            self._pulsations = {}
+        elif pulsations:
             self._pulsations = {idx: PulsationMode(**pulsation_meta) for idx, pulsation_meta in enumerate(pulsations)}
 
     def properties_serializer(self):

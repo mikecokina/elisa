@@ -30,7 +30,7 @@ class SinglePositionContainer(PositionContainer):
             setattr(self, key, val)
 
         # calculating a time that elapsed since t0
-        self.time = self.set_time()
+        self.set_time()
 
         # setting centre of mass
         self.set_com()
@@ -43,7 +43,8 @@ class SinglePositionContainer(PositionContainer):
         setattr(self.star, 'com', np.array([0, 0, 0]))
 
     def set_time(self):
-        return 86400 * self.rotation_period * self.position.phase
+        setattr(self, 'time', 86400 * self.rotation_period * self.position.phase)
+        return getattr(self, 'time')
 
     @classmethod
     def from_single_system(cls, single_system, position):
@@ -82,9 +83,14 @@ class SinglePositionContainer(PositionContainer):
         self.build_surface()
         self.build_from_points()
 
+        self.flat_it()
         if build_pulsations:
             self.build_pulsations()
         return self
+
+    def build_pulsations(self):
+        self.build_harmonics()
+        self.build_perturbations()
 
     def build_surface(self):
         """
@@ -137,8 +143,11 @@ class SinglePositionContainer(PositionContainer):
     def build_temperature_perturbations(self):
         return temperature.build_temperature_perturbations(self)
 
-    def build_pulsations(self):
-        return pulsations.build_pulsations(self)
+    def build_harmonics(self):
+        return pulsations.build_harmonics(self)
+
+    def build_perturbations(self):
+        return pulsations.build_perturbations(self)
 
     def _phase(self, phase):
         return phase if phase is not None else self.position.phase

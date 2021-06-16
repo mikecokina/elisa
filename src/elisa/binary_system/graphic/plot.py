@@ -151,8 +151,8 @@ class Plot(object):
 
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
         orbital_position_container.build_mesh(components_distance=components_distance)
-        orbital_position_container.build_pulsations(component=components_to_plot,
-                                                    components_distance=components_distance)
+        orbital_position_container.build_perturbations(component=components_to_plot,
+                                                       components_distance=components_distance)
 
         if components_to_plot in ['primary', 'both']:
             binary_mesh_kwargs.update({
@@ -187,7 +187,6 @@ class Plot(object):
         :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
                                              produced figure
         """
-
         binary_wireframe_kwargs = dict()
         inclination = transform.deg_transform(inclination, u.deg, when_float64=transform.WHEN_FLOAT64) \
             if inclination is not None else up.degrees(self.binary.inclination)
@@ -227,7 +226,7 @@ class Plot(object):
         return graphics.binary_wireframe(**binary_wireframe_kwargs)
 
     def surface(self, phase=0.0, components_to_plot='both', normals=False, edges=False, colormap=None, plot_axis=True,
-                face_mask_primary=None, face_mask_secondary=None, elevation=None, azimuth=None, unit='default',
+                face_mask_primary=None, face_mask_secondary=None, elevation=None, azimuth=None, colorbar_unit='default',
                 axis_unit=u.dimensionless_unscaled, colorbar_orientation='vertical', colorbar=True, scale='linear',
                 surface_colors=('g', 'r'), separate_colormaps=None, colorbar_separation=0.0, colorbar_size=0.7,
                 return_figure_instance: bool=False, subtract_equilibrium: bool=False):
@@ -245,7 +244,7 @@ class Plot(object):
         :param face_mask_secondary: array[bool]: mask to select which faces to display
         :param elevation: Union[float, astropy.Quantity]; in degrees - elevation of camera
         :param azimuth: Union[float, astropy.Quantity]; camera azimuth
-        :param unit: str; colorbar unit
+        :param colorbar_unit: str; colorbar unit
         :param axis_unit: Union[astropy.unit, dimensionless]; - axis units
         :param colorbar_orientation: str; 'horizontal' or 'vertical' (default)
         :param colorbar: bool; colorbar on/off switch
@@ -283,11 +282,11 @@ class Plot(object):
         
         orbital_position_container.set_on_position_params(orbital_position, potentials["primary"][0],
                                                           potentials["secondary"][0])
-        orbital_position_container.build(components_distance=components_distance, components='both',
-                                         build_pulsations=not subtract_equilibrium)
 
+        orbital_position_container.set_time()
+        orbital_position_container.build(components_distance=components_distance, components='both',
+                                         build_pulsations=True)
         components = butils.component_to_list(components_to_plot)
-        orbital_position_container.flatt_it()
 
         com = {'primary': 0.0, 'secondary': components_distance}
         for component in components:
@@ -305,26 +304,23 @@ class Plot(object):
             system=orbital_position_container, write_to_containers=True, **atm_kwargs
         )
 
-        distances_to_com = orbital_position.distance * self.binary.mass_ratio / (1 + self.binary.mass_ratio)
-        orbital_position_container.primary.points[:, 0] -= distances_to_com
-        orbital_position_container.secondary.points[:, 0] -= distances_to_com
-        orbital_position_container.primary.face_centres[:, 0] -= distances_to_com
-        orbital_position_container.secondary.face_centres[:, 0] -= distances_to_com
-
         orbital_position_container = butils.move_sys_onpos(orbital_position_container, orbital_position, on_copy=True)
+        args = (orbital_position.distance, self.binary.mass_ratio, orbital_position_container.secondary.com)
+        pos_correction = butils.correction_to_com(*args)
 
         for component in components:
             star = getattr(orbital_position_container, component)
-            points, faces = star.points, star.faces
+
+            args = (colormap, star, phase, com[component], self.binary.semi_major_axis, self.binary.inclination,
+                    orbital_position_container.position)
+            kwargs = dict(scale=scale, unit=colorbar_unit, subtract_equilibrium=subtract_equilibrium)
+
+            surface_kwargs.update({f'{component}_cmap': plot.add_colormap_to_plt_kwargs(*args, **kwargs)})
 
             surface_kwargs.update({
-                f'points_{component}': points,
-                f'{component}_triangles': faces
+                f'points_{component}': star.points - pos_correction[None, :],
+                f'{component}_triangles': star.faces
             })
-
-            args = (colormap, star, phase, com[component], self.binary.semi_major_axis)
-            kwargs = dict(scale=scale, unit=unit, subtract_equilibrium=subtract_equilibrium)
-            surface_kwargs.update({f'{component}_cmap': plot.add_colormap_to_plt_kwargs(*args, **kwargs)})
 
             face_mask = locals().get(f'face_mask_{component}')
             face_mask = np.ones(star.faces.shape[0], dtype=bool) if face_mask is None else face_mask
@@ -334,7 +330,7 @@ class Plot(object):
 
             if normals:
                 surface_kwargs.update({
-                    f'{component}_centres': star.face_centres[face_mask],
+                    f'{component}_centres': star.face_centres[face_mask] - pos_correction[None, :],
                     f'{component}_arrows': star.normals[face_mask]
                 })
 
@@ -357,7 +353,7 @@ class Plot(object):
             "face_mask_secondary": face_mask_secondary,
             "elevation": elevation,
             "azimuth": azimuth,
-            "unit": unit,
+            "unit": colorbar_unit,
             "axis_unit": axis_unit,
             "colorbar_orientation": colorbar_orientation,
             "colorbar": colorbar,

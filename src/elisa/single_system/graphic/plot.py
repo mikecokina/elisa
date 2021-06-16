@@ -71,7 +71,7 @@ class Plot(object):
 
         position_container = SinglePositionContainer.from_single_system(self.single, self.defpos)
         position_container.build_mesh()
-        position_container.build_pulsations()
+        position_container.build_perturbations()
 
         mesh = position_container.star.get_flatten_parameter('points')
         denominator = (1 * axis_unit.to(u.DISTANCE_UNIT))
@@ -136,7 +136,7 @@ class Plot(object):
         return graphics.single_star_wireframe(**wireframe_kwargs)
 
     def surface(self, phase=0.0, normals=False, edges=False, colormap=None, plot_axis=True, face_mask=None,
-                elevation=None, azimuth=None, unit='default', axis_unit=u.solRad,
+                elevation=None, azimuth=None, colorbar_unit='default', axis_unit=u.solRad,
                 colorbar_orientation='vertical', colorbar=True, scale='linear', surface_color='g',
                 colorbar_separation=0.0, colorbar_size=0.7, return_figure_instance: bool=False,
                 subtract_equilibrium: bool=False):
@@ -152,7 +152,7 @@ class Plot(object):
         :param face_mask: array[bool]; mask to select which faces to display
         :param elevation: Union[float, astropy.Quantity]; in degree - elevation of camera
         :param azimuth: Union[float, astropy.Quantity]; camera azimuth
-        :param unit: str; colormap unit
+        :param colorbar_unit: str; colormap unit
         :param axis_unit: Union[astropy.unit, dimensionless]; - axis units
         :param colorbar_orientation: `horizontal` or `vertical` (default)
         :param colorbar: bool; colorbar on/off switch
@@ -176,9 +176,9 @@ class Plot(object):
 
         position_container = SinglePositionContainer.from_single_system(self.single, self.defpos)
         position_container.set_on_position_params(single_position)
-        position_container.build(phase=phase)
+        position_container.set_time()
+        position_container.build(phase=phase, build_pulsations=True)
         correct_face_orientation(position_container.star, com=0)
-        position_container.flatt_it()
 
         # calculating radiances
         o = Observer(passband=['bolometric', ], system=self.single)
@@ -195,16 +195,15 @@ class Plot(object):
         position_container = sutils.move_sys_onpos(position_container, single_position)
 
         star_container = getattr(position_container, 'star')
-        points, faces = star_container.points, star_container.faces
+
+        args = (colormap, star_container, phase, 0.0, 1.0, self.single.inclination, position_container.position)
+        kwargs = dict(scale=scale, unit=colorbar_unit, subtract_equilibrium=subtract_equilibrium)
+        surface_kwargs.update({'cmap': plot.add_colormap_to_plt_kwargs(*args, **kwargs)})
 
         surface_kwargs.update({
-            'points': points,
-            'triangles': faces
+            'points': star_container.points,
+            'triangles': star_container.faces
         })
-
-        args = (colormap, star_container, phase, 0.0, 1.0)
-        kwargs = dict(scale=scale, unit=unit, subtract_equilibrium=subtract_equilibrium)
-        surface_kwargs.update({'cmap': plot.add_colormap_to_plt_kwargs(*args, **kwargs)})
 
         face_mask = np.ones(star_container.faces.shape[0], dtype=bool) if face_mask is None else face_mask
         surface_kwargs['triangles'] = surface_kwargs['triangles'][face_mask]
@@ -235,7 +234,7 @@ class Plot(object):
             'face_mask': face_mask,
             "elevation": elevation,
             "azimuth": azimuth,
-            'unit': unit,
+            'unit': colorbar_unit,
             'axis_unit': axis_unit,
             'colorbar_orientation': colorbar_orientation,
             'colorbar': colorbar,

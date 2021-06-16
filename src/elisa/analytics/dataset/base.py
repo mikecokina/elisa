@@ -75,7 +75,7 @@ class DataSet(metaclass=ABCMeta):
 
     @classmethod
     def load_from_file(cls, filename, x_unit=None, y_unit=None, data_columns=None,
-                       delimiter=settings.DELIM_WHITESPACE, **kwargs):
+                       delimiter=settings.DELIM_WHITESPACE, downselect_ratio=None, **kwargs):
         """
         Function loads a RV/LC measurements from text file.
 
@@ -84,6 +84,7 @@ class DataSet(metaclass=ABCMeta):
         :param y_unit: astropy.unit.Unit;
         :param data_columns: Tuple; ordered tuple with column indices of x_data, y_data, y_errors
         :param delimiter: str; regex to define columns separtor
+        :param downselect_ratio: float; (0, 1), selects only a unformly distributed portion of the data to reduce amount of data
         :param kwargs: Dict;
         :**kwargs options**:
             * **reference_magnitude** * -- float; zero point for magnitude conversion in case of LCData
@@ -92,6 +93,10 @@ class DataSet(metaclass=ABCMeta):
         """
         data_columns = (0, 1, 2) if data_columns is None else data_columns
         data = dutils.read_data_file(filename, data_columns, delimiter=delimiter)
+
+        if downselect_ratio is not None:
+            idxs = np.arange(0, data.shape[0], step=int(1.0/downselect_ratio), dtype=np.int)
+            data = data[idxs]
 
         try:
             errs = data[:, 2]

@@ -7,7 +7,8 @@ from . import io_tools
 from . summary import (
     fit_rv_summary_with_error_propagation,
     fit_lc_summary_with_error_propagation,
-    simple_rv_fit_summary
+    simple_rv_fit_summary,
+    simple_lc_fit_summary
 )
 from .. params import parameters
 from .. params.parameters import BinaryInitialParameters
@@ -128,16 +129,20 @@ class RVFitMCMC(RVFit):
         """
         propagate_errors = kwargs.get('propagate_errors', False)
         percentiles = kwargs.get('percentiles', [16, 50, 84])
-        if not propagate_errors:
-            simple_rv_fit_summary(self, filename)
-            return
+        dimensionless_radii = kwargs.get('dimensionless_radii', True)
 
         kind_of = resolve_json_kind(data=self.result, _sin=True)
+        if not propagate_errors:
+            if kind_of in ["community"]:
+                simple_rv_fit_summary(self, filename)
+            else:
+                simple_lc_fit_summary(self, filename, dimensionless_radii=True)
+            return
 
         if kind_of in ["community"]:
             fit_rv_summary_with_error_propagation(self, filename, percentiles)
         else:
-            fit_lc_summary_with_error_propagation(self, filename, percentiles)
+            fit_lc_summary_with_error_propagation(self, filename, percentiles, dimensionless_radii=dimensionless_radii)
 
     def filter_chain(self, **boundaries):
         """

@@ -79,7 +79,7 @@ def create_orb_vel_vectors(system, components_distance):
 
     sin, cos = velocity_vector_angle(system.eccentricity, system.position.true_anomaly)
 
-    velocity = {'primary': np.array([-cos * speed, sin * speed, 0])}
+    velocity = {'primary': np.array([cos * speed, -sin * speed, 0])}
     velocity['secondary'] = - velocity['primary'] / system.mass_ratio
 
     return velocity

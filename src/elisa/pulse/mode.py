@@ -15,7 +15,8 @@ class PulsationMode(object):
     MANDATORY_KWARGS = ["l", "m", "amplitude", "frequency"]
 
     OPTIONAL_KWARGS = ["start_phase", 'mode_axis_theta', 'mode_axis_phi', 'temperature_perturbation_phase_shift',
-                       'horizontal_to_radial_amplitude_ratio']
+                       'horizontal_to_radial_amplitude_ratio', 'temperature_amplitude_factor',
+                       'tidally_locked']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, **kwargs):
@@ -36,38 +37,30 @@ class PulsationMode(object):
         self.mode_axis_theta = 0
         self.mode_axis_phi = 0
         self.temperature_perturbation_phase_shift = settings.DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT
+        self.horizontal_to_radial_amplitude_ratio = None,
+        self.tidally_locked = False
         self.horizontal_to_radial_amplitude_ratio = None
+        self.temperature_amplitude_factor = None
         # phase shift in radians between surface geometry
         # perturbation and temperature perturbations
 
-        # here the time-independent, renormalized associated Legendree polynomial is stored
-        self.rals = None
-
         # dimensionless normalized amplitudes
-        self.radial_amplitude = None
-        self.horizontal_amplitude = None
+        self.radial_amplitude = None  # in distance units
+        self.horizontal_amplitude = None  # in distance units
 
         # surface related aux variables
-        self.points = None
-        self.spot_points = None
+        self.points = None  # rotated spherical coordinates aligned with pulsation axis
 
         self.point_harmonics = None
-        self.face_harmonics = None
-        self.spot_point_harmonics = None
-        self.spot_face_harmonics = None
-
         self.point_harmonics_derivatives = None
-        self.face_harmonics_derivatives = None
-        self.spot_point_harmonics_derivatives = None
-        self.spot_face_harmonics_derivatives = None
-
         self.complex_displacement = None
-        self.spot_complex_displacement = dict()
+        self.tilt_phi, self.tilt_theta = None, None
 
         self.init_properties(**kwargs)
 
         self.angular_frequency = c.FULL_ARC * self.frequency
         # spherical harmonics renormalization constant to rms = 1
+        # TODO: this is a constant
         self.renorm_const = 2 * c.PI ** 0.5
         self.validate_mode()
 
