@@ -314,7 +314,7 @@ class TestNaiveInterpolation(ElisaTestCase):
         bottom = [MockAtm(t) for t in [15000, 3500, 4500, 3500]]
         temperatures = np.array([15010, 3555, 4562, 3500])
         weights = np.round(atm.NaiveInterpolatedAtm.compute_interpolation_weights(temperatures, top, bottom), 4)
-        expected = [0.01, 0.22, 0.248, 1.]
+        expected = [0.0091, 0.2025, 0.233, 1.]
         assert_array_equal(expected, weights)
 
     def test_compute_unknown_intensity_from_surounded_flux_matrices(self):
