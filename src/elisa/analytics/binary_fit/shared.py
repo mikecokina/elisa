@@ -20,7 +20,6 @@ from ... observer.utils import normalize_light_curve
 from ... binary_system.system import BinarySystem
 from ... binary_system.curves.community import RadialVelocitySystem
 
-from elisa.const import PI
 
 from ... logger import getLogger
 

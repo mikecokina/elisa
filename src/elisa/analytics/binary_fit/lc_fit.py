@@ -1,18 +1,14 @@
 import json
 
 from abc import abstractmethod
-from typing import Union, Dict
+from typing import Union
 
-from ... import units as u
-from ... import settings
-from ... binary_system.surface.gravity import calculate_polar_gravity_acceleration
 from ... logger import getLogger
 
 from .. params.parameters import BinaryInitialParameters
 from .. params import parameters
-from .. models import lc as lc_model
 from . summary import fit_lc_summary_with_error_propagation, simple_lc_fit_summary
-from . shared import check_for_boundary_surface_potentials, eval_constraint_in_dict
+from . shared import eval_constraint_in_dict
 from . import least_squares
 from . import mcmc
 from . import io_tools

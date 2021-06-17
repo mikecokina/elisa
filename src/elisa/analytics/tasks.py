@@ -199,14 +199,16 @@ class LCBinaryAnalyticsTask(AnalyticsTask):
                      "primary": ["mass", "t_eff", "surface_potential", "gravity_darkening", "albedo",
                                  "synchronicity", "metallicity", "spots", "pulsations"],
                      "secondary": ["mass", "t_eff", "surface_potential", "gravity_darkening", "albedo",
-                                   "synchronicity", "metallicity", "spots", "pulsations"]
+                                   "synchronicity", "metallicity", "spots", "pulsations"],
+                     "nuisance": ['ln_f']
                      },
         "community": {"system": ["inclination", "eccentricity", "argument_of_periastron", "period", "semi_major_axis",
                                  "primary_minimum_time", "additional_light", "phase_shift" "mass_ratio"],
                       "primary": ["t_eff", "surface_potential", "gravity_darkening", "albedo",
                                   "synchronicity", "metallicity", "spots", "pulsations"],
                       "secondary": ["t_eff", "surface_potential", "gravity_darkening", "albedo",
-                                    "synchronicity", "metallicity", "spots", "pulsations"]
+                                    "synchronicity", "metallicity", "spots", "pulsations"],
+                      "nuisance": ['ln_f']
                       },
         "spots": ["longitude", "latituded", "angular_radius", "temperature_factor"],
         "pulsations": ["l", "m", "amplitude", "frequency", "start_phase", "mode_axis_theta", "mode_axis_phi"]
@@ -231,7 +233,8 @@ class RVBinaryAnalyticsTask(AnalyticsTask):
 
         'community': {
             'system': ['mass_ratio', 'asini', 'eccentricity', 'argument_of_periastron',
-                       'gamma', 'period', 'primary_minimum_time']
+                       'gamma', 'period', 'primary_minimum_time'],
+            'nuisance': ['ln_f']
         },
 
         'standard': {
@@ -239,6 +242,7 @@ class RVBinaryAnalyticsTask(AnalyticsTask):
             'secondary': ['mass'],
             'system': ['inclination', 'eccentricity', 'argument_of_periastron',
                        'gamma', 'period', 'primary_minimum_time'],
+            'nuisance': ['ln_f']
         }
     }, indent=4)
     TRANSFORM_PROPERTIES_CLS = transform.RVBinaryAnalyticsTask

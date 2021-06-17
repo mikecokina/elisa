@@ -1,66 +1,115 @@
-{"primary": {"surface_potential": {"value": 8.061271089156111,
-"fixed": false,
-"unit": null,
-"min": 7.6,
-"max": 8.7},
-"t_eff": {"value": 7022.0,
-"fixed": true,
-"unit": "K"},
-"albedo": {"value": 1.0,
-"fixed": true,
-"unit": null},
-"gravity_darkening": {"value": 1.0,
-"fixed": true,
-"unit": null}},
-"secondary": {"t_eff": {"value": 6971.006275032198,
-"fixed": false,
-"unit": "K",
-"min": 6700.0,
-"max": 7300.0},
-"surface_potential": {"value": 5.198162843353137,
-"fixed": false,
-"unit": null,
-"min": 4.8,
-"max": 5.8},
-"albedo": {"value": 1.0,
-"fixed": true,
-"unit": null},
-"gravity_darkening": {"value": 1.0,
-"fixed": true,
-"unit": null}},
-"system": {"eccentricity": {"value": 0.03159287775684927,
-"fixed": false,
-"unit": null,
-"min": 0.0,
-"max": 0.05},
-"argument_of_periastron": {"value": 170.2214644701212,
-"fixed": false,
-"unit": "deg",
-"min": 0.0,
-"max": 360.0},
-"inclination": {"value": 81.30076702077778,
-"fixed": false,
-"unit": "deg",
-"min": 79.0,
-"max": 83.0},
-"additional_light": {"value": 0.23878464969418484,
-"fixed": false,
-"unit": null,
-"min": 0.2,
-"max": 0.3},
-"phase_shift": {"value": -0.00028702718983036543,
-"fixed": false,
-"unit": null,
-"min": -0.02,
-"max": 0.02},
-"period": {"value": 2.47028376,
-"fixed": true,
-"unit": "d"},
-"mass_ratio": {"value": 1.077,
-"fixed": true,
-"unit": null},
-"semi_major_axis": {"value": 11.998026355161933,
-"constraint": "11.86 / sin(radians(system@inclination))",
-"unit": "solRad"}},
-"r_squared": {"value": 0.9995633488492086,
-"unit": null}}
+{
+    "primary": {
+        "surface_potential": {
+            "value": 5.875136747488175,
+            "fixed": false,
+            "unit": null,
+            "min": 5.0,
+            "max": 10.0
+        },
+        "t_eff": {
+            "value": 7022.0,
+            "fixed": true,
+            "unit": "K"
+        },
+        "albedo": {
+            "value": 1.0,
+            "fixed": true,
+            "unit": null
+        },
+        "gravity_darkening": {
+            "value": 1.0,
+            "fixed": true,
+            "unit": null
+        }
+    },
+    "secondary": {
+        "t_eff": {
+            "value": 6821.700069349152,
+            "fixed": false,
+            "unit": "K",
+            "min": 6700.0,
+            "max": 7300.0
+        },
+        "surface_potential": {
+            "value": 5.672096978500383,
+            "fixed": false,
+            "unit": null,
+            "min": 4.0,
+            "max": 10.0
+        },
+        "albedo": {
+            "value": 1.0,
+            "fixed": true,
+            "unit": null
+        },
+        "gravity_darkening": {
+            "value": 1.0,
+            "fixed": true,
+            "unit": null
+        }
+    },
+    "system": {
+        "eccentricity": {
+            "value": 0.0314752726984756,
+            "fixed": false,
+            "unit": null,
+            "min": 0.0,
+            "max": 0.1
+        },
+        "argument_of_periastron": {
+            "value": 193.4747175901105,
+            "fixed": false,
+            "unit": "deg",
+            "min": 0.0,
+            "max": 360.0
+        },
+        "inclination": {
+            "value": 76.17080859775498,
+            "fixed": false,
+            "unit": "deg",
+            "min": 65.0,
+            "max": 90.0
+        },
+        "additional_light": {
+            "value": 0.008776048598072803,
+            "fixed": false,
+            "unit": null,
+            "min": 0.0,
+            "max": 0.5
+        },
+        "phase_shift": {
+            "value": 8.842383037077281e-05,
+            "fixed": false,
+            "unit": null,
+            "min": -0.02,
+            "max": 0.02
+        },
+        "period": {
+            "value": 2.47028,
+            "fixed": true,
+            "unit": "d"
+        },
+        "mass_ratio": {
+            "value": 1.08,
+            "fixed": true,
+            "unit": null
+        },
+        "semi_major_axis": {
+            "value": 11.534350551787654,
+            "constraint": "11.2 / sin(radians(system@inclination))",
+            "unit": "solRad"
+        }
+    },
+    "nuisance": {
+        "ln_f": {
+            "value": -20,
+            "fixed": true,
+            "unit": null
+        }
+    },
+    "r_squared": {
+        "value": 0.9990324088102328,
+        "unit": null
+    }
+}
