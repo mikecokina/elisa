@@ -20,6 +20,13 @@
 Eclipsing binaries Learning Interactive System
 ==============================================
 
+Important note: the version of the ELISa package consistent with our upcoming paper in A&A is available in our dev
+branch that can be installed using pip::
+
+    pip install git+https://github.com/mikecokina/elisa.git@dev
+
+See instruction bellow to see the full installation process. The stable version 0.5 will be available soon.
+
 ELISa
 -----
 

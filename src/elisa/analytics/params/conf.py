@@ -51,12 +51,12 @@ DEFAULT_NORMALIZATION_STAR = {
 
 DEFAULT_NORMALIZATION_SYSTEM = {
     "inclination": (0, 180),
-    "eccentricity": (0, 0.99),
+    "eccentricity": (0, 0.9999),
     "argument_of_periastron": (0, 360),
     "gamma": (0, 1e6),
-    "mass_ratio": (0.01, 50),
+    "mass_ratio": (1e-6, 2),
     "semi_major_axis": (0.01, 100),
-    "asini": (0.01, 100),
+    "asini": (0.0001, 100),
     "period": (0.001, 100),
     "additional_light": (0, 1.0),
     "phase_shift": (-0.8, 0.8),

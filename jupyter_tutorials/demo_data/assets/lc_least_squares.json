@@ -1,7 +1,7 @@
 {
     "primary": {
         "surface_potential": {
-            "value": 5.875136747488175,
+            "value": 5.839732738258324,
             "fixed": false,
             "unit": null,
             "min": 5.0,
@@ -12,6 +12,11 @@
             "fixed": true,
             "unit": "K"
         },
+        "metallicity": {
+            "value": 0.0,
+            "fixed": true,
+            "unit": null
+        },
         "albedo": {
             "value": 1.0,
             "fixed": true,
@@ -21,22 +26,32 @@
             "value": 1.0,
             "fixed": true,
             "unit": null
+        },
+        "synchronicity": {
+            "value": 1.067023114720607,
+            "constraint": "(1 + system@eccentricity)**2 / (1 - system@eccentricity**2)**(3.0/2.0)",
+            "unit": null
         }
     },
     "secondary": {
         "t_eff": {
-            "value": 6821.700069349152,
+            "value": 6792.792152432664,
             "fixed": false,
             "unit": "K",
             "min": 6700.0,
             "max": 7300.0
         },
         "surface_potential": {
-            "value": 5.672096978500383,
+            "value": 5.730320827413121,
             "fixed": false,
             "unit": null,
             "min": 4.0,
             "max": 10.0
+        },
+        "metallicity": {
+            "value": 0.0,
+            "fixed": true,
+            "unit": null
         },
         "albedo": {
             "value": 1.0,
@@ -47,39 +62,44 @@
             "value": 1.0,
             "fixed": true,
             "unit": null
+        },
+        "synchronicity": {
+            "value": 1.067023114720607,
+            "constraint": "(1 + system@eccentricity)**2 / (1 - system@eccentricity**2)**(3.0/2.0)",
+            "unit": null
         }
     },
     "system": {
         "eccentricity": {
-            "value": 0.0314752726984756,
+            "value": 0.03216641337922912,
             "fixed": false,
             "unit": null,
             "min": 0.0,
             "max": 0.1
         },
         "argument_of_periastron": {
-            "value": 193.4747175901105,
+            "value": 197.93357072045416,
             "fixed": false,
             "unit": "deg",
             "min": 0.0,
             "max": 360.0
         },
         "inclination": {
-            "value": 76.17080859775498,
+            "value": 76.25921575266591,
             "fixed": false,
             "unit": "deg",
             "min": 65.0,
             "max": 90.0
         },
         "additional_light": {
-            "value": 0.008776048598072803,
+            "value": 0.0139519290453899,
             "fixed": false,
             "unit": null,
             "min": 0.0,
             "max": 0.5
         },
         "phase_shift": {
-            "value": 8.842383037077281e-05,
+            "value": 7.378292900384054e-05,
             "fixed": false,
             "unit": null,
             "min": -0.02,
@@ -96,7 +116,7 @@
             "unit": null
         },
         "semi_major_axis": {
-            "value": 11.534350551787654,
+            "value": 11.529984846957985,
             "constraint": "11.2 / sin(radians(system@inclination))",
             "unit": "solRad"
         }
@@ -109,7 +129,7 @@
         }
     },
     "r_squared": {
-        "value": 0.9990324088102328,
+        "value": 0.9988616734017153,
         "unit": null
     }
 }
