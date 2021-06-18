@@ -25,7 +25,7 @@ branch that can be installed using pip::
 
     pip install git+https://github.com/mikecokina/elisa.git@dev
 
-See instruction bellow to see the full installation process. The stable version 0.5 will be available soon.
+See instruction bellow to see a full installation process. The stable version 0.5 will be available soon.
 
 ELISa
 -----
