@@ -31,7 +31,7 @@ ELISa
 -----
 
 **ELISa** is crossplatform python package dedicated to light curves modelling of close eclipsing binaries including
-surface features such as spots and pulsation (soon). Current capabilities include:
+surface features such as spots and pulsations (will be added soon). Current capabilities include:
 
     - ``BinarySystem:`` class for modelling surfaces of detached, semi-detached and over-contact binaries
     - ``Observer:`` class for generating light curves (and in future other observables)
@@ -39,16 +39,17 @@ surface features such as spots and pulsation (soon). Current capabilities includ
     - ``Fitting methods`` provide capabilities to fit radial velocities curves and light curves via implementaion of
       ``non-linear least squares`` method and also via ``Markov Chain Monte Carlo`` method.
 
-**ELISa** is currently still under development. Following features are in progress:
+**ELISa** is currently still under development. Development of the following features is in progress:
 
     - ``SingleSystem:`` class for modelling surfaces of single star light curves with full implementation of spots and
       pulsations
-    - ``Pulsations:`` class for modelling low amplitude pulsations based on spherical harmonics solution
+    - ``Pulsations:`` class for modelling low amplitude pulsations based on spherical harmonics functions
 
 We also plan to implement following features:
 
     - addition of radial velocity curves to Observer class with ``Rossiter-McLaughlin`` effect
-    - some extended ``LC`` and ``RV`` fitting using various additional methods and features like classification via ``neural-networks``
+    - some extended ``LC`` and ``RV`` fitting using various additional methods and features such as classification of
+      eclipsing binaries via ``neural-networks``
     - addition of synthetic spectral line modelling
 
 Requirements
@@ -72,12 +73,12 @@ Requirements
 
 and potentially also **python-tk** package or equivalent for matplotlib package to display the figures correctly.
 
-:note: although python distribution and package versions are specified precisely, that does not mean that the package will not work with higher versions, only that it was not tested with higher versions of packages. However we highly recommend to stick with python distribution and package versions listed above.
+:note: although python distribution and package versions are specified precisely, that does not mean that the package will not work with higher versions, only that the ELISa was not tested using newer versions. However, we highly recommend to stick with python distribution and package versions listed above.
 
 Install
 -------
 
-In case of ``ELISa`` the easiest and the safest way to install is to create python virtual
+In case of ``ELISa``, the easiest and the safest way to install is to create python virtual
 environment and install all requirements into it. Bellow is a simple guide, how to od it. Details of installation differ
 in dependence on the selected operating system.
 
