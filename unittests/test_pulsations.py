@@ -15,6 +15,9 @@ from elisa.pulse import pulsations, container_ops, utils as putils
 from unittests.utils import ElisaTestCase
 from unittests import utils as testutils
 
+import matplotlib.pyplot as plt
+
+
 STAR_PARAMS = {
     'mass': 2.0 * u.solMass,
     't_eff': 10000 * u.K,
@@ -271,7 +274,9 @@ class TestPulsationModule(ElisaTestCase):
         self.assertTrue(np.all(np.abs(np.round(obtained_phases, 3) - np.round(expected_phases, 3)) < TOL))
         self.assertTrue(np.all(np.abs(np.round(obtained_flux, 3) - np.round(expected_flux, 3)) < TOL))
 
-        # o.plot.phase_curve()
+        # plt.plot(obtained_phases, obtained_flux)
+        # plt.plot(expected_phases, expected_flux)
+        # plt.show()
 
     def test_single_pulsating_rv(self):
         freq = 15
@@ -296,9 +301,12 @@ class TestPulsationModule(ElisaTestCase):
         obtained = o.rv(phases=phases, method='radiometric')
         obtained_rv = testutils.normalize_single_rv_for_unittests(obtained[1]['star'])
 
-        assert_array_equal(np.round(expected_rv, 3), np.round(obtained_rv, 3))
+        self.assertTrue(np.all(np.abs(obtained_rv - expected_rv) < TOL))
 
-        # o.plot.rv_curve()
+        # plt.plot(phases, obtained_rv)
+        # plt.plot(phases, expected_rv)
+        # plt.plot(expected_rv-obtained_rv)
+        # plt.show()
 
     def test_kinematics_binary(self):
         amplitude = 1.0
@@ -375,6 +383,9 @@ class TestPulsationModule(ElisaTestCase):
         self.assertTrue(np.all(np.abs(np.round(obtained_flux, 3) - np.round(expected_flux, 3)) < TOL))
 
         # o.plot.phase_curve()
+        # plt.plot(obtained_phases, obtained_flux)
+        # plt.plot(expected_phases, expected_flux)
+        # plt.show()
 
     def test_binary_pulsating_rv(self):
         freq = 15
