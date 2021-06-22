@@ -20,18 +20,18 @@
 Eclipsing binaries Learning Interactive System
 ==============================================
 
-Important note: the version of the ELISa package consistent with our upcoming paper in A&A is available in our dev
-branch that can be installed using pip::
+Important note: the version of the ELISa package consistent with our upcoming paper in A&A is available in our
+development branch that can be installed using pip::
 
     pip install git+https://github.com/mikecokina/elisa.git@dev
 
-See instruction bellow to see a full installation process. The stable version 0.5 will be available soon.
+See the instruction below to see a full installation process. The stable version 0.5 will be available soon.
 
 ELISa
 -----
 
-**ELISa** is crossplatform python package dedicated to light curves modelling of close eclipsing binaries including
-surface features such as spots and pulsations (will be added soon). Current capabilities include:
+**ELISa** is a cross-platform python package dedicated to light curves modelling of close eclipsing binaries including
+surface features such as spots (and pulsations which will be added soon). Current capabilities include:
 
     - ``BinarySystem:`` class for modelling surfaces of detached, semi-detached and over-contact binaries
     - ``Observer:`` class for generating light curves (and in future other observables)
@@ -73,29 +73,32 @@ Requirements
 
 and potentially also **python-tk** package or equivalent for matplotlib package to display the figures correctly.
 
-:note: although python distribution and package versions are specified precisely, that does not mean that the package will not work with higher versions, only that the ELISa was not tested using newer versions. However, we highly recommend to stick with python distribution and package versions listed above.
+:note: although python distribution and package versions are specified precisely, that does not mean that the package
+       will not work with higher versions, only that the ELISa was not tested using newer versions. However, we highly
+       recommend sticking with the python distribution and package versions listed above.
 
-Install
--------
+Installing process
+------------------
 
-In case of ``ELISa``, the easiest and the safest way to install is to create python virtual
-environment and install all requirements into it. Bellow is a simple guide, how to od it. Details of installation differ
+In the case of ``ELISa``, the easiest and safest way to install is to create a python virtual
+environment and install all requirements into it. Below is a simple guide, how to do it. Details of installation differ
 in dependence on the selected operating system.
 
 Ubuntu [or similar]
 ~~~~~~~~~~~~~~~~~~~
 
-First, you have to install Python 3.6 or higher. In latest stable version ``Ubuntu 18.04`` there is already preinstalled
-python `3.6.x`. In older versions, you will have to add repository and install it manually. There is several quides
-on the internet that will help you with installation, e.g. Python_3.6_
+First, you have to install Python 3.6 or higher. In the latest stable version ``Ubuntu 18.04`` there is already preinstalled
+python `3.6.x`. In older versions, you will have to add the repository and install it manually. Several guides
+on the internet will help you with installation, e.g. Python_3.6_
 
 .. _Python_3.6: http://ubuntuhandbook.org/index.php/2017/07/install-python-3-6-1-in-ubuntu-16-04-lts/
 
-Install ``pip3`` python package manager if is not already installed on your system, usually by execution of command::
+Install ``pip3`` python package manager if is not already installed on your system, usually by execution of the
+command::
 
     apt install -y python3-pip
 
-or you can also use `raw` python script which provide installation via ``python``::
+or you can also use `raw` python script which provides installation via ``python``::
 
     curl https://bootstrap.pypa.io/get-pip.py | python3.6
 
@@ -104,18 +107,22 @@ Install virtual environment by command::
     pip3 install virtualenv
 
 
-To create virtual environment, create directory where python virtual environment will be stored,
+To create a virtual environment, create a directory where the python virtual environment will be stored,
 e.g. ``/<any>/<path>/elisa/venv``
-and run following command::
+and run the following command::
 
     virtualenv /<any>/<path>/elisa/venv --python=python3.6
 
-After few moments you virtual environment is created and ready for use. In terminal window, activate virtual
+After few moments your virtual environment is created and ready for use. In the terminal window, activate virtual
 environment::
 
     . /<any>/<path>/elisa/venv/bin/activate
 
-When virtual environment is activated, install ``elisa`` package in `dev` version. Execute following command::
+When the virtual environment is activated, install the ``elisa`` package in the latest stable version::
+
+    pip install elisa
+
+or you can choose to install the current development version::
 
     pip install git+https://github.com/mikecokina/elisa.git@dev
 
@@ -138,20 +145,20 @@ Now you should be able to launch jupyter notebooks and run the tutorials stored 
 Windows
 ~~~~~~~
 
-To install python in windows, download ``python 3.6.x`` installation package from official python web site.
-Installation package will create all necessary dependencies except of virtual environment package.
-Install virtual environment by execution of following command in command line::
+To install python in windows, download the ``python 3.6.x`` installation package from the official Python website.
+The installation package will create all necessary dependencies except the virtual environment package.
+Install virtual environment by execution of following command in the command line::
 
     pip3 install virtualenv
 
-Make sure a proper version of  python and pip is used. When done, create directory where virtual environment will be
+Make sure a correct version of python and pip is used. When done, create a directory where the virtual environment will be
 stored and run::
 
     virtualenv /<any>/<path>/elisa --python<path>/<to>/python3.6/python.exe
 
-It is common to specify full path to ``python.exe`` file under Windows, otherwise It might not work.
+It is common to specify the full path to the ``python.exe`` file under Windows, otherwise, It might not work.
 
-Now, when virtual environment is prepared, run::
+Now, when the virtual environment is prepared, run::
 
     . /<any>/<path>/elisa/Scripts/activate
 
@@ -163,14 +170,14 @@ And finally install ``ELISa``::
 How to build API docs
 =====================
 
-Use virtual environment created in previous steps and add following dependencies::
+Use virtual environment created in previous steps and add the following dependencies::
 
     Sphinx==2.2.0
     sphinx-rtd-theme==0.4.3
 
 .. _docs: https://github.com/mikecokina/elisa/tree/master/docs
 
-Change directory to cloned docs_ and use following command::
+Move into docs_ (elisa/tree/master/docs) directory and use following command::
 
     sphinx-build -W -b html -c .\source -d .\build\doctrees .\source\ .\build\
 
@@ -197,11 +204,11 @@ therefore, atmosphere and limb darkening tables stored at those locations will b
 Custom tables location
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Models can be stored on your machine in directory of your choosing as well. Lets say you want ot use ``Castelli-Kurucz 2004``
-models stored in directory ``/home/user/castelli_kurucz/ck04`` and limb darkening models in directory
-``/home/user/ld/``. You have to create configuration ``ini`` file where
-model and directories will be specified. Now assume that name of our configuration file is ``elisa_config.ini`` located
-in path ``/home/user/.elisa/``. Then content of your configuration file should at least look like this following
+Atmosphere models and LD coefficients can be stored on your machine in the directory of your choosing as well. Let's say you want to use ``Castelli-Kurucz 2004``
+models stored in the directory ``/home/user/castelli_kurucz/ck04`` and limb darkening models in the directory
+``/home/user/ld/``. You have to create a configuration ``ini`` file where
+the model and directories will be specified. Now assume that name of our configuration file is ``elisa_config.ini`` located
+in path ``/home/user/.elisa/``. Then the content of your configuration file should at least look like the following
 example::
 
     [support]
@@ -209,24 +216,26 @@ example::
     castelli_kurucz_04_atm_tables = /home/user/castelli_kurucz/ck04
     atlas = ck04
 
-This configuration file is used for adjusting Full content of configuration file with description might be found here,
+Full content of configuration file with description might be found here:
 Elisa-Configuration-File_
 
 .. _Elisa-Configuration-File: https://github.com/mikecokina/elisa/blob/master/src/elisa/conf/elisa_conf_docs.ini
 
 :warning: atmospheric models and limb darkening tables for this package are stored in industry standard ''.csv'' files.
-          Therefore, their native format as usually provided on web sites is not suitable for Elisa and require
-          conversion to standard format. Models have been altered to form required for Elisa.
+          Therefore, their native format is not suitable for Elisa and require
+          conversion to our standard format. Therefore the atmosphere models and LD coefficient tables have been altered
+          to form required by the Elisa.
 
-Now, you have to tell ELISa, where to find configuration file. In environment you are using setup environment variable
-`ELISA_CONFIG` to full path to config file. In UNIX like operation systems it is done by following command::
+Now, you have to tell ELISa, where to find your configuration file. Environment variable
+`ELISA_CONFIG` is used to store a full path to the config file. In UNIX like operation systems it is done by the
+following command::
 
     export ELISA_CONFIG=/home/user/.elisa/elisa_config.ini
 
-There is plenty ways how to setup environment variable which vary on operation system and also on tool (IDE)
-that you have in use. On linux, as an example, you can copy the previous command to #HOME/.bashrc (depends on terminal
-type). Optionally, you can use ``config.ini`` file located in ``ELISa_folder/src/elisa/conf/`` without
-any need for setting an enviromental variable.
+There are plenty ways how to setup environment variable which vary on operation system and also on the tool (IDE)
+that you have in use. On Linux, as an example, you can copy the previous command to #HOME/.bashrc (depends on terminal
+type). Optionally, you can use the ``config.ini`` file located in ``ELISa_folder/src/elisa/conf/`` without
+any need for setting an environmental variable.
 
 Now you are all setup and ready to code.
 
@@ -238,6 +247,8 @@ For in depth tutorials, see directory ``elisa/jupyter_tutorials``
 
 Available passbands
 -------------------
+
+ELISa is currently capable of modelling light curves in the following photometric filters:
 
 ::
 
@@ -258,20 +269,21 @@ Available passbands
     Generic.Stromgren.y
     Kepler
     GaiaDR2
+    TESS
 
 
 Multiprocessing
 ---------------
 
-To speedup computation of light curves, paralellization of computations has been implemented. Computation
-of light curve points is separated to smaller batches and each batch is evaluated on separated CPU core. Paralellization
-necessarily brings some overhead to process and in some cases might cause even slower behavior of application.
-It is important to choose wisely when use it espeically in case of circular synchronous orbits which consist of
+To speed up the computation of light curves, parallelization of computations has been implemented. Computation
+of light curve points is separated into smaller batches and each batch is evaluated on a separate CPU core. Parallelization
+necessarily brings some overhead to process and in some cases might cause even slower behaviour of the application.
+It is important to choose wisely when using it, especially in the case of circular synchronous orbits which consist of
 spot-free components where multiprocessing is usually not as effective.
 
-Down below are shown some result of multiprocessor approach for different binary system types. Absolute time necessary
-for calculation of the light curve is highly dependent on the type of the system and hardaware. Therefore we have
-normalized the time axis according to maximum value in our datasets.
+Down below are shown some result of the multiprocessor approach for different binary system types. The absolute time necessary
+for the calculation of the light curve is highly dependent on the type of the system and hardware. Therefore we have
+normalized the time axis according to the maximum value in our datasets.
 
 .. figure:: ./docs/source/_static/readme/detached.circ.sync.svg
   :width: 70%
@@ -297,9 +309,91 @@ normalized the time axis according to maximum value in our datasets.
 
 :note: outliers in charts are caused by curve symetrization process
 
+Building a simple model of a binary system - MWE
+----------------------------------------------------
 
-Binary Stars Radial Curves Fitting
-----------------------------------
+ELISa enables fast modelling of binary systems based on parameters supplied in form of a dictinary (or json).
+Parameters are divided into 'system', 'primary' and 'secondary' parameters. Binary system parameters can either supply
+masses of the components with `mass` parameter or system's `mass_ratio` and `semi_major_axis` have to be provided
+instead::
+
+    from elisa import BinarySystem
+
+
+    community_params = {
+        "system": {
+            "inclination": 86.0,
+            "period": 10.1,
+            "argument_of_periastron": 90.0,
+            "gamma": 0.0,
+            "eccentricity": 0.0,
+            "primary_minimum_time": 0.0,
+            "phase_shift": 0.0,
+            "semi_major_axis": 10.5,  # default unit is solRad
+            "mass_ratio": 0.5
+        },
+        "primary": {
+            "surface_potential": 7.1,
+            "synchronicity": 1.0,
+            "t_eff": "6500.0 K",  # parameters can be provided in string representation consistent with astropy unit format
+            "gravity_darkening": 1.0,
+            "discretization_factor": 5,
+            "albedo": 1.0,
+            "metallicity": 0.0
+        },
+        "secondary": {
+            "surface_potential": 7.1,
+            "synchronicity": 1.0,
+            "t_eff": 5000.0,
+            "gravity_darkening": 1.0,
+            "discretization_factor": 5,
+            "albedo": 1.0,
+            "metallicity": 0.0
+        }
+    }
+
+    community_binary = BinarySystem.from_json(community_params)
+
+See tutorials 1, 2, 3, 4 for more information about this process.
+
+Calculating light curve - MWE
+-----------------------------
+
+Binary system `community_binary` can be observed by utilizing a dedicated observer class::
+
+    from elisa import Observer
+
+    o = Observer(passband=[  # defining passbands at which calculate a light curve
+        'Generic.Bessell.B',
+        'Generic.Bessell.V',
+        'Generic.Bessell.R',
+        'Generic.Bessell.I'
+        ],
+    system=community_binary)  # specifying the binary system to use in light curve synthesis
+
+    # this will create a light curve containing 1200 points
+    phases, fluxes = o.observe.lc(
+        from_phase=-0.6,
+        to_phase=0.6,
+        phase_step=0.001,
+        # normalize=True  # this will produce observations normalized to 1
+    )
+
+Visualization of the results
+----------------------------
+
+Elisa comes with a substantial graphic library to comfortable visualization of various results. Light curve calculated
+in the Observer instace `o` can be visualized::
+
+    o.plot.lc()
+
+.. figure:: ./docs/source/_static/readme/lc_bvri.png
+  :width: 70%
+  :alt: lc_bvri.png
+  :align: center
+
+Radial Curves Fitting of Binary Stars
+-------------------------------------
 
 `ELISa` is capable to fit radial velocity curves to observed radial velocities.
 In current version of `ELISa`, the radial velocity curves are calculated from radial velocities of centre of mass of
@@ -400,7 +494,6 @@ Demonstrated result of fitting of radial velocities might seen like following
 
 
 An example scripts can be found in example_scripts_
-
 
 Binary Stars Radial Curves Fitting - No Ephemeris
 -------------------------------------------------
