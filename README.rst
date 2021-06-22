@@ -550,7 +550,7 @@ which would produce result similar to this::
     Metallicity (log10(X_Fe/X_H)):                       0.0                   -                   -                None    Fixed
     ------------------------------------------------------------------------------------------------------------------------------
 
-where in case of MCM method, the additional 1 sigma errors would be displayed.
+where in case of MCMC method, the additional 1 sigma errors would be displayed.
 
-Detailed guides, how perform a fit of radial velocities or photometric observations including working examples are
-stored in the Jupyter notebooks 11 and 12. Ses also a notebook 10 that explains the handling of ELISa's custom datasets.
+Detailed guides, how to perform a fit of radial velocities or photometric observations including working examples are
+stored in the Jupyter notebooks 11 and 12. See also a notebook 10 that explains the handling of ELISa's custom datasets.
