@@ -337,7 +337,6 @@ instead::
             "synchronicity": 1.0,
             "t_eff": "6500.0 K",  # parameters can be provided in string representation consistent with astropy unit format
             "gravity_darkening": 1.0,
-            "discretization_factor": 5,
             "albedo": 1.0,
             "metallicity": 0.0
         },
@@ -346,7 +345,6 @@ instead::
             "synchronicity": 1.0,
             "t_eff": 5000.0,
             "gravity_darkening": 1.0,
-            "discretization_factor": 5,
             "albedo": 1.0,
             "metallicity": 0.0
         }
@@ -356,8 +354,8 @@ instead::
 
 See tutorials 1, 2, 3, 4 for more information about this process.
 
-Calculating light curve - MWE
------------------------------
+Calculating light curve
+-----------------------
 
 Binary system `community_binary` can be observed by utilizing a dedicated observer class::
 
@@ -382,7 +380,7 @@ Binary system `community_binary` can be observed by utilizing a dedicated observ
 Visualization of the results
 ----------------------------
 
-Elisa comes with a substantial graphic library to comfortable visualization of various results. Light curve calculated
+Elisa comes with a substantial graphic library for comfortable visualization of various results. Light curve calculated
 in the Observer instace `o` can be visualized::
 
     o.plot.lc()
@@ -392,231 +390,167 @@ in the Observer instace `o` can be visualized::
   :alt: lc_bvri.png
   :align: center
 
-Radial Curves Fitting of Binary Stars
--------------------------------------
+Solving an inverse problem - general concepts
+---------------------------------------------
 
-`ELISa` is capable to fit radial velocity curves to observed radial velocities.
-In current version of `ELISa`, the radial velocity curves are calculated from radial velocities of centre of mass of
-primary and secondary component. An example of synthetic radial velocity curve is shown below.
+ELISa provides an built-in capability to infer binary system parameters from observations. Similar to the generating a binary system demonstrated above, the fitting parameters are also supplied in form of a dictionary (json) in following format::
 
-.. image:: ./docs/source/_static/readme/rv_example.svg
-  :width: 70%
-  :alt: rv_example.svg
-  :align: center
-
-This radial velocity curve was obtained on system with following relevant parameters::
-
-    primary mass: 2.0 [Solar mass]
-    secondary mass: 1.0 [Solar mass]
-    inclination: 85 [degree]
-    argument of periastron: 0.0 [degree]
-    eccentricity: 0.0 [-]
-    period: 4.5 [day]
-    gamma: 20000.0 [m/s]
-
-Each fitted parameter has an input form as follows::
-
-    <param>: {
-        'value': <float>,
-        'fixed': <bool>,
-        'min': <float>,
-        'max': <float>,
-        'constraint': <str> // mutualy inclusive with fixed: True
-    }
-
-and require all params from the following list if you would like to try absolute parameters fitting:
-
-    * ``mass`` - mass of primary/secondary component (in Solar masses)
-    * ``eccentricity`` - eccentricity of binary system, (0, 1)
-    * ``inclination`` - inclination of binary system in `degrees`
-    * ``argument_of_periastron`` - argument of periastron in `degrees`
-    * ``gamma`` - radial velocity of system center of mass in `m/s`
-    * ``period`` - period of binary system (in days), usually fixed parameters
-    * ``primary_minimum_time`` - numeric time of primary minimum (ny time units); used when exact period is unknown and fitting is required
-
-or otherwise, in "community approach", you can use instead of ``mass`` and ``inclination`` parameters:
-
-    * ``asini`` - in Solar radii
-    * ``mass_ratio`` - mass ratio (M_2/M_1), also known as `q`
-
-There are already specified global minimal and maximal values for parameters, but user is highly encouraged to adjust
-parameter boundaries which might work better for the particular case.
-
-Parameter set to be `fixed` will not be fitted and its value will stay fixed during the fitting procedure. User can
-also setup `constraint` for any parameter, e.g.::
-
-    'semi_major_axis': {
-        'value': 16.515,
-        'constraint': '16.515 / sin(radians(system@inclination))'
-    },
-
-It is allowed to put bounds (constraints) only on parameter using other free parameters, otherwise the parameter should stay fixed.
-For example, it makes no sense to set bound like this::
-
-   {
-        ...,
-        "primary": {
-            "t_eff": {
-                'value': 5000.0,
-                'fixed': True
-            },
+    fit_params = {
+        'system': {
+            'mass_ratio': {...},
+            'eccentricity': {...},
             ...
         },
-        "secondary": {
-            "t_eff": {
-                'value': 10000.0,
-                'constraint': '{primary@t_eff * 0.5}'
-            },
+        'primary: {
+            'surface_potential': {...},
             ...
+        },
+        'secondary': {
+            'surface_potential': {...},
+            ...
+        }
+        'nuisance':{ # used only for MCMC method
+            'ln_f': {...}  # error underestimation factor
         }
     }
 
-because you're already aware of value ``primary@t_eff``.
+Each model parameter (eg. `mass_ratio`) is additionaly defined in form of dictionary where the character and behaviour
+of the variable during the fitting procedure is specified. ELISa recognizes three main types of model variables:
 
+    - **fixed**: value of such parameter stays fixed during the whole process. Fixed parameter can be defined as::
 
-Elisa currently implements two fitting approaches, first is based on non-linear least squares method
-and second is based on `Markov Chain Monte Carlo` (MCMC) methd.
-
-Reading data output of MCMC requires an experience with MCMC since output is not simple dictionary but
-a descriptive set of parameters progress during evaluation of method.
-
-Demonstrated result of fitting of radial velocities might seen like following
-
-.. image:: ./docs/source/_static/readme/rv_fit.svg
-  :width: 70%
-  :alt: rv_fit.svg
-  :align: center
-
-.. image:: ./docs/source/_static/readme/mcmc_rv_corner.svg
-  :width: 95%
-  :alt: mcmc_rv_corner.svg
-  :align: center
-
-
-An example scripts can be found in example_scripts_
-
-Binary Stars Radial Curves Fitting - No Ephemeris
--------------------------------------------------
-
-In case we do not have enough information / measurements and we are not able determine ephemeris with
-desired accuracy, analytics modules of elisa are capable to handle such situation and gives you tools to fit
-period and primary minimum time as unknown parameters. In such case, `xs` values has to be supplied in form::
-
-    {
-        "primary": [jd0, jd1, ..., jdn],
-        "secondary": [jd0, jd1, ..., jdn],
-    }
-
-Based on primiary minimum time and period adjusted in fitting proces, JD times are transformed to phases within process
-itself.
-
-:warning: make sure you have reasonable boundaries set for `primary_minimum_time` and `period`
-
-Corner plot of `mcmc` result for such approach is in figure bellow
-
-.. image:: ./docs/source/_static/readme/ mcmc_rv_corner_noperiod.svg
-  :width: 95%
-  :alt: mcmc_rv_corner_noperiod.svg
-  :align: center
-
-An example scripts can be found in example_scripts_
-
-
-Binary Stars Light Curves Fitting
----------------------------------
-
-Package `elisa` currently implements two approaches that provides very basic capability to fit light curves to
-observed photometric data. First method is standard approach which use `non-linear least squares` method algorithm and
-second approach uses Markov Chain Monte Carlo (`MCMC`) method.
-
-Following chapter is supposed to give you brief information about capabilities provided by `elisa`.
-Lets assume that we have a given light curve like shown below generated on parameters::
-
-    {
-        "system": {
-            'mass_ratio': 0.5,
-            'semi_major_axis': 16.54321389,
-            'inclination': 85.0,
-            'eccentricity': 0.0,
-            'period': 4.5
-        },
-        "primary": {
-            't_eff': 8000.0,
-            'surface_potential': 4.0,
-            'beta': 0.32,
-            'albedo': 0.6,
-        },
-        "secondary": {
-            't_eff': 8000.0,
-            'surface_potential': 4.0,
-            'beta': 0.32,
-            'albedo': 0.6,
+        't_eff': {
+            'value': 5774,
+            'fixed': True,
+            'unit': 'K'
         }
-    }
 
+    - **variable**: such parameter is optimized by the optimizer to provide the best fit to the data. This is an example
+      of the variable parameter expected from the (`min`, `max`) interval::
 
-.. image:: ./docs/source/_static/readme/lc_example.svg
-  :width: 70%
-  :alt: lc_example.svg
-  :align: center
+        'surface_potential': {
+            'value': 5.2,  # initial value
+            'fixed': False,
+            'min': 4.0,
+            'max': 7.0,
+            'unit': None  # this line is not mandatory (default parameter unit is assumed in its absence)
+        }
 
+      Additionally, in case of MCMC method, parameter can be sampled from the normal prior distribution. Let's say that
+      we want to take into account the errors of the effective temperature of the component 6300 +- 400 K inferred from
+      a color indices::
 
-It is up to the user what methods choose to use (mcmc or least_squares). In both cases, fitting requires provide
-morphology estimation. In case of over-contact morphology, fitting module keeps surface potential of both binary
-components constrained to the same value.
+        't_eff': {
+            'value': 6300,  # mean value
+            'sigma': 400,  # standard deviation
+            'fixed': False,
+            'min': 3500,
+            'max': 50000,  # normal distribution can be additionally clipped to prevent a sampler from reaching
+            # invalid regions of parameter space
+            'unit': 'K'
+        }
 
-:warning: Non-linear least squares method used in such complex problem as fitting light
-          curves of eclipsing binaries, might be insuficient in case of initial parametres being
-          too far from real values and also too broad fitting boundaries.
+    - **contrained**: type of model parameter, which value is dependent on the current value of one or more variable
+      parameters. This feature is very helpful while utilizing a parameters such as `a sin(i)` parameter derived during
+      radial velocity fit inside a light curve fit to constrain a semi-major axis of the system on system's
+      inclination::
 
+        'semi_major_axis': {
+           'value': 16.515,
+           'constraint': '16.515 / sin(radians(system@inclination))'
+        },
 
-First, you should solve radial velocities if available and fix parametres in light curve fitting. Since we were able
-to obtain some basic information about our system, we should fix or efficiently truncate boundaries
-for following parameters::
+Once the model paramters are defined, we can initialize our optimization tasks that can utilize various optimizing
+methods. Following example shows an initialization of task for the fitting of the light curves::
 
-    "system": {
-        ...,
-        "asini": 16.515,
-        "mass_ratio": "0.5",
-        "eccentricity": "0.0",
-        "argument_of_periastron": 0.0
-    }
+    from elisa.analytics import LCData, LCBinaryAnalyticsTask
 
+    # phased and normalized (to 1) light curve observed by the Kepler
+    kepler_data = LCData.load_from_file(filename='path/to/your/data.dat',
+                                        x_unit=None,
+                                        y_unit=None
+                                       )
 
-.. _Ballesteros: https://arxiv.org/pdf/1201.1809.pdf
+    task = LCBinaryAnalyticsTask(data={'Kepler': kepler_data}, method='least_squares', expected_morphology='detached')
 
-We can also estimate surface temperature of primary component via formula implemented in `elisa` package.
+Observed data are supplied in form of a custom `Dataset` format for each filter. Optimizer task can for now use `least-squares` or `mcmc` method. The least squares method is specialized for fast
+determination of a local minimum in the general vicinity of the initial parameters. On the other side MCMC method is
+best used as a tool for determination of the confidence intervals of the model parameters around the solution found by
+the least squares method. Optimizer in case of light curves requires the 'expected_morphology' of the fitted system
+with 'detached' and 'over-contact' arguments available.
 
-.. code:: python
+Subsequently, the fitting procedure can be initiated by the following command::
 
-    from elisa.analytics import bvi
-    b_v = bvi.pogsons_formula(lc['Generic.Bessell.B'][55], lc['Generic.Bessell.V'][55])
-    bvi.elisa_bv_temperature(b_v)
+    task.fit(x0=fit_params, *kwargs)
+    task.save_result(param/file/name.json)  # storing results into json
 
-This approach give us value ~ 8307K.
+where intial parameters are provided and the fitting process can be managed by the aditional keyword arguments.
+The results can be visualised in form of a table::
 
-:note: index `55` is used because we know that such index will give as flux on photometric phase :math:`\Phi=0.5`,
-       where we eliminte impact of secondary component to result of primary component temperature.
+    lst_sqr_task.fit_summary()
 
-:note: we recommend you to set boundaries for temperature obtained from `bvi` module at least in range +/-500K.
+which would produce result similar to this::
 
-:warning: Use this feature only in case when you are sure about curves offsets to each other.
+    BINARY SYSTEM
+    Parameter                                          value            -1 sigma            +1 sigma                unit    status
+    ------------------------------------------------------------------------------------------------------------------------------
+    Mass ratio (q=M_2/M_1):                             1.08                   -                   -                None    Fixed
+    Semi major axis (a):                               11.53                   -                   -              solRad    11.2 / sin(radians(system@inclination))
+    Inclination (i):                                   76.26                   -                   -                 deg    Variable
+    Eccentricity (e):                                   0.03                   -                   -                None    Variable
+    Argument of periastron (omega):                   197.93                   -                   -                 deg    Variable
+    Orbital period (P):                              2.47028                   -                   -                   d    Fixed
+    Additional light (l_3):                            0.014                   -                   -                None    Variable
+    Phase shift:                                   7.378e-05                   -                   -                None    Variable
+    ------------------------------------------------------------------------------------------------------------------------------
+    PRIMARY COMPONENT
+    Parameter                                          value            -1 sigma            +1 sigma                unit    status
+    ------------------------------------------------------------------------------------------------------------------------------
+    Mass (M_1):                                         1.62                   -                   -             solMass    Derived
+    Surface potential (Omega_1):                      5.8397                   -                   -                None    Variable
+    Critical potential at L_1:                        4.0162                   -                   -                   -    Derived
+    Synchronicity (F_1):                               1.067                   -                   -                None    (1 + system@eccentricity)**2 / (1 - system@eccentricity**2)**(3.0/2.0)
+    Polar gravity (log g):                             3.888                   -                   -            log(cgs)    Derived
+    Equivalent radius (R_equiv):                     0.21168                   -                   -                 SMA    Derived
 
-Visualization of fit is
+    Periastron radii
+    Polar radius:                                    0.20899                   -                   -                 SMA    Derived
+    Backward radius:                                 0.21457                   -                   -                 SMA    Derived
+    Side radius:                                      0.2113                   -                   -                 SMA    Derived
+    Forward radius:                                  0.21583                   -                   -                 SMA    Derived
 
-.. image:: ./docs/source/_static/readme/lc_fit.svg
-  :width: 70%
-  :alt: lc_fit.svg
-  :align: center
+    Atmospheric parameters
+    Effective temperature (T_eff1):                   7022.0                   -                   -                   K    Fixed
+    Bolometric luminosity (L_bol):                     13.05                   -                   -               L_Sol    Derived
+    Gravity darkening factor (G_1):                      1.0                   -                   -                None    Fixed
+    Albedo (A_1):                                        1.0                   -                   -                None    Fixed
+    Metallicity (log10(X_Fe/X_H)):                       0.0                   -                   -                None    Fixed
+    ------------------------------------------------------------------------------------------------------------------------------
+    SECONDARY COMPONENT
+    Parameter                                          value            -1 sigma            +1 sigma                unit    status
+    ------------------------------------------------------------------------------------------------------------------------------
+    Mass (M_2):                                         1.75                   -                   -             solMass    Derived
+    Surface potential (Omega_2):                      5.7303                   -                   -                None    Variable
+    Critical potential at L_1:                         4.018                   -                   -                   -    Derived
+    Synchronicity (F_2):                               1.067                   -                   -                None    (1 + system@eccentricity)**2 / (1 - system@eccentricity**2)**(3.0/2.0)
+    Polar gravity (log g):                             3.857                   -                   -            log(cgs)    Derived
+    Equivalent radius (R_equiv):                     0.22835                   -                   -                 SMA    Derived
 
-``Elisa`` also provides lightcurve fitting method based on `Markov Chain Monte Carlo`. Read data output requires
-the same level of knowledge as in case of radial velocities fitting.
+    Periastron radii
+    Polar radius:                                    0.22512                   -                   -                 SMA    Derived
+    Backward radius:                                 0.23181                   -                   -                 SMA    Derived
+    Side radius:                                     0.22802                   -                   -                 SMA    Derived
+    Forward radius:                                  0.23343                   -                   -                 SMA    Derived
 
-Corner plot of `mcmc` result for such approach is in figure bellow
+    Atmospheric parameters
+    Effective temperature (T_eff2):                   6793.0                   -                   -                   K    Variable
+    Bolometric luminosity (L_bol):                      13.3                   -                   -               L_Sol    Derived
+    Gravity darkening factor (G_2):                      1.0                   -                   -                None    Fixed
+    Albedo (A_2):                                        1.0                   -                   -                None    Fixed
+    Metallicity (log10(X_Fe/X_H)):                       0.0                   -                   -                None    Fixed
+    ------------------------------------------------------------------------------------------------------------------------------
 
-.. image:: ./docs/source/_static/readme/mcmc_lc_corner.svg
-  :width: 95%
-  :alt: mcmc_lc_corner.svg
-  :align: center
+where in case of MCM method, the additional 1 sigma errors would be displayed.
 
-All example scripts can be found in example_scripts_
+Detailed guides, how perform a fit of radial velocities or photometric observations including working examples are
+stored in the Jupyter notebooks 11 and 12. Ses also a notebook 10 that explains the handling of ELISa's custom datasets.
