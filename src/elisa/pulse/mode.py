@@ -20,7 +20,7 @@ class PulsationMode(object):
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, **kwargs):
-        utils.invalid_kwarg_checker(kwargs=kwargs, kwarglist=PulsationMode.ALL_KWARGS, instance=self.__class__.__name__)
+        utils.invalid_kwarg_checker(kwargs=kwargs, kwarglist=PulsationMode.ALL_KWARGS, instance=self.__class__)
         utils.check_missing_kwargs(PulsationMode.MANDATORY_KWARGS, kwargs, instance_of=PulsationMode)
         kwargs = self.transform_input(**kwargs)
 
