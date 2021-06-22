@@ -450,7 +450,7 @@ of the variable during the fitting procedure is specified. ELISa recognizes thre
             'unit': 'K'
         }
 
-    - **contrained**: type of model parameter, which value is dependent on the current value of one or more variable
+    - **constrained**: type of model parameter, which value is dependent on the current value of one or more variable
       parameters. This feature is very helpful while utilizing a parameters such as `a sin(i)` parameter derived during
       radial velocity fit inside a light curve fit to constrain a semi-major axis of the system on system's
       inclination::
