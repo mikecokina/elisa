@@ -312,7 +312,7 @@ normalized the time axis according to the maximum value in our datasets.
 Building a simple model of a binary system - MWE
 ----------------------------------------------------
 
-ELISa enables fast modelling of binary systems based on parameters supplied in form of a dictinary (or json).
+ELISa enables fast modelling of binary systems based on parameters supplied in form of a dictionary (or json).
 Parameters are divided into 'system', 'primary' and 'secondary' parameters. Binary system parameters can either supply
 masses of the components with `mass` parameter or system's `mass_ratio` and `semi_major_axis` have to be provided
 instead::
@@ -381,7 +381,7 @@ Visualization of the results
 ----------------------------
 
 Elisa comes with a substantial graphic library for comfortable visualization of various results. Light curve calculated
-in the Observer instace `o` can be visualized::
+in the Observer instance `o` can be visualized::
 
     o.plot.lc()
 
@@ -393,7 +393,9 @@ in the Observer instace `o` can be visualized::
 Solving an inverse problem - general concepts
 ---------------------------------------------
 
-ELISa provides an built-in capability to infer binary system parameters from observations. Similar to the generating a binary system demonstrated above, the fitting parameters are also supplied in form of a dictionary (json) in following format::
+ELISa provides a built-in capability to infer binary system parameters from observations. Similar to the generating a
+binary system demonstrated above, the fitting parameters are also supplied in form of a dictionary (json) in the
+following format::
 
     fit_params = {
         'system': {
@@ -414,10 +416,10 @@ ELISa provides an built-in capability to infer binary system parameters from obs
         }
     }
 
-Each model parameter (eg. `mass_ratio`) is additionaly defined in form of dictionary where the character and behaviour
+Each model parameter (eg. `mass_ratio`) is additionally defined in form of a dictionary where the character and behaviour
 of the variable during the fitting procedure is specified. ELISa recognizes three main types of model variables:
 
-    - **fixed**: value of such parameter stays fixed during the whole process. Fixed parameter can be defined as::
+    - **fixed**: value of such parameter stays fixed during the whole process. A fixed-parameter can be defined as::
 
         't_eff': {
             'value': 5774,
@@ -436,9 +438,9 @@ of the variable during the fitting procedure is specified. ELISa recognizes thre
             'unit': None  # this line is not mandatory (default parameter unit is assumed in its absence)
         }
 
-      Additionally, in case of MCMC method, parameter can be sampled from the normal prior distribution. Let's say that
+      Additionally, in the case of the MCMC method, the parameter can be sampled from the normal prior distribution. Let's say that
       we want to take into account the errors of the effective temperature of the component 6300 +- 400 K inferred from
-      a color indices::
+      color indices::
 
         't_eff': {
             'value': 6300,  # mean value
@@ -451,7 +453,7 @@ of the variable during the fitting procedure is specified. ELISa recognizes thre
         }
 
     - **constrained**: type of model parameter, which value is dependent on the current value of one or more variable
-      parameters. This feature is very helpful while utilizing a parameters such as `a sin(i)` parameter derived during
+      parameters. This feature is very helpful while utilizing parameters such as `a sin(i)` parameter derived during
       radial velocity fit inside a light curve fit to constrain a semi-major axis of the system on system's
       inclination::
 
@@ -460,8 +462,8 @@ of the variable during the fitting procedure is specified. ELISa recognizes thre
            'constraint': '16.515 / sin(radians(system@inclination))'
         },
 
-Once the model paramters are defined, we can initialize our optimization tasks that can utilize various optimizing
-methods. Following example shows an initialization of task for the fitting of the light curves::
+Once the model parameters are defined, we can initialize our optimization tasks that can utilize various optimizing
+methods. The following example shows initialization of task for the fitting of the light curves::
 
     from elisa.analytics import LCData, LCBinaryAnalyticsTask
 
@@ -473,10 +475,10 @@ methods. Following example shows an initialization of task for the fitting of th
 
     task = LCBinaryAnalyticsTask(data={'Kepler': kepler_data}, method='least_squares', expected_morphology='detached')
 
-Observed data are supplied in form of a custom `Dataset` format for each filter. Optimizer task can for now use `least-squares` or `mcmc` method. The least squares method is specialized for fast
-determination of a local minimum in the general vicinity of the initial parameters. On the other side MCMC method is
-best used as a tool for determination of the confidence intervals of the model parameters around the solution found by
-the least squares method. Optimizer in case of light curves requires the 'expected_morphology' of the fitted system
+Observed data are supplied in form of a custom `Dataset` format for each filter. Optimizer task can for now use `least-squares` or `mcmc` method. The least squares method is specialized for the fast
+determination of a local minimum in the general vicinity of the initial parameters. On the other side the MCMC method is
+best used as a tool for the determination of the confidence intervals of the model parameters around the solution found by
+the least squares method. The optimizer in case of light curves requires the 'expected_morphology' of the fitted system
 with 'detached' and 'over-contact' arguments available.
 
 Subsequently, the fitting procedure can be initiated by the following command::
@@ -484,7 +486,7 @@ Subsequently, the fitting procedure can be initiated by the following command::
     task.fit(x0=fit_params, *kwargs)
     task.save_result(param/file/name.json)  # storing results into json
 
-where intial parameters are provided and the fitting process can be managed by the aditional keyword arguments.
+where initial parameters are provided and the fitting process can be managed by the additional keyword arguments.
 The results can be visualised in form of a table::
 
     lst_sqr_task.fit_summary()
@@ -550,7 +552,7 @@ which would produce result similar to this::
     Metallicity (log10(X_Fe/X_H)):                       0.0                   -                   -                None    Fixed
     ------------------------------------------------------------------------------------------------------------------------------
 
-where in case of MCMC method, the additional 1 sigma errors would be displayed.
+where in the case of the MCMC method, the additional 1 sigma errors would be displayed.
 
 Detailed guides, how to perform a fit of radial velocities or photometric observations including working examples are
 stored in the Jupyter notebooks 11 and 12. See also a notebook 10 that explains the handling of ELISa's custom datasets.
