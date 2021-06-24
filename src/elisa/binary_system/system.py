@@ -609,20 +609,46 @@ class BinarySystem(System):
 
     def setup_discretisation_factor(self):
         """
-        If secondary discretization factor was not set, it will be now with respect to primary component.
+        Adjusting discretization factors of both components to have roughly similar sizes.
+        If none of the components have their discretization factors set, smaller component is adjusted according to
+        bigger. If secondary discretization factor was not set, it will be now with respect to primary component.
         """
-        if not self.secondary.kwargs.get('discretization_factor'):
-            self.secondary.discretization_factor = (self.primary.discretization_factor * self.primary.equivalent_radius
-                                                    / self.secondary.equivalent_radius * u.rad).value
+        def adjust_alpha(adj_component, ref_comp):
+            return ref_comp.discretization_factor * \
+                   (ref_comp.equivalent_radius / adj_component.equivalent_radius) * \
+                   (ref_comp.t_eff / adj_component.t_eff)**2
 
-            if self.secondary.discretization_factor > np.radians(settings.MAX_DISCRETIZATION_FACTOR):
-                self.secondary.discretization_factor = np.radians(settings.MAX_DISCRETIZATION_FACTOR)
-            if self.secondary.discretization_factor < np.radians(settings.MIN_DISCRETIZATION_FACTOR):
-                self.secondary.discretization_factor = np.radians(settings.MIN_DISCRETIZATION_FACTOR)
+        # if both components are not specified, alpha of smaller component is adjusted to the bigger component
+        if not self.primary.kwargs.get('discretization_factor') \
+                and not self.secondary.kwargs.get('discretization_factor'):
+            if self.secondary.equivalent_radius*self.secondary.t_eff**2 < \
+                    self.primary.equivalent_radius*self.primary.t_eff**2:
+                adj, ref = self.secondary, self.primary
+                adj_comp = 'secondary'
+            else:
+                adj, ref = self.primary, self.secondary
+                adj_comp = 'primary'
+        # if only one alpha is supplied, the second is adjusted
+        elif not self.secondary.kwargs.get('discretization_factor'):
+            adj, ref = self.secondary, self.primary
+            adj_comp = 'secondary'
+        elif not self.primary.kwargs.get('discretization_factor'):
+            adj, ref = self.primary, self.secondary
+            adj_comp = 'primary'
+        else:
+            adj_comp, adj, ref = None, None, None
 
-            logger.info(f"setting discretization factor of secondary component to "
-                        f"{up.degrees(self.secondary.discretization_factor):.2f} "
-                        f"according to discretization factor of the primary component.")
+        if adj_comp is not None:
+            adj.discretization_factor = adjust_alpha(adj, ref)
+
+            if adj.discretization_factor > np.radians(settings.MAX_DISCRETIZATION_FACTOR):
+                adj.discretization_factor = np.radians(settings.MAX_DISCRETIZATION_FACTOR)
+            if adj.discretization_factor < np.radians(settings.MIN_DISCRETIZATION_FACTOR):
+                adj.discretization_factor = np.radians(settings.MIN_DISCRETIZATION_FACTOR)
+
+            logger.info(f"setting discretization factor of {adj_comp} component to "
+                        f"{up.degrees(adj.discretization_factor):.2f} "
+                        f"according to discretization factor of the companion.")
 
         for component in settings.BINARY_COUNTERPARTS.keys():
             instance = getattr(self, component)

@@ -228,6 +228,10 @@ v0.5
       `equivalent_radius` instead of polar gravity `polar_log_g` in "standard" format
     - BinarySystem and SingleSystem now contain a function build_container that builds a complete model of a system at
       given photometric `phase` or observational `time`.
+    - in the default mode (when user did not specified the discretization factor), sizes of surface elements of both
+      components are scaled in a way, that the surface elements of both components roughly output the same amount of
+      flux, if the (min, max) range of discretization factors can be maintained. This prevents from unnecessary surface
+      oversampling of smaller and dimmer binary components.
 
 
 **Fixes**

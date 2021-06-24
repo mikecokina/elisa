@@ -15,10 +15,10 @@ class BinarySystemInitTestCase(ElisaTestCase):
             {"primary_mass": 2.0, "secondary_mass": 1.0,
              "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
              "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
-             "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 2.0,
+             "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 200.0,
              "eccentricity": 0.0, "inclination": c.HALF_PI * u.rad, "primary_minimum_time": 0.0,
              "phase_shift": 0.0,
-             "primary_t_eff": 5000, "secondary_t_eff": 5000,
+             "primary_t_eff": 6000, "secondary_t_eff": 5000,
              "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
              "primary_albedo": 0.6, "secondary_albedo": 0.6,
              },  # compact spherical components on circular orbit
@@ -26,12 +26,12 @@ class BinarySystemInitTestCase(ElisaTestCase):
             {"primary_mass": 2.0, "secondary_mass": 1.0,
              "primary_surface_potential": 100.0, "secondary_surface_potential": 80.0,
              "primary_synchronicity": 400, "secondary_synchronicity": 550,
-             "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 3.0,
+             "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 300.0,
              "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
              "phase_shift": 0.0,
-             "primary_t_eff": 5000, "secondary_t_eff": 5000,
+             "primary_t_eff": 5000, "secondary_t_eff": 6000,
              "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-             "primary_albedo": 0.6, "secondary_albedo": 0.6
+             "primary_albedo": 0.6, "secondary_albedo": 0.6, "primary_discretization_factor": 6
              },  # rotationally squashed compact spherical components
 
             {"primary_mass": 2.0, "secondary_mass": 1.0,
@@ -42,7 +42,7 @@ class BinarySystemInitTestCase(ElisaTestCase):
              "phase_shift": 0.0,
              "primary_t_eff": 5000, "secondary_t_eff": 5000,
              "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-             "primary_albedo": 0.6, "secondary_albedo": 0.6
+             "primary_albedo": 0.6, "secondary_albedo": 0.6, "secondary_discretization_factor": 7
              },  # close tidally deformed components with asynchronous rotation on circular orbit
 
             {"primary_mass": 2.0, "secondary_mass": 1.0,
@@ -51,7 +51,7 @@ class BinarySystemInitTestCase(ElisaTestCase):
              "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
              "eccentricity": 0.3, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
              "phase_shift": 0.0,
-             "primary_t_eff": 5000, "secondary_t_eff": 5000,
+             "primary_t_eff": 9000, "secondary_t_eff": 5000,
              "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
              "primary_albedo": 0.6, "secondary_albedo": 0.6
              },  # close tidally deformed components with asynchronous rotation on eccentric orbit
@@ -63,7 +63,7 @@ class BinarySystemInitTestCase(ElisaTestCase):
              "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
              "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
              "phase_shift": 0.0,
-             "primary_t_eff": 5000, "secondary_t_eff": 5000,
+             "primary_t_eff": 6000, "secondary_t_eff": 5000,
              "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
              "primary_albedo": 0.6, "secondary_albedo": 0.6
              },  # synchronous contact system
@@ -71,11 +71,13 @@ class BinarySystemInitTestCase(ElisaTestCase):
             {"primary_mass": 2.0, "secondary_mass": 1.0,
              "primary_surface_potential": 3.159639848886489,
              "secondary_surface_potential": 3.229240544834036,
+             # "primary_surface_potential": 3.1596399,
+             # "secondary_surface_potential": 3.2292406,
              "primary_synchronicity": 1.5, "secondary_synchronicity": 2.0,
              "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
              "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
              "phase_shift": 0.0,
-             "primary_t_eff": 5000, "secondary_t_eff": 5000,
+             "primary_t_eff": 6500, "secondary_t_eff": 6000,
              "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
              "primary_albedo": 0.6, "secondary_albedo": 0.6
              },  # asynchronous contact system (improbable but whatever...)
@@ -97,7 +99,8 @@ class BinarySystemInitTestCase(ElisaTestCase):
         return [prepare_binary_system(combo) for combo in self.params_combination]
 
     def test_calculate_semi_major_axis(self):
-        expected = [6702758048.0, 8783097736.0, 4222472978.0, 4222472978.0, 4222472978.0, 4222472978.0, 4222472978.0]
+        expected = [144406544570.0, 189226104475.0, 4222472978.0, 4222472978.0, 4222472978.0, 4222472978.0,
+                    4222472978.0]
         obtained = list()
 
         for bs in self.prepare_systems():
@@ -179,6 +182,17 @@ class BinarySystemInitTestCase(ElisaTestCase):
         self.assertTrue(hasattr(bs, "components"))
         self.assertTrue(bs.components["primary"])
         self.assertTrue(bs.components["secondary"])
+
+    def test_discretization_factor(self):
+        expected_p = [5.,   6.,   5.96, 5.,   5.,   5.,   5.  ]
+        expected_s = [12.,    6.67,  7.,   12.,    9.93,  8.63,  6.61]
+        obtained_p, obtained_s = [], []
+        for i, bs in enumerate(self.prepare_systems()):
+            obtained_p.append(np.degrees(bs.primary.discretization_factor))
+            obtained_s.append(np.degrees(bs.secondary.discretization_factor))
+
+        assert_array_equal(np.round(obtained_p, 2), expected_p)
+        assert_array_equal(np.round(obtained_s, 2), expected_s)
 
 
 class ValidityTestCase(ElisaTestCase):

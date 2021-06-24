@@ -16,9 +16,7 @@ def newton(func, x0, fprime, args=(), maxiter=50, rtol=0.0):
     :param func: callable; the function whose zero is wanted. It must be a function of a single variable
                            of the form f(x,a,b,c...), where a, b, c... are extra arguments that can be passed
                            in the args parameter.
-    :param x0: Union[numpy.array, float]; an initial estimate of the zero that should be somewhere near the actual zero.
-                                          If not scalar, then func must be vectorized and return a sequence
-                                          or array of the same shape as its first argument.
+    :param x0: Union[numpy.array, float]; an initial estimate of the solution
     :param fprime: callable; the derivative of the function
     :param args: Tuple; extra arguments to be used in the function call
     :param maxiter: int; maximum number of iterations

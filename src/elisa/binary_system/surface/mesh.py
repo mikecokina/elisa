@@ -27,6 +27,7 @@ CORRECTION_FACTORS = {
     'over-contact': np.load(settings.PATH_TO_OVER_CONTACT_CORRECTIONS, allow_pickle=False)
 }
 CORRECTION_FACTORS['semi-detached'] = CORRECTION_FACTORS['detached']
+CORRECTION_FACTORS['double-contact'] = CORRECTION_FACTORS['detached']
 
 
 def build_mesh(system, components_distance, component="all"):
@@ -629,13 +630,16 @@ def mesh_detached(system, components_distance, component, symmetry_output=False)
     # pre calculating azimuths for surface points on quarter of the star surface
     phi, theta, separator = pre_calc_azimuths_for_detached_points(discretization_factor, star)
     setattr(star, "azimuth_args", (phi, theta, separator))
-    # calculating mesh in cartesian coordinates for quarter of the star
-    args = phi, theta, star.side_radius, components_distance, precalc_fn, \
+    # calculating mesh in cartesian coordinates for quarter of the star, the forward point nearest to the L1 is ommitted
+    # it was found that in rare instances, newton performs badly near L1
+    args = phi[1:], theta[1:], star.side_radius, components_distance, precalc_fn, \
         potential_fn, fprime, potential, mass_ratio, synchronicity
 
     logger.debug(f'calculating surface points of {component} component in mesh_detached '
                  f'function using single process method')
     points_q = get_surface_points(*args)
+    # inserting forward surface point from pre-calculated forward radius
+    points_q = np.insert(points_q, 0, [star.forward_radius, 0.0, 0.0], axis=0)
     points = stitch_quarters_in_detached(points_q, separator, component, components_distance)
 
     if symmetry_output:

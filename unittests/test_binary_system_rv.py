@@ -67,7 +67,7 @@ PARAMS = {
         "phase_shift": 0.0,
         "primary_t_eff": 6000, "secondary_t_eff": 6000,
         "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-        "primary_albedo": 1.0, "secondary_albedo": 1.0
+        "primary_albedo": 1.0, "secondary_albedo": 1.0, 'primary_discretization_factor': 3.0
     },
     'eccentric': {
         "primary_mass": 1.0, "secondary_mass": 1.0,
