@@ -50,11 +50,12 @@ class SingleSystem(System):
         :param t_eff: float; Accepts value in any temperature unit. If your input is without unit,
                              function assumes that supplied value is in K.
         :param polar_log_g: float; log_10 of the polar surface gravity
-        :param gravity_darkening: float; gravity darkening factor
 
     following mandatory arguments are also available:
 
         :param metallicity: float; log[M/H] default value is 0.0
+        :param gravity_darkening: float; gravity darkening factor, if not supplied, it is interpolated from Claret 2003
+                                         based on t_eff
 
     Each component instance will after initialization contain following attributes:
 
@@ -157,8 +158,8 @@ class SingleSystem(System):
     OPTIONAL_KWARGS = ['reference_time', 'phase_shift', 'additional_light', 'gamma']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    STAR_MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening', 'polar_log_g']
-    STAR_OPTIONAL_KWARGS = ['metallicity']
+    STAR_MANDATORY_KWARGS = ['mass', 't_eff', 'polar_log_g']
+    STAR_OPTIONAL_KWARGS = ['metallicity', 'gravity_darkening']
     STAR_ALL_KWARGS = STAR_MANDATORY_KWARGS + STAR_OPTIONAL_KWARGS
 
     def __init__(self, star, name=None, **kwargs):

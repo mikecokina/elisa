@@ -32,11 +32,12 @@ class Star(Body):
         :param t_eff: float; Accepts value in any temperature unit. If your input is without unit,
                          function assumes that supplied value is in K.
         :param polar_log_g: float; log_10 of the polar surface gravity
-        :param gravity_darkening: float; gravity darkening factor
 
     following mandatory arguments are also available:
 
         :param metallicity: float; log[M/H] default value is 0.0
+        :param gravity_darkening: float; gravity darkening factor, if not supplied, it is interpolated from Claret 2003
+                                         based on t_eff
 
     After initialization of the SingleSystem, following additional attributes of the Star instance are available:
 
@@ -54,11 +55,12 @@ class Star(Body):
         :param surface_potential: float; generalized surface potential (Wilson 79)
         :param synchronicity: float; synchronicity F (omega_rot / omega_orb), equals 1 for synchronous rotation
         :param albedo: float; surface albedo, value from <0, 1> interval
-        :param gravity_darkening: float; gravity darkening factor
 
     following mandatory arguments are also available:
 
         :param metallicity: float; log[M/H] default value is 0.0
+        :param gravity_darkening: float; gravity darkening factor, if not supplied, it is interpolated from Claret 2003
+                                         based on t_eff
 
 
     After initialization of the `BinarySystem`, following additional attributes of the `Star` instance are available:
@@ -114,9 +116,9 @@ class Star(Body):
 
     """
 
-    MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening']
+    MANDATORY_KWARGS = ['mass', 't_eff']
     OPTIONAL_KWARGS = ['surface_potential', 'synchronicity', 'albedo', 'pulsations', 'atmosphere',
-                       'spots', 'metallicity', 'polar_log_g', 'discretization_factor']
+                       'spots', 'metallicity', 'polar_log_g', 'discretization_factor', 'gravity_darkening']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, name=None, **kwargs):
@@ -139,6 +141,10 @@ class Star(Body):
         self.equivalent_radius = np.nan
 
         self.init_parameters(**kwargs)
+
+        # interpolating default value of gravity darkening exponent beta
+        if 'gravity_darkening' not in kwargs:
+            setattr(self, 'gravity_darkening', self.interpolate_bolometric_gravity_darkening(self.t_eff))
 
     def transform_input(self, **kwargs):
         """
@@ -251,3 +257,17 @@ class Star(Body):
         :return: elisa.base.container.StarPropertiesContainer
         """
         return StarPropertiesContainer(**self.properties_serializer())
+
+    @staticmethod
+    def interpolate_bolometric_gravity_darkening(temperature):
+        """
+        Quick beta interpolator based on Figure 2 in Claret 2003, A&A 406, 623–628.
+
+        :param temperature: float
+        :return:
+        """
+        interp_log_temps = [0.00, 4570, 5890, 6310, 6920, 7410, 7940, 1e5]
+        interp_betas = [0.35, 0.35, 0.30, 0.2, 0.80, 0.95, 1.0, 1.0]
+
+        return np.interp(temperature, interp_log_temps, interp_betas)
+

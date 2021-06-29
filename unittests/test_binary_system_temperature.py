@@ -1,8 +1,9 @@
 import numpy as np
 import os.path as op
+from copy import copy
 
 from elisa import umpy as up
-from elisa import settings
+from elisa import settings, BinarySystem
 from elisa.utils import is_empty
 from unittests import utils as testutils
 from unittests.utils import ElisaTestCase
@@ -87,3 +88,60 @@ class BuildSpottyTemperatureTestCase(ElisaTestCase):
 
     def test_build_temperatures_semi_detached(self):
         self.generator_test_temperatures('semi-detached')
+
+
+class GravityDarkeningTestCase(ElisaTestCase):
+    def setUp(self):
+        super(GravityDarkeningTestCase, self).setUp()
+        settings.configure(**{
+            "LIMB_DARKENING_LAW": "linear",
+            "LD_TABLES": op.join(op.dirname(op.abspath(__file__)), "data", "light_curves", "limbdarkening")
+        })
+        self._base_model = {
+              "system": {
+                "inclination": 90.0,
+                "period": 10.1,
+                "argument_of_periastron": "90.0 deg",  # string representation of astropy quntity is also valid
+                "gamma": 0.0,
+                "eccentricity": 0.3,
+                "primary_minimum_time": 0.0,
+                "phase_shift": 0.0
+              },
+              "primary": {
+                "mass": 2.0,
+                "surface_potential": 100,
+                "synchronicity": 1.0,
+                "t_eff": 6500.0,
+                "albedo": 1.0,
+                "metallicity": 0.0
+              },
+              "secondary": {
+                "mass": 1.0,
+                "surface_potential": 100,
+                "synchronicity": 1.0,
+                "t_eff": 7500.0,
+                "albedo": 1.0,
+                "metallicity": 0.0
+              }
+            }
+
+    def generator_test_betas(self, params, expected):
+        s = BinarySystem.from_json(params)
+        self.assertAlmostEqual(s.primary.gravity_darkening, expected[0], 5)
+        self.assertAlmostEqual(s.secondary.gravity_darkening, expected[1], 5)
+
+    def test_user_defined(self):
+        params = copy(self._base_model)
+        params['primary'].update({'gravity_darkening': 1.0})
+        params['secondary'].update({'gravity_darkening': 1.0})
+
+        self.generator_test_betas(params, (1.0, 1.0))
+
+    def test_auto_primary(self):
+        params = copy(self._base_model)
+        params['secondary'].update({'gravity_darkening': 1.0})
+
+        self.generator_test_betas(params, (0.3868852, 1.0))
+
+    def test_auto_both(self):
+        self.generator_test_betas(self._base_model, (0.3868852, 0.9584905))

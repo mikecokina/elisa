@@ -374,7 +374,6 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
                 "surface_potential": 7.1,
                 "synchronicity": 1.0,
                 "t_eff": "6500.0 K",
-                "gravity_darkening": 1.0,
                 "discretization_factor": 5,
                 "albedo": 1.0,
             },
@@ -418,7 +417,6 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
                 "surface_potential": 7.1,
                 "synchronicity": 1.0,
                 "t_eff": 6500.0,
-                "gravity_darkening": 1.0,
                 "discretization_factor": 5,
                 "albedo": 1.0
             }

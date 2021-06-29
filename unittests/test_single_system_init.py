@@ -262,7 +262,6 @@ class SingleSystemSerializersTestCase(ElisaTestCase):
             "star": {
                 "mass": "1.0 solMass",
                 "t_eff": "5772.0 K",
-                "gravity_darkening": 0.32,
                 "discretization_factor": 5,
                 "metallicity": 0.0,
                 "polar_log_g": "4.43775 dex(cm / s2)"

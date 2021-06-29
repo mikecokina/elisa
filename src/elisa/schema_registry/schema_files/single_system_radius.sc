@@ -67,7 +67,6 @@
       "required": [
         "mass",
         "t_eff",
-        "gravity_darkening",
         "equivalent_radius"
       ],
       "properties": {
