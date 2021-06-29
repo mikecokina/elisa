@@ -160,7 +160,7 @@ class Settings(_Const):
     RV_LAMBDA_INTERVAL = (5500, 5600)
 
     # computational
-    MAX_DISCRETIZATION_FACTOR = 12
+    MAX_DISCRETIZATION_FACTOR = 8
     MIN_DISCRETIZATION_FACTOR = 3
     NUMBER_OF_THREADS = 1
     NUMBER_OF_PROCESSES = -1  # int(os.cpu_count())
