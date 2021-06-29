@@ -63,8 +63,7 @@
       "required": [
         "surface_potential",
         "synchronicity",
-        "t_eff",
-        "albedo"
+        "t_eff"
       ],
       "properties": {
         "surface_potential": {
@@ -187,8 +186,7 @@
       "required": [
         "surface_potential",
         "synchronicity",
-        "t_eff",
-        "albedo"
+        "t_eff"
       ],
       "properties": {
         "surface_potential": {

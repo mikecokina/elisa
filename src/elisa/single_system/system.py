@@ -204,6 +204,7 @@ class SingleSystem(System):
 
         # this is also check if star surface is closed
         self.setup_radii()
+        self.setup_betas()
         self.assign_pulsations_amplitudes()
         self.setup_discretisation_factor()
 

@@ -131,6 +131,8 @@ class _Const(object):
     PATH_TO_OVER_CONTACT_CORRECTIONS = os.path.join(
         DATA_PATH, 'mesh_corrections', 'correction_factors_over-contact.npy'
     )
+    PATH_TO_ALBEDOS = os.path.join(DATA_PATH, 'albedos.json')
+    PATH_TO_BETA = os.path.join(DATA_PATH, 'gravity_darkening.json')
 
 
 class Settings(_Const):

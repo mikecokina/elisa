@@ -90,9 +90,9 @@ class BuildSpottyTemperatureTestCase(ElisaTestCase):
         self.generator_test_temperatures('semi-detached')
 
 
-class GravityDarkeningTestCase(ElisaTestCase):
+class GravityDarkeningAlbedoTestCase(ElisaTestCase):
     def setUp(self):
-        super(GravityDarkeningTestCase, self).setUp()
+        super(GravityDarkeningAlbedoTestCase, self).setUp()
         settings.configure(**{
             "LIMB_DARKENING_LAW": "linear",
             "LD_TABLES": op.join(op.dirname(op.abspath(__file__)), "data", "light_curves", "limbdarkening")
@@ -112,7 +112,6 @@ class GravityDarkeningTestCase(ElisaTestCase):
                 "surface_potential": 100,
                 "synchronicity": 1.0,
                 "t_eff": 6500.0,
-                "albedo": 1.0,
                 "metallicity": 0.0
               },
               "secondary": {
@@ -120,7 +119,6 @@ class GravityDarkeningTestCase(ElisaTestCase):
                 "surface_potential": 100,
                 "synchronicity": 1.0,
                 "t_eff": 7500.0,
-                "albedo": 1.0,
                 "metallicity": 0.0
               }
             }
@@ -130,18 +128,29 @@ class GravityDarkeningTestCase(ElisaTestCase):
         self.assertAlmostEqual(s.primary.gravity_darkening, expected[0], 5)
         self.assertAlmostEqual(s.secondary.gravity_darkening, expected[1], 5)
 
+    def generator_test_albedo(self, params, expected):
+        s = BinarySystem.from_json(params)
+        self.assertAlmostEqual(s.primary.albedo, expected[0], 5)
+        self.assertAlmostEqual(s.secondary.albedo, expected[1], 5)
+
     def test_user_defined(self):
         params = copy(self._base_model)
         params['primary'].update({'gravity_darkening': 1.0})
         params['secondary'].update({'gravity_darkening': 1.0})
+        params['primary'].update({'albedo': 1.0})
+        params['secondary'].update({'albedo': 1.0})
 
         self.generator_test_betas(params, (1.0, 1.0))
+        self.generator_test_albedo(params, (1.0, 1.0))
 
     def test_auto_primary(self):
         params = copy(self._base_model)
         params['secondary'].update({'gravity_darkening': 1.0})
+        params['primary'].update({'albedo': 1.0})
 
-        self.generator_test_betas(params, (0.3868852, 1.0))
+        self.generator_test_betas(params, (0.5302088, 1.0))
+        self.generator_test_albedo(params, (1.0, 0.901515))
 
     def test_auto_both(self):
-        self.generator_test_betas(self._base_model, (0.3868852, 0.9584905))
+        self.generator_test_betas(self._base_model, (0.5302088, 0.968017))
+        self.generator_test_albedo(self._base_model, (0.7126008, 0.901515))

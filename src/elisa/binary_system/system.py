@@ -8,6 +8,7 @@ from . import graphic
 from . orbit import orbit
 from . curves import lc, rv
 from . surface import mesh
+from . surface.temperature import interpolate_albedo
 from . transform import BinarySystemProperties
 from . curves import c_router
 from . import (
@@ -67,13 +68,15 @@ class BinarySystem(System):
                              function assumes that supplied value is in K.
         :param surface_potential: float; generalized surface potential (Wilson 79)
         :param synchronicity: float; synchronicity F (omega_rot / omega_orb), equals 1 for synchronous rotation
-        :param albedo: float; surface albedo, value from <0, 1> interval
 
     following mandatory arguments are also available:
 
         :param metallicity: float; log[M/H] default value is 0.0
         :param gravity_darkening: float; gravity darkening factor, if not supplied, it is interpolated from Claret 2003
                                          based on t_eff
+
+        :param albedo: float; surface albedo, value from <0, 1> interval, if not supplied, Claret 2001 will be used
+                              for interpolation
 
 
     Each component instance will after initialization contain following attributes:
@@ -223,9 +226,8 @@ class BinarySystem(System):
     OPTIONAL_KWARGS = ['gamma', 'phase_shift', 'additional_light', 'primary_minimum_time']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    COMPONENT_MANDATORY_KWARGS = ['mass', 't_eff', 'surface_potential', 'synchronicity',
-                                  'albedo']
-    COMPONENT_OPTIONAL_KWARGS = ['metallicity', 'gravity_darkening']
+    COMPONENT_MANDATORY_KWARGS = ['mass', 't_eff', 'surface_potential', 'synchronicity']
+    COMPONENT_OPTIONAL_KWARGS = ['metallicity', 'gravity_darkening', 'albedo']
     COMPONENT_ALL_KWARGS = COMPONENT_MANDATORY_KWARGS + COMPONENT_OPTIONAL_KWARGS
 
     def __init__(self, primary, secondary, name=None, **kwargs):
@@ -276,6 +278,8 @@ class BinarySystem(System):
         self.morphology = self.compute_morphology()
 
         self.setup_components_radii(components_distance=self.orbit.periastron_distance)
+        self.setup_betas()
+        self.setup_albedos()
         self.assign_pulsations_amplitudes(normalisation_constant=self.semi_major_axis)
 
         # adjust and setup discretization factor if necessary
@@ -972,6 +976,17 @@ class BinarySystem(System):
             if calculate_equivalent_radius:
                 e_rad = self.calculate_equivalent_radius(components=component)[component]
                 setattr(component_instance, 'equivalent_radius', e_rad)
+
+    def setup_albedos(self):
+        """
+        Setup of default compoent albedo.
+
+        :return:
+        """
+        for component, component_instance in self.components.items():
+            if utils.is_empty(component_instance.albedo):
+                component_instance.albedo = \
+                    interpolate_albedo(component_instance.t_eff)
 
     @staticmethod
     def compute_filling_factor(surface_potential, lagrangian_points):

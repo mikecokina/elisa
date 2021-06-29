@@ -6,6 +6,7 @@ from .. logger import getLogger
 from .. import utils
 from .. pulse import pulsations
 from elisa import units as u
+from elisa.base.surface.temperature import interpolate_bolometric_gravity_darkening
 
 logger = getLogger('base.system')
 
@@ -142,3 +143,14 @@ class System(metaclass=ABCMeta):
             else:
                 serialized_kwargs[kwarg] = getattr(self, kwarg)
         return serialized_kwargs
+
+    def setup_betas(self):
+        """
+        Setup of default gravity darkening components.
+
+        :return:
+        """
+        for component, component_instance in self.components.items():
+            if utils.is_empty(component_instance.gravity_darkening):
+                component_instance.gravity_darkening = \
+                    interpolate_bolometric_gravity_darkening(component_instance.t_eff)

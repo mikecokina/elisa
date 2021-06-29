@@ -1,5 +1,6 @@
 # noinspection PyTypeChecker
 import numpy as np
+import json
 
 from copy import copy
 from ..surface import faces as bsfaces
@@ -507,3 +508,19 @@ def get_distance_matrix_shape(system, vis_test):
     shape_reduced = (np.sum(vis_test['primary'][:system.primary.base_symmetry_faces_number]),
                      np.sum(vis_test['secondary'][:system.secondary.base_symmetry_faces_number]))
     return shape, shape_reduced
+
+
+def interpolate_albedo(temperature):
+    """
+    Quick interpolator for determination of default value of albedo. Interpolation data are from Figure 6 in
+    Claret 2001 MNRAS 327, 989–994.
+
+    :param temperature: float
+    :return: float; interpolated albedo (0, 1)
+    """
+    with open(settings.PATH_TO_ALBEDOS, 'r') as f:
+        data = json.load(f)
+    interp_temps = data['x']
+    interp_a = data['y']
+
+    return np.interp(np.log10(temperature), interp_temps, interp_a)

@@ -142,10 +142,6 @@ class Star(Body):
 
         self.init_parameters(**kwargs)
 
-        # interpolating default value of gravity darkening exponent beta
-        if 'gravity_darkening' not in kwargs:
-            setattr(self, 'gravity_darkening', self.interpolate_bolometric_gravity_darkening(self.t_eff))
-
     def transform_input(self, **kwargs):
         """
         Transform and validate input kwargs.
@@ -258,16 +254,5 @@ class Star(Body):
         """
         return StarPropertiesContainer(**self.properties_serializer())
 
-    @staticmethod
-    def interpolate_bolometric_gravity_darkening(temperature):
-        """
-        Quick beta interpolator based on Figure 2 in Claret 2003, A&A 406, 623–628.
 
-        :param temperature: float
-        :return:
-        """
-        interp_log_temps = [0.00, 4570, 5890, 6310, 6920, 7410, 7940, 1e5]
-        interp_betas = [0.35, 0.35, 0.30, 0.2, 0.80, 0.95, 1.0, 1.0]
-
-        return np.interp(temperature, interp_log_temps, interp_betas)
 

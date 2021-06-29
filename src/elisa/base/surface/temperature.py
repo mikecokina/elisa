@@ -1,6 +1,7 @@
 import numpy as np
+import json
 from copy import copy
-from ... import umpy as up
+from ... import umpy as up, settings
 from ... logger import getLogger
 
 
@@ -69,3 +70,18 @@ def renormalize_temperatures(star):
     if star.spots:
         for spot_index, spot in star.spots.items():
             spot.temperatures *= coefficient
+
+
+def interpolate_bolometric_gravity_darkening(temperature):
+    """
+    Quick beta interpolator based on Figure 2 in Claret 2003, A&A 406, 623–628.
+
+    :param temperature: float
+    :return: float; interpolated beta
+    """
+    with open(settings.PATH_TO_BETA, 'r') as f:
+        data = json.load(f)
+    interp_temps = data['x']
+    interp_betas = data['y']
+
+    return np.interp(np.log10(temperature), interp_temps, interp_betas)
