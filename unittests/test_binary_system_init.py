@@ -377,7 +377,6 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
                 "gravity_darkening": 1.0,
                 "discretization_factor": 5,
                 "albedo": 1.0,
-                "metallicity": 0.0
             },
             "secondary": {
                 "mass": 1.5,
@@ -421,8 +420,7 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
                 "t_eff": 6500.0,
                 "gravity_darkening": 1.0,
                 "discretization_factor": 5,
-                "albedo": 1.0,
-                "metallicity": 0.0
+                "albedo": 1.0
             }
         }
 

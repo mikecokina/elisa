@@ -51,7 +51,10 @@ class SingleSystem(System):
                              function assumes that supplied value is in K.
         :param polar_log_g: float; log_10 of the polar surface gravity
         :param gravity_darkening: float; gravity darkening factor
-        :param metallicity: float; log[M/H]
+
+    following mandatory arguments are also available:
+
+        :param metallicity: float; log[M/H] default value is 0.0
 
     Each component instance will after initialization contain following attributes:
 
@@ -154,8 +157,8 @@ class SingleSystem(System):
     OPTIONAL_KWARGS = ['reference_time', 'phase_shift', 'additional_light', 'gamma']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    STAR_MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening', 'polar_log_g', 'metallicity']
-    STAR_OPTIONAL_KWARGS = []
+    STAR_MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening', 'polar_log_g']
+    STAR_OPTIONAL_KWARGS = ['metallicity']
     STAR_ALL_KWARGS = STAR_MANDATORY_KWARGS + STAR_OPTIONAL_KWARGS
 
     def __init__(self, star, name=None, **kwargs):

@@ -33,7 +33,10 @@ class Star(Body):
                          function assumes that supplied value is in K.
         :param polar_log_g: float; log_10 of the polar surface gravity
         :param gravity_darkening: float; gravity darkening factor
-        :param metallicity: float; log[M/H]
+
+    following mandatory arguments are also available:
+
+        :param metallicity: float; log[M/H] default value is 0.0
 
     After initialization of the SingleSystem, following additional attributes of the Star instance are available:
 
@@ -52,7 +55,10 @@ class Star(Body):
         :param synchronicity: float; synchronicity F (omega_rot / omega_orb), equals 1 for synchronous rotation
         :param albedo: float; surface albedo, value from <0, 1> interval
         :param gravity_darkening: float; gravity darkening factor
-        :param metallicity: float; log[M/H]
+
+    following mandatory arguments are also available:
+
+        :param metallicity: float; log[M/H] default value is 0.0
 
 
     After initialization of the `BinarySystem`, following additional attributes of the `Star` instance are available:
@@ -122,7 +128,7 @@ class Star(Body):
         self.filling_factor = np.nan
         self.critical_surface_potential = np.nan
         self.surface_potential = np.nan
-        self.metallicity = np.nan
+        self.metallicity = 0.0
         self.polar_log_g = np.nan
         self.gravity_darkening = np.nan
         self._pulsations = list()

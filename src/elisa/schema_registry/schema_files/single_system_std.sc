@@ -68,8 +68,7 @@
         "mass",
         "t_eff",
         "gravity_darkening",
-        "polar_log_g",
-        "metallicity"
+        "polar_log_g"
       ],
       "properties": {
         "mass": {"anyOf": [

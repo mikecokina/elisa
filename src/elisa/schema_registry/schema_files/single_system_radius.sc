@@ -68,8 +68,7 @@
         "mass",
         "t_eff",
         "gravity_darkening",
-        "equivalent_radius",
-        "metallicity"
+        "equivalent_radius"
       ],
       "properties": {
         "mass": {"anyOf": [

@@ -69,7 +69,10 @@ class BinarySystem(System):
         :param synchronicity: float; synchronicity F (omega_rot / omega_orb), equals 1 for synchronous rotation
         :param albedo: float; surface albedo, value from <0, 1> interval
         :param gravity_darkening: float; gravity darkening factor
-        :param metallicity: float; log[M/H]
+
+    following mandatory arguments are also available:
+
+        :param metallicity: float; log[M/H] default value is 0.0
 
     Each component instance will after initialization contain following attributes:
 
@@ -219,8 +222,8 @@ class BinarySystem(System):
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     COMPONENT_MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening', 'surface_potential', 'synchronicity',
-                                  'albedo', 'metallicity']
-    COMPONENT_OPTIONAL_KWARGS = []
+                                  'albedo']
+    COMPONENT_OPTIONAL_KWARGS = ['metallicity']
     COMPONENT_ALL_KWARGS = COMPONENT_MANDATORY_KWARGS + COMPONENT_OPTIONAL_KWARGS
 
     def __init__(self, primary, secondary, name=None, **kwargs):

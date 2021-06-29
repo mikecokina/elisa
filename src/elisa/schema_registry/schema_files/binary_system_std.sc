@@ -57,8 +57,7 @@
         "synchronicity",
         "t_eff",
         "gravity_darkening",
-        "albedo",
-        "metallicity"
+        "albedo"
       ],
       "properties": {
         "mass": {"anyOf": [
@@ -189,8 +188,7 @@
       "synchronicity",
       "t_eff",
       "gravity_darkening",
-      "albedo",
-      "metallicity"
+      "albedo"
     ],
     "properties": {
       "mass": {"anyOf": [

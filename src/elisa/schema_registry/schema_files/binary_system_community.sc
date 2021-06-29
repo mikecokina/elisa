@@ -65,8 +65,7 @@
         "synchronicity",
         "t_eff",
         "gravity_darkening",
-        "albedo",
-        "metallicity"
+        "albedo"
       ],
       "properties": {
         "surface_potential": {
@@ -191,8 +190,7 @@
         "synchronicity",
         "t_eff",
         "gravity_darkening",
-        "albedo",
-        "metallicity"
+        "albedo"
       ],
       "properties": {
         "surface_potential": {
