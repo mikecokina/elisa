@@ -675,13 +675,14 @@ class BinaryInitialParameters(InitialParameters):
         mandatory_fit_params = ['system@eccentricity', 'system@argument_of_periastron',
                                 'system@period', 'system@inclination', 'system@period'] + \
                                [f'{component}@{param}'
-                                for param in ['t_eff', 'surface_potential', 'gravity_darkening', 'albedo']
+                                for param in ['t_eff', 'surface_potential']
                                 for component in settings.BINARY_COUNTERPARTS]
 
         optional_fit_params = ['system@semi_major_axis', 'system@primary_minimum_time', 'system@phase_shift',
                                'system@asini', 'system@mass_ratio', 'system@additional_light', 'nuisance@ln_f'] + \
                               [f'{component}@{param}'
-                               for param in ['mass', 'synchronicity', 'metallicity', 'spots', 'pulsations']
+                               for param in ['mass', 'synchronicity', 'metallicity', 'spots', 'pulsations',
+                                             'gravity_darkening', 'albedo']
                                for component in settings.BINARY_COUNTERPARTS]
 
         all_fit_params = mandatory_fit_params + optional_fit_params

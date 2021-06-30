@@ -45,9 +45,9 @@ def _serialize_star_kwargs(component, **kwargs):
         surface_potential=kwargs[prefix('surface_potential')],
         synchronicity=kwargs.get(prefix('synchronicity'), 1.0),
         t_eff=kwargs[prefix('t_eff')],
-        gravity_darkening=kwargs.get(prefix('gravity_darkening'), 1.0),
-        albedo=kwargs.get(prefix('albedo'), 1.0),
-        metallicity=kwargs.get(prefix('metallicity'), 1.0),
+        **{"gravity_darkening": kwargs[prefix("gravity_darkening")]} if kwargs.get(prefix("gravity_darkening")) else {},
+        **{"albedo": kwargs[prefix("albedo")]} if kwargs.get(prefix("albedo")) else {},
+        **{"metallicity": kwargs[prefix("metallicity")]} if kwargs.get(prefix("metallicity")) else {},
         **{"mass": kwargs[prefix("mass")]} if kwargs.get(prefix("mass")) else {},
         **{"discretization_factor": kwargs[prefix("discretization_factor")]}
         if kwargs.get(prefix("discretization_factor")) else {},

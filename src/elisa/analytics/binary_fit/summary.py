@@ -533,10 +533,22 @@ def simple_lc_fit_summary(fit_instance, path, dimensionless_radii=True):
 
             io_tools.write_ln(write_fn, 'Bolometric luminosity (L_bol): ', l_bol,
                               '-', '-', 'L_Sol', 'Derived', line_sep, 2)
-            io_tools.write_param_ln(result_dict, f'{component}@gravity_darkening',
-                                    f'Gravity darkening factor (G_{comp_n}):', write_fn, line_sep, 3)
-            io_tools.write_param_ln(result_dict, f'{component}@albedo', f'Albedo (A_{comp_n}):',
-                                    write_fn, line_sep, 3)
+
+            f_desig = f'Gravity darkening factor (G_{comp_n}):'
+            if f'{component}@gravity_darkening' in result_dict:
+                io_tools.write_param_ln(result_dict, f'{component}@gravity_darkening',
+                                        f_desig, write_fn, line_sep, 3)
+            else:
+                args = (write_fn, f_desig, star_instance.gravity_darkening, '-', '-', '-', 'Derived', line_sep, 3)
+                io_tools.write_ln(*args)
+
+            f_desig = f'Albedo (A_{comp_n}):'
+            if f'{component}@albedo' in result_dict:
+                io_tools.write_param_ln(result_dict, f'{component}@albedo', f_desig,
+                                        write_fn, line_sep, 3)
+            else:
+                args = (write_fn, f_desig, star_instance.albedo, '-', '-', '-', 'Derived', line_sep, 3)
+                io_tools.write_ln(*args)
 
             met_desig = 'Metallicity (log10(X_Fe/X_H)):'
             if f'{component}@metallicity' in result_dict:
