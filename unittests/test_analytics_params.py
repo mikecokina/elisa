@@ -1079,13 +1079,13 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
     @parameterized.expand(['system@eccentricity', 'system@argument_of_periastron',
                            'system@period', 'system@inclination', 'system@period'] + \
                           [f'{component}@{param}'
-                           for param in ['t_eff', 'surface_potential', 'gravity_darkening', 'albedo']
+                           for param in ['t_eff', 'surface_potential']
                            for component in settings.BINARY_COUNTERPARTS])
     def test_validate_mandatory_lc_parameters(self, param):
         mandatory_fit_params = ['system@eccentricity', 'system@argument_of_periastron',
                                 'system@period', 'system@inclination', 'system@period'] + \
                                [f'{component}@{param}'
-                                for param in ['t_eff', 'surface_potential', 'gravity_darkening', 'albedo']
+                                for param in ['t_eff', 'surface_potential']
                                 for component in settings.BINARY_COUNTERPARTS]
 
         mock_value = {"value": 0.25, "min": 0.00, "max": 0.99}
