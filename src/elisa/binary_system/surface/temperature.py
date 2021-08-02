@@ -9,16 +9,14 @@ from ...logger import getLogger
 from ... import settings
 from ...utils import is_empty
 from ...base.surface import temperature as btemperature
-from ...pulse import pulsations
 from ... import (
     umpy as up,
     ld,
     utils
 )
 from elisa.base.surface.temperature import renormalize_temperatures
-from elisa.numba_functions import reflection_effect as re_numba, operations
+from elisa.numba_functions import reflection_effect as re_numba
 
-from time import time
 
 logger = getLogger("binary_system.surface.temperature")
 
