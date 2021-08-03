@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.path as mpltpath
 
 from scipy.spatial.qhull import ConvexHull
+from copy import copy
 
 from .. import utils as bsutils
 from ... import settings
@@ -12,6 +13,7 @@ from ... import (
     const
 )
 from ... base.surface import coverage as bcoverage
+
 
 logger = getLogger('binary_system.surface.coverage')
 
@@ -80,6 +82,100 @@ def expand_star_outline(path, system, cover_component):
     return path
 
 
+def test_size_similarity(cover_object, undercover_object):
+    """
+    Checking whether size of the cover component is comparable to the triangle size of the undercovar component which
+    requires a separate approach.
+
+    :param cover_object: StarContainer;
+    :param undercover_object: StarContainer;
+    :return: bool;
+    """
+    cover_size = 2.0 * cover_object.equivalent_radius
+    undercover_triangle_size = undercover_object.equivalent_radius * np.sin(undercover_object.discretization_factor)
+    return cover_size <= undercover_triangle_size
+
+
+def visibility_out_of_eclise(undercover_object):
+    """
+    Decides visibility of the near side faces of the undercover component (eclipsed component) outside of eclipse.
+
+    :param undercover_object: StarContainer; eclipsed star
+    :return: tuple; full_visible, invisible, partial_visible triangles observer-facing part of eclipsed component
+    """
+    eclipse_faces_visibility = np.full(undercover_object.normals.shape, False, dtype=bool)
+    eclipse_faces_visibility[undercover_object.indices] = True
+
+    # get indices of full visible, invisible and partial visible faces
+    full_visible = np.all(eclipse_faces_visibility, axis=1)
+    placeholder = np.full(full_visible.shape, False, dtype=bool)
+    return full_visible, placeholder, placeholder
+
+
+def visibility_similar_objects(undercover_visible_projection, undercover_object, undercover_visible_point_indices,
+                               cover_outline):
+    """
+    Decides visibility of the near side faces of the undercover component (eclipsed component) during eclipse in case
+    of similarly sized components where cover (eclipsing) component is much larger than triangle on eclipsed component.
+
+    :param undercover_visible_projection: numpy.array; observer-facing points of eclipsed component
+    :param undercover_object: StarContainer; eclipsed component
+    :param undercover_visible_point_indices: numpy.array; indices of observer-facing points of eclipsed component
+    :param cover_outline: matplotlib.path.Path; hull of the eclipsing component
+    :return: tuple; full_visible, invisible, partial_visible triangles observer-facing part of eclipsed component
+    """
+    # obtain points out of eclipse (out of boundary defined by hull of 'infront' object)
+    out_of_bound = up.invert(cover_outline.contains_points(undercover_visible_projection))
+
+    undercover_visible_point_indices = undercover_visible_point_indices[out_of_bound]
+    undercover_faces = np.full(undercover_object.normals.shape, -1, dtype=np.int)
+    undercover_faces[undercover_object.indices] = undercover_object.faces[undercover_object.indices]
+
+    eclipse_faces_visibility = np.isin(undercover_faces, undercover_visible_point_indices)
+
+    # get indices of full visible, invisible and partial visible faces
+    full_visible = np.all(eclipse_faces_visibility, axis=1)
+    invisible = np.all(up.invert(eclipse_faces_visibility), axis=1)
+    partial_visible = up.invert(full_visible | invisible)
+    return full_visible, invisible, partial_visible
+
+
+def visibility_disimilar_objects(undercover_visible_projection, undercover_object, undercover_visible_point_indices,
+                                 cover_outline):
+    """
+    Decides visibility of the near side faces of the undercover component (eclipsed component) during eclipse in case
+    of significantly smaller (eclipsing) component that is comparable or smaller to triangle on eclipsed component.
+
+    :param undercover_visible_projection: numpy.array; observer-facing points of eclipsed component
+    :param undercover_object: StarContainer; eclipsed component
+    :param undercover_visible_point_indices: numpy.array; indices of observer-facing points of eclipsed component
+    :param cover_outline: matplotlib.path.Path; hull of the eclipsing component
+    :return: tuple; full_visible, invisible, partial_visible triangles observer-facing part of eclipsed component
+    """
+    outline_max_coord = cover_outline.vertices.max(axis=0)
+    outline_min_coord = cover_outline.vertices.min(axis=0)
+    cover_centre = 0.5 * (outline_max_coord + outline_min_coord)  # centre of eclipsed component
+    selection_radius = undercover_object.equivalent_radius * np.sin(undercover_object.discretization_factor)
+
+    # square searchbox around cover component COM with half size equivalent to triangle size
+    max_condition = (undercover_visible_projection < (cover_centre + selection_radius)[None, :]).all(axis=1)
+    min_condition = (undercover_visible_projection > (cover_centre - selection_radius)[None, :]).all(axis=1)
+
+    out_of_bound = ~np.logical_and(max_condition, min_condition)
+
+    undercover_visible_point_indices = undercover_visible_point_indices[out_of_bound]
+    undercover_faces = np.full(undercover_object.normals.shape, -1, dtype=np.int)
+    undercover_faces[undercover_object.indices] = undercover_object.faces[undercover_object.indices]
+
+    eclipse_faces_visibility = np.isin(undercover_faces, undercover_visible_point_indices)
+
+    full_visible = np.all(eclipse_faces_visibility, axis=1)
+    invisible = np.full(full_visible.shape, False, dtype=bool)
+    partial_visible = copy(full_visible)
+    partial_visible[undercover_object.indices] = ~partial_visible[undercover_object.indices]
+    return full_visible, invisible, partial_visible
+
+
 def compute_surface_coverage(system, semi_major_axis, in_eclipse=True, return_values=True, write_to_containers=False):
     # todo: add unittests
     """
@@ -97,7 +193,6 @@ def compute_surface_coverage(system, semi_major_axis, in_eclipse=True, return_va
     cover_component = 'secondary' if 0.0 < system.position.azimuth < const.PI else 'primary'
     cover_object = getattr(system, cover_component)
     undercover_object = getattr(system, settings.BINARY_COUNTERPARTS[cover_component])
-    undercover_visible_point_indices = np.unique(undercover_object.faces[undercover_object.indices])
 
     # all surface values in sma unit which are smaller then following threshold are discarded (set to 0.0)
     surface_noise_threshold = (2.0 * np.pi * np.power(undercover_object.polar_radius, 2) /
@@ -105,26 +200,20 @@ def compute_surface_coverage(system, semi_major_axis, in_eclipse=True, return_va
 
     cover_object_obs_visible_projection = utils.get_visible_projection(cover_object)
     undercover_object_obs_visible_projection = utils.get_visible_projection(undercover_object)
-    # get matplotlib boudary path defined by hull of projection
+
     if in_eclipse:
+        # indices of points on near side
+        undercover_visible_point_indices = np.unique(undercover_object.faces[undercover_object.indices])
+
+        # outline of the eclipsing component
         bb_path = get_eclipse_boundary_path(cover_object_obs_visible_projection)
-        # expanding cover star outline to cmpensate for discretization (currently not in use, effect is insignificant)
-        # bb_path = expand_star_outline(bb_path, system, cover_component)
-        # obtain points out of eclipse (out of boundary defined by hull of 'infront' object)
-        out_of_bound = up.invert(bb_path.contains_points(undercover_object_obs_visible_projection))
-        # undercover_visible_point_indices = undercover_visible_point_indices[out_of_bound]
+
+        similar_size_test = test_size_similarity(cover_object, undercover_object)
+        args = (undercover_object_obs_visible_projection, undercover_object, undercover_visible_point_indices, bb_path)
+        full_visible, invisible, partial_visible = \
+            visibility_disimilar_objects(*args) if similar_size_test else visibility_similar_objects(*args)
     else:
-        out_of_bound = np.ones(undercover_object_obs_visible_projection.shape[0], dtype=np.bool)
-
-    undercover_visible_point_indices = undercover_visible_point_indices[out_of_bound]
-    undercover_faces = -1 * np.ones(np.shape(undercover_object.normals), dtype=int)
-    undercover_faces[undercover_object.indices] = undercover_object.faces[undercover_object.indices]
-    eclipse_faces_visibility = np.isin(undercover_faces, undercover_visible_point_indices)
-
-    # get indices of full visible, invisible and partial visible faces
-    full_visible = np.all(eclipse_faces_visibility, axis=1)
-    invisible = np.all(up.invert(eclipse_faces_visibility), axis=1)
-    partial_visible = up.invert(full_visible | invisible)
+        full_visible, invisible, partial_visible = visibility_out_of_eclise(undercover_object)
 
     # process partial and full visible faces (get surface area of 3d polygon) of undercover object
     partial_visible_faces = undercover_object.faces[partial_visible]

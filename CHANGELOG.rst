@@ -242,6 +242,8 @@ v0.5
       observations where negative value describes velocity of body moving towards the observer. Azimuth of the body is
       now measured with respect to y-axis. Observer is now located at [-inf, 0, 0]
     - atmosphere models are interpolated using flux-based weights instead of temperature based weights
+    - calculation of surface element visibility was fixed in cases of eclipses caused by stars smaller than surface
+      elements on eclipsed components
 
 v1.0
 ----
