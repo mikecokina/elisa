@@ -219,7 +219,6 @@ class StarContainer(object):
         * **temperatures** * -- numpy.array;
         * **log_g** * -- numpy.array;
         * **coverage** * -- numpy.array;
-        * **rals** * -- numpy.array;
         * **face_centres** * -- numpy.array;
         * **metallicity** * -- float;
         * **areas** * -- numpy.array;
@@ -277,19 +276,37 @@ class StarContainer(object):
 
         numpy.array([log_g1, ..., log_gn])
 
-    :coverage: numpy.array;
+    :coverage: numpy.array; surface area of each triangle visible to the observer
     :indices: numpy.array; Indices of visible faces when darkside_filter is applied.
-    :rals: numpy.array; Renormalized associated Legendre polynomials (rALS). Array of complex
-                        arrays for each face.
-    :face_centres: numpy.array;
+    :face_centres: numpy.array; row-wise geometrical centres of each triangle
     :metallicity: float;
-    :areas: numpy.array;
+    :areas: numpy.array; surface areas corresponing to each surface triangle
     :potential_gradient_magnitudes: numpy.array;
-    :inverse_point_symmetry_matrix: numpy.array; row-wise, set of sub matrices that map base symmetry quadrant points
-                                                 (octant in case of single star) to all others quadrants
-    :base_symmetry_points_number: float;
-    :face_symmetry_vector: numpy.array;
-    :base_symmetry_faces_number: float;
+    :inverse_point_symmetry_matrix: numpy.array; row-wise, set of vectors that map base symmetry quadrant points
+                                                 (octant in case of single star) to all others quadrants, each row
+                                                 contains indices of points in given quadrant which order corresponds to
+                                                 the order of points in the 1st quadrant (octant)
+    :base_symmetry_points_number: int; number of first n surface points stored in StarContainer.points that are located
+                                       on a symmetrical part of the surface. E.g.:
+
+                                        ::
+
+                                            StarContainer.points[:StarContainer.base_symmetry_points_number]
+
+                                       will select surface points from one quarter (eighth) of the star in case of
+                                       binary (single) star system
+    :base_symmetry_faces_number: int; number of first n triangles stored in StarContainer.faces located in the 1st
+                                      quadrant (octant). E.g.:
+
+                                      ::
+
+                                        StarContainer.temperatures[:StarContainer.base_symmetry_faces_number]
+
+                                      will return surface temperatures only from triangles int the 1st quadrant
+                                      (octant) in case of binary (single) star system.
+    :face_symmetry_vector: numpy.array; array that maps each surface triangle to the symmetrical surface triangle
+                                        located in the 1st quadrant. Array contains indices between 0 and
+                                        `base_symmetry_faces_number`.
     :base_symmetry_points: numpy.array;
     :base_symmetry_points: numpy.array;
     :base_symmetry_faces: numpy.array;

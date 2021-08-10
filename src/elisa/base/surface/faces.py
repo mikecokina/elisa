@@ -213,7 +213,7 @@ def correct_face_orientation(star_container, com=0):
     return star_container
 
 
-def mirror_faces(q_triangles, inverse_point_symmetry_matrix):
+def mirror_triangulation(q_triangles, inverse_point_symmetry_matrix):
     """
     This function enables for the triangulation of symmetrical part of the surface to be mirrored to the rest of
     the surface.
