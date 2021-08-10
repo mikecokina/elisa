@@ -16,7 +16,8 @@ from ... base.surface.faces import (
     initialize_model_container,
     split_spots_and_component_faces,
     set_all_surface_centres,
-    calculate_normals
+    calculate_normals,
+    mirror_faces
 )
 
 logger = getLogger("binary_system.surface.faces")
@@ -157,9 +158,8 @@ def build_surface_with_no_spots(system, components_distance, component="all"):
 
         setattr(star, "base_symmetry_faces_number", np.int(np.shape(triangles)[0]))
         # lets exploit axial symmetry and fill the rest of the surface of the star
-        all_triangles = [inv[triangles] for inv in star.inverse_point_symmetry_matrix]
         star.base_symmetry_faces = triangles
-        star.faces = up.concatenate(all_triangles, axis=0)
+        star.faces = mirror_faces(triangles, star.inverse_point_symmetry_matrix)
 
         base_face_symmetry_vector = up.arange(star.base_symmetry_faces_number)
         star.face_symmetry_vector = up.concatenate([base_face_symmetry_vector for _ in range(4)])

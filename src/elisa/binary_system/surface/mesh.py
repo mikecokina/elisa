@@ -609,7 +609,7 @@ def mesh_detached(system, components_distance, component, symmetry_output=False)
                       [xN yN zN]]) - array of surface points,
          numpy.float - number of points included in symmetrical one quarter of surface,
          numpy.array([quadrant[indexes_of_remapped_points_in_quadrant]) - matrix of four sub matrices that
-                                                                          mapps basic symmetry quadrant to all
+                                                                          map basic symmetry quadrant points to all
                                                                           others quadrants
         )
     """
@@ -783,7 +783,8 @@ def mesh_over_contact(system, component="all", symmetry_output=False):
 
              numpy.float - number of points included in symmetrical one quarter of surface,
              numpy.array([quadrant[indexes_of_remapped_points_in_quadrant]) - matrix of four sub matrices that
-             mapps base symmetry quadrant to all others quadrants
+                                                                              map base symmetry quadrant to all others
+                                                                              quadrants
     """
     star = getattr(system, component)
     discretization_factor = star.discretization_factor

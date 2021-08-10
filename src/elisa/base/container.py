@@ -285,7 +285,8 @@ class StarContainer(object):
     :metallicity: float;
     :areas: numpy.array;
     :potential_gradient_magnitudes: numpy.array;
-    :inverse_point_symmetry_matrix: numpy.array;
+    :inverse_point_symmetry_matrix: numpy.array; row-wise, set of sub matrices that map base symmetry quadrant points
+                                                 (octant in case of single star) to all others quadrants
     :base_symmetry_points_number: float;
     :face_symmetry_vector: numpy.array;
     :base_symmetry_faces_number: float;

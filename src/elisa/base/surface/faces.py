@@ -211,3 +211,17 @@ def correct_face_orientation(star_container, com=0):
             correct_orientation(spot)
 
     return star_container
+
+
+def mirror_faces(q_triangles, inverse_point_symmetry_matrix):
+    """
+    This function enables for the triangulation of symmetrical part of the surface to be mirrored to the rest of
+    the surface.
+
+    :param q_triangles: numpy.array; triangles of base symmetry portion of the surface
+    :param inverse_point_symmetry_matrix: numpy.array; row-wise - array that map base symmetry portion of the surface
+                                                       points to the rest of the surface (quadrants or octants)
+    :return: numpy.array; triangulation covering the whole star
+    """
+    all_triangles = [inv[q_triangles] for inv in inverse_point_symmetry_matrix]
+    return np.concatenate(all_triangles, axis=0)
