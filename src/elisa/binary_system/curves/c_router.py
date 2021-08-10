@@ -129,10 +129,9 @@ def produce_circular_spotty_async_curves(binary, curve_fn, crv_labels, **kwargs)
     points = dict()
     for component in settings.BINARY_COUNTERPARTS:
         star = getattr(initial_system, component)
-        _a, _b, _c, _d = surface.mesh.mesh_detached(initial_system, 1.0, component, symmetry_output=True)
+        _a, _c, _d = surface.mesh.mesh_detached(initial_system, 1.0, component, symmetry_output=True)
         points[component] = _a
         setattr(star, "points", copy(_a))
-        setattr(star, "point_symmetry_vector", _b)
         setattr(star, "base_symmetry_points_number", _c)
         setattr(star, "inverse_point_symmetry_matrix", _d)
 

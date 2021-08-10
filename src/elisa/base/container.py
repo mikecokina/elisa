@@ -178,7 +178,7 @@ class PositionContainer(object):
         :param cosines: numpy.array;
         :return: numpy.array;
         """
-        # todo: require to resolve self shadowing in case of W UMa, but probably not here
+        # todo: resolve self shadowing in case of W UMa, but probably not here
         # recovering indices of points on near-side (from the point of view of observer)
         return up.arange(np.shape(cosines)[0])[cosines > 0]
 
@@ -285,7 +285,6 @@ class StarContainer(object):
     :metallicity: float;
     :areas: numpy.array;
     :potential_gradient_magnitudes: numpy.array;
-    :point_symmetry_vector: numpy.array;
     :inverse_point_symmetry_matrix: numpy.array;
     :base_symmetry_points_number: float;
     :face_symmetry_vector: numpy.array;
@@ -336,7 +335,6 @@ class StarContainer(object):
         self.points_spherical = np.array([])
         self.com = np.array([])
 
-        self.point_symmetry_vector = np.array([])
         self.inverse_point_symmetry_matrix = np.array([])
         self.base_symmetry_points_number = 0
 

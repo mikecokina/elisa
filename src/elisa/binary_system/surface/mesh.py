@@ -46,12 +46,11 @@ def build_mesh(system, components_distance, component="all"):
         star = getattr(system, component)
         # in case of spoted surface, symmetry is not used
         if getattr(system, 'morphology') == 'over-contact':
-            a, b, c, d = mesh_over_contact(system, component, symmetry_output=True)
+            a, c, d = mesh_over_contact(system, component, symmetry_output=True)
         else:
-            a, b, c, d = mesh_detached(system, components_distance, component, symmetry_output=True)
+            a, c, d = mesh_detached(system, components_distance, component, symmetry_output=True)
 
         star.points = a
-        star.point_symmetry_vector = b
         star.base_symmetry_points_number = c
         star.inverse_point_symmetry_matrix = d
 
@@ -609,12 +608,10 @@ def mesh_detached(system, components_distance, component, symmetry_output=False)
                       [x2 y2 z2],
                         ...
                       [xN yN zN]]) - array of surface points,
-         numpy.array([indices_of_symmetrical_points]) - array which remapped surface points to symmetrical one
-                                                          quarter of surface,
          numpy.float - number of points included in symmetrical one quarter of surface,
          numpy.array([quadrant[indexes_of_remapped_points_in_quadrant]) - matrix of four sub matrices that
-                                                                            mapped basic symmetry quadrant to all
-                                                                            others quadrants
+                                                                          mapps basic symmetry quadrant to all
+                                                                          others quadrants
         )
     """
     star = getattr(system, component)
@@ -646,14 +643,7 @@ def mesh_detached(system, components_distance, component, symmetry_output=False)
         equator_length = separator[0] - 2
         meridian_length = separator[1] - separator[0]
         quarter_length = np.shape(points_q)[0] - separator[1]
-        quadrant_start = 2 + equator_length
         base_symmetry_points_number = 2 + equator_length + quarter_length + meridian_length
-        symmetry_vector = up.concatenate((up.arange(base_symmetry_points_number),  # 1st quadrant
-                                          up.arange(quadrant_start, quadrant_start + quarter_length),
-                                          up.arange(2, quadrant_start),  # 2nd quadrant
-                                          up.arange(quadrant_start, base_symmetry_points_number),  # 3rd quadrant
-                                          up.arange(quadrant_start, quadrant_start + quarter_length)
-                                          ))
 
         points_length = np.shape(points)[0]
         inverse_symmetry_matrix = \
@@ -678,7 +668,7 @@ def mesh_detached(system, components_distance, component, symmetry_output=False)
                                                 meridian_length)))  # 4th quadrant
                       ])
 
-        return points, symmetry_vector, base_symmetry_points_number, inverse_symmetry_matrix
+        return points, base_symmetry_points_number, inverse_symmetry_matrix
     else:
         return points
 
@@ -792,11 +782,9 @@ def mesh_over_contact(system, component="all", symmetry_output=False):
                            ...
                           [xN yN zN]]) - array of surface points,
 
-             numpy.array([indices_of_symmetrical_points]) - array which remapped surface points to symmetrical one
-             quarter of surface,
              numpy.float - number of points included in symmetrical one quarter of surface,
              numpy.array([quadrant[indexes_of_remapped_points_in_quadrant]) - matrix of four sub matrices that
-             mapped basic symmetry quadrant to all others quadrants
+             mapps base symmetry quadrant to all others quadrants
     """
     star = getattr(system, component)
     discretization_factor = star.discretization_factor
@@ -885,14 +873,7 @@ def mesh_over_contact(system, component="all", symmetry_output=False):
         equator_length = np.shape(x_eq)[0]
         meridian_length = np.shape(x_meridian)[0]
         quarter_length = np.shape(x_q)[0]
-        quadrant_start = 1 + equator_length
         base_symmetry_points_number = 1 + equator_length + quarter_length + meridian_length
-        symmetry_vector = up.concatenate((up.arange(base_symmetry_points_number),  # 1st quadrant
-                                          up.arange(quadrant_start, quadrant_start + quarter_length),
-                                          up.arange(1, quadrant_start),  # 2nd quadrant
-                                          up.arange(quadrant_start, base_symmetry_points_number),  # 3rd quadrant
-                                          up.arange(quadrant_start, quadrant_start + quarter_length)
-                                          ))
 
         points_length = np.shape(x)[0]
         inverse_symmetry_matrix = \
@@ -917,7 +898,7 @@ def mesh_over_contact(system, component="all", symmetry_output=False):
                                                 meridian_length)))  # 4th quadrant
                       ])
 
-        return points, symmetry_vector, base_symmetry_points_number, inverse_symmetry_matrix
+        return points, base_symmetry_points_number, inverse_symmetry_matrix
     else:
         return points
 
