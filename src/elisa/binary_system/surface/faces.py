@@ -140,13 +140,13 @@ def build_surface_with_no_spots(system, components_distance, component="all"):
         # triangulating only one quarter of the star
 
         if system.morphology != 'over-contact':
-            triangulate = star.points[:star.base_symmetry_points_number, :]
+            triangulate = star.points[:star.base_symmetry_points_number]
             triangles = detached_system_surface(system, components_distance, triangulate, component)
         else:
             points = star.points
             neck = np.max(points[:, 0]) if component == 'primary' else np.min(points[:, 0])
             triangulate = \
-                np.append(points[:star.base_symmetry_points_number, :], np.array([[neck, 0, 0]]), axis=0)
+                np.append(points[:star.base_symmetry_points_number], np.array([[neck, 0, 0]]), axis=0)
             triangles = over_contact_system_surface(system, triangulate, component)
             # filtering out triangles containing last point in `points_to_triangulate`
             triangles = triangles[np.array(triangles < star.base_symmetry_points_number).all(1)]
