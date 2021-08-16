@@ -32,8 +32,7 @@ def build_surface_with_no_spots(system_container):
     star_container = system_container.star
     points_length = star_container.base_symmetry_points_number
     # triangulating only one eighth of the star
-    points_to_triangulate = np.append(star_container.points[:star_container.base_symmetry_points_number],
-                                      [[0, 0, 0]], axis=0)
+    points_to_triangulate = np.append(star_container.symmetry_points(), [[0, 0, 0]], axis=0)
     triangles = single_surface(star_container=star_container, points=points_to_triangulate)
     # removing faces from triangulation, where origin point is included
     triangles = triangles[~(triangles >= points_length).any(1)]

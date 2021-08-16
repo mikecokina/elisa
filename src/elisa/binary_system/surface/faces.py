@@ -139,21 +139,20 @@ def build_surface_with_no_spots(system, components_distance, component="all"):
         star = getattr(system, component)
         # triangulating only one quarter of the star
 
+        triangulated_pts = star.symmetry_points()
         if system.morphology != 'over-contact':
-            triangulate = star.points[:star.base_symmetry_points_number]
-            triangles = detached_system_surface(system, components_distance, triangulate, component)
+            triangles = detached_system_surface(system, components_distance, triangulated_pts, component)
         else:
-            points = star.points
-            neck = np.max(points[:, 0]) if component == 'primary' else np.min(points[:, 0])
-            triangulate = \
-                np.append(points[:star.base_symmetry_points_number], np.array([[neck, 0, 0]]), axis=0)
-            triangles = over_contact_system_surface(system, triangulate, component)
+            neck = np.max(triangulated_pts[:, 0]) if component == 'primary' else np.min(triangulated_pts[:, 0])
+            triangulated_pts = \
+                np.append(triangulated_pts, np.array([[neck, 0, 0]]), axis=0)
+            triangles = over_contact_system_surface(system, triangulated_pts, component)
             # filtering out triangles containing last point in `points_to_triangulate`
             triangles = triangles[np.array(triangles < star.base_symmetry_points_number).all(1)]
 
         # filtering out faces on xy an xz planes
-        y0_test = np.bitwise_not(np.isclose(triangulate[triangles][:, :, 1], 0).all(1))
-        z0_test = np.bitwise_not(np.isclose(triangulate[triangles][:, :, 2], 0).all(1))
+        y0_test = np.bitwise_not(np.isclose(triangulated_pts[triangles][:, :, 1], 0).all(1))
+        z0_test = np.bitwise_not(np.isclose(triangulated_pts[triangles][:, :, 2], 0).all(1))
         triangles = triangles[up.logical_and(y0_test, z0_test)]
 
         setattr(star, "base_symmetry_faces_number", np.int(np.shape(triangles)[0]))

@@ -12,6 +12,7 @@ from .. import (
     utils,
     umpy as up
 )
+from . surface.mesh import symmetry_point_reduction
 
 logger = getLogger("base.container")
 
@@ -298,16 +299,15 @@ class StarContainer(object):
     :base_symmetry_faces_number: int; number of first n triangles stored in StarContainer.faces located in the 1st
                                       quadrant (octant). E.g.:
 
-                                      ::
+                                       ::
 
-                                        StarContainer.temperatures[:StarContainer.base_symmetry_faces_number]
+                                            StarContainer.temperatures[:StarContainer.base_symmetry_faces_number]
 
                                       will return surface temperatures only from triangles int the 1st quadrant
                                       (octant) in case of binary (single) star system.
     :face_symmetry_vector: numpy.array; array that maps each surface triangle to the symmetrical surface triangle
                                         located in the 1st quadrant. Array contains indices between 0 and
                                         `base_symmetry_faces_number`.
-    :base_symmetry_points: numpy.array;
     :base_symmetry_points: numpy.array;
     :base_symmetry_faces: numpy.array;
     :polar_potential_gradient_magnitude: numpy.array;
@@ -462,7 +462,7 @@ class StarContainer(object):
                              'Run build method first.')
         if self.symmetry_test():
             base_areas = utils.triangle_areas(self.faces[:self.base_symmetry_faces_number],
-                                              self.points[:self.base_symmetry_points_number])
+                                              self.symmetry_points())
             return base_areas[self.face_symmetry_vector]
         return utils.triangle_areas(self.faces, self.points)
 
@@ -574,3 +574,13 @@ class StarContainer(object):
         self.backward_radius = getattr(star, 'backward_radius')
         self.equatorial_radius = getattr(star, 'equatorial_radius')
         self.equivalent_radius = getattr(star, 'equivalent_radius')
+
+    def symmetry_points(self):
+        """
+        Returns surface points from the symmetry base part of the star.
+
+        :return: numpy.array;
+        """
+        if self.has_spots():
+            raise ValueError('Surface symmetry is not applicable in this case')
+        return symmetry_point_reduction(self.points, self.base_symmetry_points_number)
