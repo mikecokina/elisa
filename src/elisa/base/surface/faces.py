@@ -225,3 +225,14 @@ def mirror_triangulation(q_triangles, inverse_point_symmetry_matrix):
     """
     all_triangles = [inv[q_triangles] for inv in inverse_point_symmetry_matrix]
     return np.concatenate(all_triangles, axis=0)
+
+
+def mirror_face_values(values, face_symmetry_vector):
+    """
+    Mirroring the array values on symmetrical faces to the rest of the surface.
+
+    :param values: numpy.array; surface parameter values corresponding to the base symmetry part of the surface
+    :param face_symmetry_vector: numpy.array; array that remaps `values` to the rest of the surface
+    :return: numpy.array; remapped array
+    """
+    return values[face_symmetry_vector]

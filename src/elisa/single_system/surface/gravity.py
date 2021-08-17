@@ -24,7 +24,7 @@ def build_surface_gravity(system_container):
     g_acc_vector = calculate_potential_gradient(points, system_container.angular_velocity, star_container.mass)
     gravity = np.mean(np.linalg.norm(g_acc_vector, axis=1)[faces], axis=1)
 
-    setattr(star_container, 'potential_gradient_magnitudes', gravity[star_container.face_symmetry_vector]) \
+    setattr(star_container, 'potential_gradient_magnitudes', star_container.mirror_face_values(gravity)) \
         if star_container.symmetry_test() else setattr(star_container, 'potential_gradient_magnitudes', gravity)
     setattr(star_container, 'log_g', np.log10(star_container.potential_gradient_magnitudes))
 

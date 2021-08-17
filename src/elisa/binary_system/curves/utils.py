@@ -54,7 +54,7 @@ def get_limbdarkening_cfs(system, component="all", **kwargs):
                 retval[cpmnt] = {fltr: vals[np.zeros(getattr(system, cpmnt).temperatures.shape, dtype=np.int)] for
                                  fltr, vals in retval[cpmnt].items()}
             else:
-                retval[cpmnt] = {fltr: vals[getattr(system, cpmnt).face_symmetry_vector] for
+                retval[cpmnt] = {fltr: getattr(system, cpmnt).mirror_face_values(vals) for
                                  fltr, vals in retval[cpmnt].items()}
     return retval
 
@@ -106,7 +106,7 @@ def _get_normal_radiance(system, component="all", **kwargs):
     # mirroring symmetrical part back to the rest of the surface
     for cpmnt in components:
         if symmetry_test[cpmnt]:
-            retval[cpmnt] = {fltr: vals[getattr(system, cpmnt).face_symmetry_vector] for
+            retval[cpmnt] = {fltr: getattr(system, cpmnt).mirror_face_values(vals) for
                              fltr, vals in retval[cpmnt].items()}
 
     return retval

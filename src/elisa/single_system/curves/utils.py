@@ -82,7 +82,7 @@ def get_normal_radiance(system, **kwargs):
     }
 
     if symmetry_test:
-        retval['star'] = {band: vals[star.face_symmetry_vector] for band, vals in retval['star'].items()}
+        retval['star'] = {band: star.mirror_face_values(vals) for band, vals in retval['star'].items()}
 
     return retval
 
@@ -120,6 +120,6 @@ def get_limbdarkening_cfs(system, **kwargs):
     }
 
     if symmetry_test:
-        retval['star'] = {band: vals[star_container.face_symmetry_vector] for band, vals in retval['star'].items()}
+        retval['star'] = {band: star_container.mirror_face_values(vals) for band, vals in retval['star'].items()}
 
     return retval

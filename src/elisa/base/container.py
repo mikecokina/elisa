@@ -13,6 +13,7 @@ from .. import (
     umpy as up
 )
 from . surface.mesh import symmetry_point_reduction
+from . surface.faces import mirror_face_values
 
 logger = getLogger("base.container")
 
@@ -463,7 +464,7 @@ class StarContainer(object):
         if self.symmetry_test():
             base_areas = utils.triangle_areas(self.faces[:self.base_symmetry_faces_number],
                                               self.symmetry_points())
-            return base_areas[self.face_symmetry_vector]
+            return self.mirror_face_values(base_areas)
         return utils.triangle_areas(self.faces, self.points)
 
     def calculate_all_areas(self):
@@ -581,6 +582,16 @@ class StarContainer(object):
 
         :return: numpy.array;
         """
+        # pulsations are not yet introduced during the creation of point cloud
         if self.has_spots():
             raise ValueError('Surface symmetry is not applicable in this case')
         return symmetry_point_reduction(self.points, self.base_symmetry_points_number)
+
+    def mirror_face_values(self, values):
+        """
+        Mirroring the array values on symmetrical faces to the rest of the surface.
+
+        :param values: numpy.array; surface parameter values corresponding to the base symmetry part of the surface
+        :return: numpy.array; remapped array
+        """
+        return mirror_face_values(values, self.face_symmetry_vector)

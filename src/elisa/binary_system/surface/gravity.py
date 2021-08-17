@@ -138,7 +138,7 @@ def build_surface_gravity(system, components_distance, component="all"):
 
         gravity = np.mean(np.linalg.norm(g_acc_vector, axis=1)[faces], axis=1) if star.symmetry_test else \
             np.mean(np.linalg.norm(g_acc_vector, axis=1), axis=1)
-        setattr(star, 'potential_gradient_magnitudes', gravity[star.face_symmetry_vector]) \
+        setattr(star, 'potential_gradient_magnitudes', star.mirror_face_values(gravity)) \
             if star.symmetry_test() else setattr(star, 'potential_gradient_magnitudes', gravity)
         setattr(star, 'log_g', np.log10(star.potential_gradient_magnitudes))
 
