@@ -32,8 +32,8 @@ def get_limbdarkening_cfs(system, component="all", **kwargs):
             temperatures[cmpnt] = np.array([component_instance.t_eff, ])
             log_g[cmpnt] = np.array([np.max(component_instance.log_g), ])
         elif symmetry_test:
-            temperatures[cmpnt] = component_instance.temperatures[:component_instance.base_symmetry_faces_number]
-            log_g[cmpnt] = component_instance.log_g[:component_instance.base_symmetry_faces_number]
+            temperatures[cmpnt] = component_instance.symmetry_faces(component_instance.temperatures)
+            log_g[cmpnt] = component_instance.symmetry_faces(component_instance.log_g)
         else:
             temperatures[cmpnt] = component_instance.temperatures
             log_g[cmpnt] = component_instance.log_g
@@ -84,8 +84,8 @@ def _get_normal_radiance(system, component="all", **kwargs):
     for cmpnt in components:
         component_instance = getattr(system, cmpnt)
         if symmetry_test[cmpnt]:
-            temperatures[cmpnt] = component_instance.temperatures[:component_instance.base_symmetry_faces_number]
-            log_g[cmpnt] = component_instance.log_g[:component_instance.base_symmetry_faces_number]
+            temperatures[cmpnt] = component_instance.symmetry_faces(component_instance.temperatures)
+            log_g[cmpnt] = component_instance.symmetry_faces(component_instance.log_g)
         else:
             temperatures[cmpnt] = component_instance.temperatures
             log_g[cmpnt] = component_instance.log_g

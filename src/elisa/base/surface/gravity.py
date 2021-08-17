@@ -8,7 +8,7 @@ def eval_args_for_magnitude_gradient(star_container):
     """
     if star_container.symmetry_test():
         points = star_container.symmetry_points()
-        faces = star_container.faces[:star_container.base_symmetry_faces_number]
+        faces = star_container.symmetry_faces(star_container.faces)
     else:
         points, faces = star_container.points, star_container.faces
     return points, faces

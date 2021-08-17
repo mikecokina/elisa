@@ -13,7 +13,7 @@ from .. import (
     umpy as up
 )
 from . surface.mesh import symmetry_point_reduction
-from . surface.faces import mirror_face_values
+from . surface.faces import mirror_face_values, symmetry_face_reduction
 
 logger = getLogger("base.container")
 
@@ -462,8 +462,7 @@ class StarContainer(object):
             raise ValueError('Faces or/and points of object {self.name} have not been set yet.\n'
                              'Run build method first.')
         if self.symmetry_test():
-            base_areas = utils.triangle_areas(self.faces[:self.base_symmetry_faces_number],
-                                              self.symmetry_points())
+            base_areas = utils.triangle_areas(self.symmetry_faces(self.faces), self.symmetry_points())
             return self.mirror_face_values(base_areas)
         return utils.triangle_areas(self.faces, self.points)
 
@@ -594,4 +593,17 @@ class StarContainer(object):
         :param values: numpy.array; surface parameter values corresponding to the base symmetry part of the surface
         :return: numpy.array; remapped array
         """
+        if not self.symmetry_test():
+            raise ValueError('Surface symmetry is not applicable in this case')
         return mirror_face_values(values, self.face_symmetry_vector)
+
+    def symmetry_faces(self, values):
+        """
+        Reducing the surface distribution of surface `values` array to a symmetrical component.
+
+        :param values: numpy.array; surface parameter distribution
+        :return: numpy.array; reduced surface distribution array
+        """
+        if not self.symmetry_test():
+            raise ValueError('Surface symmetry is not applicable in this case')
+        return symmetry_face_reduction(values, self.base_symmetry_faces_number)

@@ -503,8 +503,8 @@ def get_distance_matrix_shape(system, vis_test):
     :return: Tuple;
     """
     shape = (np.sum(vis_test['primary']), np.sum(vis_test['secondary']), 3)
-    shape_reduced = (np.sum(vis_test['primary'][:system.primary.base_symmetry_faces_number]),
-                     np.sum(vis_test['secondary'][:system.secondary.base_symmetry_faces_number]))
+    shape_reduced = (np.sum(system.primary.symmetry_faces(vis_test['primary'])),
+                     np.sum(system.secondary.symmetry_faces(vis_test['secondary'])))
     return shape, shape_reduced
 
 

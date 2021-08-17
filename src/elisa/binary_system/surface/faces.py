@@ -327,9 +327,9 @@ def set_all_normals(star_container, com):
     """
     points, faces, cntrs = star_container.points, star_container.faces, star_container.face_centres
     if star_container.symmetry_test():
-        normals1 = calculate_normals(points[:star_container.base_symmetry_faces_number],
-                                     faces[:star_container.base_symmetry_faces_number],
-                                     cntrs[:star_container.base_symmetry_faces_number], com)
+        normals1 = calculate_normals(star_container.symmetry_points(),
+                                     star_container.symmetry_faces(faces),
+                                     star_container.symmetry_faces(cntrs), com)
         normals2 = normals1 * np.array([1.0, -1.0,  1.0])
         normals3 = normals1 * np.array([1.0, -1.0, -1.0])
         normals4 = normals1 * np.array([1.0,  1.0, -1.0])

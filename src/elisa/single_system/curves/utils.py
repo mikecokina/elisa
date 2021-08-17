@@ -63,8 +63,8 @@ def get_normal_radiance(system, **kwargs):
 
     # utilizing surface symmetry in case of a clear surface
     if symmetry_test:
-        temperatures = star.temperatures[:star.base_symmetry_faces_number]
-        log_g = star.log_g[:star.base_symmetry_faces_number]
+        temperatures = star.symmetry_faces(star.temperatures)
+        log_g = star.symmetry_faces(star.log_g)
     else:
         temperatures = star.temperatures
         log_g = star.log_g
@@ -104,8 +104,8 @@ def get_limbdarkening_cfs(system, **kwargs):
 
     # utilizing surface symmetry in case of a clear surface
     if symmetry_test:
-        temperatures = star_container.temperatures[:star_container.base_symmetry_faces_number]
-        log_g = star_container.log_g[:star_container.base_symmetry_faces_number]
+        temperatures = star_container.symmetry_faces(star_container.temperatures)
+        log_g = star_container.symmetry_faces(star_container.log_g)
     else:
         temperatures = star_container.temperatures
         log_g = star_container.log_g
