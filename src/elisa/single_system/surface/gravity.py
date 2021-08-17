@@ -61,25 +61,6 @@ def calculate_polar_potential_gradient_magnitude(polar_radius, mass):
     return domega_dz
 
 
-# deprecated
-def calculate_face_magnitude_gradient(points, faces, angular_velocity, mass, face_symmetry_vector=None):
-    """
-    Returns array of absolute values of potential gradients for corresponding faces.
-
-    :param points: numpy.array; points in which to calculate magnitude of gradient, if False/None take star points
-    :param faces: numpy.array; faces corresponding to given points
-    :param angular_velocity: float;
-    :param mass: float;
-    :param face_symmetry_vector: Union[numpy.array, None];
-    :return: numpy.array;
-    """
-    point_gradient_magnitudes = np.linalg.norm(calculate_potential_gradient(points, angular_velocity, mass), axis=1)
-    face_gradient_magnitudes = np.mean(point_gradient_magnitudes[faces], axis=1)
-
-    return face_gradient_magnitudes if is_empty(face_symmetry_vector) else \
-        face_gradient_magnitudes[face_symmetry_vector]
-
-
 def calculate_potential_gradient(points, angular_velocity, mass):
     """
     Returns array of gravity potential gradients for corresponding faces.
