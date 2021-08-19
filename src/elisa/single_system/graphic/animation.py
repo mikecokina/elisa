@@ -20,7 +20,7 @@ class Animation(object):
     def __init__(self, instance):
         self.single = instance
 
-    def rotational_motion(self, start_phase=-0.5, stop_phase=0.5, phase_step=0.01, units='cgs', scale='linear',
+    def rotational_motion(self, start_phase=-0.5, stop_phase=0.5, phase_step=0.01, scale='linear',
                           colormap=None, savepath=None, plot_axis=True, subtract_equilibrium=False, edges=False):
         """
         Function creates animation of the rotational motion.
@@ -28,7 +28,6 @@ class Animation(object):
         :param start_phase: float; starting phase of the animation
         :param stop_phase: float; end phase of the animation
         :param phase_step: float; phase step between animation frames
-        :param units: str; unit type of surface colormap `SI` or `cgs`
         :param scale: str; `linear` or `log`, scale of the colormap
         :param colormap: str; `temperature`, `gravity_acceleration`, `velocity`, `radial_velocity` or None
         :param savepath: str; animation will be stored to `savepath`
