@@ -275,6 +275,11 @@ def integrate_eccentric_curve_appx_one(binary, radii, phases, reduced_orbit_arr,
     x = np.concatenate((orbital_supplements.body[:, 4], orbital_supplements.mirror[:, 4]))
     not_nan_test = ~np.isnan(x)
     x = x[not_nan_test] % 1
+
+    # checking for accidental allignement between templates and mirrors (corresponding to eclipse regions transferred
+    # from mirrored orbit area)
+    x, uniqe_idx = np.unique(x, return_index=True)
+
     sort_idx = np.argsort(x)
     x = x[sort_idx]
     x = np.concatenate((x[-n:] - 1, x, x[:n] + 1))
@@ -282,7 +287,7 @@ def integrate_eccentric_curve_appx_one(binary, radii, phases, reduced_orbit_arr,
     band_curves = dict()
     for curve in crv_labels:
         y = np.concatenate((stacked_band_curves[curve][:, 0], stacked_band_curves[curve][:, 1]))
-        y = (y[not_nan_test])[sort_idx]
+        y = ((y[not_nan_test])[uniqe_idx])[sort_idx]
         y = np.concatenate((y[-n:], y, y[:n]))
 
         i = Akima1DInterpolator(x, y)
