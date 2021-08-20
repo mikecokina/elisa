@@ -734,7 +734,6 @@ def single_surface_anim(**kwargs):
 
     clr = ['g', 'r']
     cmaps = []
-    cmap_limits = (np.min(kwargs['cmap']), np.max(kwargs['cmap']))
     points = [kwargs['points']]
     faces = [kwargs['faces']]
 
@@ -742,6 +741,7 @@ def single_surface_anim(**kwargs):
                             triangles=faces[0][0], antialiased=True,
                             shade=False, color=clr[0])]
     if kwargs.get('colormap', False):
+        cmap_limits = (np.min(kwargs['cmap']), np.max(kwargs['cmap']))
         plot[0].set_cmap(cmap=CMAPS[kwargs['colormap']])
         cmaps = [kwargs['cmap']]
         plot[0].set_array(cmaps[0][0])
