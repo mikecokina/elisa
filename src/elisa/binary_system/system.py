@@ -358,7 +358,9 @@ class BinarySystem(System):
                 "metallicity": 0.0
               }
             }
-            
+
+        TODO: i thsi still a True?
+        TODO: do we have all paramas in this docstring?
         Currently, this approach require values in default units.
 
         Default units::

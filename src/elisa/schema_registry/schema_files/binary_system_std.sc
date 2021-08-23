@@ -91,6 +91,9 @@
         "metallicity": {
           "type": "number"
         },
+        "atmosphere": {
+          "type": "string"
+        },
         "spots": {
           "type": "array",
           "items": {
@@ -219,6 +222,9 @@
       },
       "metallicity": {
         "type": "number"
+      },
+      "atmosphere": {
+          "type": "string"
       },
       "spots": {
         "type": "array",

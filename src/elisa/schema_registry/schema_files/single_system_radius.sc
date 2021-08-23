@@ -95,6 +95,9 @@
         "metallicity": {
           "type": "number"
         },
+        "atmosphere": {
+          "type": "string"
+        },
         "equivalent_radius": {"anyOf": [
           {"type": "number", "minimum": 0.0},
           {"type": "string"}

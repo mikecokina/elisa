@@ -95,6 +95,9 @@
         "metallicity": {
           "type": "number"
         },
+        "atmosphere": {
+          "type": "string"
+        },
         "polar_log_g": {"anyOf": [
           {"type": "number"},
           {"type": "string"}
