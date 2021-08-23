@@ -38,8 +38,8 @@ logger = getLogger(__name__)
 
 class AtmModel(object):
     def __init__(self, flux, wavelength):
-        self.flux = flux
-        self.wavelength = wavelength
+        self.flux: np.array = flux
+        self.wavelength: np.array = wavelength
 
     def _empty(self):
         return len(self.wavelength) == 0
@@ -92,7 +92,9 @@ class AtmDataContainer(object):
 
     def is_empty(self):
         """
-        Find out wheter model container which carries of atmospheric model AmtDatContainer instance is empty.
+        Find out wheter model container which carries of atmospheric
+        model AmtDatContainer instance is empty.
+
         :return: bool;
         """
         return self._model.empty
@@ -101,7 +103,8 @@ class AtmDataContainer(object):
     def model(self):
         """
         Return atmospheric model instance.
-        :return: pandas.DataFrame;
+
+        :return: elisa.atm.AtmModel;
         """
         return self._model
 
@@ -127,7 +130,7 @@ class IntensityContainer(object):
         """
         Initialise container with given parametres.
 
-        :param intensity: float;
+        :param intensity: float; integrated radiance
         :param temperature: float;
         :param log_g: float;
         :param metallicity: float;
@@ -161,6 +164,15 @@ class NaiveInterpolatedAtm(object):
 
     @staticmethod
     def black_body_radiance(temperature, **kwargs):
+        """
+        Compute integrated flux based on values obtained from Planck Function (for purpose of black_body atmosphere).
+
+        :param temperature: numpy.array;
+        :param kwargs: Dict;
+        :**kwargs options**:
+            * **passband** * -- Dict[str, elisa.observer.observer.PassbandContainer]
+        :return: Dict[str, float];
+        """
         # setup multiplicators to convert quantities to SI
         flux_mult, wave_mult = const.PI, 1e-10
         # obtain localized atmospheres in matrix
@@ -170,17 +182,24 @@ class NaiveInterpolatedAtm(object):
 
     @staticmethod
     def arange_black_body_localized_atms(temperature, passband_containers):
+        """
+        The function generates atmosphere models based on Planck Function.
+        The all models are sitting on temperatures given by surface elements.
+
+        :param temperature: numpy.array;
+        :param passband_containers: elisa.observer.observer.PassbandContainer;
+        :return: Dict[str, numpy.array];
+        """
         localized_atms = dict()
         standard_wavelength = get_standard_wavelengths()
 
         # build temperature mask and avoid repeative computation
-        # temperature vaues after decimal points are useless
-        initial_shape = len(temperature)
+        # temperature values where decimal points are basicaly useless
         temperature = np.round(temperature, 0)
         temperature, reverse_map = np.unique(temperature, return_inverse=True)
 
         for band, pb_container in passband_containers.items():
-            # how manu wavelengths generate based on standard
+            # how many wavelengths generate based on standard
             mask = np.logical_and(np.less_equal(standard_wavelength, pb_container.right_bandwidth),
                                   np.greater_equal(standard_wavelength, pb_container.left_bandwidth))
             hm_waves = len(standard_wavelength[mask])
@@ -189,8 +208,7 @@ class NaiveInterpolatedAtm(object):
                 np.concatenate(
                     [np.linspace(pb_container.left_bandwidth, pb_container.right_bandwidth, hm_waves, True),
                      standard_wavelength[mask]])
-                )
-            )
+            ))
 
             # compute flux in flam, apply passband and replace possible NaNs
             flux = np.nan_to_num([
@@ -227,6 +245,7 @@ class NaiveInterpolatedAtm(object):
         # get multiplicators to transform containers from any units to si
         flux_mult, wave_mult = find_atm_si_multiplicators(unique_atms)
         # common wavelength coverage of atmosphere models
+        # intersection of wavelengths of models
         global_left, global_right = find_global_atm_bandwidth(unique_atms)
         # strip unique atmospheres to passbands coverage
         unique_atms = strip_atm_containers_by_bandwidth(unique_atms, l_bandw, r_bandw,
@@ -240,7 +259,7 @@ class NaiveInterpolatedAtm(object):
         flux_matrices = remap_passbanded_unique_atms_to_matrix(passbanded_atm_containers, containers_map)
         atm_containers = remap_passbanded_unique_atms_to_origin(passbanded_atm_containers, containers_map)
         localized_atms = NaiveInterpolatedAtm.interpolate_spectra(atm_containers, flux_matrices,
-                                                                   temperature=temperature)
+                                                                  temperature=temperature)
 
         return localized_atms, flux_mult, wave_mult
 
@@ -359,20 +378,6 @@ class NaiveInterpolatedAtm(object):
         return interp_band
 
     @staticmethod
-    def atm_tables(fpaths):
-        # TODO: NOT USED??
-        """
-        Read atmosphere tables as pandas.DataFrame's.
-
-        :param fpaths: Iterable, Iterable of paths which points desired atm csv files
-        :return: List[elisa.atm.AtmDataContainer] of pandas.DataFrame`s
-        """
-        result_queue = multithread_atm_tables_reader_runner(fpaths)
-        models = [qval for qval in utils.IterableQueue(result_queue)]
-        models = [val[1] for val in sorted(models, key=lambda x: x[0])]
-        return models
-
-    @staticmethod
     def atm_files(temperature, log_g, metallicity, atlas):
         """
         Find out related atmospheric csv tables and return list of paths to them.
@@ -395,16 +400,15 @@ class NaiveInterpolatedAtm(object):
         t = utils.find_surrounded_as_matrix(t_array, temperature)
 
         domain_df = pd.DataFrame({
-            # "temp": list(t[0]) + list(t[1]),
             "temp": t.flatten('F'),
             "log_g": np.tile(g, 2),
             "mh": np.repeat(m, len(g) * 2)
         })
         directory = get_atm_directory(m, atlas)
-        fnames = str(atlas) + \
-                 domain_df["mh"].apply(lambda x: utils.numeric_metallicity_to_string(x)) + "_" + \
-                 domain_df["temp"].apply(lambda x: str(int(x))) + "_" + \
-                 domain_df["log_g"].apply(lambda x: utils.numeric_logg_to_string(x))
+        mh_name = domain_df["mh"].apply(lambda x: utils.numeric_metallicity_to_string(x))
+        temp_name = domain_df["temp"].apply(lambda x: str(int(x)))
+        log_g_name = domain_df["log_g"].apply(lambda x: utils.numeric_logg_to_string(x))
+        fnames = str(atlas) + mh_name + "_" + temp_name + "_" + log_g_name
 
         return list(
             os.path.join(str(settings.ATLAS_TO_BASE_DIR[atlas]), str(directory)) + os.path.sep + fnames + ".csv"
@@ -490,16 +494,17 @@ def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwi
     atm_model = atm_container.model
 
     if atm_model.wavelength.min() > left_bandwidth or atm_model.wavelength.max() < right_bandwidth:
-        mi, ma = find_global_atm_bandwidth([atm_container])
-        left_bandwidth, right_bandwidth = kwargs.get("global_left", mi), kwargs.get("global_right", ma)
-        # TODO: this is annoying, unecessarily raises warning for bolometric filters
-        # warnings.warn('You attempt to strip an atmosphere model to bandwidth which at least partially outside '
-        #               'original atmosphere model wavelength coverage. This may cause problems.')
+        _min, _max = find_global_atm_bandwidth([atm_container])
+        # use `global_left` if defined (min of wavelengts where exists intersection of atmospheric models)
+        #   or current model left wavelength boundary
+        # use `global_righ` if defined (max of wavelengts where exists intersection of atmospheric models) or current
+        #   or current model right wavelength boundary
+        left_bandwidth, right_bandwidth = kwargs.get("global_left", _min), kwargs.get("global_right", _max)
 
         if not kwargs.get('global_left') or not kwargs.get('global_right'):
             warnings.warn(f"argument bandwidth is out of bound for supplied atmospheric model\n"
                           f"to avoid interpolation error in boundary wavelength, bandwidth was defined as "
-                          f"max {ma} and min {mi} of wavelengt in given model table\n"
+                          f"max {_max} and min {_min} of wavelengt in given model table\n"
                           f"it might leads to error in atmosphere interpolation\n"
                           f"to avoid this problem, please specify global_left and global_right bandwidth as "
                           f"kwargs for given method and make sure all models wavelengths "
@@ -521,7 +526,7 @@ def strip_to_bandwidth(atm_container, left_bandwidth, right_bandwidth, inplace=F
     valid_indices = list(np.where(np.logical_and(np.greater(atm_container.model.wavelength, left_bandwidth),
                                                  np.less(atm_container.model.wavelength, right_bandwidth)))[0])
 
-    # extend left  and right index (left - 1 and right + 1)
+    # extend left and right index (left - 1 and right + 1)
     left_extention_index = valid_indices[0] - 1 if valid_indices[0] >= 1 else 0
     right_extention_index = valid_indices[-1] + 1 \
         if valid_indices[-1] < atm_container.model.last_valid_index() else valid_indices[-1]
@@ -533,6 +538,7 @@ def strip_to_bandwidth(atm_container, left_bandwidth, right_bandwidth, inplace=F
 def find_global_atm_bandwidth(atm_containers):
     """
     Function finds common wavelength coverage of the atmosphere models.
+    Find intersection of wavelengths of models.
 
     :param atm_containers: elisa.atm.AtmDataContainer;
     :return: Tuple[float, float]; minimum, maximum wavelength of common coverage (in Angstrom)
@@ -685,13 +691,7 @@ def validate_metallicity(metallicity, atlas, _raise=True):
     return True
 
 
-def validate_logg(log_g, atlas: str):
-    # not implemented, naive implementation is uselles
-    # proper `like` implementaion is _validate_logg
-    pass
-
-
-def _validate_logg(temperature, log_g, atlas, _raise=True):
+def validate_logg_temperature_constraint(temperature, log_g, atlas, _raise=True):
     """
     Validate `logg`s for existing `atlas` and `temperature`.
 
@@ -724,7 +724,7 @@ def validate_atm(temperature, log_g, metallicity, atlas, _raise=True):
 
         validate_temperature
         validate_metallicity
-        _validate_logg
+        validate_logg_temperature_constraint
 
     If anything is not right and `_raise` set to True, raise ValueError.
 
@@ -739,7 +739,7 @@ def validate_atm(temperature, log_g, metallicity, atlas, _raise=True):
         metallicity = [metallicity] * len(temperature) if not isinstance(metallicity, Iterable) else metallicity
         validate_temperature(temperature, atlas)
         validate_metallicity(metallicity, atlas)
-        _validate_logg(temperature, log_g, atlas)
+        validate_logg_temperature_constraint(temperature, log_g, atlas)
     except (ElisaError, ValueError):
         if not _raise:
             return False
@@ -1184,7 +1184,7 @@ def correct_normal_radiance_to_optical_depth(normal_radiances, ld_cfs):
 
 def planck_function(wavelegth, temperature):
     """
-    Standard Placnk funcntion.
+    Standard Planck funcntion.
     :param wavelegth: Union[float, numpy.array]; wavelengths
     :param temperature: float; temperature
     :return: Union[float, numpy.array]
@@ -1201,7 +1201,3 @@ def get_standard_wavelengths():
     """
     with open(os.path.join(settings.DATA_PATH, "wavelength.json"), "r") as f:
         return np.array(json.loads(f.read()))
-
-
-if __name__ == "__main__":
-    pass
