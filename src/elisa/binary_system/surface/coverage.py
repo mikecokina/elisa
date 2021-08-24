@@ -96,7 +96,7 @@ def test_size_similarity(cover_object, undercover_object):
     return cover_size <= undercover_triangle_size
 
 
-def visibility_out_of_eclise(undercover_object):
+def visibility_out_of_eclipse(undercover_object):
     """
     Decides visibility of the near side faces of the undercover component (eclipsed component) outside of eclipse.
 
@@ -213,7 +213,7 @@ def compute_surface_coverage(system, semi_major_axis, in_eclipse=True, return_va
         full_visible, invisible, partial_visible = \
             visibility_disimilar_objects(*args) if similar_size_test else visibility_similar_objects(*args)
     else:
-        full_visible, invisible, partial_visible = visibility_out_of_eclise(undercover_object)
+        full_visible, invisible, partial_visible = visibility_out_of_eclipse(undercover_object)
 
     # process partial and full visible faces (get surface area of 3d polygon) of undercover object
     partial_visible_faces = undercover_object.faces[partial_visible]
