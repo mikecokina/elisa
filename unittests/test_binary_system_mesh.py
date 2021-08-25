@@ -1,3 +1,7 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import numpy as np
 from numpy.testing import assert_array_equal
 
@@ -9,6 +13,8 @@ from elisa.const import Position
 from elisa.utils import is_empty, find_nearest_dist_3d
 from unittests import utils as testutils
 from unittests.utils import ElisaTestCase, prepare_binary_system
+
+set_astropy_units()
 
 
 class BuildMeshSpotsFreeTestCase(ElisaTestCase):

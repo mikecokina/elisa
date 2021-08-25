@@ -1,3 +1,7 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import os.path as op
 import numpy as np
 
@@ -14,37 +18,38 @@ from unittests.utils import (
     ElisaTestCase,
 )
 
+set_astropy_units()
 
 PARAMS = {
-"system": {
-    "inclination": "1.4392852253406623 rad",
-    "period": 10.1,
-    "argument_of_periastron": 90.0,
-    "gamma": 0.0,
-    "eccentricity": 0.0,
-    "primary_minimum_time": 0.0,
-    "phase_shift": 0.0,
-    "semi_major_axis": 10.5,
-    "mass_ratio": 3.333333333333334
-   },
-"primary": {
-    "surface_potential": 103.3333833458323,
-    "synchronicity": 1.0,
-    "t_eff": 35000,
-    "gravity_darkening": 1.0,
-    "albedo": 1.0,
-    "metallicity": 0.0,
-    "discretization_factor": 5
-},
-"secondary": {
-    "surface_potential": 13.272225833478668,
-    "synchronicity": 1.0,
-    "t_eff": 10000,
-    "gravity_darkening": 1.0,
-    "albedo": 1.0,
-    "metallicity": 0.0,
-    "discretization_factor": 10
-}
+    "system": {
+        "inclination": "1.4392852253406623 rad",
+        "period": 10.1,
+        "argument_of_periastron": 90.0,
+        "gamma": 0.0,
+        "eccentricity": 0.0,
+        "primary_minimum_time": 0.0,
+        "phase_shift": 0.0,
+        "semi_major_axis": 10.5,
+        "mass_ratio": 3.333333333333334
+    },
+    "primary": {
+        "surface_potential": 103.3333833458323,
+        "synchronicity": 1.0,
+        "t_eff": 35000,
+        "gravity_darkening": 1.0,
+        "albedo": 1.0,
+        "metallicity": 0.0,
+        "discretization_factor": 5
+    },
+    "secondary": {
+        "surface_potential": 13.272225833478668,
+        "synchronicity": 1.0,
+        "t_eff": 10000,
+        "gravity_darkening": 1.0,
+        "albedo": 1.0,
+        "metallicity": 0.0,
+        "discretization_factor": 10
+    }
 }
 
 
@@ -52,6 +57,7 @@ class VisibilityTestCase(ElisaTestCase):
     """
     testing whether right number of triangles and total surface area is visible to the observer
     """
+
     def setUp(self):
         super(VisibilityTestCase, self).setUp()
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
@@ -68,7 +74,7 @@ class VisibilityTestCase(ElisaTestCase):
         container.build()
         container = bsutils.move_sys_onpos(container, position)
         return compute_surface_coverage(container, bs.semi_major_axis, in_eclipse=in_eclipse,
-                                          return_values=True, write_to_containers=False)
+                                        return_values=True, write_to_containers=False)
 
     def test_visibility_out_of_eclipse(self):
         retval = self.eval_coverage(0.20, in_eclipse=False)
@@ -114,5 +120,3 @@ class VisibilityTestCase(ElisaTestCase):
         vis_area_s = np.sum(retval['secondary'])
         self.assertEqual(vis_area_p, expected_sums['primary'], 5)
         self.assertEqual(vis_area_s, expected_sums['secondary'], 5)
-
-

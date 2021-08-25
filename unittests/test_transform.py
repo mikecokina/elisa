@@ -1,3 +1,7 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import numpy as np
 from numpy.testing import assert_array_equal
 
@@ -6,6 +10,8 @@ from elisa.base.transform import SystemProperties, BodyProperties, StarPropertie
 from elisa.binary_system.transform import BinarySystemProperties
 from elisa.binary_system.orbit.transform import OrbitProperties
 from unittests.utils import ElisaTestCase
+
+set_astropy_units()
 
 
 def generate_test(values, transform, expected, _round=None):

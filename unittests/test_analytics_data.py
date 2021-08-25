@@ -1,3 +1,7 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import os.path as op
 import numpy as np
 
@@ -6,6 +10,8 @@ from elisa.analytics.dataset.utils import read_data_file
 from unittests.utils import ElisaTestCase
 from elisa.analytics import RVData, LCData
 from elisa import units as u
+
+set_astropy_units()
 
 
 class DataTestCase(ElisaTestCase):

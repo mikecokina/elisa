@@ -1,3 +1,7 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import os.path as op
 
 from elisa import umpy as up, settings
@@ -12,6 +16,8 @@ from elisa.binary_system.system import BinarySystem
 from elisa.const import Position
 from unittests import utils as testutils
 from unittests.utils import ElisaTestCase
+
+set_astropy_units()
 
 
 class StarContainerSerDeTestCase(ElisaTestCase):

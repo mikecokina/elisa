@@ -1,8 +1,14 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import numpy as np
 from numpy.testing import assert_array_equal
 
 from elisa.binary_system import t_layer
 from unittests.utils import ElisaTestCase
+
+set_astropy_units()
 
 
 class SupportMethodTestCase(ElisaTestCase):

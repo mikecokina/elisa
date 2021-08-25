@@ -1,3 +1,7 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import numpy as np
 from numpy.testing import assert_array_equal
 
@@ -8,6 +12,8 @@ from elisa import units as u
 from unittests import utils as testutils
 from unittests.utils import ElisaTestCase
 from elisa import settings
+
+set_astropy_units()
 
 
 class BuildFacesSpotsFreeTestCase(ElisaTestCase):

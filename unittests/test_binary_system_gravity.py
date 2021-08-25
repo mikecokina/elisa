@@ -1,3 +1,7 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import numpy as np
 
 from numpy.testing import assert_array_equal
@@ -6,6 +10,8 @@ from elisa.utils import is_empty
 from unittests import utils as testutils
 from unittests.utils import ElisaTestCase, prepare_binary_system, polar_gravity_acceleration
 from elisa import umpy as up, units as u, const
+
+set_astropy_units()
 
 
 class BuildSpotlessGravityTestCase(ElisaTestCase):

@@ -1,8 +1,14 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import numpy as np
 
 from numpy.testing import assert_array_equal
 from unittests.utils import ElisaTestCase
 from elisa.binary_system.orbit.container import OrbitalSupplements
+
+set_astropy_units()
 
 
 class OrbitalSupplementsTestCase(ElisaTestCase):

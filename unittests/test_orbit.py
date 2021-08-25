@@ -1,3 +1,7 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import numpy as np
 import elisa.const as c
 
@@ -5,6 +9,8 @@ from numpy.testing import assert_array_equal
 from elisa.binary_system.orbit import orbit
 from elisa import units as u
 from unittests.utils import ElisaTestCase
+
+set_astropy_units()
 
 
 def test_get_approx_ecl_angular_width():

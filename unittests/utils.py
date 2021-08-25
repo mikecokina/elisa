@@ -1,3 +1,7 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import json
 import logging
 import os
@@ -22,6 +26,7 @@ from elisa.binary_system.orbit import orbit
 from elisa.utils import is_empty
 from collections.abc import Iterable
 
+set_astropy_units()
 ax3 = Axes3D
 
 

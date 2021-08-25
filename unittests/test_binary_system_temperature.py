@@ -1,3 +1,7 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import numpy as np
 import os.path as op
 from copy import copy
@@ -7,6 +11,8 @@ from elisa import settings, BinarySystem
 from elisa.utils import is_empty
 from unittests import utils as testutils
 from unittests.utils import ElisaTestCase
+
+set_astropy_units()
 
 
 class BuildSpotFreeTemperatureTestCase(ElisaTestCase):

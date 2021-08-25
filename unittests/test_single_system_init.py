@@ -1,3 +1,7 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import numpy as np
 from numpy.testing import assert_array_equal, assert_equal
 from copy import copy
@@ -6,6 +10,8 @@ from unittests.utils import ElisaTestCase, prepare_single_system
 from elisa import units as u, const as c
 from elisa import Star
 from elisa import SingleSystem
+
+set_astropy_units()
 
 
 class SingleSystemInitTestCase(ElisaTestCase):

@@ -1,7 +1,13 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import numpy as np
 
 from elisa.opt.newton import newton
 from unittests.utils import ElisaTestCase
+
+set_astropy_units()
 
 
 class NewtonSolverTestCase(ElisaTestCase):

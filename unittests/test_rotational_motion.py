@@ -1,9 +1,15 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import numpy as np
 import elisa.const as c
 
 from numpy.testing import assert_array_equal
 from elisa.single_system.orbit import orbit
 from unittests.utils import ElisaTestCase
+
+set_astropy_units()
 
 
 class RotationalMotionTestCase(ElisaTestCase):

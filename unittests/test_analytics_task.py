@@ -1,3 +1,6 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
 from unittest import mock
 
 import numpy as np
@@ -8,6 +11,8 @@ from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.binary_system import t_layer
 from elisa import settings
 from unittests.utils import ElisaTestCase
+
+set_astropy_units()
 
 
 class AbstractFitTestCase(ElisaTestCase):

@@ -1,3 +1,7 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import os
 import numpy as np
 import os.path as op
@@ -19,6 +23,8 @@ from elisa.binary_system.curves import rv
 from elisa import settings
 from elisa import umpy as up, const
 from elisa import units as u
+
+set_astropy_units()
 
 
 TOL = 1e-3

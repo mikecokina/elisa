@@ -1,5 +1,11 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 from elisa.units import *
 from unittests.utils import ElisaTestCase
+
+set_astropy_units()
 
 
 class TestUnits(ElisaTestCase):

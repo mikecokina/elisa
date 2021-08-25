@@ -1,9 +1,15 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import numpy as np
 
 from numpy.testing import assert_array_equal
 from unittests.utils import ElisaTestCase
 from elisa.analytics.dataset.base import RVData, LCData
 from elisa import units as u
+
+set_astropy_units()
 
 
 class RVDatasetTestCase(ElisaTestCase):

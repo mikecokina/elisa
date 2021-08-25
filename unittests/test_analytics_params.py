@@ -1,3 +1,7 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import numpy as np
 from numpy.testing import assert_array_equal
 from parameterized import parameterized
@@ -7,6 +11,8 @@ from elisa.analytics.params import conf, parameters
 from elisa.analytics.params.parameters import xs_reducer
 from elisa import settings
 from unittests.utils import ElisaTestCase
+
+set_astropy_units()
 
 TOL = 1e-5
 

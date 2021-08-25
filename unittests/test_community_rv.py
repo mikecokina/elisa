@@ -1,3 +1,7 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import numpy as np
 
 from elisa import (
@@ -13,6 +17,8 @@ from unittests.utils import (
     prepare_binary_system,
     BINARY_SYSTEM_PARAMS
 )
+
+set_astropy_units()
 
 TOL = 5e-3
 

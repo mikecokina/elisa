@@ -1,9 +1,15 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import numpy as np
 
 from elisa import umpy as up
 from unittests import utils as testutils
 from unittests.utils import ElisaTestCase
 from elisa.utils import is_empty
+
+set_astropy_units()
 
 
 class BuildFacesSpotsFreeTestCase(ElisaTestCase):

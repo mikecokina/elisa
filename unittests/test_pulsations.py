@@ -1,3 +1,7 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import os
 import os.path as op
 import numpy as np
@@ -15,7 +19,7 @@ from elisa.pulse import pulsations, container_ops, utils as putils
 from unittests.utils import ElisaTestCase
 from unittests import utils as testutils
 
-import matplotlib.pyplot as plt
+set_astropy_units()
 
 
 STAR_PARAMS = {

@@ -1,3 +1,7 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import random
 import sys
 import os
@@ -18,6 +22,8 @@ from elisa.observer.observer import Observer
 from elisa.observer.passband import PassbandContainer
 from elisa.observer.passband import bolometric
 from unittests.utils import ElisaTestCase
+
+set_astropy_units()
 
 
 class TestPassbandContainer(ElisaTestCase):

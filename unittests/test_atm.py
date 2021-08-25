@@ -1,3 +1,7 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import os
 
 import numpy as np
@@ -13,6 +17,8 @@ from elisa import (
     umpy as up,
     atm,
     const)
+
+set_astropy_units()
 
 
 class TestMapDict(ElisaTestCase):

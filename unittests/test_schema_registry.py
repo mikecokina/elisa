@@ -1,6 +1,12 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 from elisa.binary_system.utils import validate_binary_json
 from elisa.single_system.utils import validate_single_json
 from unittests import utils
+
+set_astropy_units()
 
 
 class StdBinarySystemmSchemaRegistryTestCase(utils.ElisaTestCase):

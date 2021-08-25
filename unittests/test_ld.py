@@ -1,3 +1,7 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import os
 
 import numpy as np
@@ -8,6 +12,8 @@ from pandas.testing import assert_frame_equal
 from elisa import const, ld
 from elisa import settings
 from unittests.utils import ElisaTestCase
+
+set_astropy_units()
 
 
 class TestLimbDarkeningModule(ElisaTestCase):

@@ -1,3 +1,7 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import numpy as np
 
 from unittests import utils
@@ -7,6 +11,8 @@ from elisa.observer import observer
 from importlib import reload
 from elisa.analytics.tools.bvi import pogsons_formula
 from unittest import skip
+
+set_astropy_units()
 
 
 system_blueprint = {

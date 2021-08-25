@@ -1,3 +1,7 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import os.path as op
 import numpy as np
 
@@ -35,6 +39,8 @@ from elisa import (
     units as u,
     const,
     utils)
+
+set_astropy_units()
 
 
 TOL = 5e-3

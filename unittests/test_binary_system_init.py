@@ -1,11 +1,17 @@
-from copy import copy
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
 
 import numpy as np
+
+from copy import copy
 from numpy.testing import assert_array_equal
 from elisa import const as c, units as u, get_default_binary_definition
 from elisa.base.star import Star
 from elisa.binary_system.system import BinarySystem
 from unittests.utils import ElisaTestCase, prepare_binary_system
+
+set_astropy_units()
 
 
 class BinarySystemInitTestCase(ElisaTestCase):

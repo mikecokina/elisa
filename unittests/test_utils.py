@@ -1,3 +1,7 @@
+# keep it first
+# due to stupid astropy units/constants implementation
+from unittests import set_astropy_units
+
 import numpy as np
 import pandas as pd
 
@@ -7,6 +11,8 @@ from elisa import const
 from queue import Queue
 
 from unittests.utils import ElisaTestCase
+
+set_astropy_units()
 
 
 class TestElisaEngineUtils(ElisaTestCase):
