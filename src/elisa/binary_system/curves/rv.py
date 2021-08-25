@@ -14,13 +14,13 @@ def _radial_velocity(semi_major_axis, inclination, eccentricity, argument_of_per
     """
     Compute radial velocity for given paramters.
 
-    :param semi_major_axis: float
-    :param inclination: float
-    :param eccentricity: float
-    :param argument_of_periastron: float
-    :param true_anomaly: float or numpy.array
-    :param period: float
-    :return: Union[float, numpy.array]
+    :param semi_major_axis: float;
+    :param inclination: float;
+    :param eccentricity: float;
+    :param argument_of_periastron: float;
+    :param true_anomaly: float or numpy.array;
+    :param period: float;
+    :return: Union[float, numpy.array];
     """
     a = 2.0 * up.pi * semi_major_axis * up.sin(inclination)
     b = period * up.sqrt(1.0 - up.power(eccentricity, 2))
@@ -28,7 +28,7 @@ def _radial_velocity(semi_major_axis, inclination, eccentricity, argument_of_per
     return - a * c / b
 
 
-def com_radial_velocity(binary, **kwargs):
+def kinematic_radial_velocity(binary, **kwargs):
     """
     Calculates radial velocity curves of the `binary` system using radial velocities of centres of masses.
 
@@ -37,7 +37,7 @@ def com_radial_velocity(binary, **kwargs):
     :**kwargs options**:
         * **position_method** * -- function that is used to calculate orbital motion
         * **phases** * -- phases in which to calculate
-    :return: Tuple
+    :return: Dict[str, Unionp[float, numpy.array]; index of values are related to index of phases
     """
     position_method = kwargs.pop("position_method")
     phases = kwargs.pop("phases")

@@ -20,22 +20,33 @@ from ... logger import getLogger
 logger = getLogger('binary_system.curves.curves')
 
 
-def resolve_curve_method(system, fn_array):
+def resolve_curve_method(system, curve: str):
     """
     Resolves which curve calculating method to use based on the properties of the BinarySystem.
 
+    :param curve: str; choose one of `lc` or `rv`
     :param system: elisa.binary_system.BinarySystem;
-    :param fn_array: Tuple; list of curve calculating functions in specific order
-
-    ::
-
-        (circular synchronous or circular assynchronous without spots,
-         circular assynchronous with spots,
-         eccentric synchronous or eccentric assynchronous without spots,
-         eccentric assynchronous with spots)
-
-    :return: curve calculating method chosen from `fn_array`
+    :return: callable, curve calculating method
     """
+    if curve == 'lc':
+        fn_array = (
+            getattr(system, '_compute_circular_synchronous_lightcurve'),
+            getattr(system, '_compute_circular_spotty_asynchronous_lightcurve'),
+            getattr(system, '_compute_circular_pulsating_lightcurve'),
+            getattr(system, '_compute_eccentric_spotty_lightcurve'),
+            getattr(system, '_compute_eccentric_lightcurve')
+        )
+    elif curve == 'rv':
+        fn_array = (
+            getattr(system, '_compute_circular_synchronous_rv_curve'),
+            getattr(system, '_compute_circular_spotty_asynchronous_rv_curve'),
+            getattr(system, '_compute_circular_pulsating_rv_curve'),
+            getattr(system, '_compute_eccentric_spotty_rv_curve'),
+            getattr(system, '_compute_eccentric_rv_curve_no_spots')
+        )
+    else:
+        raise ValueError('Invalid value of argument `curve`. Only `lc` and `rv` are allowed')
+
     is_circular = system.eccentricity == 0
     is_eccentric = 1 > system.eccentricity > 0
     asynchronous_spotty_p = system.primary.synchronicity != 1 and system.primary.has_spots()

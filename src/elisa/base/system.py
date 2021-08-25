@@ -148,3 +148,7 @@ class System(metaclass=ABCMeta):
                 instance.gravity_darkening = interpolate_bolometric_gravity_darkening(instance.t_eff)
 
     setup_gravity_darkening = setup_betas
+
+    @abstractmethod
+    def get_positions_method(self, *args, **kwargs):
+        pass

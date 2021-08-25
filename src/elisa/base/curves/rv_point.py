@@ -1,5 +1,4 @@
 from ... import umpy as np
-from ... import const
 from elisa.base.curves import utils as crv_utils
 
 

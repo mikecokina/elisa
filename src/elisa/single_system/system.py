@@ -20,7 +20,7 @@ from .. import (
     const as c,
 )
 from .. base.system import System
-from .. base.curves import rv as rv_base
+from .. base.curves import utils as rv_utils
 from .. opt.fsolver import fsolve
 from .. base.star import Star
 
@@ -536,7 +536,7 @@ class SingleSystem(System):
                       self._compute_rv_curve_with_pulsations)
             curve_fn = c_router.resolve_curve_method(self, fn_arr)
 
-            kwargs = rv_base.include_passband_data_to_kwargs(**kwargs)
+            kwargs = rv_utils.include_passband_data_to_kwargs(**kwargs)
             return curve_fn(**kwargs)
 
     def _compute_rv_curve_with_pulsations(self, **kwargs):

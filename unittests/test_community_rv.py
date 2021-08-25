@@ -48,7 +48,7 @@ class RadialVelocityObserverTestCase(ElisaTestCase):
         s = prepare_binary_system(BINARY_SYSTEM_PARAMS["detached.ecc"])
         s.inclination = 1.1
         s.init()
-        std_rvdict = rv.com_radial_velocity(s, position_method=s.calculate_orbital_motion, phases=self.phases)
+        std_rvdict = rv.kinematic_radial_velocity(s, position_method=s.calculate_orbital_motion, phases=self.phases)
 
         asini = np.float64((s.semi_major_axis * np.sin(s.inclination) * u.m).to(u.solRad))
 

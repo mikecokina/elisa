@@ -99,7 +99,7 @@ class BinaryRadialCurvesTestCase(ElisaTestCase):
         # self.reset_config()
 
     def do_comparison(self, system, file):
-        rvdict = rv.com_radial_velocity(system, position_method=system.calculate_orbital_motion, phases=self.phases)
+        rvdict = rv.kinematic_radial_velocity(system, position_method=system.calculate_orbital_motion, phases=self.phases)
         obtained_rvp, obtained_rvs = normalize_rv_for_unittests(rvdict['primary'], rvdict['secondary'])
         expected = load_radial_curve(file)
 
