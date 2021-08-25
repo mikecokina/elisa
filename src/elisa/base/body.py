@@ -1,5 +1,6 @@
 import numpy as np
 
+from typing import Dict
 from copy import copy
 from abc import (
     ABCMeta,
@@ -27,12 +28,12 @@ class Body(metaclass=ABCMeta):
     OPTIONAL_KWARGS = []
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    def __init__(self, name, **kwargs):
+    def __init__(self, name: str, **kwargs):
         """
         Properties of abstract class Body.
         """
         # initial kwargs
-        self.kwargs = copy(kwargs)
+        self.kwargs: Dict = copy(kwargs)
 
         if is_empty(name):
             self.name = str(Body.ID)
@@ -42,15 +43,15 @@ class Body(metaclass=ABCMeta):
             self.name = str(name)
 
         # initializing paramas to default values
-        self.synchronicity = np.nan
-        self.mass = np.nan
-        self.albedo = np.nan
-        self.discretization_factor = up.radians(5)
-        self.t_eff = np.nan
-        self.polar_radius = np.nan
-        self._spots = dict()
-        self.equatorial_radius = np.nan
-        self.atmosphere = ""
+        self.synchronicity: float = np.nan
+        self.mass: float = np.nan
+        self.albedo: float = np.nan
+        self.discretization_factor: float = np.float64(up.radians(5))
+        self.t_eff: float = np.nan
+        self.polar_radius: float = np.nan
+        self._spots: Dict = dict()
+        self.equatorial_radius: float = np.nan
+        self.atmosphere: str = ""
 
     @abstractmethod
     def init(self):
@@ -63,13 +64,12 @@ class Body(metaclass=ABCMeta):
     @property
     def spots(self):
         """
-        :return: Dict[int, Spot]
+        :return: Dict[int, elisa.base.spot.Spot]
         """
         return self._spots
 
     @spots.setter
     def spots(self, spots):
-        # todo: update example
         """
         Order in which the spots are defined will determine the layering of the spots (spot defined as first will lay
         bellow any subsequently defined overlapping spot). Example of defined spots
@@ -111,17 +111,17 @@ class Body(metaclass=ABCMeta):
 
         :param spot_index: int;
         """
-        del (self._spots[spot_index])
+        del self._spots[spot_index]
 
     def setup_spot_instance_discretization_factor(self, spot_instance, spot_index):
         """
-        Setup discretization factor for given spot instance based on defined rules
+        Setup discretization factor for given spot instance based on defined rules.
 
         - use value of the parent star if the spot discretization factor is not defined
         - if spot_instance.discretization_factor > 0.5 * spot_instance.angular_diameter then factor is set to
                       0.5 * spot_instance.angular_diameter
 
-        :param spot_instance: elisa.base.body.Spot;
+        :param spot_instance: elisa.base.spot.Spot;
         :param spot_index: int; spot index (has no affect on process, used for logging)
         :return: elisa.base.spot.Spot;
         """

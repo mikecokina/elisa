@@ -60,6 +60,10 @@ class BinarySystemProperties(SystemProperties):
         """
         return quantity_transform(value, units.PERIOD_UNIT, WHEN_FLOAT64)
 
+    @classmethod
+    def t0(cls, value):
+        return cls.primary_minimum_time(value)
+
 
 class RadialVelocityObserverProperties(SystemProperties):
     eccentricity = BinarySystemProperties.eccentricity

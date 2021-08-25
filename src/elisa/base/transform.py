@@ -58,10 +58,10 @@ class TransformProperties(object):
     def transform_input(cls, **kwargs):
         """
         Function transforms input dictionary of keyword arguments of the System to internally usable state
-        (conversion and stripping of units)
+        (conversion and stripping of units).
 
-        :param kwargs: Dict
-        :return: Dict
+        :param kwargs: Dict;
+        :return: Dict;
         """
         return {key: getattr(cls, key)(val) if hasattr(cls, key) else val for key, val in kwargs.items()}
 

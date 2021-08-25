@@ -1,5 +1,6 @@
 import numpy as np
 
+from typing import Dict, Union
 from abc import ABCMeta, abstractmethod
 from .. base.body import Body
 from .. logger import getLogger
@@ -24,17 +25,17 @@ class System(metaclass=ABCMeta):
 
     def __init__(self, name=None, **kwargs):
         # default params
-        self.inclination = np.nan
-        self.period = np.nan
-        self.t0 = np.nan
-        self.gamma = np.nan
-        self.additional_light = 0.0
+        self.inclination: float = np.nan
+        self.period: float = np.nan
+        self.t0: float = np.nan
+        self.gamma: float = np.nan
+        self.additional_light: float = 0.0
 
-        self._components = None
+        self._components: Union[None, Dict] = None
 
         if utils.is_empty(name):
             self.name = str(System.ID)
-            logger.debug(f"name of class instance {self.__class__.__name__} set to {self.name}")
+            logger.debug(f"name of class instance {self.__class__.__name__} autoset to {self.name}")
             self.__class__.ID += 1
         else:
             self.name = str(name)
@@ -83,25 +84,19 @@ class System(metaclass=ABCMeta):
 
     def has_pulsations(self):
         """
-        Resolve whether any of components has pulsation
+        Resolve whether any of components has pulsation.
 
         :return: bool;
         """
-        retval = False
-        for component_instance in self.components.values():
-            retval = retval | component_instance.has_pulsations()
-        return retval
+        return any([instance.has_pulsations() for instance in self.components.values()])
 
     def has_spots(self):
         """
-        Resolve whether any of components has spots
+        Resolve whether any of components has spots.
 
         :return: bool;
         """
-        retval = False
-        for component_instance in self.components.values():
-            retval = retval | component_instance.has_spots()
-        return retval
+        return any([instance.has_spots() for instance in self.components.values()])
 
     @staticmethod
     def object_params_validity_check(components, mandatory_kwargs):
@@ -147,10 +142,9 @@ class System(metaclass=ABCMeta):
     def setup_betas(self):
         """
         Setup of default gravity darkening components.
-
-        :return:
         """
-        for component, component_instance in self.components.items():
-            if utils.is_empty(component_instance.gravity_darkening):
-                component_instance.gravity_darkening = \
-                    interpolate_bolometric_gravity_darkening(component_instance.t_eff)
+        for component, instance in self.components.items():
+            if utils.is_empty(instance.gravity_darkening):
+                instance.gravity_darkening = interpolate_bolometric_gravity_darkening(instance.t_eff)
+
+    setup_gravity_darkening = setup_betas

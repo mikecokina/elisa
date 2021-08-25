@@ -2,7 +2,6 @@ import re
 import numpy as np
 import pandas as pd
 import scipy as sp
-import os.path as op
 
 from typing import Sized
 from queue import Empty
@@ -10,25 +9,19 @@ from numpy.linalg import norm
 from scipy.spatial import distance_matrix as dstm
 from matplotlib.cbook import flatten
 
-from copy import (
-    copy,
-    deepcopy
-)
-from . import (
-    const,
-    umpy as up, settings
-)
+from copy import copy, deepcopy
+from . import const, umpy as up
 
 from elisa.numba_functions import operations
 
 
 def polar_to_cartesian(radius, phi):
     """
-    Transform polar coordinates to cartesian
+    Transform polar coordinates to cartesian.
 
-    :param radius: (numpy.)float, (numpy.)int
-    :param phi: (numpy.)float, (numpy.)int
-    :return: Tuple ((numpy.)float, (numpy.)float)
+    :param radius: (numpy.)float, (numpy.)int;
+    :param phi: (numpy.)float, (numpy.)int;
+    :return: Tuple ((numpy.)float, (numpy.)float);
     """
     x = radius * up.cos(phi)
     y = radius * up.sin(phi)
@@ -37,10 +30,11 @@ def polar_to_cartesian(radius, phi):
 
 def invalid_kwarg_checker(kwargs, kwarglist, instance):
     """
+    Check if `kwargs` for `instance` are in allowed kwargs presented in `kwarglist`.
 
     :param kwargs: Dict; kwargs to evaluate if are in kwarg list
     :param kwarglist: Dict;
-    :param instance: Any class
+    :param instance: Any; class/instance with attribute `__name__`
     """
     invalid_kwargs = [kwarg for kwarg in kwargs if kwarg not in kwarglist]
     if len(invalid_kwargs) > 0:
