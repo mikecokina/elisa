@@ -45,29 +45,6 @@ def calculate_potential_gradient(components_distance, component, points, synchro
     return -np.column_stack((domega_dx, domega_dy, domega_dz))
 
 
-def calculate_face_magnitude_gradient(components_distance, component, points, faces, synchronicity, mass_ratio,
-                                      face_symmetry_vector=None):
-    """
-    Return array of face magnitude gradients calculated as a mean of magnitude gradients on vertices.
-    If neither points nor faces are supplied, method runs over component instance points and faces.
-
-    :param component: str; define target component to compute critical potential; `primary` or `secondary`
-    :param components_distance: float; distance of componetns in SMA units
-    :param points: numpy.array; points in which to calculate magnitude of gradient, if False/None take star points
-    :param faces: numpy.array; faces corresponding to given points
-    :param synchronicity: float;
-    :param mass_ratio: float;
-    :param face_symmetry_vector: Union[numpy.array, None];
-    :return: numpy.array;
-    """
-    gradients = calculate_potential_gradient(components_distance, component, points, synchronicity, mass_ratio)
-    domega_dx, domega_dy, domega_dz = gradients[:, 0], gradients[:, 1], gradients[:, 2]
-    points_gradients = up.power(up.power(domega_dx, 2) + up.power(domega_dy, 2) + up.power(domega_dz, 2), 0.5)
-
-    return np.mean(points_gradients[faces], axis=1) if is_empty(face_symmetry_vector) \
-        else np.mean(points_gradients[faces], axis=1)[face_symmetry_vector]
-
-
 def calculate_polar_potential_gradient_magnitude(components_distance, mass_ratio, polar_radius, component,
                                                  synchronicity):
     """
@@ -161,7 +138,7 @@ def build_surface_gravity(system, components_distance, component="all"):
 
         gravity = np.mean(np.linalg.norm(g_acc_vector, axis=1)[faces], axis=1) if star.symmetry_test else \
             np.mean(np.linalg.norm(g_acc_vector, axis=1), axis=1)
-        setattr(star, 'potential_gradient_magnitudes', gravity[star.face_symmetry_vector]) \
+        setattr(star, 'potential_gradient_magnitudes', star.mirror_face_values(gravity)) \
             if star.symmetry_test() else setattr(star, 'potential_gradient_magnitudes', gravity)
         setattr(star, 'log_g', np.log10(star.potential_gradient_magnitudes))
 

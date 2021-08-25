@@ -27,10 +27,9 @@ def build_mesh(system):
     :param system: elisa.single_system.contaier.PositionContainer; instance
     :return: elisa.single_system.contaier.PositionContainer; instance
     """
-    a, b, c, d = mesh(system_container=system, symmetry_output=True)
+    a, c, d = mesh(system_container=system, symmetry_output=True)
 
     system.star.points = a
-    system.star.point_symmetry_vector = b
     system.star.base_symmetry_points_number = c
     system.star.inverse_point_symmetry_matrix = d
 
@@ -50,16 +49,14 @@ def mesh(system_container, symmetry_output=False):
                           [x2 y2 z2],
                             ...
                           [xN yN zN]]) - array of surface points if symmetry_output = False, else:
-             numpy.array([[x1 y1 z1],
+            numpy.array([[x1 y1 z1],
                           [x2 y2 z2],
                             ...
                           [xN yN zN]]) - array of surface points,
-             numpy.array([indices_of_symmetrical_points]) - array which remapped surface points to symmetrical one
-                                                            eighth of surface,
-             numpy.float - number of points included in symmetrical one eighth of surface,
-             numpy.array([octants[indexes_of_remapped_points_in_octants]) - matrix of eight sub matrices that mapped
-                                                                            basic symmetry quadrant to all others
-                                                                            octants
+            numpy.float - number of points included in symmetrical one eighth of surface,
+            numpy.array([octants[indexes_of_remapped_points_in_octants]) - matrix of eight sub matrices that mapps
+                                                                           base symmetry octant to all others
+                                                                           octants
 
     """
     star_container = getattr(system_container, 'star')
@@ -110,26 +107,6 @@ def mesh(system_container, symmetry_output=False):
         meridian_length = len(x_mer)
         quarter_length = len(x_q)
         base_symmetry_points_number = 1 + meridian_length + quarter_equator_length + quarter_length + meridian_length
-        symmetry_vector = np.concatenate((np.arange(base_symmetry_points_number),  # 1st quadrant
-                                          # stray point on equator
-                                          [base_symmetry_points_number],
-                                          # 2nd quadrant
-                                          np.arange(2 + meridian_length, base_symmetry_points_number),
-                                          # 3rd quadrant
-                                          np.arange(1 + meridian_length, base_symmetry_points_number),
-                                          # 4rd quadrant
-                                          np.arange(1 + meridian_length, base_symmetry_points_number -
-                                                    meridian_length),
-                                          # south hemisphere
-                                          np.arange(1 + meridian_length),
-                                          np.arange(1 + meridian_length + quarter_equator_length,
-                                                    base_symmetry_points_number),  # 1st quadrant
-                                          np.arange(1 + meridian_length + quarter_equator_length,
-                                                    base_symmetry_points_number),  # 2nd quadrant
-                                          np.arange(1 + meridian_length + quarter_equator_length,
-                                                    base_symmetry_points_number),  # 3nd quadrant
-                                          np.arange(1 + meridian_length + quarter_equator_length,
-                                                    base_symmetry_points_number - meridian_length)))
 
         south_pole_index = 4 * (base_symmetry_points_number - meridian_length) - 3
         reduced_bspn = base_symmetry_points_number - meridian_length  # auxiliary variable1
@@ -183,7 +160,7 @@ def mesh(system_container, symmetry_output=False):
                                 ))
             ])
 
-        return np.column_stack((x, y, z)), symmetry_vector, base_symmetry_points_number + 1, inverse_symmetry_matrix
+        return np.column_stack((x, y, z)), base_symmetry_points_number + 1, inverse_symmetry_matrix
     else:
         return np.column_stack((x, y, z))
 

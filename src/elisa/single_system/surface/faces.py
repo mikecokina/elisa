@@ -4,7 +4,7 @@ from scipy.spatial.qhull import Delaunay
 from ... base import spot
 from ... base.surface import faces as bfaces
 from ... logger import getLogger
-from ... base.surface.faces import set_all_surface_centres
+from ... base.surface.faces import set_all_surface_centres, mirror_triangulation
 
 logger = getLogger("single_system.surface.faces")
 
@@ -30,10 +30,9 @@ def build_surface_with_no_spots(system_container):
     :return:
     """
     star_container = system_container.star
-    points_length = np.shape(star_container.points[:star_container.base_symmetry_points_number, :])[0]
+    points_length = star_container.base_symmetry_points_number
     # triangulating only one eighth of the star
-    points_to_triangulate = np.append(star_container.points[:star_container.base_symmetry_points_number, :],
-                                      [[0, 0, 0]], axis=0)
+    points_to_triangulate = np.append(star_container.symmetry_points(), [[0, 0, 0]], axis=0)
     triangles = single_surface(star_container=star_container, points=points_to_triangulate)
     # removing faces from triangulation, where origin point is included
     triangles = triangles[~(triangles >= points_length).any(1)]
@@ -41,8 +40,7 @@ def build_surface_with_no_spots(system_container):
     # setting number of base symmetry faces
     star_container.base_symmetry_faces_number = np.int(np.shape(triangles)[0])
     # lets exploit axial symmetry and fill the rest of the surface of the star
-    all_triangles = [inv[triangles] for inv in star_container.inverse_point_symmetry_matrix]
-    star_container.faces = np.concatenate(all_triangles, axis=0)
+    star_container.faces = mirror_triangulation(triangles, star_container.inverse_point_symmetry_matrix)
 
     base_face_symmetry_vector = np.arange(star_container.base_symmetry_faces_number)
     star_container.face_symmetry_vector = np.concatenate([base_face_symmetry_vector for _ in range(8)])

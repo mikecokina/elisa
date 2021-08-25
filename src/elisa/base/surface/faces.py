@@ -211,3 +211,40 @@ def correct_face_orientation(star_container, com=0):
             correct_orientation(spot)
 
     return star_container
+
+
+def mirror_triangulation(q_triangles, inverse_point_symmetry_matrix):
+    """
+    This function enables for the triangulation of symmetrical part of the surface to be mirrored to the rest of
+    the surface.
+
+    :param q_triangles: numpy.array; triangles of base symmetry portion of the surface
+    :param inverse_point_symmetry_matrix: numpy.array; row-wise - array that map base symmetry portion of the surface
+                                                       points to the rest of the surface (quadrants or octants)
+    :return: numpy.array; triangulation covering the whole star
+    """
+    all_triangles = [inv[q_triangles] for inv in inverse_point_symmetry_matrix]
+    return np.concatenate(all_triangles, axis=0)
+
+
+def mirror_face_values(values, face_symmetry_vector):
+    """
+    Mirroring the array values on symmetrical faces to the rest of the surface.
+
+    :param values: numpy.array; surface parameter values corresponding to the base symmetry part of the surface
+    :param face_symmetry_vector: numpy.array; array that remaps `values` to the rest of the surface
+    :return: numpy.array; remapped array
+    """
+    return values[face_symmetry_vector]
+
+
+def symmetry_face_reduction(values, base_symmetry_faces_number):
+    """
+    Reducing the surface distribution of surface `values` array to a symmetrical component.
+
+    :param values: numpy.array; surface parameter distribution
+    :param base_symmetry_faces_number: int; number of the first `base_symmetry_faces_numbe`from the symmetrical
+                                            component
+    :return: numpy.array; reduced surface distribution array
+    """
+    return values[:base_symmetry_faces_number]

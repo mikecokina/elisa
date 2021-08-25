@@ -177,7 +177,7 @@ def reflection_effect(system, components_distance, iterations):
                 # using symmetry to redistribute reflection factor R
                 refl_fact_aux = np.empty(shape=np.shape(temperatures[component]))
                 refl_fact_aux[vis_test_symmetry[component]] = reflection_factor[component][:symmetry_to_use[component]]
-                refl_fact_aux = refl_fact_aux[star.face_symmetry_vector]
+                refl_fact_aux = star.mirror_face_values(refl_fact_aux)
                 reflection_factor[component] = refl_fact_aux[vis_test[component]]
 
         for component in components:
@@ -187,7 +187,7 @@ def reflection_effect(system, components_distance, iterations):
             temperatures[component][vis_test_symmetry[component]] = \
                 temperatures[component][vis_test_symmetry[component]] * \
                 up.power(reflection_factor[component][:symmetry_to_use[component]], 0.25)
-            temperatures[component] = temperatures[component][star.face_symmetry_vector]
+            temperatures[component] = star.mirror_face_values(temperatures[component])
 
     else:
         # calculating distances and distance vectors between, join vector is already normalized
@@ -503,8 +503,8 @@ def get_distance_matrix_shape(system, vis_test):
     :return: Tuple;
     """
     shape = (np.sum(vis_test['primary']), np.sum(vis_test['secondary']), 3)
-    shape_reduced = (np.sum(vis_test['primary'][:system.primary.base_symmetry_faces_number]),
-                     np.sum(vis_test['secondary'][:system.secondary.base_symmetry_faces_number]))
+    shape_reduced = (np.sum(system.primary.symmetry_faces(vis_test['primary'])),
+                     np.sum(system.secondary.symmetry_faces(vis_test['secondary'])))
     return shape, shape_reduced
 
 
