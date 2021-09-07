@@ -17,8 +17,8 @@
 
 .. _example_scripts: https://github.com/mikecokina/elisa/tree/master/scripts/analytics
 
-Eclipsing binaries Learning Interactive System
-==============================================
+Eclipsing binaries Learning & Interactive System
+================================================
 
 Important note: the version of the ELISa package consistent with our upcoming
 paper_ in A&A is available in our development branch that can be installed using pip::
@@ -36,22 +36,22 @@ ELISa
 surface features such as spots (and pulsations which will be added soon). Current capabilities include:
 
     - ``BinarySystem:`` class for modelling surfaces of detached, semi-detached and over-contact binaries
+    - ``SingleSystem:`` class for modelling surfaces of single star light curves with full implementation of spots and
+      pulsations
     - ``Observer:`` class for generating light curves (and in future other observables)
     - ``Spots:`` class for generating stellar spot with given longitude, latitude, radius and temperature factor
+    - ``Pulsations:`` class for modelling low amplitude pulsations based on spherical harmonics
     - ``Fitting methods`` provide capabilities to fit radial velocities curves and light curves via implementaion of
       ``non-linear least squares`` method and also via ``Markov Chain Monte Carlo`` method.
+    - radial velocity curve modelling in Observer class including ``Rossiter-McLaughlin`` effect, variation due to
+      spots and pulsations
 
 **ELISa** is currently still under development. Development of the following features is in progress:
 
-    - ``SingleSystem:`` class for modelling surfaces of single star light curves with full implementation of spots and
-      pulsations
-    - ``Pulsations:`` class for modelling low amplitude pulsations based on spherical harmonics functions
-
 We also plan to implement following features:
 
-    - addition of radial velocity curves to Observer class with ``Rossiter-McLaughlin`` effect
-    - some extended ``LC`` and ``RV`` fitting using various additional methods and features such as classification of
-      eclipsing binaries via ``neural-networks``
+    - extension of ``LC`` and ``RV`` fitting methods using various additional methods and features such as
+      classification of eclipsing binaries via ``neural-networks`` aimed towards automatisation of the inverse problem,
     - addition of synthetic spectral line modelling
 
 Requirements
@@ -557,4 +557,4 @@ which would produce result similar to this::
 where in the case of the MCMC method, the additional 1 sigma errors would be displayed.
 
 Detailed guides, how to perform a fit of radial velocities or photometric observations including working examples are
-stored in the Jupyter notebooks 11 and 12. See also a notebook 10 that explains the handling of ELISa's custom datasets.
+stored in the Jupyter notebooks 11 and 12. See also notebook 10 that explains handling of ELISa's custom datasets.
