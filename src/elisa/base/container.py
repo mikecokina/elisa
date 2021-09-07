@@ -594,7 +594,7 @@ class StarContainer(object):
         :return: numpy.array; remapped array
         """
         if not self.symmetry_test():
-            raise ValueError('Surface symmetry is not applicable in this case')
+            raise ValueError('Surface symmetry is not applicable in this case.')
         return mirror_face_values(values, self.face_symmetry_vector)
 
     def symmetry_faces(self, values):
@@ -605,5 +605,5 @@ class StarContainer(object):
         :return: numpy.array; reduced surface distribution array
         """
         if not self.symmetry_test():
-            raise ValueError('Surface symmetry is not applicable in this case')
+            raise ValueError('Surface symmetry is not applicable in this case.')
         return symmetry_face_reduction(values, self.base_symmetry_faces_number)

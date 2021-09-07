@@ -26,19 +26,19 @@ def get_limbdarkening_cfs(system, component="all", **kwargs):
     symmetry_test = not system.has_spots() and not system.has_pulsations()
     temperatures, log_g = dict(), dict()
 
-    for cmpnt in components:
-        component_instance = getattr(system, cmpnt)
+    for c_name in components:
+        component_instance = getattr(system, c_name)
         if settings.USE_SINGLE_LD_COEFFICIENTS:
-            temperatures[cmpnt] = np.array([component_instance.t_eff, ])
-            log_g[cmpnt] = np.array([np.max(component_instance.log_g), ])
+            temperatures[c_name] = np.array([component_instance.t_eff, ])
+            log_g[c_name] = np.array([np.max(component_instance.log_g), ])
         elif symmetry_test:
-            temperatures[cmpnt] = component_instance.symmetry_faces(component_instance.temperatures)
-            log_g[cmpnt] = component_instance.symmetry_faces(component_instance.log_g)
+            temperatures[c_name] = component_instance.symmetry_faces(component_instance.temperatures)
+            log_g[c_name] = component_instance.symmetry_faces(component_instance.log_g)
         else:
-            temperatures[cmpnt] = component_instance.temperatures
-            log_g[cmpnt] = component_instance.log_g
+            temperatures[c_name] = component_instance.temperatures
+            log_g[c_name] = component_instance.log_g
 
-    retval = {
+    ld_cfs = {
         component:
             ld.interpolate_on_ld_grid(
                 temperature=temperatures[component],
@@ -49,14 +49,14 @@ def get_limbdarkening_cfs(system, component="all", **kwargs):
     }
     # mirroring symmetrical part back to the rest of the surface
     if symmetry_test:
-        for cpmnt in components:
+        for c_name in components:
             if settings.USE_SINGLE_LD_COEFFICIENTS:
-                retval[cpmnt] = {fltr: vals[np.zeros(getattr(system, cpmnt).temperatures.shape, dtype=np.int)] for
-                                 fltr, vals in retval[cpmnt].items()}
+                ld_cfs[c_name] = {fltr: vals[np.zeros(getattr(system, c_name).temperatures.shape, dtype=np.int)]
+                                  for fltr, vals in ld_cfs[c_name].items()}
             else:
-                retval[cpmnt] = {fltr: getattr(system, cpmnt).mirror_face_values(vals) for
-                                 fltr, vals in retval[cpmnt].items()}
-    return retval
+                ld_cfs[c_name] = {fltr: getattr(system, c_name).mirror_face_values(vals)
+                                  for fltr, vals in ld_cfs[c_name].items()}
+    return ld_cfs
 
 
 def _get_normal_radiance(system, component="all", **kwargs):
@@ -124,17 +124,19 @@ def prep_surface_params(system, return_values=True, write_to_containers=False, *
         * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
         * ** left_bandwidth ** * - float
         * ** right_bandwidth ** * - float
-    :return:
+    :return: Tuple;
     """
     # obtain limb darkening factor for each face
     ld_cfs = get_limbdarkening_cfs(system, **kwargs)
     # compute normal radiance for each face and each component
     normal_radiance = _get_normal_radiance(system, **kwargs)
 
-    # checking if `bolometric`filter is already used
+    # checking if `bolometric` filter is already used
     if 'bolometric' in ld_cfs['primary']:
-        bol_ld_cfs = {component: {'bolometric': ld_cfs[component]['bolometric']}
-                      for component in settings.BINARY_COUNTERPARTS.keys()}
+        bol_ld_cfs = {
+            component: {'bolometric': ld_cfs[component]['bolometric']}
+            for component in settings.BINARY_COUNTERPARTS
+        }
     else:
         passband, left_bandwidth, right_bandwidth = init_bolometric_passband()
         bol_kwargs = {

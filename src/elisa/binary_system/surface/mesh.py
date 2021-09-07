@@ -1,5 +1,4 @@
 import numpy as np
-from time import time
 
 from .. import (
     utils as bsutils,
@@ -1086,15 +1085,15 @@ def calculate_neck_position(system, return_polynomial=False):
 
     # solving for neck points
     star = system.primary
-    precal_cylindrical = getattr(model, f"pre_calculate_for_potential_value_primary_cylindrical")
-    fn_cylindrical = getattr(model, f"potential_primary_cylindrical_fn")
-    cylindrical_fprime = getattr(model, f"radial_primary_potential_derivative_cylindrical")
+    precal_cylindrical = getattr(model, "pre_calculate_for_potential_value_primary_cylindrical")
+    fn_cylindrical = getattr(model, "potential_primary_cylindrical_fn")
+    cylindrical_fprime = getattr(model, "radial_primary_potential_derivative_cylindrical")
 
     phi = np.zeros(n_points)
     z = np.linspace(0, 1, num=n_points)
-    args = phi, z, components_distance, star.polar_radius, \
-           precal_cylindrical, fn_cylindrical, cylindrical_fprime, \
-           star.surface_potential, system.mass_ratio, 1.0
+    args = \
+        phi, z, components_distance, star.polar_radius, precal_cylindrical, fn_cylindrical, cylindrical_fprime, \
+        star.surface_potential, system.mass_ratio, 1.0
 
     points_neck = get_surface_points_cylindrical(*args)
     x = np.abs(points_neck[:, 2])
@@ -1139,9 +1138,7 @@ def add_spots_to_mesh(system, components_distance, component="all"):
     for component in components:
         star = getattr(system, component)
         mesh_spots(system, components_distance=components_distance, component=component)
-        tm = time()
         incorporate_spots_mesh(star, component_com=component_com[component])
-        settings.TIMER += time() - tm
 
 
 def correct_mesh(system, components_distance=None, component='all'):
@@ -1149,6 +1146,7 @@ def correct_mesh(system, components_distance=None, component='all'):
     Correcting the underestimation of the surface due to the discretization.
 
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
+    :param components_distance: float; distance of components in SMA units
     :param component: str;
     :return: elisa.binary_system.container.OrbitalPositionContainer;
     """
@@ -1160,4 +1158,3 @@ def correct_mesh(system, components_distance=None, component='all'):
         correct_component_mesh(star, com=com[component], correction_factors=CORRECTION_FACTORS[system.morphology])
 
     return system
-

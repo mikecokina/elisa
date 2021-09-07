@@ -20,11 +20,11 @@ def include_passband_data_to_kwargs(**kwargs):
 
 def calculate_surface_element_fluxes(band, star):
     """
-        Function generates outgoing flux from each surface element of given star container in certain band.
+    Function generates outgoing flux from each surface element of given star container in certain band.
 
-        :param star: elisa.base.container.StarContainer; star container with all necessary parameters pre-calculated
-        :param band: str; name of the photometric band compatibile with supported names in config
-        :return: numpy.array
+    :param star: elisa.base.container.StarContainer; star container with all necessary parameters pre-calculated
+    :param band: str; name of the photometric band compatibile with supported names in config
+    :return: numpy.array
     """
     indices = star.indices
     radiance = star.normal_radiance[band][indices]

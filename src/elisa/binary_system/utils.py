@@ -112,11 +112,17 @@ def component_to_list(component):
     return component
 
 
-def move_sys_onpos(init_system, orbital_position, primary_potential=None, secondary_potential=None, on_copy=True,
-                   recalculate_velocities=False):
+def move_sys_onpos(
+        init_system,
+        orbital_position,
+        primary_potential=None,
+        secondary_potential=None,
+        on_copy=True,
+        recalculate_velocities=False
+):
     """
     Prepares a postion container for given orbital position.
-    Supplied `system` is not affected if `on_copy` is set to True.
+    Supplied `system` is not affected (is immutable) if `on_copy` is set to True.
 
     Following methods are applied::
 
