@@ -48,10 +48,11 @@ surface features such as spots (and pulsations which will be added soon). Curren
 
 **ELISa** is currently still under development. Development of the following features is in progress:
 
-We also plan to implement following features:
-
     - extension of ``LC`` and ``RV`` fitting methods using various additional methods and features such as
       classification of eclipsing binaries via ``neural-networks`` aimed towards automatisation of the inverse problem,
+
+We also plan to implement following features:
+
     - addition of synthetic spectral line modelling
 
 Requirements
