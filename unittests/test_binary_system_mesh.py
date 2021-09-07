@@ -78,6 +78,38 @@ class BuildMeshSpotsFreeTestCase(ElisaTestCase):
                                 bad_points.append(point)
                 self.assertFalse(distance < 1e-10)
 
+    def test_outliers(self):
+        """
+        checking if the spacing between vertices is beyond reasonable limits
+        """
+        for params in testutils.BINARY_SYSTEM_PARAMS.values():
+            s = prepare_binary_system(params)
+            # reducing runtime of the test
+            s.primary.discretization_factor = up.radians(8)
+            s.secondary.discretization_factor = up.radians(8)
+            s.init()
+
+            components_distance = s.orbit.orbital_motion(phase=0.0)[0][0]
+
+            orbital_position_container = \
+                OrbitalPositionContainer.from_binary_system(s, Position(*(0, components_distance, 0.0, 0.0, 0.0)))
+
+            orbital_position_container.build_mesh(components_distance=components_distance, component='all')
+            orbital_position_container.build_faces(components_distance=components_distance, component='all')
+
+            primary = orbital_position_container.primary
+            secondary = orbital_position_container.secondary
+            points_p = primary.points[primary.faces]
+            points_s = secondary.points[secondary.faces]
+
+            distances_p = np.linalg.norm(np.diff(points_p, axis=1, prepend=points_p[:, 2:, :]), axis=2)
+            distances_s = np.linalg.norm(np.diff(points_s, axis=1, prepend=points_s[:, 2:, :]), axis=2)
+
+            p_triangle_size = primary.equivalent_radius * np.sin(s.primary.discretization_factor)
+            s_triangle_size = secondary.equivalent_radius * np.sin(s.secondary.discretization_factor)
+            self.assertGreater(3*p_triangle_size, distances_p.max())
+            self.assertGreater(3*s_triangle_size, distances_s.max())
+
 
 class BuildSpottyMeshTestCase(ElisaTestCase):
     def generator_test_mesh(self, key, d):
@@ -202,6 +234,40 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
                                 bad_points.append(point)
 
                 self.assertFalse(spot_distance < 1e-10)
+
+    def test_outliers(self):
+        """
+        checking if the spacing between vertices is beyond reasonable limits
+        """
+        for params in testutils.BINARY_SYSTEM_PARAMS.values():
+            s = prepare_binary_system(params, spots_primary=testutils.SPOTS_META["primary"],
+                                      spots_secondary=testutils.SPOTS_META["secondary"])
+            # reducing runtime of the test
+            s.primary.discretization_factor = up.radians(8)
+            s.secondary.discretization_factor = up.radians(8)
+            s.init()
+
+            components_distance = s.orbit.orbital_motion(phase=0.0)[0][0]
+
+            orbital_position_container = \
+                OrbitalPositionContainer.from_binary_system(s, Position(*(0, components_distance, 0.0, 0.0, 0.0)))
+
+            orbital_position_container.build_mesh(components_distance=components_distance, component='all')
+            orbital_position_container.build_faces(components_distance=components_distance, component='all')
+            # orbital_position_container.flat_it()
+
+            primary = orbital_position_container.primary
+            secondary = orbital_position_container.secondary
+            points_p = primary.get_flatten_parameter("points")[primary.get_flatten_parameter("faces")]
+            points_s = secondary.get_flatten_parameter("points")[secondary.get_flatten_parameter("faces")]
+
+            distances_p = np.linalg.norm(np.diff(points_p, axis=1, prepend=points_p[:, 2:, :]), axis=2)
+            distances_s = np.linalg.norm(np.diff(points_s, axis=1, prepend=points_s[:, 2:, :]), axis=2)
+
+            p_triangle_size = primary.equivalent_radius * np.sin(s.primary.discretization_factor)
+            s_triangle_size = secondary.equivalent_radius * np.sin(s.secondary.discretization_factor)
+            self.assertGreater(4*p_triangle_size, distances_p.max())
+            self.assertGreater(4*s_triangle_size, distances_s.max())
 
 
 class MeshUtilsTestCase(ElisaTestCase):
