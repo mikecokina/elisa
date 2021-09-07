@@ -244,6 +244,9 @@ v0.5
     - atmosphere models are interpolated using flux-based weights instead of temperature based weights
     - calculation of surface element visibility was fixed in cases of eclipses caused by stars smaller than surface
       elements on eclipsed components
+    - starting value for implicit solver adjusted in case of near-side parts of overcontact stars generated in
+      cylindrical symmetry from polar_radius to 0.25 * polar radius. This prevents a crash of solver for points near
+      the neck.
 
 v1.0
 ----
