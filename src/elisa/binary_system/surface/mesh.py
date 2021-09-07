@@ -576,7 +576,7 @@ def get_surface_points_cylindrical(*args):
     phi, z, components_distance, x0, precalc_fn, potential_fn, fprime, potential, q, synchronicity = args
     max_iter = settings.MAX_SOLVER_ITERS
     precalc_vals = precalc_fn(*(synchronicity, q, phi, z, components_distance), return_as_tuple=True)
-    x0 = x0 * np.ones(phi.shape)
+    x0 = np.full(phi.shape, x0)
     radius_kwargs = dict(fprime=fprime, maxiter=max_iter, rtol=1e-10, args=((q,) + precalc_vals, potential))
     radius = opt.newton.newton(potential_fn, x0, **radius_kwargs)
     return utils.cylindrical_to_cartesian(np.column_stack((up.abs(radius), phi, z)))
@@ -833,7 +833,7 @@ def mesh_over_contact(system, component="all", symmetry_output=False):
     x_q1, y_q1, z_q1 = quarter[:, 0], quarter[:, 1], quarter[:, 2]
 
     # solving points on neck
-    args = phi_neck, z_neck, components_distance, star.polar_radius, \
+    args = phi_neck, z_neck, components_distance, 0.25 * star.polar_radius, \
         precal_cylindrical, fn_cylindrical, cylindrical_fprime, \
         star.surface_potential, system.mass_ratio, synchronicity
     logger.debug(f'calculating neck points of {component} component in mesh_overcontact '
