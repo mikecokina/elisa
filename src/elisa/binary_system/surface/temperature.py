@@ -40,7 +40,7 @@ def redistribute_temperatures(in_system, temperatures):
     return in_system
 
 
-def reflection_effect(system, components_distance, iterations):
+def apply_reflection_effect(system, components_distance, iterations):
     """
     Alter temperatures of components to involve reflection effect.
 
@@ -83,7 +83,7 @@ def reflection_effect(system, components_distance, iterations):
         star = getattr(system, component)
 
         points[component], faces[component], centres[component], normals[component], temperatures[component], \
-        areas[component], log_g[component] = init_surface_variables(star)
+            areas[component], log_g[component] = init_surface_variables(star)
 
         # test for visibility of star faces
         vis_test[component], vis_test_symmetry[component] = bsfaces.get_visibility_tests(centres[component],
@@ -98,7 +98,7 @@ def reflection_effect(system, components_distance, iterations):
 
                 # merge surface and spot face parameters into one variable
                 centres[component], normals[component], temperatures[component], areas[component], \
-                vis_test[component], log_g[component] = \
+                    vis_test[component], log_g[component] = \
                     include_spot_to_surface_variables(centres[component], spot.face_centres,
                                                       normals[component], spot.normals,
                                                       temperatures[component], spot.temperatures,
@@ -255,8 +255,8 @@ def build_temperature_distribution(system, components_distance, component="all")
     Function calculates temperature distribution on across all faces.
 
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
-    :param components_distance: str;
-    :param component: `primary` or `secondary`
+    :param components_distance: float; distance of components in SMA units
+    :param component: str; `primary` or `secondary`
     :return: system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     if is_empty(component):
@@ -287,9 +287,8 @@ def build_temperature_distribution(system, components_distance, component="all")
         renormalize_temperatures(star)
 
     if 'primary' in components and 'secondary' in components:
-        logger.debug(f'calculating reflection effect with {settings.REFLECTION_EFFECT_ITERATIONS} '
-                     f'iterations.')
-        reflection_effect(system, components_distance, settings.REFLECTION_EFFECT_ITERATIONS)
+        logger.debug(f'calculating reflection effect with {settings.REFLECTION_EFFECT_ITERATIONS} iterations.')
+        apply_reflection_effect(system, components_distance, settings.REFLECTION_EFFECT_ITERATIONS)
     return system
 
 

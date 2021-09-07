@@ -50,8 +50,8 @@ class Observer(object):
         After initialization, the following attributes are available for each instances of Observer class:
 
             - left_bandwidth, right_bandwidth: the smallest interval of wavelengths encompassing all desired passbands
-            - passband: {passband1: PassbandContainer, ...}, dictionary containing the PassbandContainer (response curve of
-              the filter) corresponding to each passband.
+            - passband: {passband1: PassbandContainer, ...}, dictionary containing the PassbandContainer
+              (response curve of the filter) corresponding to each passband.
 
         :param passband: Union[string, list]; for valid filter name see settings.py file
         :param system: Union[SingleSystem, BinarySystem]; system instance (BinarySystem or SingleSystem)
@@ -135,7 +135,7 @@ class Observer(object):
         :return: pandas.DataFrame;
         """
         if passband not in settings.PASSBANDS:
-            raise ValueError('Invalid or unsupported passband function')
+            raise ValueError('Invalid or unsupported passband function.')
         file_path = os.path.join(settings.PASSBAND_TABLES, str(passband) + '.csv')
         df = pd.read_csv(file_path)
         df[settings.PASSBAND_DATAFRAME_WAVE] = df[settings.PASSBAND_DATAFRAME_WAVE] * 10.0
@@ -297,7 +297,7 @@ class Observer(object):
             return phases, up.arange(phases.shape[0], dtype=np.int)
 
         else:
-            raise NotImplemented("not implemented")
+            raise NotImplemented("Not implemented.")
 
     def manage_time_series(self, from_phase=None, to_phase=None, phase_step=None, phases=None,
                            from_time=None, to_time=None, time_step=None, times=None):
@@ -321,9 +321,9 @@ class Observer(object):
                   "`phase_step` or `phases` or from time-domain parameters: `from_time`, `to_time`, " \
                   "`time_step` or `times`."
         if not (phases_supplied or times_supplied):
-            raise ValueError("Missing arguments. " + message)
+            raise ValueError("Missing arguments.\n" + message)
         if phases_supplied and times_supplied:
-            raise ValueError("You specified time series in phase and time domain at once. " + message)
+            raise ValueError("You specified time series in phase and time domain at once.\n" + message)
 
         if times_supplied:
             if is_empty(times):

@@ -99,6 +99,7 @@ class OrbitalPositionContainer(PositionContainer):
         self.build_mesh(components_distance, component)
         self.build_from_points(components_distance, component)
 
+        # flatt it: from this point we do not require separated information about spots
         self.flat_it()
         if build_pulsations:
             self.build_pulsations(components_distance=components_distance, component=component)
@@ -111,7 +112,7 @@ class OrbitalPositionContainer(PositionContainer):
     def build_from_points(self, components_distance=None, component="all"):
         """
         Function is used on container to build container on which only bulid_mesh was performed. Function builds the
-        rest.
+        rest of geometries
 
         Order of methods::
 
@@ -122,9 +123,15 @@ class OrbitalPositionContainer(PositionContainer):
             - correct_mesh
             - build_surface_areas
 
+        and temperatures.
+
+        Order of methods::
+
+            - build_temperature_distribution
+
         :param component: str; `primary` or `secondary`
         :param components_distance: float; distance of components is SMA units
-        :return: OrbitalPositionContainer;
+        :return: OrbitalPositionContainer; self
         """
         self.build_faces_and_kinematic_quantities(components_distance, component)
         self.build_temperature_distribution(components_distance, component)
@@ -132,8 +139,9 @@ class OrbitalPositionContainer(PositionContainer):
 
     def build_faces_and_kinematic_quantities(self, components_distance=None, component="all"):
         """
-        Function is used on container to build container on which only bulid_mesh was performed. Function builds the
-        rest except for build_temperature_distribution.
+        Function is used on container to build container on which only
+        bulid_mesh was performed. Function builds the rest except for
+        build_temperature_distribution.
 
         :param component: str; `primary` or `secondary`
         :param components_distance: float; distance of components is SMA units

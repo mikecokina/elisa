@@ -8,19 +8,20 @@ def correct_component_mesh(star, com, correction_factors):
     Correcting the underestimation of the surface due to the discretization.
 
     :param correction_factors: numpy.array; (2*N) [discretization factor, correction factor],
+    :param com: float; position of center of mass of the system
     :param star: elisa.base.container.StarContainer;
     :return: elisa.base.container.StarContainer;
     """
-    comv = np.array([com, 0, 0])
+    com_vector = np.array([com, 0, 0])
     args = (star.discretization_factor, correction_factors)
-    centered_points = utils.discretization_correction_factor(*args) * (star.points - comv[None, :])
-    star.points = centered_points + comv[None, :]
+    centered_points = utils.discretization_correction_factor(*args) * (star.points - com_vector[None, :])
+    star.points = centered_points + com_vector[None, :]
 
     if star.has_spots():
         for spot in star.spots.values():
             args = (spot.discretization_factor, correction_factors)
-            centered_points = utils.discretization_correction_factor(*args) * (spot.points - comv[None, :])
-            spot.points = centered_points + comv[None, :]
+            centered_points = utils.discretization_correction_factor(*args) * (spot.points - com_vector[None, :])
+            spot.points = centered_points + com_vector[None, :]
 
     return star
 

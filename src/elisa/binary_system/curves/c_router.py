@@ -17,7 +17,7 @@ from ... import settings
 from ... logger import getLogger
 
 
-logger = getLogger('binary_system.curves.curves')
+logger = getLogger('binary_system.curves.c_router')
 
 
 def resolve_curve_method(system, curve: str):
@@ -57,10 +57,10 @@ def resolve_curve_method(system, curve: str):
 
     if is_circular:
         if asynchronous_spotty_test:
-            logger.debug('Calculating curve for circular binary system with with asynchronous spotty components.')
+            logger.debug('calculating curve for circular binary system with with asynchronous spotty components')
             return fn_array[1]
         elif system.has_pulsations():
-            logger.debug('Calculating curve for circular binary system with pulsations without asynchronous spots.')
+            logger.debug('calculating curve for circular binary system with pulsations without asynchronous spots')
             return fn_array[2]
         else:
             logger.debug('Calculating curve for circular binary system without '
@@ -68,10 +68,10 @@ def resolve_curve_method(system, curve: str):
             return fn_array[0]
     elif is_eccentric:
         if spotty_test_eccentric:
-            logger.debug('Calculating curve for eccentric binary system with spotty components.')
+            logger.debug('calculating curve for eccentric binary system with spotty components')
             return fn_array[3]
         else:
-            logger.debug('Calculating curve for eccentric binary system without spotty components.')
+            logger.debug('calculating curve for eccentric binary system without spotty components')
             return fn_array[4]
 
     raise NotImplementedError("Orbit type not implemented or invalid.")
@@ -179,7 +179,7 @@ def produce_ecc_curves_no_spots(binary, curve_fn, crv_labels, **kwargs):
     integration approximations are evaluated and performed.
 
     :param binary: elisa.binary_system.system.BinarySystem;
-    :param curve_fn: curve generator function
+    :param curve_fn: generator function of curve point
     :param crv_labels: labels of the calculated curves (passbands, components,...)
     :param kwargs: Dict;
     :**kwargs options**:
@@ -194,53 +194,26 @@ def produce_ecc_curves_no_spots(binary, curve_fn, crv_labels, **kwargs):
     # curve has to have enough point on orbit and have to span at least in 0.8 phase
 
     # this will remove large gap in phases
-    max_diff = np.diff(np.sort(phases), n=1).max()
+    max_diff = np.max(np.diff(np.sort(phases), n=1))
     phases_span_test = np.max(phases) - np.min(phases) - max_diff >= 0.79
 
     position_method = kwargs.pop("position_method")
     try_to_find_appx = c_appx_router.look_for_approximation(not binary.has_pulsations())
 
-    curve_fn_list = [
-        integrate_eccentric_curve_exactly,
-        c_appx_router.integrate_eccentric_curve_appx_one,
-        c_appx_router.integrate_eccentric_curve_appx_two,
-        c_appx_router.integrate_eccentric_curve_appx_three
-    ]
     appx_uid, run = \
         c_appx_router.resolve_ecc_approximation_method(binary, phases, position_method, try_to_find_appx,
-                                                       phases_span_test, curve_fn_list, crv_labels, curve_fn, **kwargs)
+                                                       phases_span_test, crv_labels, curve_fn, **kwargs)
 
     logger_messages = {
         'zero': 'curve will be calculated in a rigorous `phase to phase manner` without approximations',
         'one': 'one half of the curve points on the one side of the apsidal line will be interpolated',
         'two': 'geometry of the stellar surface on one half of the apsidal '
-               'line will be copied from their close symmetrical counterparts',
-        'three': 'surface geometry at some orbital positions will not be recalculated due to similarities to previous '
-                 'orbital positions'
+               'line will be copied from their closest symmetrical counterparts',
+        'three': 'surface geometry at some orbital positions will not be recalculated from scratch due to '
+                 'similarities to previous orbital positions instead the previous most similar shape will be used'
     }
     logger.info(logger_messages.get(appx_uid))
     return run()
-
-
-def integrate_eccentric_curve_exactly(binary, orbital_motion, potentials, crv_labels, curve_fn, **kwargs):
-    """
-    Function calculates curves for eccentric orbit for selected filters.
-    Curve is calculated exactly for each OrbitalPosition.
-    It is very slow and it should be used only as a benchmark.
-
-    :param binary: elisa.binary_system.system.BinarySystem; instance
-    :param orbital_motion: list of all OrbitalPositions at which curve will be calculated
-    :param potentials: Dict; corrected potentials
-    :param kwargs: kwargs taken from `produce_eccentric_curve` function
-    :param crv_labels: labels of the calculated curves (passbands, components,...)
-    :param curve_fn: curve function
-    :return: Dict; dictionary of fluxes for each filter
-    """
-    # surface potentials with constant volume of components
-    fn_args = (binary, potentials, None, crv_labels, curve_fn)
-    curves = manage_observations(fn=c_managed.integrate_eccentric_curve_exactly, fn_args=fn_args,
-                                 position=orbital_motion, **kwargs)
-    return curves
 
 
 def produce_ecc_curves_with_spots(binary, curve_fn, crv_labels, **kwargs):

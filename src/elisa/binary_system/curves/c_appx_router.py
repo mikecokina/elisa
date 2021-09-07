@@ -9,8 +9,11 @@ from .. curves import (
 from ... logger import getLogger
 from ... import utils, settings, const
 from ... binary_system.orbit.container import OrbitalSupplements
-from ... binary_system.orbit.orbit import component_distance_from_mean_anomaly, get_approx_ecl_angular_width, Orbit
 from ... observer.mp_manager import manage_observations
+from ... binary_system.orbit.orbit import (
+    component_distance_from_mean_anomaly,
+    get_approx_ecl_angular_width
+)
 
 
 logger = getLogger("binary_system.curves.c_appx_router")
@@ -30,8 +33,16 @@ def look_for_approximation(not_pulsations_test):
     return appx and not_pulsations_test
 
 
-def resolve_ecc_approximation_method(binary, phases, position_method, try_to_find_appx, phases_span_test,
-                                     approx_method_list, crv_labels, curve_fn, **kwargs):
+def resolve_ecc_approximation_method(
+        binary,
+        phases,
+        position_method,
+        try_to_find_appx,
+        phases_span_test,
+        crv_labels,
+        curve_fn,
+        **kwargs
+):
     """
     Resolve and return approximation method to compute lightcurve in case of eccentric orbit.
     Return value is lambda function with already prepared params.
@@ -41,10 +52,6 @@ def resolve_ecc_approximation_method(binary, phases, position_method, try_to_fin
     :param position_method: function;
     :param try_to_find_appx: bool;
     :param phases_span_test: bool; test if phases coverage is sufiicient for phases mirroring along apsidal line
-    :param approx_method_list: List; curve generator functions [exact curve integrator,
-                                                           interpolation on apsidaly symmetrical points,
-                                                           copying geometry from apsidaly symmetrical points,
-                                                           geometry similarity]
     :param crv_labels: labels of the calculated curves (passbands, components,...)
     :param curve_fn: curve function
     :param kwargs: Dict;
@@ -53,6 +60,13 @@ def resolve_ecc_approximation_method(binary, phases, position_method, try_to_fin
             * ** right_bandwidth ** * - float
     :return: lambda;
     """
+    approx_method_list = [
+        integrate_eccentric_curve_exactly,
+        integrate_eccentric_curve_appx_one,
+        integrate_eccentric_curve_appx_two,
+        integrate_eccentric_curve_appx_three
+    ]
+
     params = dict(input_argument=phases, return_nparray=True, calculate_from='phase')
     all_orbital_pos_arr = position_method(**params)
     all_orbital_pos = utils.convert_binary_orbital_motion_arr_to_positions(all_orbital_pos_arr)
@@ -101,8 +115,13 @@ def resolve_ecc_approximation_method(binary, phases, position_method, try_to_fin
 
 
 # *******************************************evaluate_approximations****************************************************
-def eval_approximation_one(binary, phases_span_test, reduced_orbit_array, counterpart_position_array,
-                           reduced_orbit_supplement_arr):
+def eval_approximation_one(
+        binary,
+        phases_span_test,
+        reduced_orbit_array,
+        counterpart_position_array,
+        reduced_orbit_supplement_arr
+):
     """
     Test if it is possible to compute eccentric binary system with approximation approximation one.
 
@@ -234,8 +253,17 @@ def eval_approximation_three(binary, radii, all_orbital_pos_arr):
 
 
 # *******************************************approximation curve_methods************************************************
-def integrate_eccentric_curve_appx_one(binary, radii, phases, reduced_orbit_arr, counterpart_postion_arr, potentials,
-                                       crv_labels, curve_fn, **kwargs):
+def integrate_eccentric_curve_appx_one(
+        binary,
+        radii,
+        phases,
+        reduced_orbit_arr,
+        counterpart_postion_arr,
+        potentials,
+        crv_labels,
+        curve_fn,
+        **kwargs
+):
     """
     Function calculates curves for eccentric orbits for selected filters using approximation
     where curve points on the one side of the apsidal line are calculated exactly and the second
@@ -297,8 +325,16 @@ def integrate_eccentric_curve_appx_one(binary, radii, phases, reduced_orbit_arr,
     return band_curves
 
 
-def integrate_eccentric_curve_appx_two(binary, radii, phases, orbital_supplements, potentials, crv_labels, curve_fn,
-                                       **kwargs):
+def integrate_eccentric_curve_appx_two(
+        binary,
+        radii,
+        phases,
+        orbital_supplements,
+        potentials,
+        crv_labels,
+        curve_fn,
+        **kwargs
+):
     """
     Function calculates curve for eccentric orbit using
     approximation where to each OrbitalPosition on one side of the apsidal line,
@@ -319,7 +355,7 @@ def integrate_eccentric_curve_appx_two(binary, radii, phases, orbital_supplement
     :return: Dict[str, numpy.array];
     """
     orbital_positions = np.stack((orbital_supplements.body, orbital_supplements.mirror), axis=1)
-    fn_args = (binary, potentials, radii, crv_labels, curve_fn)
+    fn_args = binary, potentials, radii, crv_labels, curve_fn
 
     stacked_band_curves = manage_observations(fn=c_managed.integrate_eccentric_curve_w_orbital_symmetry,
                                               fn_args=fn_args,
@@ -329,17 +365,24 @@ def integrate_eccentric_curve_appx_two(binary, radii, phases, orbital_supplement
     # re-arranging points to original order
     band_curves = {key: np.empty(phases.shape) for key in crv_labels}
     for lbl in crv_labels:
-        base_idxs = np.array(orbital_supplements.body[:, 0], dtype=np.int)
+        base_idxs = np.array(orbital_supplements.body[:, 0], dtype=np.int32)
         band_curves[lbl][base_idxs] = stacked_band_curves[lbl][:, 0]
         not_nan_test = ~np.isnan(orbital_supplements.mirror[:, 0])
-        mirror_idxs = np.array(orbital_supplements.mirror[not_nan_test, 0], dtype=np.int)
+        mirror_idxs = np.array(orbital_supplements.mirror[not_nan_test, 0], dtype=np.int32)
         band_curves[lbl][mirror_idxs] = stacked_band_curves[lbl][not_nan_test, 1]
 
     return band_curves
 
 
-def integrate_eccentric_curve_appx_three(binary, orbital_positions, new_geometry_mask, potentials, crv_labels,
-                                         curve_fn, **kwargs):
+def integrate_eccentric_curve_appx_three(
+        binary,
+        orbital_positions,
+        new_geometry_mask,
+        potentials,
+        crv_labels,
+        curve_fn,
+        **kwargs
+):
     """
     Function calculates curve for eccentric orbit using approximation where surface is not fully recalculated between
     sufficiently similar neighbouring orbital positions.
@@ -357,7 +400,7 @@ def integrate_eccentric_curve_appx_three(binary, orbital_positions, new_geometry
             * ** right_bandwidth ** * - float
     :return: Dict[str, numpy.array];
     """
-    fn_args = (binary, potentials, new_geometry_mask, crv_labels, curve_fn)
+    fn_args = binary, potentials, new_geometry_mask, crv_labels, curve_fn
 
     band_curves_unsorted = manage_observations(fn=c_managed.integrate_eccentric_curve_approx_three,
                                                fn_args=fn_args,
@@ -366,3 +409,24 @@ def integrate_eccentric_curve_appx_three(binary, orbital_positions, new_geometry
 
     # re-arranging points to original order
     return {key: band_curves_unsorted[key][orbital_positions[:, 0].argsort()] for key in crv_labels}
+
+
+def integrate_eccentric_curve_exactly(binary, orbital_motion, potentials, crv_labels, curve_fn, **kwargs):
+    """
+    Function calculates curves for eccentric orbit for selected filters.
+    Curve is calculated exactly for each OrbitalPosition.
+    It is very slow and it should be used only as a benchmark.
+
+    :param binary: elisa.binary_system.system.BinarySystem; instance
+    :param orbital_motion: list of all OrbitalPositions at which curve will be calculated
+    :param potentials: Dict; corrected potentials
+    :param kwargs: kwargs taken from `produce_eccentric_curve` function
+    :param crv_labels: labels of the calculated curves (passbands, components,...)
+    :param curve_fn: curve function
+    :return: Dict; dictionary of fluxes for each filter
+    """
+    # surface potentials with constant volume of components
+    fn_args = (binary, potentials, None, crv_labels, curve_fn)
+    curves = manage_observations(fn=c_managed.integrate_eccentric_curve_exactly, fn_args=fn_args,
+                                 position=orbital_motion, **kwargs)
+    return curves

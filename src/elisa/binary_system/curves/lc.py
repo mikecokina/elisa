@@ -11,7 +11,6 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
     """
     Compute light curve for synchronous circular binary system.
 
-
     :param binary: elisa.binary_system.system.BinarySystem;
     :param kwargs: Dict;
     :**kwargs options**:
@@ -24,7 +23,7 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
     """
     initial_system = c_router.prep_initial_system(binary)
 
-    lc_labels = list(kwargs["passband"].keys())
+    lc_labels = [*kwargs["passband"].keys()]
     phases = kwargs.pop("phases")
     unique_phase_interval, reverse_phase_map = dynamic.phase_crv_symmetry(initial_system, phases)
 
@@ -85,7 +84,7 @@ def compute_eccentric_lightcurve_no_spots(binary, **kwargs):
         * ** atlas ** - str
     :return: Dict; fluxes for each filter
     """
-    lc_labels = list(kwargs["passband"].keys())
+    lc_labels = [*kwargs["passband"].keys()]
     return c_router.produce_ecc_curves_no_spots(binary, lc_point.compute_lc_on_pos, lc_labels, **kwargs)
 
 
