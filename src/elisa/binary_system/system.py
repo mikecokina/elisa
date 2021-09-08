@@ -281,7 +281,8 @@ class BinarySystem(System):
         logger.debug("setting up morphological classification of binary system")
         self.morphology: str = self.compute_morphology()
 
-        self.setup_components_radii(components_distance=self.orbit.periastron_distance)
+        self.setup_components_radii(components_distance=self.orbit.periastron_distance,
+                                    calculate_equivalent_radius=True)
         self.setup_betas()
         self.setup_albedos()
         self.assign_pulsations_amplitudes(normalisation_constant=self.semi_major_axis)
@@ -942,13 +943,12 @@ class BinarySystem(System):
         # return retval, positions if return_nparray else retval
         return positions if return_nparray else [const.Position(*p) for p in positions]
 
-    def setup_components_radii(self, components_distance, calculate_equivalent_radius=True):
+    def calculate_components_radii(self, components_distance):
         """
-        Setup component radii.
+        Calculate component radii.
         Use methods to calculate polar, side, backward and if not W UMa also
         forward radius and assign to component instance.
 
-        :param calculate_equivalent_radius: bool; some application do not require calculation of equivalent radius
         :param components_distance: float; distance of components in SMA unit
         """
         fns = [bsradius.calculate_polar_radius, bsradius.calculate_side_radius, bsradius.calculate_backward_radius]
@@ -960,28 +960,48 @@ class BinarySystem(System):
             corrected_potential = self.correct_potentials(distances=np.array([components_distance, ]))
             corrected_potential = {component: corrected_potential[component][0] for component in components}
 
+        radii = dict(primary=dict(), secondary=dict())
         for component in components:
             instance: Star = getattr(self, component)
+
+            kwargs = dict(synchronicity=instance.synchronicity,
+                          mass_ratio=self.mass_ratio,
+                          components_distance=components_distance,
+                          surface_potential=corrected_potential[component],
+                          component=component)
 
             for fn in fns:
                 logger.debug(f'initialising {" ".join(str(fn.__name__).split("_")[1:])} '
                              f'for {component} component')
 
                 param_name = f'{"_".join(str(fn.__name__).split("_")[1:])}'
-                kwargs = dict(synchronicity=instance.synchronicity,
-                              mass_ratio=self.mass_ratio,
-                              components_distance=components_distance,
-                              surface_potential=corrected_potential[component],
-                              component=component)
                 r = fn(**kwargs)
-                setattr(instance, param_name, r)
-                if self.morphology != 'over-contact':
-                    r = bsradius.calculate_forward_radius(**kwargs)
-                    setattr(instance, 'forward_radius', r)
+                radii[component][param_name] = r
 
-            # setting value of equivalent radius
+            if self.morphology != 'over-contact':
+                radii[component]['forward_radius'] = bsradius.calculate_forward_radius(**kwargs)
+
+        return radii
+
+    def setup_components_radii(self, components_distance, calculate_equivalent_radius=True):
+        """
+        Setup component radii.
+        Use methods to calculate equivalent, polar, side, backward and if not W UMa also
+        forward radius and assign to component instance.
+
+        :param calculate_equivalent_radius: bool; some application do not require calculation of equivalent radius
+        :param components_distance: float; distance of components in SMA unit
+        """
+        radii = self.calculate_components_radii(components_distance)
+
+        for component, rs in radii.items():
+            instance: Star = getattr(self, component)
+
+            for key, value in rs.items():
+                setattr(instance, key, value)
+
             if calculate_equivalent_radius:
-                instance.equivalent_radius = self.calculate_equivalent_radius(component=component)[component]
+                setattr(instance, 'equivalent_radius', self.calculate_equivalent_radius(component)[component])
 
     def setup_albedos(self):
         """

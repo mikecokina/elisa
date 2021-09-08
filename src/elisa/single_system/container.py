@@ -49,7 +49,6 @@ class SinglePositionContainer(PositionContainer):
     @classmethod
     def from_single_system(cls, single_system, position):
         star = StarContainer.from_star_instance(single_system.star)
-        star.assign_radii(single_system.star)
         return cls(star, position, **single_system.properties_serializer())
 
     def copy(self):

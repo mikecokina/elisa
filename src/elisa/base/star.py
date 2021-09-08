@@ -234,8 +234,13 @@ class Star(Body):
             self._pulsations = {idx: PulsationMode(**pulsation_meta) for idx, pulsation_meta in enumerate(pulsations)}
 
     def properties_serializer(self):
-        properties_list = ['mass', 't_eff', 'synchronicity', 'albedo', 'discretization_factor', 'polar_radius',
-                           'equatorial_radius', 'gravity_darkening', 'surface_potential', 'pulsations',
+        """
+        Prepares properties to be inherited from Star instance by StarContainer instance.
+
+        :return: Dict;
+        """
+        properties_list = ['mass', 't_eff', 'synchronicity', 'albedo', 'discretization_factor', 'equivalent_radius',
+                           'polar_radius', 'equatorial_radius', 'gravity_darkening', 'surface_potential', 'pulsations',
                            'metallicity', 'polar_log_g', 'critical_surface_potential', 'atmosphere',
                            # todo: remove side_radius when figured out starting point for solver
                            'side_radius']

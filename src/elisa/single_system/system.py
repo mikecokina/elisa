@@ -203,7 +203,7 @@ class SingleSystem(System):
         self.check_stability()
 
         # this is also check if star surface is closed
-        self.setup_radii()
+        self.setup_radii(calculate_equivalent_radius=True)
         self.setup_betas()
         self.assign_pulsations_amplitudes()
         self.setup_discretisation_factor()
@@ -377,11 +377,14 @@ class SingleSystem(System):
         """
         return False
 
-    def setup_radii(self):
+    def calculate_radii(self):
         """
-        Auxiliary function for calculation of important radii.
+        Calculates important radii.
+
+        :return: Dict;
         """
         fns = [sradius.calculate_polar_radius, sradius.calculate_equatorial_radius]
+        radii = dict(star=dict())
         for fn in fns:
             logger.debug(f'initialising {" ".join(str(fn.__name__).split("_")[1:])} for the star')
             param = f'{"_".join(str(fn.__name__).split("_")[1:])}'
@@ -393,9 +396,22 @@ class SingleSystem(System):
             except Exception as e:
                 raise ValueError(f'Function {fn.__name__} was not able to calculate its radius. '
                                  f'Your system is not physical. Exception: {str(e)}')
-            setattr(self.star, param, r)
+            radii['star'][param] = r
 
-        setattr(self.star, 'equivalent_radius', self.calculate_equivalent_radius())
+        return radii
+
+    def setup_radii(self, calculate_equivalent_radius=True):
+        """
+        Auxiliary function for calculation of important radii.
+        """
+        radii = self.calculate_radii()
+        instance: Star = getattr(self, 'star')
+
+        for key, value in radii['star'].items():
+            setattr(instance, key, value)
+
+        if calculate_equivalent_radius:
+            setattr(instance, 'equivalent_radius', self.calculate_equivalent_radius())
 
     @property
     def components(self):

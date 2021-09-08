@@ -567,13 +567,15 @@ class StarContainer(object):
         centres = utils.cartesian_to_spherical(centres_cartesian)
         return centres
 
-    def assign_radii(self, star):
-        self.polar_radius = getattr(star, 'polar_radius')
-        self.forward_radius = getattr(star, 'forward_radius')
-        self.side_radius = getattr(star, 'side_radius')
-        self.backward_radius = getattr(star, 'backward_radius')
-        self.equatorial_radius = getattr(star, 'equatorial_radius')
-        self.equivalent_radius = getattr(star, 'equivalent_radius')
+    def assign_radii(self, radii):
+        """
+        Function automatically assigns radii stored in radii dict.
+
+        :param radii: Dict; {radius_type: value, ...}
+        :return: None;
+        """
+        for key, value in radii.items():
+            setattr(self, key, value)
 
     def symmetry_points(self):
         """
