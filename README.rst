@@ -245,7 +245,13 @@ Now you are all setup and ready to code.
 
 Usage
 -------
-For in depth tutorials, see directory ``elisa/jupyter_tutorials``
+For in depth tutorials, see directory ``elisa/jupyter_tutorials``.
+
+
+Physics
+-------
+
+See [ELISa handbook](./ELISa_handbook.pdf) to see how ELISa models single and binary systems.
 
 
 Available passbands
