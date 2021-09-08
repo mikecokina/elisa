@@ -251,7 +251,9 @@ For in depth tutorials, see directory ``elisa/jupyter_tutorials``.
 Physics
 -------
 
-See [ELISa handbook](./ELISa_handbook.pdf) to see how ELISa models single and binary systems.
+See ELISa handbook_ to see how ELISa models single and binary systems.
+
+.. _handbook: https://github.com/mikecokina/elisa/blob/dev/ELISa_handbook.pdf
 
 
 Available passbands
