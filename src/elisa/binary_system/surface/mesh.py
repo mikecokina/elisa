@@ -1092,7 +1092,7 @@ def calculate_neck_position(system, return_polynomial=False):
     phi = np.zeros(n_points)
     z = np.linspace(0, 1, num=n_points)
     args = \
-        phi, z, components_distance, 0.1 * star.polar_radius, precal_cylindrical, fn_cylindrical, cylindrical_fprime, \
+        phi, z, components_distance, 0.5 * star.polar_radius, precal_cylindrical, fn_cylindrical, cylindrical_fprime, \
         star.surface_potential, system.mass_ratio, 1.0
 
     points_neck = get_surface_points_cylindrical(*args)
