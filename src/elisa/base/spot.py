@@ -94,6 +94,15 @@ class Spot(object):
         """
         return u.DEFAULT_SPOT_INPUT_UNITS
 
+    @property
+    def default_internal_units(self):
+        """
+        Returns set of internal units of Spot parameters.
+
+        :return: Dict;
+        """
+        return u.DEFAULT_SPOT_UNITS
+
     @staticmethod
     def transform_input(**kwargs):
         return SpotProperties.transform_input(**kwargs)

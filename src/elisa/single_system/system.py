@@ -222,6 +222,15 @@ class SingleSystem(System):
         """
         return units.DEFAULT_SINGLE_SYSTEM_INPUT_UNITS
 
+    @property
+    def default_internal_units(self):
+        """
+        Returns set of internal units of system parameters.
+
+        :return: Dict;
+        """
+        return units.DEFAULT_SINGLE_SYSTEM_UNITS
+
     @classmethod
     def from_json(cls, data, _verify=True, _kind_of=None):
         """

@@ -149,7 +149,16 @@ class Star(Body):
 
         :return: Dict;
         """
-        return u.DEFAULT_PULSATIONS_INPUT_UNITS
+        return u.DEFAULT_STAR_INPUT_UNITS
+
+    @property
+    def default_internal_units(self):
+        """
+        Returns set of internal units of Star parameters.
+
+        :return: Dict;
+        """
+        return u.DEFAULT_STAR_UNITS
 
     def transform_input(self, **kwargs):
         """

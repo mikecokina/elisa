@@ -73,6 +73,15 @@ class PulsationMode(object):
         """
         return units.DEFAULT_PULSATIONS_INPUT_UNITS
 
+    @property
+    def default_internal_units(self):
+        """
+        Returns set of internal units of Star parameters.
+
+        :return: Dict;
+        """
+        return units.DEFAULT_PULSATIONS_UNITS
+
     @staticmethod
     def transform_input(**kwargs):
         """
