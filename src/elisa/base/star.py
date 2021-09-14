@@ -142,6 +142,15 @@ class Star(Body):
 
         self.init_parameters(**kwargs)
 
+    @property
+    def default_input_units(self):
+        """
+        Returns set of default units of intialization parameters, in case, when provided without units.
+
+        :return: Dict;
+        """
+        return u.DEFAULT_PULSATIONS_INPUT_UNITS
+
     def transform_input(self, **kwargs):
         """
         Transform and validate input kwargs.

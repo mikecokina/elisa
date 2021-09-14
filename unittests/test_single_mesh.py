@@ -72,6 +72,8 @@ class MeshUtilsTestCase(ElisaTestCase):
                 "mass": 1.0,
                 "t_eff": 5772 * u.K,
                 "gravity_darkening": 0.32,
+                # "polar_log_g": '4.43775 dex(cm / s2)',
+                # "polar_log_g": 4.43775 * u.dex(u.cm/u.s**2),
                 "polar_log_g": 4.43775,
                 "gamma": 0.0,
                 "inclination": 90.0 * u.deg,
@@ -85,7 +87,7 @@ class MeshUtilsTestCase(ElisaTestCase):
         return [prepare_single_system(combo) for combo in self.params_combination]
 
     def test_surface_potential_from_polar_log_g(self):
-        expected = np.round(np.array([-1.90691272573e+12]), -7)
+        expected = np.round(np.array([-1.90691272573e+11]), -7)
         obtained = list()
 
         for ss in self._singles:

@@ -85,6 +85,15 @@ class Spot(object):
 
         self.init_properties(**self.kwargs)
 
+    @property
+    def default_input_units(self):
+        """
+        Returns set of default units of intialization parameters, in case, when provided without units.
+
+        :return: Dict;
+        """
+        return u.DEFAULT_SPOT_INPUT_UNITS
+
     @staticmethod
     def transform_input(**kwargs):
         return SpotProperties.transform_input(**kwargs)

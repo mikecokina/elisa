@@ -8,7 +8,7 @@ from jsonschema import (
 
 from .. base.error import YouHaveNoIdeaError
 from .. import const, utils, settings, units
-from .. base.transform import BodyProperties, SystemProperties
+from .. base.transform import StarProperties, SystemProperties
 
 
 def move_sys_onpos(system, position, on_copy=True):
@@ -120,7 +120,7 @@ def transform_json_radius_to_std(data):
         rho = equatorial_to_polar_radius(r_eq, period, mass)
         return r_eq / np.power(rho, 2.0/3.0)
 
-    mass = (BodyProperties.mass(data['star']['mass']) * units.MASS_UNIT).to(units.kg).value
+    mass = (StarProperties.mass(data['star']['mass']) * units.MASS_UNIT).to(units.kg).value
     # default unit of radius is the same as for the semi-major axis
     radius = (SystemProperties.semi_major_axis(data['star'].pop('equivalent_radius'))
               * units.DISTANCE_UNIT).to(units.m).value

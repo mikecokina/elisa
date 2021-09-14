@@ -16,6 +16,7 @@ from . container import SinglePositionContainer
 from .. logger import getLogger
 from .. import const
 from .. import (
+    units,
     utils,
     const as c,
 )
@@ -211,6 +212,15 @@ class SingleSystem(System):
         # setting common reference to emphemeris
         self.period = self.rotation_period
         self.t0 = self.reference_time
+
+    @property
+    def default_input_units(self):
+        """
+        Returns set of default units of intialization parameters, in case, when provided without units.
+
+        :return: Dict;
+        """
+        return units.DEFAULT_SINGLE_SYSTEM_INPUT_UNITS
 
     @classmethod
     def from_json(cls, data, _verify=True, _kind_of=None):

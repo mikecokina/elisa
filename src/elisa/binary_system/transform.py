@@ -1,6 +1,7 @@
 import numpy as np
 
 from .. import units, const
+from .. units import DEFAULT_BINARY_SYSTEM_INPUT_UNITS as DEF_U
 from .. base.transform import SystemProperties, WHEN_FLOAT64, quantity_transform
 
 
@@ -31,7 +32,7 @@ class BinarySystemProperties(SystemProperties):
             value = units.Quantity(value) if isinstance(value, str) else value
             value = np.float64(value.to(units.ARC_UNIT))
         elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64((value * units.deg).to(units.ARC_UNIT))
+            value = np.float64((value * DEF_U['system']['argument_of_periastron']).to(units.ARC_UNIT))
         else:
             raise TypeError('Input of variable `argument_of_periastron` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')

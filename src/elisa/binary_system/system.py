@@ -293,6 +293,15 @@ class BinarySystem(System):
         # setting common reference to emphemeris
         self.t0: float = self.primary_minimum_time
 
+    @property
+    def default_input_units(self):
+        """
+        Returns set of default units of intialization parameters, in case, when provided without an units.
+
+        :return: Dict;
+        """
+        return u.DEFAULT_BINARY_SYSTEM_INPUT_UNITS
+
     @classmethod
     def from_json(cls, data, _verify=True, _kind_of=None):
         """

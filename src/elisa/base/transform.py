@@ -4,6 +4,10 @@ from .. import (
     units as u,
     const
 )
+from .. units import (
+    DEFAULT_STAR_INPUT_UNITS as DEF_S,
+    DEFAULT_BINARY_SYSTEM_INPUT_UNITS as DEF_BU
+)
 
 WHEN_FLOAT64 = (int, np.int, np.int32, np.int64, float, np.float, np.float32, np.float64)
 WHEN_ARRAY = (list, np.ndarray, tuple)
@@ -81,7 +85,7 @@ class SystemProperties(TransformProperties):
             value = u.Quantity(value) if isinstance(value, str) else value
             value = np.float64(value.to(u.ARC_UNIT))
         elif isinstance(value, (int, np.int, float, np.float)):
-            value = np.float64((value * u.deg).to(u.ARC_UNIT))
+            value = np.float64((value * u.DEFAULT_INCLINATION_INPUT_UNIT).to(u.ARC_UNIT))
         else:
             raise TypeError('Input of variable `inclination` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance (or its string representation).')
@@ -137,7 +141,7 @@ class SystemProperties(TransformProperties):
             value = u.Quantity(value) if isinstance(value, str) else value
             value = np.float64(value.to(u.DISTANCE_UNIT))
         elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(value * u.solRad.to(u.DISTANCE_UNIT))
+            value = np.float64(value * DEF_BU['system']['semi_major_axis'].to(u.DISTANCE_UNIT))
         else:
             raise TypeError('User input is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance (or its string representation).')
@@ -158,28 +162,6 @@ class BodyProperties(TransformProperties):
         if value <= 0:
             raise ValueError("Invalid synchronicity, use value > 0!")
         return np.float64(value)
-
-    @staticmethod
-    def mass(value):
-        """
-       If mass is int, np.int, float, np.float, program assumes solar mass as it's unit.
-       If mass astropy.unit.quantity.Quantity instance, program converts it to default units and stores it's value in
-       attribute _mass.
-
-       :param value: Union[int, numpy.int, float, numpy.float, astropy.unit.quantity.Quantity, str];
-       :return: float
-       """
-        if isinstance(value, (u.Quantity, str)):
-            value = u.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(u.MASS_UNIT))
-        elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(value * u.solMass.to(u.MASS_UNIT))
-        else:
-            raise TypeError('User input is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance (or its string representation).')
-        if value <= 0:
-            raise ValueError("Invalid mass, use value > 0!")
-        return value
 
     @staticmethod
     def albedo(value):
@@ -218,8 +200,10 @@ class BodyProperties(TransformProperties):
         """
         return quantity_transform(value, u.TEMPERATURE_UNIT, WHEN_FLOAT64)
 
+
+class StarProperties(BodyProperties):
     @staticmethod
-    def polar_radius(value):
+    def equivalent_radius(value):
         """
         Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int othervise TypeError will be raised.
         If quantity is not specified, default distance unit is assumed.
@@ -227,10 +211,40 @@ class BodyProperties(TransformProperties):
         :param value: float
         :return:
         """
-        return quantity_transform(value, u.DISTANCE_UNIT, WHEN_FLOAT64)
+        if isinstance(value, (u.Quantity, str)):
+            value = u.Quantity(value) if isinstance(value, str) else value
+            value = np.float64(value.to(u.DISTANCE_UNIT))
+        elif isinstance(value, WHEN_FLOAT64):
+            value = np.float64(value * DEF_S['equivalent_radius'].to(u.DISTANCE_UNIT))
+        else:
+            raise TypeError('User input is not (numpy.)int or (numpy.)float '
+                            'nor astropy.unit.quantity.Quantity instance (or its string representation).')
+        if value <= 0:
+            raise ValueError("Invalid value of equivalent_radius, use value > 0!")
+        return value
 
+    @staticmethod
+    def mass(value):
+        """
+       If mass is int, np.int, float, np.float, program assumes solar mass as it's unit.
+       If mass astropy.unit.quantity.Quantity instance, program converts it to default units and stores it's value in
+       attribute _mass.
 
-class StarProperties(BodyProperties):
+       :param value: Union[int, numpy.int, float, numpy.float, astropy.unit.quantity.Quantity, str];
+       :return: float
+       """
+        if isinstance(value, (u.Quantity, str)):
+            value = u.Quantity(value) if isinstance(value, str) else value
+            value = np.float64(value.to(u.MASS_UNIT))
+        elif isinstance(value, WHEN_FLOAT64):
+            value = np.float64(value * DEF_S['mass'].to(u.MASS_UNIT))
+        else:
+            raise TypeError('User input is not (numpy.)int or (numpy.)float '
+                            'nor astropy.unit.quantity.Quantity instance (or its string representation).')
+        if value <= 0:
+            raise ValueError("Invalid mass, use value > 0!")
+        return value
+
     @staticmethod
     def surface_potential(value):
         """
@@ -258,8 +272,16 @@ class StarProperties(BodyProperties):
         :param value: float or astropy.unit.quantity.Quantity
         :return: float
         """
-        value = u.Dex(value, unit=u.Unit(' '.join(value.split()[1:]))) if isinstance(value, str) else value
-        return quantity_transform(value, u.LOG_ACCELERATION_UNIT, WHEN_FLOAT64)
+        if isinstance(value, (u.Quantity, str)):
+            value = u.Dex(value, unit=u.Unit(' '.join(value.split()[1:]))) if isinstance(value, str) else value
+            value = np.float64(value.to(u.LOG_ACCELERATION_UNIT))
+        elif isinstance(value, WHEN_FLOAT64):
+            # conversion from cgs to SI
+            value -= 2
+        else:
+            raise TypeError('User input is not (numpy.)int or (numpy.)float '
+                            'nor astropy.unit.quantity.Quantity instance (or its string representation).')
+        return value
 
     @staticmethod
     def gravity_darkening(value):
@@ -319,7 +341,6 @@ class SpotProperties(BodyProperties):
 
     @staticmethod
     def discretization_factor(value):
-        # TODO: solve the case when discretization_factor is larger than angular_radius
         """
         Discretization factor. Degrees is considered as default value.
 

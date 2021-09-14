@@ -1,7 +1,7 @@
 import numpy as np
 
 from . transform import PulsationModeProperties
-from .. import utils, const as c
+from .. import utils, const as c, units
 from .. logger import getLogger
 from .. import settings
 
@@ -63,6 +63,15 @@ class PulsationMode(object):
         # TODO: this is a constant
         self.renorm_const = 2 * c.PI ** 0.5
         self.validate_mode()
+
+    @property
+    def default_input_units(self):
+        """
+        Returns set of default units of intialization parameters, in case, when provided without units.
+
+        :return: Dict;
+        """
+        return units.DEFAULT_PULSATIONS_INPUT_UNITS
 
     @staticmethod
     def transform_input(**kwargs):

@@ -54,9 +54,9 @@ class SingleSystemInitTestCase(ElisaTestCase):
         radii = ["equatorial_radius", "polar_radius", "equivalent_radius"]
 
         expected = {
-            "equatorial_radius": [69595445.87082, 1120763694.70205],
-            "polar_radius": [69595445.14516, 1120731159.03338],
-            "equivalent_radius": [69595445.62893, 1120752849.37421]
+            "equatorial_radius": [695961708.0, 1120763694.70205],
+            "polar_radius": [695954451.0, 1120731159.03338],
+            "equivalent_radius": [695959289.0, 1120752849.37421]
         }
 
         # obtained = {

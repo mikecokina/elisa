@@ -42,7 +42,7 @@ DEFAULT_UNITS = dict(
     RADIANCE_UNIT=RADIANCE_UNIT
 )
 
-# astropy units to avoid annoying undefined warning accross basecode
+# astropy units to avoid annoying undefined warning across the code
 deg = u.deg
 degree = u.degree
 rad = u.rad
@@ -64,3 +64,95 @@ mag = u.mag
 Unit = u.Unit
 Quantity = u.quantity.Quantity
 Dex = u.Dex
+
+# _____DEFAULT USER INPUT UNITS -- DO NOT CHANGE!!______
+
+DEFAULT_INCLINATION_INPUT_UNIT = deg
+DEFAULT_PERIOD_INPUT_UNIT = d
+DEFAULT_GAMMA_INPUT_UNIT = m/s
+
+DEFAULT_SPOT_INPUT_UNITS = dict(
+    longitude=deg,
+    latitude=deg,
+    angular_radius=deg,
+    temperature_factor=u.dimensionless_unscaled,
+    discretization_factor=deg
+)
+DEFAULT_PULSATIONS_INPUT_UNITS = dict(
+    l=dimensionless_unscaled,
+    m=dimensionless_unscaled,
+    amplitude=VELOCITY_UNIT,
+    frequency=FREQUENCY_UNIT,
+    start_phase=ARC_UNIT,
+    mode_axis_theta=deg,
+    mode_axis_phi=deg,
+    temperature_perturbation_phase_shift=ARC_UNIT,
+    horizontal_to_radial_amplitude_ratio=dimensionless_unscaled,
+    tidally_locked=bool
+)
+
+DEFAULT_STAR_INPUT_UNITS = dict(
+    mass=solMass,
+    t_eff=K,
+    surface_potential=dimensionless_unscaled,
+    synchronicity=dimensionless_unscaled,
+    metallicity=dimensionless_unscaled,
+    gravity_darkening=dimensionless_unscaled,
+    albedo=dimensionless_unscaled,
+    discretization_factor=deg,
+    polar_log_g=u.dex(cm/s**2),
+    equivalent_radius=solRad,
+    spots=DEFAULT_SPOT_INPUT_UNITS,
+    pulsations=DEFAULT_PULSATIONS_INPUT_UNITS
+)
+
+DEFAULT_BINARY_SYSTEM_INPUT_UNITS = dict(
+    system=dict(
+        inclination=DEFAULT_INCLINATION_INPUT_UNIT,
+        period=DEFAULT_PERIOD_INPUT_UNIT,
+        eccentricity=dimensionless_unscaled,
+        argument_of_periastron=deg,
+        gamma=DEFAULT_GAMMA_INPUT_UNIT,
+        phase_shift=dimensionless_unscaled,
+        additional_light=dimensionless_unscaled,
+        primary_minimum_time=d,
+        semi_major_axis=solRad
+    ),
+    primary=dict(
+        mass=DEFAULT_STAR_INPUT_UNITS['mass'],
+        t_eff=DEFAULT_STAR_INPUT_UNITS['t_eff'],
+        surface_potential=DEFAULT_STAR_INPUT_UNITS['surface_potential'],
+        synchronicity=DEFAULT_STAR_INPUT_UNITS['synchronicity'],
+        metallicity=DEFAULT_STAR_INPUT_UNITS['metallicity'],
+        gravity_darkening=DEFAULT_STAR_INPUT_UNITS['gravity_darkening'],
+        albedo=DEFAULT_STAR_INPUT_UNITS['albedo'],
+        discretization_factor=DEFAULT_STAR_INPUT_UNITS['discretization_factor'],
+        spots=DEFAULT_SPOT_INPUT_UNITS,
+        pulsations=DEFAULT_PULSATIONS_INPUT_UNITS
+    )
+)
+DEFAULT_BINARY_SYSTEM_INPUT_UNITS['secondary'] = DEFAULT_BINARY_SYSTEM_INPUT_UNITS['primary']
+
+
+DEFAULT_SINGLE_SYSTEM_INPUT_UNITS = dict(
+    system=dict(
+        inclination=DEFAULT_INCLINATION_INPUT_UNIT,
+        rotational_period=DEFAULT_PERIOD_INPUT_UNIT,
+        reference_time=d,
+        phase_shift=dimensionless_unscaled,
+        additional_light=dimensionless_unscaled,
+        gamma=DEFAULT_GAMMA_INPUT_UNIT,
+    ),
+    star=dict(
+        mass=DEFAULT_STAR_INPUT_UNITS['mass'],
+        t_eff=DEFAULT_STAR_INPUT_UNITS['t_eff'],
+        polar_log_g=DEFAULT_STAR_INPUT_UNITS['polar_log_g'],
+        metallicity=DEFAULT_STAR_INPUT_UNITS['metallicity'],
+        gravity_darkening=DEFAULT_STAR_INPUT_UNITS['gravity_darkening'],
+        discretization_factor=DEFAULT_STAR_INPUT_UNITS['discretization_factor'],
+        equivalent_radius=DEFAULT_STAR_INPUT_UNITS['equivalent_radius'],
+        spots=DEFAULT_SPOT_INPUT_UNITS,
+        pulsations=DEFAULT_PULSATIONS_INPUT_UNITS
+    )
+)
+

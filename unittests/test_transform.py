@@ -106,18 +106,6 @@ class TransformBodyPropertiesTestCase(ElisaTestCase):
     def test_synchronicity_raise(self):
         generate_raise_test(self, -0.14, BodyProperties.synchronicity, "Invalid synchronicity")
 
-    def test_mass(self):
-        valid_values = [1.0, 1.0 * u.solMass, 30. * u.MASS_UNIT]
-        obtained = np.array([BodyProperties.mass(val) for val in valid_values])
-        expected = np.array([1.98847542e+30, 1.98847542e+30, 3.00000000e+01])
-        print(obtained)
-        print(expected)
-        print(abs((expected - obtained) / expected))
-        self.assertTrue(np.all(abs((expected - obtained) / expected) < 1e-8))
-
-    def test_mass_raise(self):
-        generate_raise_test(self, -0.14, BodyProperties.mass, "Invalid mass")
-
     @staticmethod
     def test_albedo():
         valid_values = [0.0, 1.0, 0.5]
@@ -143,13 +131,25 @@ class TransformBodyPropertiesTestCase(ElisaTestCase):
         generate_raise_test(self, "hakuna matata", BodyProperties.t_eff, "Cannot parse")
 
     @staticmethod
-    def test_polar_radius():
+    def test_radius():
         valid_values = [10.0, 180.0 * u.DISTANCE_UNIT, 1000 * u.m, 1 * u.km]
-        expected = [10., 180., 1000., 1000.]
-        generate_test(valid_values, BodyProperties.polar_radius, expected, 4)
+        expected = [(10.*u.solRad).to(u.m).value, 180., 1000., 1000.]
+        generate_test(valid_values, StarProperties.equivalent_radius, expected, 4)
 
 
 class TransformStarPropertiesTestCase(ElisaTestCase):
+    def test_mass(self):
+        valid_values = [1.0, 1.0 * u.solMass, 30. * u.MASS_UNIT]
+        obtained = np.array([StarProperties.mass(val) for val in valid_values])
+        expected = np.array([1.98847542e+30, 1.98847542e+30, 3.00000000e+01])
+        print(obtained)
+        print(expected)
+        print(abs((expected - obtained) / expected))
+        self.assertTrue(np.all(abs((expected - obtained) / expected) < 1e-8))
+
+    def test_mass_raise(self):
+        generate_raise_test(self, -0.14, StarProperties.mass, "Invalid mass")
+
     @staticmethod
     def test_metallicity():
         valid_values = [-0.1, 0.0, 1.0, 2.1]
@@ -173,7 +173,7 @@ class TransformStarPropertiesTestCase(ElisaTestCase):
 
     @staticmethod
     def test_polar_log_g():
-        valid_values = [0.0, 1.0, 4.0 * u.LOG_ACCELERATION_UNIT]
+        valid_values = [2, 3.0, 4.0 * u.LOG_ACCELERATION_UNIT]
         expected = [0.0, 1.0, 4.0]
         generate_test(valid_values, StarProperties.polar_log_g, expected, 4)
 
