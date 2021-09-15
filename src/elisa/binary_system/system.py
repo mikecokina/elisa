@@ -228,15 +228,15 @@ class BinarySystem(System):
     OPTIONAL_KWARGS = ['gamma', 'phase_shift', 'additional_light', 'primary_minimum_time']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    COMPONENT_MANDATORY_KWARGS = ['mass', 't_eff', 'surface_potential', 'synchronicity']
-    COMPONENT_OPTIONAL_KWARGS = ['metallicity', 'gravity_darkening', 'albedo']
-    COMPONENT_ALL_KWARGS = COMPONENT_MANDATORY_KWARGS + COMPONENT_OPTIONAL_KWARGS
+    STAR_MANDATORY_KWARGS = ['mass', 't_eff', 'surface_potential', 'synchronicity']
+    STAR_OPTIONAL_KWARGS = ['metallicity', 'gravity_darkening', 'albedo']
+    STAR_ALL_KWARGS = STAR_MANDATORY_KWARGS + STAR_OPTIONAL_KWARGS
 
     def __init__(self, primary, secondary, name=None, **kwargs):
         # initial validity checks
         utils.invalid_kwarg_checker(kwargs, BinarySystem.ALL_KWARGS, self.__class__)
         utils.check_missing_kwargs(BinarySystem.MANDATORY_KWARGS, kwargs, instance_of=BinarySystem)
-        self.object_params_validity_check(dict(primary=primary, secondary=secondary), self.COMPONENT_MANDATORY_KWARGS)
+        self.object_params_validity_check(dict(primary=primary, secondary=secondary), self.STAR_MANDATORY_KWARGS)
         kwargs: Dict = self.transform_input(**kwargs)
 
         super(BinarySystem, self).__init__(name, **kwargs)
