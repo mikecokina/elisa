@@ -2,7 +2,7 @@ import numpy as np
 
 # keept order of allowed constraints method or came with better way how to validaite and evaluate fitting constraints
 ALLOWED_CONSTRAINT_METHODS = ['arcsin', 'arccos', 'arctan', 'log', 'sin', 'cos', 'tan', 'exp', 'degrees', 'radians']
-ALLOWED_CONSTRAINT_CHARS = ['(', ')', '+', '-', '*', '/', '.'] + [str(i) for i in range(0, 10, 1)]
+ALLOWED_CONSTRAINT_CHARS = ['(', ')', '+', '-', '*', '/', '.', 'e'] + [str(i) for i in range(0, 10, 1)]
 TRANSFORM_TO_METHODS = ['arcs', 'arcc', 'arct', 'log', 'sin', 'cos', 'tan', 'exp', 'deg', 'rad']
 
 arcs = np.arcsin
