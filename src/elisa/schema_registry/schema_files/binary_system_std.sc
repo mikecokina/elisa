@@ -219,9 +219,8 @@
           }
         }
       }
-    }
-  },
-  "secondary": {
+    },
+    "secondary": {
     "type": "object",
     "required": [
       "mass",
@@ -391,5 +390,6 @@
         }
       }
     }
+  }
   }
 }
