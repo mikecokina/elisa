@@ -572,7 +572,6 @@ class StarContainer(object):
         Function automatically assigns radii stored in radii dict.
 
         :param radii: Dict; {radius_type: value, ...}
-        :return: None;
         """
         for key, value in radii.items():
             setattr(self, key, value)

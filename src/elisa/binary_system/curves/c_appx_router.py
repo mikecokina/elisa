@@ -58,7 +58,7 @@ def resolve_ecc_approximation_method(
             * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
             * ** left_bandwidth ** * - float
             * ** right_bandwidth ** * - float
-    :return: lambda;
+    :return: callable;
     """
     approx_method_list = [
         integrate_eccentric_curve_exactly,
@@ -93,21 +93,21 @@ def resolve_ecc_approximation_method(
     appx_one, reduced_orbit_arr, counterpart_postion_arr = eval_approximation_one(*args)
 
     if appx_one:
-        args = binary, radii, phases, reduced_orbit_arr, counterpart_postion_arr, potentials, crv_labels, curve_fn
+        args = (binary, radii, phases, reduced_orbit_arr, counterpart_postion_arr, potentials, crv_labels, curve_fn)
         return 'one', lambda: approx_method_list[1](*args, **kwargs)
 
     # APPX TWO *********************************************************************************************************
-    appx_two, orbital_supplements = eval_approximation_two(binary, radii, reduced_orbit_arr,
-                                                           reduced_orbit_supplement_arr, phases_span_test)
+    args = binary, radii, reduced_orbit_arr, reduced_orbit_supplement_arr, phases_span_test
+    appx_two, orbital_supplements = eval_approximation_two(*args)
 
     if appx_two:
-        args = binary, radii, phases, orbital_supplements, potentials, crv_labels, curve_fn
+        args = (binary, radii, phases, orbital_supplements, potentials, crv_labels, curve_fn)
         return 'two', lambda: approx_method_list[2](*args, **kwargs)
 
     # APPX THREE *******************************************************************************************************
     approx_three, new_geometry_mask, sorted_positions = eval_approximation_three(binary, radii, all_orbital_pos_arr)
     if approx_three:
-        args = binary, sorted_positions, new_geometry_mask, potentials, crv_labels, curve_fn
+        args = (binary, sorted_positions, new_geometry_mask, potentials, crv_labels, curve_fn)
         return 'three', lambda: approx_method_list[3](*args, **kwargs)
 
     args = binary, all_orbital_pos, potentials, crv_labels, curve_fn
@@ -149,7 +149,8 @@ def eval_approximation_one(
     distances_at_ecl = component_distance_from_mean_anomaly(binary.eccentricity, ecl_true_anomalies)
 
     # angular width of each eclipse
-    angular_ecl_widths = [get_approx_ecl_angular_width(binary.primary.forward_radius, binary.secondary.forward_radius,
+    angular_ecl_widths = [get_approx_ecl_angular_width(binary.primary.forward_radius,
+                                                       binary.secondary.forward_radius,
                                                        distance, binary.inclination)
                           for distance in distances_at_ecl]
 
@@ -179,18 +180,19 @@ def eval_approximation_one(
         plateau_factor = 1 - angular_ecl_widths[ii][1] / angular_ecl_widths[ii][0]
 
         if plateau_factor * points_in_ecl_suplements < settings.MIN_POINTS_IN_ECLIPSE:
-            reduced_orbit_array =\
-                np.row_stack((reduced_orbit_array, reduced_orbit_supplement_arr[points_ecl_mask_suplements]))
-            counterpart_position_array = np.row_stack((counterpart_position_array,
-                                                       np.full((points_in_ecl_suplements, 5), np.nan)))
+            rowstack_args = (reduced_orbit_array, reduced_orbit_supplement_arr[points_ecl_mask_suplements])
+            reduced_orbit_array = np.row_stack(rowstack_args)
+
+            rowstack_args = (counterpart_position_array, np.full((points_in_ecl_suplements, 5), np.nan))
+            counterpart_position_array = np.row_stack(rowstack_args)
         else:
             # approx 1 causes artifacts in case of the very flat plateaus in the bottom of the eclipse
             return False, reduced_orbit_array, counterpart_position_array
 
     # removing duplicite entries
-    _, idx = np.unique(reduced_orbit_array[:, 0], return_index=True)
-    reduced_orbit_array = reduced_orbit_array[idx]
-    counterpart_position_array = counterpart_position_array[idx]
+    _, indices = np.unique(reduced_orbit_array[:, 0], return_index=True)
+    reduced_orbit_array = reduced_orbit_array[indices]
+    counterpart_position_array = counterpart_position_array[indices]
 
     return True, reduced_orbit_array, counterpart_position_array
 
@@ -207,7 +209,7 @@ def eval_approximation_two(binary, radii, base_orbit_arr, orbit_supplement_arr, 
     :return: Tuple; approximation test, orbital supplements
     """
     if not phases_span_test or not settings.USE_APPROX2:
-        logger.debug('Phase span of the observation is not sufficient to utilize approximation 2.')
+        logger.debug('phase span of the observation is not sufficient to utilize approximation 2')
         return False, None
 
     # create object of separated objects and supplements to bodies
@@ -289,7 +291,7 @@ def integrate_eccentric_curve_appx_one(
     """
     n = 5 if phases.shape[0] > 10 else int(phases.shape[0] / 2) - 1
     orbital_supplements = OrbitalSupplements(body=reduced_orbit_arr, mirror=counterpart_postion_arr)
-    orbital_supplements.sort(by='distance')
+    orbital_supplements = orbital_supplements.sort(by='distance')
 
     orbital_positions = np.stack((orbital_supplements.body, orbital_supplements.mirror), axis=1)
     fn_args = (binary, potentials, radii, crv_labels, curve_fn)
@@ -355,12 +357,9 @@ def integrate_eccentric_curve_appx_two(
     :return: Dict[str, numpy.array];
     """
     orbital_positions = np.stack((orbital_supplements.body, orbital_supplements.mirror), axis=1)
-    fn_args = binary, potentials, radii, crv_labels, curve_fn
-
-    stacked_band_curves = manage_observations(fn=c_managed.integrate_eccentric_curve_w_orbital_symmetry,
-                                              fn_args=fn_args,
-                                              position=orbital_positions,
-                                              **kwargs)
+    fn_args = (binary, potentials, radii, crv_labels, curve_fn)
+    fn = c_managed.integrate_eccentric_curve_w_orbital_symmetry
+    stacked_band_curves = manage_observations(fn=fn, fn_args=fn_args, position=orbital_positions, **kwargs)
 
     # re-arranging points to original order
     band_curves = {key: np.empty(phases.shape) for key in crv_labels}
@@ -384,8 +383,8 @@ def integrate_eccentric_curve_appx_three(
         **kwargs
 ):
     """
-    Function calculates curve for eccentric orbit using approximation where surface is not fully recalculated between
-    sufficiently similar neighbouring orbital positions.
+    Function calculates curve for eccentric orbit using approximation where surface
+    is not fully recalculated between sufficiently similar neighbouring orbital positions.
 
     :param binary: elisa.binary_system.system.BinarySystem;
     :param orbital_positions: numpy.array; orbital positions sorted by components distance
@@ -400,12 +399,9 @@ def integrate_eccentric_curve_appx_three(
             * ** right_bandwidth ** * - float
     :return: Dict[str, numpy.array];
     """
-    fn_args = binary, potentials, new_geometry_mask, crv_labels, curve_fn
-
-    band_curves_unsorted = manage_observations(fn=c_managed.integrate_eccentric_curve_approx_three,
-                                               fn_args=fn_args,
-                                               position=orbital_positions,
-                                               **kwargs)
+    fn_args = (binary, potentials, new_geometry_mask, crv_labels, curve_fn)
+    fn = c_managed.integrate_eccentric_curve_approx_three
+    band_curves_unsorted = manage_observations(fn=fn, fn_args=fn_args, position=orbital_positions, **kwargs)
 
     # re-arranging points to original order
     return {key: band_curves_unsorted[key][orbital_positions[:, 0].argsort()] for key in crv_labels}
@@ -427,6 +423,6 @@ def integrate_eccentric_curve_exactly(binary, orbital_motion, potentials, crv_la
     """
     # surface potentials with constant volume of components
     fn_args = (binary, potentials, None, crv_labels, curve_fn)
-    curves = manage_observations(fn=c_managed.integrate_eccentric_curve_exactly, fn_args=fn_args,
-                                 position=orbital_motion, **kwargs)
+    fn = c_managed.integrate_eccentric_curve_exactly
+    curves = manage_observations(fn=fn, fn_args=fn_args, position=orbital_motion, **kwargs)
     return curves

@@ -150,7 +150,7 @@ def prep_surface_params(system, return_values=True, write_to_containers=False, *
     normal_radiance = atm.correct_normal_radiance_to_optical_depth(normal_radiance, bol_ld_cfs)
 
     if write_to_containers:
-        for component in settings.BINARY_COUNTERPARTS.keys():
+        for component in settings.BINARY_COUNTERPARTS:
             star = getattr(system, component)
             setattr(star, 'normal_radiance', normal_radiance[component])
             setattr(star, 'ld_cfs', ld_cfs[component])
@@ -174,7 +174,7 @@ def update_surface_params(require_rebuild, container, normal_radiance, ld_cfs, *
         normal_radiance, ld_cfs = \
             prep_surface_params(container, return_values=True, write_to_containers=True, **kwargs)
     else:
-        for component in settings.BINARY_COUNTERPARTS.keys():
+        for component in settings.BINARY_COUNTERPARTS:
             star = getattr(container, component)
             setattr(star, 'normal_radiance', normal_radiance[component])
             setattr(star, 'ld_cfs', ld_cfs[component])
@@ -292,7 +292,7 @@ def compute_rel_d_radii_from_counterparts(radii, base_positions, mirrors):
 
 def prepare_apsidaly_symmetric_orbit(binary, azimuths, phases):
     """
-    Prepare set of orbital positions that are symmetrical in therms of surface geometry. For each couple,the orbital
+    Prepare set of orbital positions that are symmetrical in therms of surface geometry. For each couple, the orbital
     position is mirrored using apsidal line in order to reduce time for generating the light curve.
 
     :param binary: elisa.binary_star.system.BinarySystem;
@@ -312,18 +312,18 @@ def prepare_apsidaly_symmetric_orbit(binary, azimuths, phases):
         - orbital_motion_array_counterpart - numpy.array - sa as `orbital_motion_counterpart` but in numpy.array form
     """
     azimuth_boundaries = [binary.argument_of_periastron, (binary.argument_of_periastron + const.PI) % const.FULL_ARC]
-    unique_geometry = np.logical_and(azimuths >= azimuth_boundaries[0],
-                                     azimuths < azimuth_boundaries[1]) \
-        if azimuth_boundaries[0] < azimuth_boundaries[1] else np.logical_xor(azimuths <= azimuth_boundaries[0],
-                                                                             azimuths > azimuth_boundaries[1])
+
+    if azimuth_boundaries[0] < azimuth_boundaries[1]:
+        unique_geometry = np.logical_and(azimuths >= azimuth_boundaries[0], azimuths < azimuth_boundaries[1])
+    else:
+        unique_geometry = np.logical_xor(azimuths <= azimuth_boundaries[0], azimuths > azimuth_boundaries[1])
+
     unique_phase_indices = np.arange(phases.shape[0])[unique_geometry]
     unique_geometry_azimuths = azimuths[unique_geometry]
     unique_geometry_counterazimuths = (2 * binary.argument_of_periastron - unique_geometry_azimuths) % const.FULL_ARC
 
-    orbital_motion_array_counterpart = \
-        binary.calculate_orbital_motion(input_argument=unique_geometry_counterazimuths,
-                                        return_nparray=True,
-                                        calculate_from='azimuth')
+    kwargs = dict(input_argument=unique_geometry_counterazimuths, return_nparray=True, calculate_from='azimuth')
+    orbital_motion_array_counterpart = binary.calculate_orbital_motion(**kwargs)
 
     return unique_phase_indices, orbital_motion_array_counterpart, unique_geometry
 

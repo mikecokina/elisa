@@ -7,15 +7,6 @@ from .. import settings
 logger = getLogger('observer.mp')
 
 
-def observe_lc_worker(*args):
-    func, order, phase_batch, kwargs = args
-    logger.info(f'starting observation worker for batch index {order}')
-    kwargs.update({"phases": phase_batch})
-    result = func(**kwargs)
-    logger.info(f'observation worker for batch index {order} finished')
-    return result
-
-
 def manage_observations(fn, fn_args, position, **kwargs):
     """
     Function decides whether curve will be calculated using single or multi-process approach.
