@@ -47,7 +47,7 @@ def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
         * ** atlas ** - str
     :return: Dict; fluxes for each filter
     """
-    lc_labels = list(kwargs["passband"].keys())
+    lc_labels = [*kwargs["passband"].keys()]
     return c_router.produce_circular_spotty_async_curves(binary, lc_point.compute_lc_on_pos, lc_labels, **kwargs)
 
 

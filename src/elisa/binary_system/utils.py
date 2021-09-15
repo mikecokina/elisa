@@ -115,10 +115,10 @@ def component_to_list(component):
 def move_sys_onpos(
         init_system,
         orbital_position,
-        primary_potential=None,
-        secondary_potential=None,
-        on_copy=True,
-        recalculate_velocities=False
+        primary_potential: float = None,
+        secondary_potential: float = None,
+        on_copy: bool = True,
+        recalculate_velocities: bool = False
 ):
     """
     Prepares a postion container for given orbital position.

@@ -140,7 +140,7 @@ class OrbitalPositionContainer(PositionContainer):
     def build_faces_and_kinematic_quantities(self, components_distance=None, component="all"):
         """
         Function is used on container to build container on which only
-        bulid_mesh was performed. Function builds the rest except for
+        build_mesh was performed. Function builds the rest except for
         build_temperature_distribution.
 
         :param component: str; `primary` or `secondary`

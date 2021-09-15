@@ -111,7 +111,7 @@ def produce_circular_sync_curves(binary, initial_system, phases, curve_fn, crv_l
     """
 
     crv_utils.prep_surface_params(initial_system, return_values=False, write_to_containers=True, **kwargs)
-    fn_args = (binary, initial_system, crv_labels, curve_fn)
+    fn_args = binary, initial_system, crv_labels, curve_fn
     return manage_observations(fn=c_managed.produce_circ_sync_curves_mp, fn_args=fn_args, position=phases, **kwargs)
 
 
@@ -147,9 +147,8 @@ def produce_circular_spotty_async_curves(binary, curve_fn, crv_labels, **kwargs)
         setattr(star, "inverse_point_symmetry_matrix", _d)
 
     fn_args = binary, initial_system, points, ecl_boundaries, crv_labels, curve_fn
-    curves = manage_observations(fn=c_managed.produce_circ_spotty_async_curves_mp, fn_args=fn_args,
-                                 position=orbital_motion, **kwargs)
-    return curves
+    fn = c_managed.produce_circ_spotty_async_curves_mp
+    return manage_observations(fn=fn, fn_args=fn_args, position=orbital_motion, **kwargs)
 
 
 def produce_circular_pulsating_curves(binary, initial_system, curve_fn, crv_labels, **kwargs):
@@ -239,6 +238,5 @@ def produce_ecc_curves_with_spots(binary, curve_fn, crv_labels, **kwargs):
     # pre-calculate the longitudes of each spot for each phase
     spots_longitudes = dynamic.calculate_spot_longitudes(binary, phases, component="all")
     fn_args = (binary, potentials, spots_longitudes, crv_labels, curve_fn)
-    curves = manage_observations(fn=c_managed.integrate_eccentric_curve_exactly, fn_args=fn_args,
-                                 position=orbital_motion, **kwargs)
-    return curves
+    fn = c_managed.integrate_eccentric_curve_exactly
+    return manage_observations(fn=fn, fn_args=fn_args, position=orbital_motion, **kwargs)

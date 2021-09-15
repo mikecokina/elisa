@@ -48,7 +48,7 @@ def produce_circ_sync_curves_mp(*args):
     curves = {key: np.zeros(phase_batch.shape) for key in crv_labels}
 
     for pos_idx, position in enumerate(orbital_motion):
-        on_pos = bsutils.move_sys_onpos(initial_system, position)
+        on_pos = bsutils.move_sys_onpos(initial_system, position, on_copy=True)
 
         compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=in_eclipse[pos_idx],
                                  return_values=False, write_to_containers=True)
@@ -85,8 +85,7 @@ def produce_circ_spotty_async_curves_mp(*args):
     phases = np.array([val.phase for val in motion_batch])
     in_eclipse = dynamic.in_eclipse_test([position.azimuth for position in motion_batch], ecl_boundaries)
     spots_longitudes = dynamic.calculate_spot_longitudes(binary, phases, component="all", correct_libration=False)
-    pulsation_tests = {'primary': binary.primary.has_pulsations(),
-                       'secondary': binary.secondary.has_pulsations()}
+    pulsation_tests = {'primary': binary.primary.has_pulsations(), 'secondary': binary.secondary.has_pulsations()}
     primary_reducer, secondary_reducer = \
         dynamic.resolve_spots_geometry_update(spots_longitudes, len(phases), pulsation_tests)
     combined_reducer = primary_reducer & secondary_reducer
@@ -119,10 +118,9 @@ def produce_circ_spotty_async_curves_mp(*args):
         # build the spots points
         add_spots_to_mesh(initial_system, orbital_position.distance, component=require_build)
         # build the rest of the surface based on preset surface points
-        initial_system.build_faces_and_kinematic_quantities(components_distance=orbital_position.distance,
-                                                            component=require_build)
-        initial_system.build_temperature_distribution(components_distance=orbital_position.distance,
-                                                      component='all')
+        _build_args = dict(components_distance=orbital_position.distance, component=require_build)
+        initial_system.build_faces_and_kinematic_quantities(**_build_args)
+        initial_system.build_temperature_distribution(components_distance=orbital_position.distance, component='all')
 
         if initial_system.has_pulsations():
             on_pos = initial_system.copy()
@@ -221,8 +219,7 @@ def integrate_eccentric_curve_exactly(*args):
         from_this = dict(binary_system=binary, position=position)
         on_pos = OrbitalPositionContainer.from_binary_system(**from_this)
         dynamic.assign_spot_longitudes(on_pos, spots_longitudes, index=pos_idx, component="all")
-        on_pos.set_on_position_params(position, potentials["primary"][pos_idx],
-                                      potentials["secondary"][pos_idx])
+        on_pos.set_on_position_params(position, potentials["primary"][pos_idx], potentials["secondary"][pos_idx])
         on_pos.build(components_distance=position.distance)
         on_pos = bsutils.move_sys_onpos(on_pos, position, on_copy=False)
 
