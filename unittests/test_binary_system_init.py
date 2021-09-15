@@ -399,12 +399,12 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
     def _get_community():
         data = {
             "system": {
-                "inclination": 90.0,
-                "period": 10.1,
+                "inclination": "90.0 deg",
+                "period": "10.1 d",
                 "argument_of_periastron": 90.0,
                 "gamma": 0.0,
                 "eccentricity": 0.3,
-                "primary_minimum_time": "0.0 d",
+                "primary_minimum_time": 0.0,
                 "phase_shift": 0.0,
                 "mass_ratio": 0.75,
                 "semi_major_axis": 29.854
@@ -412,17 +412,17 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
             "primary": {
                 "surface_potential": 7.1,
                 "synchronicity": 1.0,
-                "t_eff": 6500.0,
-                "gravity_darkening": 1.0,
-                "discretization_factor": 5,
-                "albedo": 1.0,
-                "metallicity": 0.0
+                "t_eff": "6500.0 K",
+                "discretization_factor": 5
             },
             "secondary": {
                 "surface_potential": 7.1,
                 "synchronicity": 1.0,
                 "t_eff": 6500.0,
-                "discretization_factor": 5
+                "gravity_darkening": 1.0,
+                "discretization_factor": 5,
+                "albedo": 1.0,
+                "metallicity": 0.0
             }
         }
 
@@ -444,6 +444,171 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
         com_a2 = np.float64((std.semi_major_axis * u.m).to(u.solRad))
         self.assertTrue(np.round(com_a1, 2) == np.round(com_a2, 2))
         self.assertTrue(np.round(com.mass_ratio, 2) == np.round(std.mass_ratio, 2))
+
+    def test_to_json(self):
+        data = {
+            "system": {
+                "inclination": 90.0,
+                "period": 10.1,
+                "argument_of_periastron": 90.0,
+                "gamma": 0.0,
+                "eccentricity": 0.3,
+                "primary_minimum_time": "0.0 d",
+                "phase_shift": 0.0,
+                "mass_ratio": 0.75,
+                "semi_major_axis": 29.854
+            },
+            "primary": {
+                "surface_potential": 7.1,
+                "synchronicity": 1.0,
+                "t_eff": "6500.0 K",
+                "gravity_darkening": 1.0,
+                "discretization_factor": 5,
+                "albedo": 1.0,
+                "metallicity": 0.0,
+                "spots": [
+                    {
+                        'longitude': 90,
+                        'latitude': 90,
+                        'angular_radius': 45,
+                        'temperature_factor': 0.9,
+                        'discretization_factor': 5
+                    },
+                    {
+                        'longitude': 30,
+                        'latitude': 80,
+                        'angular_radius': 70,
+                        'temperature_factor': 1.0
+                    }
+                ]
+            },
+            "secondary": {
+                "surface_potential": 7.1,
+                "synchronicity": 1.0,
+                "t_eff": 6500.0,
+                "discretization_factor": 5,
+                "pulsations": [
+                    {
+                        'l': 2,
+                        'm': 2,
+                        # "amplitude": 500,
+                        "amplitude": "0.5 km / s",
+                        # "frequency": 0.5,
+                        "frequency": "0.5 / d",
+                        'start_phase': 0.0 * c.PI,
+                        'mode_axis_theta': 90,
+                        'mode_axis_phi': "0 rad",
+                        'horizontal_to_radial_amplitude_ratio': 0.1,
+                        'temperature_perturbation_phase_shift': f"{c.PI/2} rad",
+                        'temperature_amplitude_factor': 0.03,
+                        'tidally_locked': True
+                    },
+                    {
+                        'l': 10,
+                        'm': 5,
+                        "amplitude": 500,
+                        "frequency": 0.5,
+                    }
+                ]
+            }
+        }
+
+        expected = {
+            "system": {
+                "inclination": 90.0,
+                "period": 10.1,
+                "argument_of_periastron": 90.0,
+                "gamma": 0.0,
+                "eccentricity": 0.3,
+                "primary_minimum_time": 0.0,
+                "phase_shift": 0.0,
+                "semi_major_axis": 29.854,
+                "additional_light": 0.0
+            },
+            "primary": {
+                "mass": 2.0,
+                "surface_potential": 7.1,
+                "synchronicity": 1.0,
+                "t_eff": 6500.0,
+                "gravity_darkening": 1.0,
+                "discretization_factor": 5,
+                "albedo": 1.0,
+                "metallicity": 0.0,
+                "spots": [
+                    {
+                        'longitude': 90,
+                        'latitude': 90,
+                        'angular_radius': 45,
+                        'temperature_factor': 0.9,
+                        'discretization_factor': 5
+                    },
+                    {
+                        'longitude': 30,
+                        'latitude': 80,
+                        'angular_radius': 70,
+                        'temperature_factor': 1.0,
+                        'discretization_factor': 5
+                    }
+                ]
+            },
+            "secondary": {
+                "mass": 1.5,
+                "surface_potential": 7.1,
+                "synchronicity": 1.0,
+                "t_eff": 6500.0,
+                "discretization_factor": 5,
+                "metallicity": 0.0,
+                "gravity_darkening": 0.5302,
+                "albedo": 0.7126,
+                "pulsations": [
+                    {
+                        'l': 2,
+                        'm': 2,
+                        "amplitude": 500,
+                        "frequency": 0.5,
+                        'start_phase': 0.0,
+                        'mode_axis_theta': 90,
+                        'mode_axis_phi': 0,
+                        'horizontal_to_radial_amplitude_ratio': 0.1,
+                        'temperature_perturbation_phase_shift': c.PI/2,
+                        'temperature_amplitude_factor': 0.03,
+                        'tidally_locked': True
+                    },
+                    {
+                        'l': 10,
+                        'm': 5,
+                        "amplitude": 500,
+                        "frequency": 0.5,
+                        'start_phase': 0.0,
+                        'mode_axis_theta': 0,
+                        'mode_axis_phi': 0,
+                        'horizontal_to_radial_amplitude_ratio': 88.803761160,
+                        'temperature_perturbation_phase_shift': 1.0471975,
+                        'temperature_amplitude_factor': 0.23169729556612906,
+                        'tidally_locked': False
+                    }
+                ]
+            }
+        }
+
+        bs = BinarySystem.from_json(data)
+        js = bs.to_json()
+
+        for item in js['system']:
+            self.assertEqual(js['system'][item], expected['system'][item])
+
+        for component in ['primary', 'secondary']:
+            for item in js[component]:
+                if item not in ['spots', 'pulsations']:
+                    self.assertAlmostEqual(js[component][item], expected[component][item], 3)
+                else:
+                    for ii, feature in enumerate(js[component][item]):
+                        for fitem in feature:
+                            self.assertAlmostEqual(
+                                feature[fitem],
+                                expected[component][item][ii][fitem],
+                                3
+                            )
 
 
 class BinarySystemSeparatedAtmospheres(ElisaTestCase):

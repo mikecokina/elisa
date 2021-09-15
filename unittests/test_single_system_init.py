@@ -274,3 +274,141 @@ class SingleSystemSerializersTestCase(ElisaTestCase):
             }
         }
         cls._get_std(data)
+
+    def test_to_json(self):
+        data = {
+            "system": {
+                "inclination": 90.0,
+                "rotation_period": 10.1,
+                "gamma": 10000,
+                "reference_time": 0.5,
+                "phase_shift": 0.0
+            },
+            "star": {
+                "mass": 1.0,
+                "t_eff": 5772.0,
+                "gravity_darkening": 0.32,
+                "discretization_factor": 5,
+                "metallicity": 0.0,
+                "polar_log_g": 2.43775,
+                "spots": [
+                    {
+                        'longitude': 90,
+                        'latitude': 90,
+                        'angular_radius': 45,
+                        'temperature_factor': 0.9,
+                        'discretization_factor': 5
+                    },
+                    {
+                        'longitude': 30,
+                        'latitude': 80,
+                        'angular_radius': 70,
+                        'temperature_factor': 1.0
+                    }
+                ],
+                "pulsations": [
+                    {
+                        'l': 2,
+                        'm': 2,
+                        # "amplitude": 500,
+                        "amplitude": "0.5 km / s",
+                        # "frequency": 0.5,
+                        "frequency": "0.5 / d",
+                        'start_phase': 0.0 * c.PI,
+                        'mode_axis_theta': 90,
+                        'mode_axis_phi': "0 rad",
+                        'horizontal_to_radial_amplitude_ratio': 0.1,
+                        'temperature_perturbation_phase_shift': f"{c.PI/2} rad",
+                        'temperature_amplitude_factor': 0.03,
+                        'tidally_locked': True
+                    },
+                    {
+                        'l': 10,
+                        'm': 5,
+                        "amplitude": 500,
+                        "frequency": 0.5,
+                    }
+                ]
+            }
+        }
+
+        expected = {
+            "system": {
+                "inclination": 90.0,
+                "rotation_period": 10.1,
+                "gamma": 10000,
+                "reference_time": 0.5,
+                "phase_shift": 0.0,
+                "additional_light": 0.0
+            },
+            "star": {
+                "mass": 1.0,
+                "t_eff": 5772.0,
+                "gravity_darkening": 0.32,
+                "discretization_factor": 5,
+                "metallicity": 0.0,
+                "polar_log_g": 2.43775,
+                "spots": [
+                    {
+                        'longitude': 90,
+                        'latitude': 90,
+                        'angular_radius': 45,
+                        'temperature_factor': 0.9,
+                        'discretization_factor': 5
+                    },
+                    {
+                        'longitude': 30,
+                        'latitude': 80,
+                        'angular_radius': 70,
+                        'temperature_factor': 1.0,
+                        'discretization_factor': 5
+                    }
+                ],
+                "pulsations": [
+                    {
+                        'l': 2,
+                        'm': 2,
+                        "amplitude": 500,
+                        "frequency": 0.5,
+                        'start_phase': 0.0,
+                        'mode_axis_theta': 90,
+                        'mode_axis_phi': 0,
+                        'horizontal_to_radial_amplitude_ratio': 0.1,
+                        'temperature_perturbation_phase_shift': c.PI / 2,
+                        'temperature_amplitude_factor': 0.03,
+                        'tidally_locked': True
+                    },
+                    {
+                        'l': 10,
+                        'm': 5,
+                        "amplitude": 500,
+                        "frequency": 0.5,
+                        'start_phase': 0.0,
+                        'mode_axis_theta': 0,
+                        'mode_axis_phi': 0,
+                        'horizontal_to_radial_amplitude_ratio': 2.65874,
+                        'temperature_perturbation_phase_shift': 1.0471975,
+                        'temperature_amplitude_factor': 0.075966,
+                        'tidally_locked': False
+                    }
+                ]
+            }
+        }
+
+        s = SingleSystem.from_json(data)
+        js = s.to_json()
+
+        for item in js['system']:
+            self.assertEqual(js['system'][item], expected['system'][item])
+
+        for item in js['star']:
+            if item not in ['spots', 'pulsations']:
+                self.assertAlmostEqual(js['star'][item], expected['star'][item], 3)
+            else:
+                for ii, feature in enumerate(js['star'][item]):
+                    for fitem in feature:
+                        self.assertAlmostEqual(
+                            feature[fitem],
+                            expected['star'][item][ii][fitem],
+                            3
+                        )

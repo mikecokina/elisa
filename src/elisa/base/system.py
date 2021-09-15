@@ -62,6 +62,60 @@ class System(metaclass=ABCMeta):
     def from_json(cls, data, _verify, _kind_of):
         pass
 
+    @abstractmethod
+    def default_input_units(self):
+        pass
+
+    @abstractmethod
+    def default_internal_units(self):
+        pass
+
+    def to_json(self):
+        """
+        Serialize System instance to JSON.
+
+        :return: Dict; JSON serializable
+        """
+
+        sys_input = self.default_input_units
+        sys_units = self.default_internal_units
+        spot_input = u.DEFAULT_SPOT_INPUT_UNITS
+        spot_units = u.DEFAULT_SPOT_UNITS
+        mode_input = u.DEFAULT_PULSATIONS_INPUT_UNITS
+        mode_units = u.DEFAULT_PULSATIONS_UNITS
+        retdict = {
+            "system": {
+                attr: (getattr(self, attr)*sys_units['system'][attr]).to(sys_input['system'][attr]).value
+                for attr in self.ALL_KWARGS
+            }
+        }
+
+        for component, instance in self.components.items():
+            retdict.update({component: {
+                attr: (getattr(instance, attr) * sys_units[component][attr]).to(sys_input[component][attr]).value
+                for attr in self.STAR_ALL_KWARGS
+            }})
+
+            if instance.has_spots():
+                spot_list = list()
+                for spot in instance.spots.values():
+                    spot_list.append({
+                        attr: (getattr(spot, attr) * spot_units[attr]).to(spot_input[attr]).value
+                        for attr in spot.ALL_KWARGS
+                    })
+                retdict[component].update(dict(spots=spot_list))
+
+            if instance.has_pulsations():
+                mode_list = list()
+                for mode in instance.pulsations.values():
+                    mode_list.append({
+                        attr: (getattr(mode, attr) * mode_units[attr]).to(mode_input[attr]).value
+                        if attr != 'tidally_locked' else getattr(mode, attr) for attr in mode.ALL_KWARGS
+                    })
+                retdict[component].update(dict(pulsations=mode_list))
+
+        return retdict
+
     def assign_pulsations_amplitudes(self, normalisation_constant=1.0):
         """
         Function assigns amplitudes of displacement to each mode based on radial velocity amplitude.

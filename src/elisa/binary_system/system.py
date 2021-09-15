@@ -473,48 +473,6 @@ class BinarySystem(System):
         logger.info(f'Orbital position container was successfully built at photometric phase {phase:.2f}.')
         return orbital_position_container
 
-    def to_json(self):
-        """
-        Serialize BinarySystem instance to JSON.
-
-        :return: Dict; JSON serializable
-        """
-
-        # fixme: add pulsations and spots definitions
-        return {
-            "system": {
-                "inclination":  (self.inclination * u.rad).to(u.deg).value,
-                "period": self.period,
-                "argument_of_periastron": (self.argument_of_periastron * u.rad).to(u.deg).value,
-                "gamma": self.gamma,
-                "eccentricity": self.eccentricity,
-                "primary_minimum_time": self.primary_minimum_time,
-                "phase_shift": self.phase_shift
-            },
-            "primary": {
-                "mass": (self.primary.mass * u.kg).to(u.solMass).value,
-                "surface_potential": self.primary.surface_potential,
-                "synchronicity": self.primary.synchronicity,
-                "t_eff": self.primary.t_eff,
-                "gravity_darkening": self.primary.gravity_darkening,
-                "discretization_factor": (self.primary.discretization_factor * u.rad).to(u.deg).value,
-                "albedo": self.primary.albedo,
-                "metallicity": self.primary.metallicity,
-                "atmosphere": self.primary.atmosphere or settings.ATM_ATLAS
-            },
-            "secondary": {
-                "mass": (self.secondary.mass * u.kg).to(u.solMass).value,
-                "surface_potential": self.secondary.surface_potential,
-                "synchronicity": self.secondary.synchronicity,
-                "t_eff": self.secondary.t_eff,
-                "gravity_darkening": self.primary.gravity_darkening,
-                "discretization_factor": (self.secondary.discretization_factor * u.rad).to(u.deg).value,
-                "albedo": self.secondary.albedo,
-                "metallicity": self.secondary.metallicity,
-                "atmosphere": self.secondary.atmosphere or settings.ATM_ATLAS
-            },
-        }
-
     def init(self):
         """
         Function to reinitialize BinarySystem class instance after changing parameter(s) of binary system.

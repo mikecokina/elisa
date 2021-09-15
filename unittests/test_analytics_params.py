@@ -627,13 +627,13 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                         "fixed": False,
                     },
                     "frequency": {
-                        "value": 10,
+                        "value": 10.0 * 86400,
                         "fixed": False,
-                        "min": 1.0,
-                        "max": 20.0
+                        "min": 1.0 * 86400,
+                        "max": 20.0 * 86400
                     },
                     "start_phase": {
-                        "constraint": "2.0 * primary@pulsation@bionic@frequency",
+                        "constraint": "2.0 * primary@pulsation@bionic@frequency"
                     },
                     "mode_axis_theta": {
                         "value": 0.0,

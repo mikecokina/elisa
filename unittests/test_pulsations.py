@@ -76,7 +76,7 @@ class PulsatingStarInitTestCase(ElisaTestCase):
                 'l': 1,
                 'm': -1,
                 'amplitude': 50,
-                'frequency': 16,
+                'frequency': "16 Hz",
                 'start_phase': 1.5,
             }
         ]

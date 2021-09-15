@@ -41,14 +41,15 @@ class PulsationModeProperties(SystemProperties):
         :param value: Union[float, astropy.unit.quantity.units.Quantity]
         :return: float;
         """
-        if isinstance(value, u.Quantity):
-            retval = np.float64(value.to(u.VELOCITY_UNIT))
+        if isinstance(value, (u.Quantity, str)):
+            retval = u.Quantity(value) if isinstance(value, str) else value
+            retval = np.float64(retval.to(u.VELOCITY_UNIT))
         elif isinstance(value, (int, np.int, float, np.float)):
             retval = np.float(value)
         else:
             raise TypeError('Value of `amplitude` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
-        if value < 0:
+        if retval < 0:
             raise ValueError('Temperature amplitude of mode has to be non-negative number.')
 
         return retval
@@ -61,14 +62,15 @@ class PulsationModeProperties(SystemProperties):
         :param value: Union[float, astropy.unit.quantity.units.Quantity]
         :return: float;
         """
-        if isinstance(value, u.Quantity):
-            retval = np.float64(value.to(u.FREQUENCY_UNIT))
+        if isinstance(value, (u.Quantity, str)):
+            retval = u.Quantity(value) if isinstance(value, str) else value
+            retval = np.float64(retval.to(u.FREQUENCY_UNIT))
         elif isinstance(value, (int, np.int, float, np.float)):
-            retval = np.float(value)
+            retval = (np.float(value) * u.DEFAULT_PULSATIONS_INPUT_UNITS['frequency']).to(u.FREQUENCY_UNIT).value
         else:
             raise TypeError('Value of `frequency` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
-        if value < 0:
+        if retval < 0:
             raise ValueError('Frequency of the mode has to be non-negative number.')
 
         return retval

@@ -88,6 +88,7 @@ DEFAULT_PULSATIONS_UNITS = dict(
     mode_axis_phi=ARC_UNIT,
     temperature_perturbation_phase_shift=ARC_UNIT,
     horizontal_to_radial_amplitude_ratio=dimensionless_unscaled,
+    temperature_amplitude_factor=dimensionless_unscaled,
     tidally_locked=bool
 )
 
@@ -137,7 +138,7 @@ DEFAULT_BINARY_SYSTEM_UNITS['secondary'] = DEFAULT_BINARY_SYSTEM_UNITS['primary'
 DEFAULT_SINGLE_SYSTEM_UNITS = dict(
     system=dict(
         inclination=DEFAULT_INCLINATION_UNIT,
-        rotational_period=DEFAULT_PERIOD_UNIT,
+        rotation_period=DEFAULT_PERIOD_UNIT,
         reference_time=PERIOD_UNIT,
         phase_shift=dimensionless_unscaled,
         additional_light=dimensionless_unscaled,
@@ -173,12 +174,13 @@ DEFAULT_PULSATIONS_INPUT_UNITS = dict(
     l=dimensionless_unscaled,
     m=dimensionless_unscaled,
     amplitude=VELOCITY_UNIT,
-    frequency=FREQUENCY_UNIT,
+    frequency=u.d**(-1),
     start_phase=ARC_UNIT,
     mode_axis_theta=deg,
     mode_axis_phi=deg,
     temperature_perturbation_phase_shift=ARC_UNIT,
     horizontal_to_radial_amplitude_ratio=dimensionless_unscaled,
+    temperature_amplitude_factor=dimensionless_unscaled,
     tidally_locked=bool
 )
 
@@ -224,11 +226,10 @@ DEFAULT_BINARY_SYSTEM_INPUT_UNITS = dict(
 )
 DEFAULT_BINARY_SYSTEM_INPUT_UNITS['secondary'] = DEFAULT_BINARY_SYSTEM_INPUT_UNITS['primary']
 
-
 DEFAULT_SINGLE_SYSTEM_INPUT_UNITS = dict(
     system=dict(
         inclination=DEFAULT_INCLINATION_INPUT_UNIT,
-        rotational_period=DEFAULT_PERIOD_INPUT_UNIT,
+        rotation_period=DEFAULT_PERIOD_INPUT_UNIT,
         reference_time=d,
         phase_shift=dimensionless_unscaled,
         additional_light=dimensionless_unscaled,
