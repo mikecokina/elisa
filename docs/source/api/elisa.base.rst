@@ -9,6 +9,7 @@ Subpackages
 
    elisa.base.curves
    elisa.base.graphics
+   elisa.base.orbit
    elisa.base.surface
 
 Submodules

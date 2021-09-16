@@ -161,6 +161,7 @@ def produce_circ_pulsating_curves_mp(*args):
                 curves_fn: function to calculate curve points at given orbital positions,
                 kwargs: Dict,
             ]
+
     :return:
     """
     binary, initial_system, phase_batch, crv_labels, curves_fn, kwargs = args

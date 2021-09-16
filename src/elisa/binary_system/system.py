@@ -926,7 +926,7 @@ class BinarySystem(System):
         forward radius and assign to component instance.
 
         :param components_distance: float; distance of components in SMA unit
-        :return Dict[str, Dict[str, float]];
+        :return: Dict[str, Dict[str, float]];
         """
         fns = [bsradius.calculate_polar_radius, bsradius.calculate_side_radius, bsradius.calculate_backward_radius]
         components = settings.BINARY_COUNTERPARTS

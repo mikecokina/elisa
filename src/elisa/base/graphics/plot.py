@@ -12,19 +12,19 @@ def add_colormap_to_plt_kwargs(*args, **kwargs):
 
     :param args: tuple;
     :**args options**:
-        * **colormap** *: str; 'gravity_acceleration', 'temperature', 'velocity', 'radial_velocity', 'normal_radiance',
+        * **colormap**: str; 'gravity_acceleration', 'temperature', 'velocity', 'radial_velocity', 'normal_radiance',
                           'radiance'
-        * **star** *:  elisa.base.container.StarContainer;
-        * **phase** *:  float; photometric phase
-        * **com_x** *:  float; centre of mass
-        * **system_scale** *:  float; scaling factor of a system
-        * **inclination** *:  float; inclination of a system
-        * **position** *:  float; elisa.const.Position
+        * **star**:  elisa.base.container.StarContainer;
+        * **phase**:  float; photometric phase
+        * **com_x**:  float; centre of mass
+        * **system_scale**:  float; scaling factor of a system
+        * **inclination**:  float; inclination of a system
+        * **position**:  float; elisa.const.Position
     :param kwargs: Dict;
     :**kwargs options**:
-        * **scale** *: str; `log` or `linear`
-        * **unit** *: astropy.units.Unit;
-        * **subtract_equilibrium** *: bool; if True; equilibrium values are subtracted from surface colormap
+        * **scale**: str; `log` or `linear`
+        * **unit**: astropy.units.Unit;
+        * **subtract_equilibrium**: bool; if True; equilibrium values are subtracted from surface colormap
     :return: numpy.array;
     """
     colorbar_fn = {
