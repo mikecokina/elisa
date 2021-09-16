@@ -17,7 +17,29 @@ class Registry(object):
         """
         schema_path = cls._get_schema_path(fname)
         with open(schema_path, "r") as f:
-            return json.loads(f.read())
+            # return json.loads(f.read())
+            schema = json.loads(f.read())
+
+        spot_schema_path = cls._get_schema_path('spot')
+        with open(spot_schema_path, "r") as f:
+            spot_schema = json.loads(f.read())
+
+        mode_schema_path = cls._get_schema_path('pulsation')
+        with open(mode_schema_path, "r") as f:
+            mode_schema = json.loads(f.read())
+
+        # adding subschemas for spots and pulsations to the base system schemas
+        feature_enabled = ['star', 'primary', 'secondary']
+        for component in feature_enabled:
+            if component in schema['properties']:
+                component_schema = schema['properties'][component]
+                if 'spots' in component_schema['properties']:
+                    component_schema['properties']['spots'] = spot_schema
+
+                if 'pulsations' in component_schema['properties']:
+                    component_schema['properties']['pulsations'] = mode_schema
+
+        return schema
 
     @classmethod
     def _get_schema_path(cls, fname):
