@@ -240,10 +240,10 @@ def mirror_face_values(values, face_symmetry_vector):
 
 def symmetry_face_reduction(values, base_symmetry_faces_number):
     """
-    Reducing the surface distribution of surface `values` array to a symmetrical component.
+    Reducing the surface distribution of surface `values` array to the symmetrical component.
 
     :param values: numpy.array; surface parameter distribution
-    :param base_symmetry_faces_number: int; number of the first `base_symmetry_faces_numbe`from the symmetrical
+    :param base_symmetry_faces_number: int; number of the first `base_symmetry_faces_numbe` from the symmetrical
                                             component
     :return: numpy.array; reduced surface distribution array
     """

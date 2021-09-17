@@ -23,6 +23,10 @@ class System(metaclass=ABCMeta):
     OPTIONAL_KWARGS = []
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
+    STAR_MANDATORY_KWARGS = []
+    STAR_OPTIONAL_KWARGS = []
+    STAR_ALL_KWARGS = STAR_MANDATORY_KWARGS + STAR_OPTIONAL_KWARGS
+
     def __init__(self, name=None, **kwargs):
         # default params
         self.inclination: float = np.nan

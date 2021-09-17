@@ -173,17 +173,9 @@ And finally install ``ELISa``::
 How to build API docs
 =====================
 
-Use virtual environment created in previous steps and add the following dependencies::
+Read this readme_ file to see detailed instruction how to generate up to date documentation.
 
-    Sphinx==2.2.0
-    sphinx-rtd-theme==0.4.3
-
-.. _docs: https://github.com/mikecokina/elisa/tree/master/docs
-
-Move into docs_ (elisa/tree/master/docs) directory and use following command::
-
-    sphinx-build -W -b html -c .\source -d .\build\doctrees .\source\ .\build\
-
+.. _readme: https://github.com/mikecokina/elisa/docs/README.rst
 
 Minimal configuration
 ---------------------
