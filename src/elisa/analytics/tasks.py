@@ -113,19 +113,19 @@ class AnalyticsTask(metaclass=ABCMeta):
         Least squares method is adopted from scipy.optimize.least_squares.
         MCMC uses emcee package to perform sampling.
 
-        :param x0: Dict; initial state (metadata included) {param_name: {`value`: value,
-                                                           `unit`: astropy.unit, ...}, ...}
+        :param x0: Dict; initial state of the sampler, model parameters in standard JSON format
         :param kwargs: Dict; method-dependent
         :**additional light curve kwargs**:
             * **morphology** * - str - `detached` or `over-contact`
             * **interp_treshold** * - bool - Above this total number of datapoints, light curve will be interpolated
                                              using model containing `interp_treshold` equidistant points per epoch
             * **discretization** * - Union[int, float] - discretization factor of the primary component, default: 5
+            * **samples** * - Union[str, List]; 'uniform', 'adaptive' or list with phases in (0, 1) interval
 
         :**kwargs options for least_squares**: passes arguments of scipy.optimize.least_squares method except
                                                `fun`, `x0` and `bounds`
 
-        :**kwargs options for mcmc**:
+        :**kwargs options for MCMC method**:
             * **nwalkers (int)** * - The number of walkers in the ensemble. Minimum is 2 * number of free parameters.
             * **nsteps (int)** * - The number of steps to run. Default is 1000.
             * **initial_state (numpy.ndarray)** * - The initial state or position vector made of free parameters with
@@ -133,12 +133,13 @@ class AnalyticsTask(metaclass=ABCMeta):
                     in `x0`. Be aware that initial states should be supplied in normalized form (0, 1). For example, 0
                     means value of the parameter at `min` and 1.0 at `max` value in `x0`. By default, they are generated
                     randomly uniform distribution.
-            * **burn_in** * - The number of steps to run to achieve equilibrium where useful sampling can start.
-                    Default value is nsteps / 10.
+            * **burn_in** * - The expected number of steps to run to achieve equilibrium where useful sampling can
+                              start.Default value is nsteps / 10.
+            * **progress** * - bool - display the progress bar of the sampling
             * **percentiles** * - List of percentiles used to create error results and confidence interval from MCMC
                                   chain. Default value is [16, 50, 84] (1-sigma confidence interval)
             * **save** * - bool - save chain
-            * **fit_id** * - str - identificator of stored chain
+            * **fit_id** * - str - identificator or location of stored chain
         :return: Dict; resulting parameters {param_name: {`value`: value, `unit`: astropy.unit, ...}, ...}
         """
         if isinstance(x0, dict):

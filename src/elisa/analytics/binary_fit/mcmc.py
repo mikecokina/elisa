@@ -230,13 +230,13 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
         :param nsteps: int; The number of steps to run.
         :param initial_state: numpy.array; initial priors for mcmc
         :param burn_in: int; number of steps for mcmc to explore parameters
-        :param progress: bool; visualize progress of the sampling
+        :param progress: bool; display the progress bar of the sampling
         :param percentiles: List; [percentile for left side error estimation, percentile of the centre,
                                    percentile for right side error estimation]
         :param save: bool; whether to store the chain or not
         :param fit_id: str; id which identifies fit file (if not specified, current dateime is used)
         :param samples: Union[str, List]; `uniform`, `adaptive` or list with phases in (0, 1) interval
-        :return: emcee.EnsembleSampler; sampler instance
+        :return: Dict; optimized model parameters in flattened form
         """
         burn_in = int(nsteps / 10) if burn_in is None else burn_in
         self.set_up(x0, data, passband=data.keys(), discretization=discretization, morphology=self.MORPHOLOGY,

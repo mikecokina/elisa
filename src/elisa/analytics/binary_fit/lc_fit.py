@@ -20,6 +20,9 @@ DASH_N = 126
 
 
 class LCFit(object):
+    """
+    Class with common methods used during an LC fit.
+    """
 
     def __init__(self, morphology):
         self.morphology = morphology
@@ -28,29 +31,50 @@ class LCFit(object):
         self.flat_result = None
         self.fit_method_instance: Union[LCFitLeastSquares, LCFitMCMC, None] = None
 
-    def get_result(self):
-        return self.result
+    def coefficient_of_determination(self, model_parameters, data, discretization, interp_treshold):
+        """
+        Function returns R^2 for given model parameters and observed data.
 
-    def set_result(self, result):
-        result = eval_constraint_in_dict(result)
-        self.result = result
-        self.flat_result = parameters.deserialize_result(self.result)
+        :param model_parameters: Dict; set of model parameters in json format
+        :param data: Dict[DataSet]; observational data
+        :param discretization: float; discretization factor for the primary component
+        :param interp_treshold: int; a number of observation points above which the synthetic curves will be calculated
+                                     using `interp_treshold` equally spaced points that will be subsequently
+                                     interpolated to the desired times of observation
+        :return: float; coefficient of determination (1.0 means a perfect fit to the observations)
+        """
+        b_parameters = parameters.BinaryInitialParameters(**model_parameters)
+        b_parameters.validate_lc_parameters(morphology=self.morphology)
+        args = model_parameters, data, discretization, interp_treshold
+        return self.fit_method_instance.coefficient_of_determination(*args)
+
+    def get_result(self):
+        """
+        Returns model parameters in standard dict (JSON) format.
+
+        :return: Dict; model parameters in a standardized format
+        """
+        return self.result
 
     def load_result(self, path):
         """
-        Function loads fitted parameters of given model.
+        Function loads a JSON file containing model parameters and stores it as a result in AnalyticsTask fitting
+        instance. This is useful if you want to examine already calculated results using functionality provided by the
+        AnalyticsTask instances (e.g: LCBinaryAnalyticsTask, RVBinaryAnalyticsTask, etc.).
 
-        :param path: str;
+        :param path: str; location of a JSON file with parameters
         """
         with open(path, 'r') as f:
             loaded_result = json.load(f)
-        loaded_result = eval_constraint_in_dict(loaded_result)
-        self.result = loaded_result
-        self.flat_result = parameters.deserialize_result(self.result)
+        self.set_result(loaded_result)
+
+    @abstractmethod
+    def resolve_fit_cls(self, morphology: str):
+        pass
 
     def save_result(self, path):
         """
-        Save result as json.
+        Save result as JSON file.
 
         :param path: str; path to file
         """
@@ -60,27 +84,24 @@ class LCFit(object):
         with open(path, 'w') as f:
             json.dump(self.result, f, separators=(',', ': '), indent=4)
 
-    def coefficient_of_determination(self, model_parameters, data, discretization, interp_treshold):
+    def set_result(self, result):
         """
-        Function returns R^2 for given model parameters and observed data.
+        Set model parameters in dictionary (JSON format) as a result in AnalyticsTask fitting instance. This is useful
+        if you want to examine already calculated results using functionality provided by the AnalyticsTask instances
+        (e.g: LCBinaryAnalyticsTask, RVBinaryAnalyticsTask, etc.).
 
-        :param model_parameters: Dict; serialized form
-        :param data: DataSet; observational data
-        :param discretization: float;
-        :param interp_treshold: int;
-        :return: float;
+        :param result: Dict; model parameters in JSON format
+        :return: None;
         """
-        b_parameters = parameters.BinaryInitialParameters(**model_parameters)
-        b_parameters.validate_lc_parameters(morphology=self.morphology)
-        args = model_parameters, data, discretization, interp_treshold
-        return self.fit_method_instance.coefficient_of_determination(*args)
-
-    @abstractmethod
-    def resolve_fit_cls(self, morphology: str):
-        pass
+        result = eval_constraint_in_dict(result)
+        self.result = result
+        self.flat_result = parameters.deserialize_result(self.result)
 
 
 class LCFitMCMC(LCFit):
+    """
+    Class for LC fitting using the MCMC method.
+    """
     def __init__(self, morphology):
         super().__init__(morphology)
         self.fit_method_instance = self.resolve_fit_cls(morphology)()
@@ -90,11 +111,28 @@ class LCFitMCMC(LCFit):
         self.normalization = None
         self.variable_labels = None
 
-    def resolve_fit_cls(self, morphology: str):
-        _cls = {"detached": mcmc.DetachedLightCurveFit, "over-contact": mcmc.OvercontactLightCurveFit}
-        return _cls[morphology]
+    def filter_chain(self, **boundaries):
+        """
+        Filtering mcmc chain down to given parameter intervals. This function is usable in case of bimodal distribution
+        of the MCMC chain.
+
+        :param boundaries: Dict; dictionary of boundaries e.g. {'primary@te_ff': (5000, 6000), other parameters ...}
+        :return: numpy.array; filtered flat chain
+        """
+        return io_tools.filter_chain(self, **boundaries)
 
     def fit(self, x0: BinaryInitialParameters, data, **kwargs):
+        """
+        Perform MCMC sampling on LCFitMCMC instance.
+
+        :param x0: BinaryInitialParameters; initial info about the model parameters such as status
+                                            (fixed, variable, constrained), bounds (prior distribution) and
+                                            initial value
+        :param data: Dict[DataSet]; observational data (light curves in multiple filters)
+        :param kwargs: Dict; arguments passed to the fitting method (see AnalyticsTask.fit kwargs for MCMC or
+                             mcmc.LightCurveFit.fit for further info)
+        :return: Dict; optimized model parameters in JSON format
+        """
         x0.validate_lc_parameters(morphology=self.morphology)
         self.result = self.fit_method_instance.fit(data=data, x0=x0, **kwargs)
         self.flat_result = self.fit_method_instance.flat_result
@@ -107,35 +145,19 @@ class LCFitMCMC(LCFit):
         logger.info('Fitting and processing of results finished successfully.')
         self.fit_summary()
 
-        return self.result
-
-    def load_chain(self, filename, discard=0, percentiles=None):
-        """
-        Function loads MCMC chain along with auxiliary data from json file created after each MCMC run.
-
-        :param percentiles: List;
-        :param self: Union[] instance of fitting cls based on method (mcmc, lsqr) and type(lc, rv)
-        :param discard: int; Discard the first discard steps in the chain as burn-in. (default: 0)
-        :param filename: str; full name of the json file
-        :return: Tuple[numpy.ndarray, List, Dict]; flattened mcmc chain, labels of variables in `flat_chain` columns,
-                                                  {var_name: (min_boundary, max_boundary), ...} dictionary of
-                                                  boundaries defined by user for each variable needed
-                                                  to reconstruct real values from normalized `flat_chain` array
-        """
-        return io_tools.load_chain(self, filename, discard, percentiles)
-
     def fit_summary(self, filename=None, **kwargs):
         """
-        Function produces detailed summary about the current LC fitting task with complete error propagation for the LC
-        parameters if `propagate_errors` is True.
+        Function produces detailed summary of the current LC fitting task with the possibility to propagate
+        uncertainties of the fitted binary model parameters if `propagate_errors` is True.
 
-        :param path: str; path, where to store summary
+        :param filename: str; path, place to store summary
         :param kwargs: Dict;
         :**kwargs options**:
             * ** propagate_errors ** * - bool -- errors of fitted parameters will be propagated to the rest of EB
-                                                 parameters (takes a while)
-            * ** percentiles ** * - List -- percentiles used to evaluate confidence intervals from forward distribution
-                                            of EB parameters. Useless if `propagate_errors` is False.
+                                                 parameters (takes a while to calculate)
+            * ** percentiles ** * - List -- percentiles used to evaluate confidence intervals from posterior
+                                            distribution of EB parameters in MCMC chain . Used only when if
+                                            `propagate_errors` is True.
             * ** dimensionless_radii ** * - if True (default), radii are provided in SMA, otherwise solRad are used
 
         """
@@ -147,26 +169,56 @@ class LCFitMCMC(LCFit):
 
         fit_lc_summary_with_error_propagation(self, filename, percentiles, dimensionless_radii=dimensionless_radii)
 
-    def filter_chain(self, **boundaries):
-        """
-        Filtering mcmc chain to given set of intervals.
+        return self.result
 
-        :param boundaries: Dict; dictionary of boundaries e.g. {'primary@te_ff': (5000, 6000), other parameters ...}
-        :return: numpy.array; filtered flat chain
+    def load_chain(self, filename, discard=0, percentiles=None):
         """
-        return io_tools.filter_chain(self, **boundaries)
+        Function loads MCMC chain along with auxiliary data from json file created after each MCMC run.
+
+        :param percentiles: List; percentile intervals used to generate confidence intervals, provided in form:
+                                  [percentile for lower bound of confidence interval, percentile of the centre,
+                                  percentile for the upper bound of confidence interval]
+        :param discard: int; Discard the first discard steps in the chain as a part of the thermalization phase
+                             (default: 0).
+        :param filename: str; chain identificator or filename containing the chain
+        :return: Tuple[numpy.ndarray, List, Dict]; flattened mcmc chain, labels of variables in `flat_chain` columns,
+                                                   {var_name: (min_boundary, max_boundary), ...} dictionary of
+                                                   boundaries defined by user for each variable needed
+                                                   to reconstruct real values from normalized `flat_chain` array
+        """
+        return io_tools.load_chain(self, filename, discard, percentiles)
+
+    def resolve_fit_cls(self, morphology: str):
+        """
+        Function returns MCMC fitting class suitable for the model based on its morphology.
+
+        :param morphology: str; `detached` or `overcontact`
+        :return: Union[mcmc.DetachedLightCurveFit, mcmc.OvercontactLightCurveFit]
+        """
+        _cls = {"detached": mcmc.DetachedLightCurveFit, "over-contact": mcmc.OvercontactLightCurveFit}
+        return _cls[morphology]
 
 
 class LCFitLeastSquares(LCFit):
+    """
+    Class for LC fitting using the Least-Squares method.
+    """
     def __init__(self, morphology):
         super().__init__(morphology)
         self.fit_method_instance = self.resolve_fit_cls(morphology)()
 
-    def resolve_fit_cls(self, morphology: str):
-        _cls = {"detached": least_squares.DetachedLightCurveFit, "over-contact": least_squares.OvercontactLightCurveFit}
-        return _cls[morphology]
-
     def fit(self, x0: BinaryInitialParameters, data, **kwargs):
+        """
+        Perform Least-Squares optimization on LCFitLeastSquares instance.
+
+        :param x0: BinaryInitialParameters; initial info about the model parameters such as status
+                                            (fixed, variable, constrained), bounds (prior distribution) and
+                                            initial value
+        :param data: Dict[DataSet]; observational data (light curves in multiple filters)
+        :param kwargs: Dict; arguments passed to the fitting method (see AnalyticsTask.fit kwargs for Least-Squares or
+                             least_squares.LightCurveFit.fit for further info)
+        :return: Dict; optimized model parameters in JSON format
+        """
         x0.validate_lc_parameters(morphology=self.morphology)
         self.result = self.fit_method_instance.fit(data=data, x0=x0, **kwargs)
         self.flat_result = self.fit_method_instance.flat_result
@@ -175,5 +227,21 @@ class LCFitLeastSquares(LCFit):
         return self.result
 
     def fit_summary(self, path=None, **kwargs):
+        """
+        Function produces detailed summary of the current LC fitting task.
+
+        :param path: str; path, place to store summary
+        :param kwargs:
+        :return:
+        """
         simple_lc_fit_summary(self, path)
 
+    def resolve_fit_cls(self, morphology: str):
+        """
+        Function returns Least-Squares fitting class suitable for the model based on its morphology.
+
+        :param morphology: str; `detached` or `overcontact`
+        :return: Union[least_squares.DetachedLightCurveFit, least_squares.OvercontactLightCurveFit]
+        """
+        _cls = {"detached": least_squares.DetachedLightCurveFit, "over-contact": least_squares.OvercontactLightCurveFit}
+        return _cls[morphology]

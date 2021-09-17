@@ -629,7 +629,7 @@ class BinaryInitialParameters(InitialParameters):
 
         Allowed characters used in constraints::
 
-            '(', ')', '+', '-', '*', '/', '.'
+            '(', ')', '+', '-', '*', '/', '.', 'e'
 
         :raise: elisa.base.error.ValidationError;
         """

@@ -12,7 +12,7 @@ def filter_chain(mcmc_fit_cls, **boundaries):
     Filtering mcmc chain down to given parameter intervals. This function is usable in case of bimodal distribution of
     the MCMC chain.
 
-    :param mcmc_fit_cls: fitting cls instance based on method (mcmc, lstqr) and type(lc, rv)
+    :param mcmc_fit_cls: MCMC fitting cls instance e.g.: (LCFitMCMC, RVFitMCMC)
     :param boundaries: Dict; dictionary of boundaries in flat format (using @)
                              e.g. {`primary@te_ff`: (5000, 6000), other parameters ...}
     :return: numpy.array; filtered flat chain
@@ -49,13 +49,13 @@ def load_chain(mcmc_fit_cls, fit_id, discard=0, percentiles=None):
     :param percentiles: List; percentile intervals used to generate confidence intervals, provided in form:
                               [percentile for lower bound of confidence interval, percentile of the centre,
                               percentile for the upper bound of confidence interval]
-    :param mcmc_fit_cls: Union[] instance of fitting cls based on method (mcmc, lsqr) and type(lc, rv)
+    :param mcmc_fit_cls: MCMC fitting cls instance e.g.: (LCFitMCMC, RVFitMCMC)
     :param discard: int; Discard the first discard steps in the chain as burn-in. (default: 0)
-    :param fit_id: str; chain identificator
-    :return: Tuple[numpy.ndarray, List, Dict]; flattened mcmc chain, labels of variables in `flat_chain` columns,
-                                              {var_name: (min_boundary, max_boundary), ...} dictionary of
-                                              boundaries defined by user for each variable needed
-                                              to reconstruct real values from normalized `flat_chain` array
+    :param fit_id: str; chain identificator or filename containing the chain
+    :return: Tuple[numpy.ndarray, list, dict]; flattened mcmc chain, labels of variables in `flat_chain` columns,
+                                               {var_name: (min_boundary, max_boundary), ...} dictionary of
+                                               boundaries defined by user for each variable needed
+                                               to reconstruct real values from normalized `flat_chain` array
     """
     data = MCMCMixin.load_flat_chain(fit_id=fit_id)
 
@@ -70,9 +70,9 @@ def load_chain(mcmc_fit_cls, fit_id, discard=0, percentiles=None):
 
 def update_solution(mcmc_fit_cls, fitted_params, percentiles):
     """
-    Updating solutions according to mcmc chain.
+    Updating solutions based on the distribution of to MCMC chain.
 
-    :param mcmc_fit_cls: fitting cls instance based on method (mcmc, lsqr) and type(lc, rv)
+    :param mcmc_fit_cls: MCMC fitting cls instance e.g.: (LCFitMCMC, RVFitMCMC)
     :param fitted_params: Dict; only variable part of flat_result
     :param percentiles: List; percentiles used for evaluation of confidence intervals
     :return: Tuple;
