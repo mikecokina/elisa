@@ -91,9 +91,9 @@ def find_apsidally_corresponding_positions(binary, radii, base_arr, supplement_a
     supplements = OrbitalSupplements()
 
     for id_supplement, id_reduced in enumerate(twin_in_reduced):
-        args = (base_arr[id_reduced], supplement_arr[id_supplement]) \
-            if id_reduced > -1 else (supplement_arr[id_supplement], as_empty)
-        # if id_reduced > -1 else (as_empty, supplement_arr[id_supplement])
+        args = (supplement_arr[id_supplement], as_empty)
+        if id_reduced > -1:
+            args = (base_arr[id_reduced], supplement_arr[id_supplement])
 
         if not utils.is_empty(args):
             supplements.append(*args)

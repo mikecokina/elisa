@@ -5,8 +5,8 @@ from .. import (
     const
 )
 from .. units import (
-    DEFAULT_STAR_INPUT_UNITS as DEF_S,
-    DEFAULT_BINARY_SYSTEM_INPUT_UNITS as DEF_BU
+    DefaultStarInputUnits,
+    DefaultBinarySystemInputUnits
 )
 
 WHEN_FLOAT64 = (int, np.int, np.int32, np.int64, float, np.float, np.float32, np.float64)
@@ -141,7 +141,7 @@ class SystemProperties(TransformProperties):
             value = u.Quantity(value) if isinstance(value, str) else value
             value = np.float64(value.to(u.DISTANCE_UNIT))
         elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(value * DEF_BU['system']['semi_major_axis'].to(u.DISTANCE_UNIT))
+            value = np.float64(value * DefaultBinarySystemInputUnits.system.semi_major_axis.to(u.DISTANCE_UNIT))
         else:
             raise TypeError('User input is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance (or its string representation).')
@@ -215,7 +215,7 @@ class StarProperties(BodyProperties):
             value = u.Quantity(value) if isinstance(value, str) else value
             value = np.float64(value.to(u.DISTANCE_UNIT))
         elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(value * DEF_S['equivalent_radius'].to(u.DISTANCE_UNIT))
+            value = np.float64(value * DefaultStarInputUnits.equivalent_radius.to(u.DISTANCE_UNIT))
         else:
             raise TypeError('User input is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance (or its string representation).')
@@ -237,7 +237,7 @@ class StarProperties(BodyProperties):
             value = u.Quantity(value) if isinstance(value, str) else value
             value = np.float64(value.to(u.MASS_UNIT))
         elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(value * DEF_S['mass'].to(u.MASS_UNIT))
+            value = np.float64(value * DefaultStarInputUnits.mass.to(u.MASS_UNIT))
         else:
             raise TypeError('User input is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance (or its string representation).')

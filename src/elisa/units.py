@@ -18,29 +18,13 @@ DISTANCE_UNIT = u.m
 TIME_UNIT = u.s
 ARC_UNIT = u.rad
 PERIOD_UNIT = u.d
-VELOCITY_UNIT = DISTANCE_UNIT / TIME_UNIT
+GAMMA_UNIT = VELOCITY_UNIT = DISTANCE_UNIT / TIME_UNIT
 ACCELERATION_UNIT = DISTANCE_UNIT / TIME_UNIT ** 2
 LOG_ACCELERATION_UNIT = u.dex(ACCELERATION_UNIT)
 FREQUENCY_UNIT = u.Hz
 ANGULAR_FREQUENCY_UNIT = u.rad / u.s
 LUMINOSITY_UNIT = u.W
 RADIANCE_UNIT = u.W / (u.m ** 2 * u.sr)
-
-DEFAULT_UNITS = dict(
-    MASS_UNIT=MASS_UNIT,
-    TEMPERATURE_UNIT=TEMPERATURE_UNIT,
-    DISTANCE_UNIT=DISTANCE_UNIT,
-    TIME_UNIT=TIME_UNIT,
-    ARC_UNIT=ARC_UNIT,
-    PERIOD_UNIT=PERIOD_UNIT,
-    VELOCITY_UNIT=VELOCITY_UNIT,
-    ACCELERATION_UNIT=ACCELERATION_UNIT,
-    LOG_ACCELERATION_UNIT=LOG_ACCELERATION_UNIT,
-    FREQUENCY_UNIT=FREQUENCY_UNIT,
-    ANGULAR_FREQUENCY_UNIT=ANGULAR_FREQUENCY_UNIT,
-    LUMINOSITY_UNIT=LUMINOSITY_UNIT,
-    RADIANCE_UNIT=RADIANCE_UNIT
-)
 
 # astropy units to avoid annoying undefined warning across the code
 deg = u.deg
@@ -65,186 +49,241 @@ Unit = u.Unit
 Quantity = u.quantity.Quantity
 Dex = u.Dex
 
-# _____DEFAULT PARAMETER UNITS -- DO NOT CHANGE!!______
+# DEFAULT PARAMETER UNITS -- DO NOT CHANGE!!! --------------------------------------------------------------------------
+
+
+class BaseUnits(object):
+    @classmethod
+    def __iter__(cls):
+        for varname in cls.__dict__.keys():
+            if str(varname).startswith("_"):
+                continue
+            _unit = getattr(cls, varname)
+            if isinstance(_unit, Unit):
+                _unit = _unit.to_string()
+            yield varname, _unit
+
+    def __getitem__(self, item):
+        return getattr(self, item)
+
+    def as_dict(self):
+        _dict_repr = dict()
+        for key, val in self:
+            if isinstance(val, Unit):
+                _val_repr = val.to_string()
+            elif isinstance(val, BaseUnits):
+                _val_repr = val.as_dict()
+            elif isinstance(val, bool):
+                _val_repr = 'boolean'
+            else:
+                _val_repr = str(val)
+
+            _dict_repr[key] = _val_repr
+        return _dict_repr
+
+
+# DEFAULT ELISa INNER UNITS (ALL USER INPUTS ARE CONVERTED TO THIS) ----------------------------------------------------
 
 DEFAULT_INCLINATION_UNIT = ARC_UNIT
 DEFAULT_PERIOD_UNIT = PERIOD_UNIT
 DEFAULT_GAMMA_UNIT = VELOCITY_UNIT
 
-DEFAULT_SPOT_UNITS = dict(
-    longitude=ARC_UNIT,
-    latitude=ARC_UNIT,
-    angular_radius=ARC_UNIT,
-    temperature_factor=u.dimensionless_unscaled,
-    discretization_factor=ARC_UNIT
-)
-DEFAULT_PULSATIONS_UNITS = dict(
-    l=dimensionless_unscaled,
-    m=dimensionless_unscaled,
-    amplitude=VELOCITY_UNIT,
-    frequency=FREQUENCY_UNIT,
-    start_phase=ARC_UNIT,
-    mode_axis_theta=ARC_UNIT,
-    mode_axis_phi=ARC_UNIT,
-    temperature_perturbation_phase_shift=ARC_UNIT,
-    horizontal_to_radial_amplitude_ratio=dimensionless_unscaled,
-    temperature_amplitude_factor=dimensionless_unscaled,
-    tidally_locked=bool
-)
 
-DEFAULT_STAR_UNITS = dict(
-    mass=MASS_UNIT,
-    t_eff=TEMPERATURE_UNIT,
-    surface_potential=dimensionless_unscaled,
-    synchronicity=dimensionless_unscaled,
-    metallicity=dimensionless_unscaled,
-    gravity_darkening=dimensionless_unscaled,
-    albedo=dimensionless_unscaled,
-    discretization_factor=ARC_UNIT,
-    polar_log_g=LOG_ACCELERATION_UNIT,
-    equivalent_radius=DISTANCE_UNIT,
-    spots=DEFAULT_SPOT_UNITS,
-    pulsations=DEFAULT_PULSATIONS_UNITS
-)
-
-DEFAULT_BINARY_SYSTEM_UNITS = dict(
-    system=dict(
-        inclination=DEFAULT_INCLINATION_UNIT,
-        period=DEFAULT_PERIOD_UNIT,
-        eccentricity=dimensionless_unscaled,
-        argument_of_periastron=ARC_UNIT,
-        gamma=DEFAULT_GAMMA_UNIT,
-        phase_shift=dimensionless_unscaled,
-        additional_light=dimensionless_unscaled,
-        primary_minimum_time=PERIOD_UNIT,
-        semi_major_axis=DISTANCE_UNIT
-    ),
-    primary=dict(
-        mass=DEFAULT_STAR_UNITS['mass'],
-        t_eff=DEFAULT_STAR_UNITS['t_eff'],
-        surface_potential=DEFAULT_STAR_UNITS['surface_potential'],
-        synchronicity=DEFAULT_STAR_UNITS['synchronicity'],
-        metallicity=DEFAULT_STAR_UNITS['metallicity'],
-        gravity_darkening=DEFAULT_STAR_UNITS['gravity_darkening'],
-        albedo=DEFAULT_STAR_UNITS['albedo'],
-        discretization_factor=DEFAULT_STAR_UNITS['discretization_factor'],
-        spots=DEFAULT_SPOT_UNITS,
-        pulsations=DEFAULT_PULSATIONS_UNITS
-    )
-)
-DEFAULT_BINARY_SYSTEM_UNITS['secondary'] = DEFAULT_BINARY_SYSTEM_UNITS['primary']
+class _DefaultSpotUnits(BaseUnits):
+    longitude = ARC_UNIT
+    latitude = ARC_UNIT
+    angular_radius = ARC_UNIT
+    temperature_factor = dimensionless_unscaled
+    discretization_factor = ARC_UNIT
 
 
-DEFAULT_SINGLE_SYSTEM_UNITS = dict(
-    system=dict(
-        inclination=DEFAULT_INCLINATION_UNIT,
-        rotation_period=DEFAULT_PERIOD_UNIT,
-        reference_time=PERIOD_UNIT,
-        phase_shift=dimensionless_unscaled,
-        additional_light=dimensionless_unscaled,
-        gamma=DEFAULT_GAMMA_UNIT,
-    ),
-    star=dict(
-        mass=DEFAULT_STAR_UNITS['mass'],
-        t_eff=DEFAULT_STAR_UNITS['t_eff'],
-        polar_log_g=DEFAULT_STAR_UNITS['polar_log_g'],
-        metallicity=DEFAULT_STAR_UNITS['metallicity'],
-        gravity_darkening=DEFAULT_STAR_UNITS['gravity_darkening'],
-        discretization_factor=DEFAULT_STAR_UNITS['discretization_factor'],
-        equivalent_radius=DEFAULT_STAR_UNITS['equivalent_radius'],
-        spots=DEFAULT_SPOT_UNITS,
-        pulsations=DEFAULT_PULSATIONS_UNITS
-    )
-)
+class _DefaultPulsationsUnits(BaseUnits):
+    l = dimensionless_unscaled
+    m = dimensionless_unscaled
+    amplitude = VELOCITY_UNIT
+    frequency = FREQUENCY_UNIT
+    start_phase = ARC_UNIT
+    mode_axis_theta = ARC_UNIT
+    mode_axis_phi = ARC_UNIT
+    temperature_perturbation_phase_shift = ARC_UNIT
+    horizontal_to_radial_amplitude_ratio = dimensionless_unscaled
+    temperature_amplitude_factor = dimensionless_unscaled
+    tidally_locked = bool
 
-# _____DEFAULT USER INPUT UNITS -- DO NOT CHANGE!!______
+
+class _DefaultStarUnits(BaseUnits):
+    mass = MASS_UNIT
+    t_eff = TEMPERATURE_UNIT
+    surface_potential = dimensionless_unscaled
+    synchronicity = dimensionless_unscaled
+    metallicity = dimensionless_unscaled
+    gravity_darkening = dimensionless_unscaled
+    albedo = dimensionless_unscaled
+    discretization_factor = ARC_UNIT
+    polar_log_g = LOG_ACCELERATION_UNIT
+    equivalent_radius = DISTANCE_UNIT
+    spots = _DefaultSpotUnits()
+    pulsations = _DefaultPulsationsUnits()
+
+
+class _DefaultBinarySystemUnits(BaseUnits):
+    class __DefaultBinaryComponentUnits(BaseUnits):
+        mass = _DefaultStarUnits.mass
+        t_eff = _DefaultStarUnits.t_eff
+        surface_potential = _DefaultStarUnits.surface_potential
+        synchronicity = _DefaultStarUnits.synchronicity
+        metallicity = _DefaultStarUnits.metallicity
+        gravity_darkening = _DefaultStarUnits.gravity_darkening
+        albedo = _DefaultStarUnits.albedo
+        discretization_factor = _DefaultStarUnits.discretization_factor
+        spots = _DefaultSpotUnits()
+        pulsations = _DefaultPulsationsUnits()
+
+    class __DefaultBinarySystemUnits(BaseUnits):
+        inclination = DEFAULT_INCLINATION_UNIT
+        period = DEFAULT_PERIOD_UNIT
+        eccentricity = dimensionless_unscaled
+        argument_of_periastron = ARC_UNIT
+        gamma = DEFAULT_GAMMA_UNIT
+        phase_shift = dimensionless_unscaled
+        additional_light = dimensionless_unscaled
+        primary_minimum_time = DEFAULT_PERIOD_UNIT
+        semi_major_axis = DISTANCE_UNIT
+
+    system = __DefaultBinarySystemUnits()
+    primary = __DefaultBinaryComponentUnits()
+    secondary = __DefaultBinaryComponentUnits()
+
+
+class _DefaultSingleSystemUnits(BaseUnits):
+    class __DefaultSingleSystemUnits(BaseUnits):
+        inclination = DEFAULT_INCLINATION_UNIT
+        rotation_period = DEFAULT_PERIOD_UNIT
+        reference_time = DEFAULT_PERIOD_UNIT
+        phase_shift = dimensionless_unscaled
+        additional_light = dimensionless_unscaled
+        gamma = DEFAULT_GAMMA_UNIT
+
+    class __DefaultSingleSystemStarUnits(BaseUnits):
+        mass = _DefaultStarUnits.mass
+        t_eff = _DefaultStarUnits.t_eff
+        polar_log_g = _DefaultStarUnits.polar_log_g
+        metallicity = _DefaultStarUnits.metallicity
+        gravity_darkening = _DefaultStarUnits.gravity_darkening
+        discretization_factor = _DefaultStarUnits.discretization_factor
+        equivalent_radius = _DefaultStarUnits.equivalent_radius
+        spots = _DefaultSpotUnits()
+        pulsations = _DefaultPulsationsUnits()
+
+    system = __DefaultSingleSystemUnits()
+    star = __DefaultSingleSystemStarUnits()
+
+
+DefaultSpotUnits = _DefaultSpotUnits()
+DefaultPulsationsUnits = _DefaultPulsationsUnits()
+DefaultStarUnits = _DefaultStarUnits()
+DefaultBinarySystemUnits = _DefaultBinarySystemUnits()
+DefaultSingleSystemUnits = _DefaultSingleSystemUnits()
+
+# DEFAULT ELISa OUTTER/USER INPUT UNITS (MORE CONVENIENT FOR USER BUT NOT SO MUCH FOR PROGRAMMER) ----------------------
 
 DEFAULT_INCLINATION_INPUT_UNIT = deg
 DEFAULT_PERIOD_INPUT_UNIT = d
 DEFAULT_GAMMA_INPUT_UNIT = m/s
 
-DEFAULT_SPOT_INPUT_UNITS = dict(
-    longitude=deg,
-    latitude=deg,
-    angular_radius=deg,
-    temperature_factor=u.dimensionless_unscaled,
-    discretization_factor=deg
-)
-DEFAULT_PULSATIONS_INPUT_UNITS = dict(
-    l=dimensionless_unscaled,
-    m=dimensionless_unscaled,
-    amplitude=VELOCITY_UNIT,
-    frequency=u.d**(-1),
-    start_phase=ARC_UNIT,
-    mode_axis_theta=deg,
-    mode_axis_phi=deg,
-    temperature_perturbation_phase_shift=ARC_UNIT,
-    horizontal_to_radial_amplitude_ratio=dimensionless_unscaled,
-    temperature_amplitude_factor=dimensionless_unscaled,
-    tidally_locked=bool
-)
 
-DEFAULT_STAR_INPUT_UNITS = dict(
-    mass=solMass,
-    t_eff=K,
-    surface_potential=dimensionless_unscaled,
-    synchronicity=dimensionless_unscaled,
-    metallicity=dimensionless_unscaled,
-    gravity_darkening=dimensionless_unscaled,
-    albedo=dimensionless_unscaled,
-    discretization_factor=deg,
-    polar_log_g=u.dex(cm/s**2),
-    equivalent_radius=solRad,
-    spots=DEFAULT_SPOT_INPUT_UNITS,
-    pulsations=DEFAULT_PULSATIONS_INPUT_UNITS
-)
+class _DefaultSpotInputUnits(BaseUnits):
+    longitude = deg
+    latitude = deg
+    angular_radius = deg
+    temperature_factor = dimensionless_unscaled
+    discretization_factor = deg
 
-DEFAULT_BINARY_SYSTEM_INPUT_UNITS = dict(
-    system=dict(
-        inclination=DEFAULT_INCLINATION_INPUT_UNIT,
-        period=DEFAULT_PERIOD_INPUT_UNIT,
-        eccentricity=dimensionless_unscaled,
-        argument_of_periastron=deg,
-        gamma=DEFAULT_GAMMA_INPUT_UNIT,
-        phase_shift=dimensionless_unscaled,
-        additional_light=dimensionless_unscaled,
-        primary_minimum_time=d,
-        semi_major_axis=solRad
-    ),
-    primary=dict(
-        mass=DEFAULT_STAR_INPUT_UNITS['mass'],
-        t_eff=DEFAULT_STAR_INPUT_UNITS['t_eff'],
-        surface_potential=DEFAULT_STAR_INPUT_UNITS['surface_potential'],
-        synchronicity=DEFAULT_STAR_INPUT_UNITS['synchronicity'],
-        metallicity=DEFAULT_STAR_INPUT_UNITS['metallicity'],
-        gravity_darkening=DEFAULT_STAR_INPUT_UNITS['gravity_darkening'],
-        albedo=DEFAULT_STAR_INPUT_UNITS['albedo'],
-        discretization_factor=DEFAULT_STAR_INPUT_UNITS['discretization_factor'],
-        spots=DEFAULT_SPOT_INPUT_UNITS,
-        pulsations=DEFAULT_PULSATIONS_INPUT_UNITS
-    )
-)
-DEFAULT_BINARY_SYSTEM_INPUT_UNITS['secondary'] = DEFAULT_BINARY_SYSTEM_INPUT_UNITS['primary']
 
-DEFAULT_SINGLE_SYSTEM_INPUT_UNITS = dict(
-    system=dict(
-        inclination=DEFAULT_INCLINATION_INPUT_UNIT,
-        rotation_period=DEFAULT_PERIOD_INPUT_UNIT,
-        reference_time=d,
-        phase_shift=dimensionless_unscaled,
-        additional_light=dimensionless_unscaled,
-        gamma=DEFAULT_GAMMA_INPUT_UNIT,
-    ),
-    star=dict(
-        mass=DEFAULT_STAR_INPUT_UNITS['mass'],
-        t_eff=DEFAULT_STAR_INPUT_UNITS['t_eff'],
-        polar_log_g=DEFAULT_STAR_INPUT_UNITS['polar_log_g'],
-        metallicity=DEFAULT_STAR_INPUT_UNITS['metallicity'],
-        gravity_darkening=DEFAULT_STAR_INPUT_UNITS['gravity_darkening'],
-        discretization_factor=DEFAULT_STAR_INPUT_UNITS['discretization_factor'],
-        equivalent_radius=DEFAULT_STAR_INPUT_UNITS['equivalent_radius'],
-        spots=DEFAULT_SPOT_INPUT_UNITS,
-        pulsations=DEFAULT_PULSATIONS_INPUT_UNITS
-    )
-)
+class _DefaultPulsationsInputUnits(BaseUnits):
+    l = dimensionless_unscaled
+    m = dimensionless_unscaled
+    amplitude = VELOCITY_UNIT
+    frequency = u.d ** (-1)
+    start_phase = ARC_UNIT
+    mode_axis_theta = deg
+    mode_axis_phi = deg
+    temperature_perturbation_phase_shift = ARC_UNIT
+    horizontal_to_radial_amplitude_ratio = dimensionless_unscaled
+    temperature_amplitude_factor = dimensionless_unscaled
+    tidally_locked = bool
 
+
+class _DefaultStarInputUnits(BaseUnits):
+    mass = solMass
+    t_eff = K
+    surface_potential = dimensionless_unscaled
+    synchronicity = dimensionless_unscaled
+    metallicity = dimensionless_unscaled
+    gravity_darkening = dimensionless_unscaled
+    albedo = dimensionless_unscaled
+    discretization_factor = deg
+    polar_log_g = u.dex(cm / s ** 2)
+    equivalent_radius = solRad
+    spots = _DefaultSpotInputUnits()
+    pulsations = _DefaultPulsationsInputUnits()
+
+
+class _DefaultBinarySystemInputUnits(BaseUnits):
+    class __DefaultBinaryComponentInputUnits(BaseUnits):
+        mass = _DefaultStarInputUnits.mass
+        t_eff = _DefaultStarInputUnits.t_eff
+        surface_potential = _DefaultStarInputUnits.surface_potential
+        synchronicity = _DefaultStarInputUnits.synchronicity
+        metallicity = _DefaultStarInputUnits.metallicity
+        gravity_darkening = _DefaultStarInputUnits.gravity_darkening
+        albedo = _DefaultStarInputUnits.albedo
+        discretization_factor = _DefaultStarInputUnits.discretization_factor
+        spots = _DefaultSpotInputUnits()
+        pulsations = _DefaultPulsationsInputUnits()
+
+    class __DefaultBinarySystemInputUnits(BaseUnits):
+        inclination = DEFAULT_INCLINATION_INPUT_UNIT
+        period = DEFAULT_PERIOD_INPUT_UNIT
+        eccentricity = dimensionless_unscaled
+        argument_of_periastron = deg
+        gamma = DEFAULT_GAMMA_INPUT_UNIT
+        phase_shift = dimensionless_unscaled
+        additional_light = dimensionless_unscaled
+        primary_minimum_time = d
+        semi_major_axis = solRad
+
+    system = __DefaultBinarySystemInputUnits()
+    primary = __DefaultBinaryComponentInputUnits()
+    secondary = __DefaultBinaryComponentInputUnits()
+
+
+class _DefaultSingleSystemInputUnits(BaseUnits):
+    class __DefaultSingleSystemInputUnits(BaseUnits):
+        inclination = DEFAULT_INCLINATION_INPUT_UNIT
+        rotation_period = DEFAULT_PERIOD_INPUT_UNIT
+        reference_time = d
+        phase_shift = dimensionless_unscaled
+        additional_light = dimensionless_unscaled
+        gamma = DEFAULT_GAMMA_INPUT_UNIT
+
+    class __DefaultSingleSystemStarInputUnits(BaseUnits):
+        mass = _DefaultStarInputUnits.mass
+        t_eff = _DefaultStarInputUnits.t_eff
+        polar_log_g = _DefaultStarInputUnits.polar_log_g
+        metallicity = _DefaultStarInputUnits.metallicity
+        gravity_darkening = _DefaultStarInputUnits.gravity_darkening
+        discretization_factor = _DefaultStarInputUnits.discretization_factor
+        equivalent_radius = _DefaultStarInputUnits.equivalent_radius
+        spots = _DefaultSpotInputUnits()
+        pulsations = _DefaultPulsationsInputUnits()
+
+    system = __DefaultSingleSystemInputUnits()
+    star = __DefaultSingleSystemStarInputUnits()
+
+
+DefaultSpotInputUnits = _DefaultSpotInputUnits()
+DefaultPulsationsInputUnits = _DefaultPulsationsInputUnits()
+DefaultStarInputUnits = _DefaultStarInputUnits()
+DefaultBinarySystemInputUnits = _DefaultBinarySystemInputUnits()
+DefaultSingleSystemInputUnits = _DefaultSingleSystemInputUnits()

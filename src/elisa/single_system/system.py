@@ -218,18 +218,18 @@ class SingleSystem(System):
         """
         Returns set of default units of intialization parameters, in case, when provided without units.
 
-        :return: Dict;
+        :return: elisa.units.DefaultSingleSystemInputUnits;
         """
-        return units.DEFAULT_SINGLE_SYSTEM_INPUT_UNITS
+        return units.DefaultSingleSystemInputUnits
 
     @property
     def default_internal_units(self):
         """
         Returns set of internal units of system parameters.
 
-        :return: Dict;
+        :return: elisa.units.DefaultSingleSystemUnits;
         """
-        return units.DEFAULT_SINGLE_SYSTEM_UNITS
+        return units.DefaultSingleSystemUnits
 
     @classmethod
     def from_json(cls, data, _verify=True, _kind_of=None):
