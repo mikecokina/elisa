@@ -298,18 +298,18 @@ class BinarySystem(System):
         """
         Returns set of default units of intialization parameters, in case, when provided without an units.
 
-        :return: Dict;
+        :return: elisa.units.DefaultBinarySystemInputUnits;
         """
-        return u.DEFAULT_BINARY_SYSTEM_INPUT_UNITS
+        return u.DefaultBinarySystemInputUnits
 
     @property
     def default_internal_units(self):
         """
         Returns set of internal units of system parameters.
 
-        :return: Dict;
+        :return: elisa.units.DefaultBinarySystemUnits;
         """
-        return u.DEFAULT_BINARY_SYSTEM_UNITS
+        return u.DefaultBinarySystemUnits
 
     @classmethod
     def from_json(cls, data, _verify=True, _kind_of=None):

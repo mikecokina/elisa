@@ -66,10 +66,12 @@ class System(metaclass=ABCMeta):
     def from_json(cls, data, _verify, _kind_of):
         pass
 
+    @property
     @abstractmethod
     def default_input_units(self):
         pass
 
+    @property
     @abstractmethod
     def default_internal_units(self):
         pass
@@ -81,21 +83,24 @@ class System(metaclass=ABCMeta):
         :return: Dict; JSON serializable
         """
 
+        sys_units: Union[u.DefaultBinarySystemUnits, u.DefaultStarUnits] = self.default_internal_units
         sys_input = self.default_input_units
-        sys_units = self.default_internal_units
-        spot_input = u.DEFAULT_SPOT_INPUT_UNITS
-        spot_units = u.DEFAULT_SPOT_UNITS
-        mode_input = u.DEFAULT_PULSATIONS_INPUT_UNITS
-        mode_units = u.DEFAULT_PULSATIONS_UNITS
-        retdict = {
+
+        spot_units = u.DefaultSpotUnits
+        spot_input = u.DefaultSpotInputUnits
+
+        mode_input = u.DefaultPulsationsInputUnits
+        mode_units = u.DefaultPulsationsUnits
+
+        json_data = {
             "system": {
-                attr: (getattr(self, attr)*sys_units['system'][attr]).to(sys_input['system'][attr]).value
+                attr: (getattr(self, attr) * sys_units.system[attr]).to(sys_input['system'][attr]).value
                 for attr in self.ALL_KWARGS
             }
         }
 
         for component, instance in self.components.items():
-            retdict.update({component: {
+            json_data.update({component: {
                 attr: (getattr(instance, attr) * sys_units[component][attr]).to(sys_input[component][attr]).value
                 for attr in self.STAR_ALL_KWARGS
             }})
@@ -107,7 +112,7 @@ class System(metaclass=ABCMeta):
                         attr: (getattr(spot, attr) * spot_units[attr]).to(spot_input[attr]).value
                         for attr in spot.ALL_KWARGS
                     })
-                retdict[component].update(dict(spots=spot_list))
+                json_data[component].update(dict(spots=spot_list))
 
             if instance.has_pulsations():
                 mode_list = list()
@@ -116,9 +121,9 @@ class System(metaclass=ABCMeta):
                         attr: (getattr(mode, attr) * mode_units[attr]).to(mode_input[attr]).value
                         if attr != 'tidally_locked' else getattr(mode, attr) for attr in mode.ALL_KWARGS
                     })
-                retdict[component].update(dict(pulsations=mode_list))
+                json_data[component].update(dict(pulsations=mode_list))
 
-        return retdict
+        return json_data
 
     def assign_pulsations_amplitudes(self, normalisation_constant=1.0):
         """

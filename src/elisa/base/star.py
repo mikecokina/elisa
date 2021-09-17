@@ -147,18 +147,18 @@ class Star(Body):
         """
         Returns set of default units of intialization parameters, in case, when provided without units.
 
-        :return: Dict;
+        :return: elisa.units.DefaultStarInputUnits;
         """
-        return u.DEFAULT_STAR_INPUT_UNITS
+        return u.DefaultStarInputUnits
 
     @property
     def default_internal_units(self):
         """
         Returns set of internal units of Star parameters.
 
-        :return: Dict;
+        :return: elisa.units.DefaultStarUnits;
         """
-        return u.DEFAULT_STAR_UNITS
+        return u.DefaultStarUnits
 
     def transform_input(self, **kwargs):
         """

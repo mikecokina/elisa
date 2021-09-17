@@ -90,18 +90,18 @@ class Spot(object):
         """
         Returns set of default units of intialization parameters, in case, when provided without units.
 
-        :return: Dict;
+        :return: elisa.units.DefaultSpotInputUnits;
         """
-        return u.DEFAULT_SPOT_INPUT_UNITS
+        return u.DefaultSpotInputUnits
 
     @property
     def default_internal_units(self):
         """
         Returns set of internal units of Spot parameters.
 
-        :return: Dict;
+        :return: elisa.units.DefaultSpotUnits;
         """
-        return u.DEFAULT_SPOT_UNITS
+        return u.DefaultSpotUnits
 
     @staticmethod
     def transform_input(**kwargs):

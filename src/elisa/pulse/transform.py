@@ -66,7 +66,7 @@ class PulsationModeProperties(SystemProperties):
             retval = u.Quantity(value) if isinstance(value, str) else value
             retval = np.float64(retval.to(u.FREQUENCY_UNIT))
         elif isinstance(value, (int, np.int, float, np.float)):
-            retval = (np.float(value) * u.DEFAULT_PULSATIONS_INPUT_UNITS['frequency']).to(u.FREQUENCY_UNIT).value
+            retval = (np.float(value) * u.DefaultPulsationsInputUnits['frequency']).to(u.FREQUENCY_UNIT).value
         else:
             raise TypeError('Value of `frequency` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
