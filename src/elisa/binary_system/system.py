@@ -293,7 +293,7 @@ class BinarySystem(System):
         # setting common reference to emphemeris
         self.t0: float = self.primary_minimum_time
 
-    @property
+    @classmethod
     def default_input_units(self):
         """
         Returns set of default units of intialization parameters, in case, when provided without an units.
@@ -302,7 +302,7 @@ class BinarySystem(System):
         """
         return u.DefaultBinarySystemInputUnits
 
-    @property
+    @classmethod
     def default_internal_units(self):
         """
         Returns set of internal units of system parameters.
