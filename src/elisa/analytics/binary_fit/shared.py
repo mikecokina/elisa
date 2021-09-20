@@ -27,6 +27,9 @@ logger = getLogger("analytics.binary_fit.shared")
 
 
 class AbstractFit(metaclass=ABCMeta):
+    """
+    General framework for solution of the inverse problem in ELISa.
+    """
     MEAN_ERROR_FN = None
 
     __slots__ = ['fixed', 'constrained', 'fitable', 'normalized', 'observer', 'x_data', 'y_data', 'num_of_points'
@@ -123,10 +126,33 @@ class AbstractRVFit(AbstractFit):
 
 
 class AbstractLCFit(AbstractFit):
+    """
+    Abstract LC fitting class.
+
+    Attributes:
+
+        :constrained: Dict; list of constrained model parameters in flat JSON format
+        :discretization: int; discretization factor for primary component
+        :fitable: Dict; list of optimized model parameters in flat JSON format
+        :fixed: Dict; list of constant model parameters in flat JSON format
+        :initial_vector: List; array of starting values for variable parameters
+        :interp_treshold: int; Above this total number of datapoints, light curve will be interpolated
+                               using model containing `interp_treshold` equidistant points per epoch.
+        :normalization: Dict[str, tuple]; normalization boundaries of variable parameters
+                                          {parameter@name: (min, max), ...}
+        :num_of_points: Dict[str, int]; number of points of observations in each passband
+        :observer: elisa.observer.observer.Observer; Observer instance
+        :x_data: Dict[str, numpy.array]; phases or times of observations in each filter
+        :x_data_reduced: numpy.array; phases or times of observations grouped from all filters without duplicate phases
+        :x_data_reducer: Dict[str, numpy.array]; x_data[passband] = x_data_reduced[x_data_reducer[passband]]
+        :y_data: Dict[str, numpy.array]; fluxes in each filter
+        :y_err: Dict[str, numpy.array]; observational errors of y_data
+
+    """
     MEAN_ERROR_FN = lightcurves_mean_error
 
-    __slots__ = ['fixed', 'constrained', 'fitable', 'normalized', 'observer', "discretization",
-                 'interp_treshold', 'data', 'y_err', 'num_of_points', 'x_data_reduced', 'x_data_reducer',
+    __slots__ = ['fixed', 'constrained', 'fitable', 'observer', "discretization",
+                 'interp_treshold', 'y_err', 'num_of_points', 'x_data_reduced', 'x_data_reducer',
                  'initial_vector', 'normalization', 'x_data', 'y_data']
 
     def set_up(self, x0: BinaryInitialParameters, data: Dict, passband: Iterable = None, **kwargs):

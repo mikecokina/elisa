@@ -39,14 +39,17 @@ def logger_decorator(suppress_logger=False):
 
 
 class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
+    """
+    General class for solving inverse problem in case of LC data.
+    """
     MORPHOLOGY = None
 
     def model_to_fit(self, xn):
         """
-        Model to find minimum.
+        Cost function minimized during solution of the inverse problem using the Least Squares method.
 
-        :param xn: Iterable[float];
-        :return: float;
+        :param xn: Iterable[float]; vector containing normalized values of model parameters optimized during fit
+        :return: float; error weighted sum of squares of residuals
         """
         diff = 1.0 / self.interp_treshold
 
@@ -81,8 +84,7 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
         residuals = np.sum([np.sum(np.power((synthetic[band] - self.y_data[band]) / self.y_err[band], 2))
                             for band in synthetic])
 
-        r2 = r_squared(synthetic, self.y_data)
-        logger.info(f'current R2: {r2}')
+        logger.info(f'current R2: {r_squared(synthetic, self.y_data)}')
 
         return residuals
 
@@ -90,16 +92,18 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
             discretization=5.0, interp_treshold=None, samples="uniform", **kwargs):
         """
         Fit method using non-linear least squares.
-        Based on https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
+        Based on `https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html`.
 
-        :param data: elisa.analytics.dataset.base.LCData;
-        :param x0: List[Dict]; initial state (metadata included)
-        :param discretization: float; discretization of objects
-        :param interp_treshold: int; data binning treshold
-        :param samples: Union[str, List]; 'uniform', 'adaptive' or list with phases in (0, 1) interval
+        :param data: Dict[elisa.analytics.dataset.base.LCData]; observational data in photometric filters
+        :param x0: BinaryInitialParameters; initial state of model parameters
+        :param discretization: float; discretization factor used for the primary component
+        :param interp_treshold: int; Above this total number of datapoints, light curve will be interpolated
+                                     using model containing `interp_treshold` equidistant points per epoch
+        :param samples: Union[str, List]; 'uniform' (equidistant sampling in phase), 'adaptive'
+                                          (equidistant sampling on curve) or list with phases in (0, 1) interval
         :param kwargs: optional arguments for least_squares function (see documentation for
                        scipy.optimize.least_squares method)
-        :return: Dict;
+        :return: Dict; optimized model parameters in standard JSON format
         """
         self.set_up(x0, data, passband=data.keys(), discretization=discretization, morphology=self.MORPHOLOGY,
                     interp_treshold=settings.MAX_CURVE_DATA_POINTS if interp_treshold is None else interp_treshold,
@@ -149,15 +153,30 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
 
 
 class OvercontactLightCurveFit(LightCurveFit):
+    """
+    Optimization class for solving an inverse problem for overcontact systems.
+    """
     MORPHOLOGY = 'over-contact'
 
 
 class DetachedLightCurveFit(LightCurveFit):
+    """
+    Optimization class for solving an inverse problem for detached systems.
+    """
     MORPHOLOGY = 'detached'
 
 
 class CentralRadialVelocity(AbstractRVFit):
+    """
+    Class for fitting radial velocities using kinematic method.
+    """
     def prepare_synthetic(self, xn):
+        """
+        Returns synthetic radial velocity observations for given set of normalized variable parameters.
+
+        :param xn: List[float]; variable model parameters in normalized form
+        :return: Dict[numpy.array]; synthetic RV observations
+        """
         xn = parameters.vector_renormalizer(xn, self.fitable.keys(), self.normalization)
         kwargs = parameters.prepare_properties_set(xn, self.fitable.keys(), self.constrained, self.fixed)
         fn = rv_model.central_rv_synthetic
@@ -166,10 +185,10 @@ class CentralRadialVelocity(AbstractRVFit):
 
     def central_rv_model_to_fit(self, xn):
         """
-        Residual function.
+        Cost function minimized during solution of the inverse problem using the Least Squares method.
 
-        :param xn: numpy.array; current vector
-        :return: numpy.array;
+        :param xn: List[float]; variable model parameters in normalized form
+        :return: numpy.array; error weighted sum of squares of residuals
         """
         synthetic = self.prepare_synthetic(xn)
         return np.array([np.sum(np.power((synthetic[comp][self.x_data_reducer[comp]] - self.y_data[comp])
@@ -178,15 +197,16 @@ class CentralRadialVelocity(AbstractRVFit):
     def fit(self, data: Dict[str, RVData], x0: parameters.BinaryInitialParameters, **kwargs):
         """
         Method to provide fitting of radial velocities curves.
-        It can handle standadrd physical parameters `M_1`, `M_2` or astro community parameters `asini` and `q`.
-        Based on non-linear least squares
+        It can handle standadrd physical parameters including component masses `M_1`, `M_2` or astro community
+        parameters containing `asini` and `q`. Optimizer based on non-linear least squares method:
         [https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html]
 
-        :param data: elisa.analytics.dataset.base.RVData;
-        :param x0: elisa.analytics.params.parameters.BinaryInitialParameters;
+        :param data: elisa.analytics.dataset.base.RVData; radial velocity observations for primary and secondary
+                                                          component
+        :param x0: elisa.analytics.params.parameters.BinaryInitialParameters; initial state of model parameters
         :param kwargs: optional arguments for least_squares function (see documentation for
                        scipy.optimize.least_squares method)
-        :return: Dict;
+        :return: Dict; optimized model parameters in standard JSON format
         """
         self.set_up(x0, data, observer_system_cls=RadialVelocitySystem)
         logger.info("fitting radial velocity light curve...")

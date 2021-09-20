@@ -117,10 +117,11 @@ class AnalyticsTask(metaclass=ABCMeta):
         :param kwargs: Dict; method-dependent
         :**additional light curve kwargs**:
             * **morphology** * - str - `detached` or `over-contact`
-            * **interp_treshold** * - bool - Above this total number of datapoints, light curve will be interpolated
-                                             using model containing `interp_treshold` equidistant points per epoch
+            * **interp_treshold** * - int - Above this total number of datapoints, light curve will be interpolated
+                                            using model containing `interp_treshold` equidistant points per epoch
             * **discretization** * - Union[int, float] - discretization factor of the primary component, default: 5
-            * **samples** * - Union[str, List]; 'uniform', 'adaptive' or list with phases in (0, 1) interval
+            * **samples** * - Union[str, List]; 'uniform' (equidistant sampling in phase), 'adaptive'
+                                                (equidistant sampling on curve) or list with phases in (0, 1) interval
 
         :**kwargs options for least_squares**: passes arguments of scipy.optimize.least_squares method except
                                                `fun`, `x0` and `bounds`
