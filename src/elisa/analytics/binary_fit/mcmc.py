@@ -34,6 +34,9 @@ logger = getPersistentLogger('analytics.binary_fit.mcmc')
 
 
 class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
+    """
+    General framework for MCMC sampling of binary systems.
+    """
     def __init__(self):
         self.plot = Plot()
         self.last_sampler = emcee.EnsembleSampler
@@ -45,8 +48,11 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
 
     def s_squared(self, synthetic, ln_f):
         """
-        Calculates constant component to the likelihood function derived from the errors.
-        :return: numpy.float;
+        Calculates error component of the likelihood function derived from the errors.
+
+        :param synthetic: Dict[str, numpy.array]: synthetic observations for each passband/component
+        :param ln_f: float; error underestimation factor
+        :return: Dict[str, float]; s2 parameter
         """
         return {key: np.power(self.y_err[key], 2) + np.power(values, 2) * np.exp(2 * ln_f)
                 for key, values in synthetic.items()}
@@ -56,10 +62,10 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         """
         Logarithmic value of prior (uniform, normal or combined).
 
-        :param xn: numpy.array;
-        :param x0: numpy.array;
-        :param sigmas: numpy.array;
-        :return: numpy.array;
+        :param xn: numpy.array; current state of the sampler (normalized values of variable parameters)
+        :param x0: numpy.array; mean (expected) values of normalized parameters with normal prior distribution
+        :param sigmas: numpy.array; normalized standard deviations of normal prior distributions
+        :return: numpy.array; sum of logarithms of prior distribution functions
         """
         retval = np.empty(sigmas.shape)
 
@@ -74,15 +80,22 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
 
     @abstractmethod
     def likelihood(self, xn):
+        """
+        Likelihood function depending on the type of the optimization.
+
+        :param xn: numpy.array; current state of the sampler (normalized values of variable parameters)
+        :return: float;
+        """
         pass
 
     def lhood(self, synthetic, ln_f):
         """
-        Calculates likelihood function value for a synthetic model to be a correct model for given observational data.
+        Calculates value of likelihood function for observational data being drawn from distribution around synthetic
+        model.
 
-        :param ln_f: List; marninalization parameters (currently supported single parameter for error penalization)
+        :param ln_f: float; marginalization parameters (currently supported single parameter for error penalization)
         :param synthetic: Dict; {'dataset_name': numpy.array, }
-        :return: float;
+        :return: float; likelihood value
         """
         sigma2 = self.s_squared(synthetic, ln_f)
         # print(ln_f)
@@ -94,6 +107,12 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         return lh
 
     def ln_probability(self, xn):
+        """
+        Resulting probability distribution made of likelihood and prior distribution.
+
+        :param xn: numpy.array; current state of the sampler (normalized values of variable parameters)
+        :return: float; likelihood
+        """
         prior = self.ln_prior(xn, self.norm_init_vector, self.sigmas)
         if prior == -np.inf:
             return -np.inf
@@ -107,11 +126,11 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
 
     def normalized_sigma(self, vector):
         """
-        Calculates normalized standard deviation for each variable parameter. If sigma is not suplied for the
+        Assigns normalized standard deviation for each variable parameter to attribute `sigma`. If sigma is not supplied for the
         parameter, np.nan is used instead.
 
         :param vector: List; normalized starting vector
-        :return:
+        :return: None
         """
         sigmas = np.array([val.sigma if val.sigma is not None else np.nan for val in self.fitable.values()])
         perturbed = np.array(self.initial_vector) + sigmas
@@ -119,7 +138,21 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         self.sigmas = np.array(perturbed_norm) - vector
 
     def _fit(self, nwalkers, ndim, nsteps, nsteps_burn_in, p0=None, progress=False, save=False, fit_id=None):
-        self.norm_init_vector = np.array(parameters.vector_normalizer(self.initial_vector, self.fitable.keys(), self.normalization))
+        """
+        General MCMC sampling function for an inverse problem. Implementing sampler from the emcee package.
+
+        :param nwalkers: int; The number of walkers in the ensemble. Minimum is 2 * number of free parameters.
+        :param ndim: int; number of free variables
+        :param nsteps: int; The number of steps to run.
+        :param nsteps_burn_in: int; number of steps for mcmc to explore parameters
+        :param p0: numpy.array; initial priors for mcmc
+        :param progress: bool; display the progress bar of the sampling
+        :param save: bool; whether to store the chain or not
+        :param fit_id: str; id which identifies fit file (if not specified, current dateime is used)
+        :return: emcee.EnsembleSampler;
+        """
+        self.norm_init_vector = np.array(parameters.vector_normalizer(self.initial_vector, self.fitable.keys(),
+                                                                      self.normalization))
 
         sigmas = np.array([val.sigma if val.sigma is not None else np.nan for val in self.fitable.values()])
         args = (np.array(self.initial_vector) + sigmas, self.fitable.keys(), self.normalization)
@@ -154,13 +187,13 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
     @staticmethod
     def generate_initial_states(initial_state, nwalkers, ndim, x0_vector=None):
         """
-        Function transforms user initial state to normalized format suitable for our mcmc chain, where all vales are in
+        Function transforms user initial state to normalized format suitable for our MCMC chain, where all vales are in
         interval (0, 1).
 
         :param initial_state: numpy.ndarray; initial state matrix before normalization
-        :param nwalkers: int;
-        :param ndim: int;
-        :param x0_vector: np.array; initial stat based on the firs value
+        :param nwalkers: int; The number of walkers in the ensemble. Minimum is 2 * number of free parameters.
+        :param ndim: int; number of free variables
+        :param x0_vector: np.array; normalized vector of free parameters
         :return: initial_state: numpy.ndarray; initial state matrix after normalization
         """
         if initial_state is None:
@@ -177,15 +210,18 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
 
 
 class LightCurveFit(MCMCFit, AbstractLCFit):
+    """
+    LC fit class implementing an MCMC method.
+    """
     MORPHOLOGY = None
 
     def likelihood(self, xn):
         """
-        Liklehood function which defines goodnes of current `xn` vector to be fit of given model.
-        Best is 0.0, worst is -inf.
+        Likelihood function for given set of model variables.
+        Best fit is 0.0, worst is -inf.
 
-        :param xn: Iterable[float]; vector of parameters we are looking for
-        :return: float;
+        :param xn: Iterable[float]; vector of optimized free parameters
+        :return: float; likelihood
         """
         diff = 1.0 / self.interp_treshold
         xn = parameters.vector_renormalizer(xn, self.fitable.keys(), self.normalization)
@@ -214,7 +250,7 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
             save=True, fit_id=None, samples="uniform"):
         """
         Fit method using Markov Chain Monte Carlo.
-        Once simulation is done, following valeus are stored and can be used for further evaluation::
+        Once simulation is done, following values are stored and can be used for further evaluation::
 
             self.last_sampler: emcee.EnsembleSampler
             self.last_normalization: Dict; normalization map used during fitting
@@ -228,8 +264,8 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
         :param interp_treshold: int; data binning treshold
         :param nwalkers: int; The number of walkers in the ensemble. Minimum is 2 * number of free parameters.
         :param nsteps: int; The number of steps to run.
-        :param initial_state: numpy.array; initial priors for mcmc
-        :param burn_in: int; number of steps for mcmc to explore parameters
+        :param initial_state: numpy.array; initial priors for MCMC
+        :param burn_in: int; number of steps for MCMC to explore parameters
         :param progress: bool; display the progress bar of the sampling
         :param percentiles: List; [percentile for left side error estimation, percentile of the centre,
                                    percentile for right side error estimation]
@@ -286,9 +322,12 @@ class DetachedLightCurveFit(LightCurveFit):
 
 
 class CentralRadialVelocity(MCMCFit, AbstractRVFit):
+    """
+    RV fit class implementing an MCMC method using kinematic method.
+    """
     def likelihood(self, xn):
         """
-        Liklehood function which defines goodnes of current `xn` vector to be fit of given model.
+        Likelihood function for given set of model parameters.
         Best is 0.0, worst is -inf.
 
         :param xn: Iterable[float]; vector of parameters we are looking for
@@ -311,7 +350,7 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
             initial_state=None, burn_in=None, percentiles=None, progress=False, save=True, fit_id=None):
         """
         Fit method using Markov Chain Monte Carlo.
-        Once simulation is done, following valeus are stored and can be used for further evaluation::
+        Once simulation is done, following values are stored and can be used for further evaluation::
         sampler = self._fit(x0_vector, self.labels, nwalkers, ndim, nsteps, nsteps_burn_in, p0)
 
         # extracting fit results from MCMC sampler::
