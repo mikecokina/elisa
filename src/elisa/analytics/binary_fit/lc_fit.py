@@ -63,7 +63,7 @@ class LCFitMCMC(LCFit):
 
     def filter_chain(self, **boundaries):
         """
-        Filtering mcmc chain down to given parameter intervals. This function is usable in case of bimodal distribution
+        Filtering MCMC chain down to given parameter intervals. This function is useful in case of bimodal distribution
         of the MCMC chain.
 
         :param boundaries: Dict; dictionary of boundaries e.g. {'primary@te_ff': (5000, 6000), other parameters ...}
@@ -78,7 +78,7 @@ class LCFitMCMC(LCFit):
         :param x0: BinaryInitialParameters; initial info about the model parameters such as status
                                             (fixed, variable, constrained), bounds (prior distribution) and
                                             initial value
-        :param data: Dict[DataSet]; observational data (light curves in multiple filters)
+        :param data: Dict[LCData]; observational data (light curves in multiple filters)
         :param kwargs: Dict; arguments passed to the fitting method (see AnalyticsTask.fit kwargs for MCMC or
                              mcmc.LightCurveFit.fit for further info)
         :return: Dict; optimized model parameters in JSON format
@@ -130,7 +130,7 @@ class LCFitMCMC(LCFit):
                                   percentile for the upper bound of confidence interval]
         :param discard: int; Discard the first discard steps in the chain as a part of the thermalization phase
                              (default: 0).
-        :param filename: str; chain identificator or filename containing the chain
+        :param filename: str; chain identificator or filename (ending with .json) containing the chain
         :return: Tuple[numpy.ndarray, List, Dict]; flattened mcmc chain, labels of variables in `flat_chain` columns,
                                                    {var_name: (min_boundary, max_boundary), ...} dictionary of
                                                    boundaries defined by user for each variable needed
@@ -164,7 +164,7 @@ class LCFitLeastSquares(LCFit):
         :param x0: BinaryInitialParameters; initial info about the model parameters such as status
                                             (fixed, variable, constrained), bounds (prior distribution) and
                                             initial value
-        :param data: Dict[DataSet]; observational data (light curves in multiple filters)
+        :param data: Dict[LCData]; observational data (light curves in multiple filters)
         :param kwargs: Dict; arguments passed to the fitting method (see AnalyticsTask.fit kwargs for Least-Squares or
                              least_squares.LightCurveFit.fit for further info)
         :return: Dict; optimized model parameters in JSON format

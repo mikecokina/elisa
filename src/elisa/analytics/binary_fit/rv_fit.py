@@ -47,6 +47,9 @@ class RVFit(FitResultHandler):
 
 
 class RVFitMCMC(RVFit):
+    """
+    Class for RV fitting using the MCMC method.
+    """
     def __init__(self):
         super().__init__()
         self.fit_method_instance = MCMCCentralRV()
@@ -57,6 +60,17 @@ class RVFitMCMC(RVFit):
         self.variable_labels = None
 
     def fit(self, x0: BinaryInitialParameters, data, **kwargs):
+        """
+        Perform MCMC sampling on RVFitMCMC instance.
+
+        :param x0: BinaryInitialParameters; initial info about the model parameters such as status
+                                            (fixed, variable, constrained), bounds (prior distribution) and
+                                            initial value
+        :param data: Dict[RVData]; observational data (radial velocities for both components)
+        :param kwargs: Dict; arguments passed to the fitting method (see AnalyticsTask.fit kwargs for MCMC or
+                             mcmc.CentralRadialVelocity.fit for further info)
+        :return: Dict; optimized model parameters in JSON format
+        """
         x0.validate_rv_parameters()
         self.result = self.fit_method_instance.fit(data=data, x0=x0, **kwargs)
         self.flat_result = self.fit_method_instance.flat_result
@@ -75,10 +89,12 @@ class RVFitMCMC(RVFit):
         """
         Function loads MCMC chain along with auxiliary data from json file created after each MCMC run.
 
-        :param percentiles: List;
-        :param self: Union[] instance of fitting cls based on method (mcmc, lsqr) and type(lc, rv)
-        :param discard: int; Discard the first discard steps in the chain as burn-in. (default: 0)
-        :param filename: str; full name of the json file
+        :param percentiles: List; percentile intervals used to generate confidence intervals, provided in form:
+                                  [percentile for lower bound of confidence interval, percentile of the centre,
+                                  percentile for the upper bound of confidence interval]
+        :param discard: int; Discard the first discard steps in the chain as a part of the thermalization phase
+                             (default: 0).
+        :param filename: str; str; chain identificator or filename (ending with .json) containing the chain
         :return: Tuple[numpy.ndarray, List, Dict]; flattened mcmc chain, labels of variables in `flat_chain` columns,
                                                   {var_name: (min_boundary, max_boundary), ...} dictionary of
                                                   boundaries defined by user for each variable needed
@@ -95,9 +111,10 @@ class RVFitMCMC(RVFit):
         :param kwargs: Dict;
         :**kwargs options**:
             * ** propagate_errors ** * - bool -- errors of fitted parameters will be propagated to the rest of EB
-                                                 parameters (takes a while)
-            * ** percentiles ** * - List -- percentiles used to evaluate confidence intervals from forward distribution
-                                            of EB parameters. Useless if `propagate_errors` is False.
+                                                 parameters (takes a while to calculate)
+            * ** percentiles ** * - List -- percentiles used to evaluate confidence intervals from posterior
+                                            distribution of EB parameters in MCMC chain . Used only when if
+                                            `propagate_errors` is True.
         """
         propagate_errors = kwargs.get('propagate_errors', False)
         percentiles = kwargs.get('percentiles', [16, 50, 84])
@@ -118,7 +135,8 @@ class RVFitMCMC(RVFit):
 
     def filter_chain(self, **boundaries):
         """
-        Filtering mcmc chain to given set of intervals.
+        Filtering MCMC chain down to given parameter intervals. This function is useful in case of bimodal distribution
+        of the MCMC chain.
 
         :param boundaries: Dict; dictionary of boundaries e.g. {'primary@te_ff': (5000, 6000), other parameters ...}
         :return: numpy.array; filtered flat chain
@@ -127,11 +145,25 @@ class RVFitMCMC(RVFit):
 
 
 class RVFitLeastSquares(RVFit):
+    """
+    Class for LC fitting using the Least-Squares method.
+    """
     def __init__(self):
         super().__init__()
         self.fit_method_instance = LstSqrCentralRV()
 
     def fit(self, x0: BinaryInitialParameters, data, **kwargs):
+        """
+        Perform Least-Squares optimization on RVFitLeastSquares instance.
+
+        :param x0: BinaryInitialParameters; initial info about the model parameters such as status
+                                            (fixed, variable, constrained), bounds (prior distribution) and
+                                            initial value
+        :param data: Dict[RVData]; observational data (radial velocities for both components)
+        :param kwargs: Dict; arguments passed to the fitting method (see AnalyticsTask.fit kwargs for Least-Squares or
+                             least_squares.CentralRadialVelocity.fit for further info)
+        :return: Dict; optimized model parameters in JSON format
+        """
         x0.validate_rv_parameters()
         self.result = self.fit_method_instance.fit(data=data, x0=x0, **kwargs)
         self.flat_result = self.fit_method_instance.flat_result
@@ -142,5 +174,12 @@ class RVFitLeastSquares(RVFit):
         return self.result
 
     def fit_summary(self, path=None, **kwargs):
+        """
+        Function produces detailed summary of the current RV fitting task.
+
+        :param path: str; path, place to store summary
+        :param kwargs:
+        :return:
+        """
         simple_rv_fit_summary(self, path)
 
