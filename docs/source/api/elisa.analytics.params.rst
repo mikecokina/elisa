@@ -28,6 +28,14 @@ elisa.analytics.params.parameters module
    :undoc-members:
    :show-inheritance:
 
+elisa.analytics.params.result\_handler module
+---------------------------------------------
+
+.. automodule:: elisa.analytics.params.result_handler
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 elisa.analytics.params.transform module
 ---------------------------------------
 

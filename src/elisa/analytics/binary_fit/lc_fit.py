@@ -1,5 +1,3 @@
-import json
-
 from abc import abstractmethod
 from typing import Union
 
@@ -7,8 +5,8 @@ from ... logger import getLogger
 
 from .. params.parameters import BinaryInitialParameters
 from .. params import parameters
+from .. params.result_handler import FitResultHandler
 from . summary import fit_lc_summary_with_error_propagation, simple_lc_fit_summary
-from . shared import eval_constraint_in_dict
 from . import least_squares
 from . import mcmc
 from . import io_tools
@@ -19,16 +17,13 @@ logger = getLogger('analytics.binary_fit.lc_fit')
 DASH_N = 126
 
 
-class LCFit(object):
+class LCFit(FitResultHandler):
     """
     Class with common methods used during an LC fit.
     """
-
     def __init__(self, morphology):
+        super().__init__()
         self.morphology = morphology
-
-        self.result = None
-        self.flat_result = None
         self.fit_method_instance: Union[LCFitLeastSquares, LCFitMCMC, None] = None
 
     def coefficient_of_determination(self, model_parameters, data, discretization, interp_treshold):
@@ -48,54 +43,9 @@ class LCFit(object):
         args = model_parameters, data, discretization, interp_treshold
         return self.fit_method_instance.coefficient_of_determination(*args)
 
-    def get_result(self):
-        """
-        Returns model parameters in standard dict (JSON) format.
-
-        :return: Dict; model parameters in a standardized format
-        """
-        return self.result
-
-    def load_result(self, path):
-        """
-        Function loads a JSON file containing model parameters and stores it as a result in AnalyticsTask fitting
-        instance. This is useful if you want to examine already calculated results using functionality provided by the
-        AnalyticsTask instances (e.g: LCBinaryAnalyticsTask, RVBinaryAnalyticsTask, etc.).
-
-        :param path: str; location of a JSON file with parameters
-        """
-        with open(path, 'r') as f:
-            loaded_result = json.load(f)
-        self.set_result(loaded_result)
-
     @abstractmethod
     def resolve_fit_cls(self, morphology: str):
         pass
-
-    def save_result(self, path):
-        """
-        Save result as JSON file.
-
-        :param path: str; path to file
-        """
-        if self.result is None:
-            raise IOError("No result to store.")
-
-        with open(path, 'w') as f:
-            json.dump(self.result, f, separators=(',', ': '), indent=4)
-
-    def set_result(self, result):
-        """
-        Set model parameters in dictionary (JSON format) as a result in AnalyticsTask fitting instance. This is useful
-        if you want to examine already calculated results using functionality provided by the AnalyticsTask instances
-        (e.g: LCBinaryAnalyticsTask, RVBinaryAnalyticsTask, etc.).
-
-        :param result: Dict; model parameters in JSON format
-        :return: None;
-        """
-        result = eval_constraint_in_dict(result)
-        self.result = result
-        self.flat_result = parameters.deserialize_result(self.result)
 
 
 class LCFitMCMC(LCFit):

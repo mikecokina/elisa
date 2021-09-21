@@ -1,5 +1,3 @@
-import json
-
 from typing import Union
 from . mcmc import CentralRadialVelocity as MCMCCentralRV
 from . least_squares import CentralRadialVelocity as LstSqrCentralRV
@@ -11,62 +9,36 @@ from . summary import (
     simple_lc_fit_summary
 )
 from .. params import parameters
+from .. params.result_handler import FitResultHandler
 from .. params.parameters import BinaryInitialParameters
 from ... binary_system.utils import resolve_json_kind
 from ... logger import getLogger
-from .shared import eval_constraint_in_dict
+
 
 logger = getLogger('analytics.binary_fit.rv_fit')
 
 DASH_N = 126
 
 
-class RVFit(object):
+class RVFit(FitResultHandler):
+    """
+    Class with common methods used during an RV fit.
+    """
     def __init__(self):
-        self.result = None
-        self.flat_result = None
+        super().__init__()
         self.fit_method_instance: Union[RVFitLeastSquares, RVFitMCMC, None] = None
-
-    def get_result(self):
-        return self.result
-
-    def set_result(self, result):
-        self.result = result
-        self.flat_result = parameters.deserialize_result(self.result)
-
-    def load_result(self, path):
-        """
-        Function loads fitted parameters of given model.
-
-        :param path: str;
-        """
-        with open(path, 'r') as f:
-            loaded_result = json.load(f)
-        loaded_result = eval_constraint_in_dict(loaded_result)
-        self.result = loaded_result
-        self.flat_result = parameters.deserialize_result(self.result)
-
-    def save_result(self, path):
-        """
-        Save result as json.
-
-        :param path: str; path to file
-        """
-        if self.result is None:
-            raise IOError("No result to store.")
-
-        with open(path, 'w') as f:
-            json.dump(self.result, f, separators=(',', ': '), indent=4)
 
     def coefficient_of_determination(self, model_parameters, data, discretization, interp_treshold):
         """
         Function returns R^2 for given model parameters and observed data.
 
-        :param model_parameters: Dict; serialized form
+        :param model_parameters: Dict;  Dict; set of model parameters in json format
         :param data: DataSet; observational data
-        :param discretization: float;
-        :param interp_treshold: int;
-        :return: float;
+        :param discretization: float; discretization factor for the primary component
+        :param interp_treshold: int; a number of observation points above which the synthetic curves will be calculated
+                                     using `interp_treshold` equally spaced points that will be subsequently
+                                     interpolated to the desired times of observation
+        :return: float; coefficient of determination (1.0 means a perfect fit to the observations)
         """
         b_parameters = parameters.BinaryInitialParameters(**model_parameters)
         b_parameters.validate_rv_parameters()
