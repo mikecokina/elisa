@@ -32,19 +32,27 @@ PLOT_UNITS = {
 
 
 class MCMCPlotMixin(object):
+    """
+    Graphics module for visualization of MCMC sampling results.
+    """
     fit = None
 
     def corner(self, flat_chain=None, variable_labels=None, normalization=None,
                quantiles=None, truths=False, show_titles=True, plot_units=None, sigma_clip=False, sigma=5, n_bins=20,
                **kwargs):
         """
-        Plots complete correlation plot from supplied parameters. Usefull only for MCMC method.
+        Plots complete correlation plot from supplied parameters. Useful only for visualizing the posterior distribution
+        of the MCMC samples.
 
-        :param sigma_clip: bool;
-        :param sigma: int;
-        :param flat_chain: numpy.array; flattened chain of all parameters, use only if you want display your own chain
+        :param sigma_clip: bool; if True, posterior distribution is cropped within
+                                 (mean - `sigma` * std, mean + `sigma` * std) to filter out the outliers,
+        :param sigma: float; positive, with of the sigma cropping interval in the multiples of standard deviation of
+                             the chain distribution
+        :param flat_chain: numpy.array; flattened chain of all parameters, use only if you want display your own chain.
+                                        By default, internal `flat_chain` attribute will be used as a source of the
+                                        posterior distribution.
         :param variable_labels: List; list of variables during a MCMC run, which is used to identify columns in
-                                     `flat_chain`, use only if you want display your own chain
+                                      `flat_chain`, use only if you want display your own chain
         :param normalization: Dict[str, Tuple(float, float)]; {var_name: (min_boundary, max_boundary), ...} dictionary
                                                               of boundaries defined by user for each variable needed
                                                               to reconstruct real values from normalized `flat_chain`,
@@ -54,7 +62,7 @@ class MCMCPlotMixin(object):
         :param truths: Union[bool, List]; if True, fit results are used to indicate position of found values. If False,
                                           none are shown. If list is supplied, it functions the same
                                           as in corner.corner function
-        :param show_titles: bool; If True, labels above histogram with name of the variable, value, errorss and units
+        :param show_titles: bool; If True, labels above histogram with name of the variable, value, error and units
                                   are displayed
         :param plot_units: Dict; Units in which to display the output {variable_name: unit, ...}
         :param n_bins: int; positive, number of bins in each histogram
@@ -65,29 +73,32 @@ class MCMCPlotMixin(object):
 
     def autocorrelation(self, correlations_to_plot=None, flat_chain=None, variable_labels=None):
         """
-        Plots correlation function of defined parameters.
+        Plots correlation function for the output MCMC chain.
 
-        :param correlations_to_plot: List; names of variables which autocorrelation function will be displayed
-        :param flat_chain: numpy.array; flattened chain of all parameters
-        :param variable_labels: List; list of variables during a MCMC run, which is used
-                                      to identify columns in `flat_chain`
+        :param correlations_to_plot: List; names of variables (in flat format e.g. system@inclination) which
+                                           autocorrelation function will be displayed
+        :param flat_chain: numpy.array; optional, flattened chain of all parameters. If None, internal `flat_chain`
+                                        attribute will be used as a source of the posterior distribution.
+        :param variable_labels: List; list of variables during a MCMC run, which is used to identify columns in
+                                      `flat_chain`. Use only if `flat_chain` is not None.
         """
         autocorrelation(self.fit, correlations_to_plot, flat_chain, variable_labels)
 
     def traces(self, traces_to_plot=None, flat_chain=None, variable_labels=None,
                normalization=None, plot_units=None, truths=False):
         """
-        Plots traces of defined parameters.
+        Plots traces of the MCMC samples.
 
         :param traces_to_plot: List; names of variables which traces will be displayed
-        :param flat_chain: numpy.array; flattened chain of all parameters
+        :param flat_chain: numpy.array; optional, flattened chain of all parameters. If None, internal `flat_chain`
+                                        attribute will be used as a source of the posterior distribution.
         :param variable_labels: List; list of variables during a MCMC run, which is used to identify columns in
-                                     `flat_chain`
+                                      `flat_chain`. Use only if `flat_chain` is not None.
         :param normalization: Dict[str, Tuple(float, float)]; {var_name: (min_boundary, max_boundary), ...} dictionary
                                                               of boundaries defined by user for each variable
                                                               needed to reconstruct real values from normalized
                                                               `flat_chain`, use only if you want display your own chain
-        :param plot_units: Dict; Units in which to display the output {variable_name: unit, ...}
+        :param plot_units: Dict; Units in which to display the output {variable@name: unit, ...}
         :param truths: bool; if True, fit results are used to indicate position of found values. If False,
                              none are shown. It will not work with a custom chain. (if `flat_chain` is not None).
         """
@@ -103,11 +114,11 @@ class RVPlot(object):
     def model(self, start_phase=-0.6, stop_phase=0.6, number_of_points=300, y_axis_unit=u.km / u.s,
               return_figure_instance=False, **kwargs):
         """
-        Prepares data for plotting the model described by fit params or calculated by last run of fitting procedure.
+        Plots the RV model described by fit params or calculated by last run of fitting procedure.
 
-        :param start_phase: float;
-        :param stop_phase: float;
-        :param number_of_points: int;
+        :param start_phase: float; initial orbital phase of the synthetic observations
+        :param stop_phase: float; final orbital phase of the synthetic observations
+        :param number_of_points: int; number of model points in the synthetic data
         :param y_axis_unit: astropy.unit.Unit;
         :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
                                              produced figure
@@ -185,6 +196,9 @@ class RVPlotMCMC(RVPlot, MCMCPlotMixin):
 
 
 class LCPlot(object):
+    """
+    Graphics functions for visualization of LC fit result.
+    """
     def __init__(self, instance, data):
         self.fit = instance
         self.data = data
@@ -195,18 +209,21 @@ class LCPlot(object):
         """
         Prepares data for plotting the model described by fit params or calculated by last run of fitting procedure.
 
-        :param separation: float; separation between different filters
-        :param start_phase: float;
-        :param stop_phase: float;
-        :param number_of_points: int;
-        :param discretization: unit;
-        :param data_frac_to_normalize: float; between (0, 1), fraction of top data points used for normalization,
-                                       depends on level of noise in your data
+        :param separation: float; separation between different filters, useful while plotting normalized LCs in
+                                  different passbands
+        :param start_phase: float; initial orbital phase of the synthetic observations
+        :param stop_phase: float; final orbital phase of the synthetic observations
+        :param number_of_points: int; number of model points in the synthetic data
+        :param discretization: float; discretization factor for the primary component during calculation of the
+                                      synthetic observations
+        :param data_frac_to_normalize: float; optional, between (0, 1), fraction of data points with the highest flux
+                                              used for normalization, depends on level of noise in your data
         :param normalization_kind: str; `average` or `maximum`
         :param loc: int; location of the legend
         :param plot_legend: bool; display legend
         :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
                                              produced figure
+        :param rasterize: if True, figure is returned in rasterized form, thus reducing the size of the image
         :param kwargs: Dict;
         :**kwargs options for mcmc**:
             * **fit_result** * - Dict - {result_parameter: {value: float, unit: astropy.unit.Unit,
@@ -309,6 +326,12 @@ class LCPlotMCMC(LCPlot, MCMCPlotMixin):
 
 
 def serialize_plot_labels(variable_labels):
+    """
+    Return Tex compatible labels of model parameters.
+
+    :param variable_labels: List; flat format labels of model parameters, e.g. system@inclination
+    :return: List; plot labels
+    """
     labels = []
     for lbl in variable_labels:
         lbl_s = lbl.split(conf.PARAM_PARSER)
@@ -326,12 +349,17 @@ def corner(mcmc_fit_instance, flat_chain=None, variable_labels=None, normalizati
     """
     Plots complete correlation plot from supplied parameters. Usefull only for MCMC method
 
-    :param sigma: float; value to use for sigma clipping
-    :param sigma_clip: bool; if true, the corner plot clips values to be within given `sigma` around the solution
-    :param mcmc_fit_instance: <ADD>
-    :param flat_chain: numpy.array; flattened chain of all parameters, use only if you want display your own chain
+    :param sigma: float; positive, with of the sigma cropping interval in the multiples of standard deviation of
+                         the chain distribution
+    :param sigma_clip: bool; if True, posterior distribution is cropped within
+                             (mean - `sigma` * std, mean + `sigma` * std) to filter out the outliers,
+    :param mcmc_fit_instance: Union[elisa.analytics.binary_fit.lc_fit.LCFitMCMC,
+                                    elisa.analytics.binary_fit.rv_fit.RVFitMCMC];
+    :param flat_chain: numpy.array; flattened chain of all parameters, use only if you want display your own chain.
+                                    By default, internal `flat_chain` attribute will be used as a source of the
+                                    posterior distribution.
     :param variable_labels: List; list of variables during a MCMC run, which is used to identify columns in
-                                 `flat_chain`, use only if you want display your own chain
+                                  `flat_chain`, use only if you want display your own chain
     :param normalization: Dict[str, Tuple(float, float)]; {var_name: (min_boundary, max_boundary), ...} dictionary
                                                           of boundaries defined by user for each variable needed to
                                                           reconstruct real values from normalized `flat_chain`,
@@ -406,11 +434,14 @@ def autocorrelation(mcmc_fit_instance, correlations_to_plot=None, flat_chain=Non
     """
     Plots correlation function of defined parameters.
 
-    :param mcmc_fit_instance: Union[elisa.analytics.binary_fit.lc_fit.LCFit, elisa.analytics.binary_fit.rv_fit.RVFit];
-    :param correlations_to_plot: List; names of variables which autocorrelation function will be displayed
-    :param flat_chain: numpy.array; flattened chain of all parameters
-    :param variable_labels: List; list of variables during a MCMC run, which is used
-                                  to identify columns in `flat_chain`
+    :param mcmc_fit_instance: Union[elisa.analytics.binary_fit.lc_fit.LCFitMCMC,
+                                    elisa.analytics.binary_fit.rv_fit.RVFitMCMC];
+    :param correlations_to_plot: List; names of variables (in flat format e.g. system@inclination) which
+                                       autocorrelation function will be displayed
+    :param flat_chain: numpy.array; optional, flattened chain of all parameters. If None, internal `flat_chain`
+                                    attribute will be used as a source of the posterior distribution.
+    :param variable_labels: List; list of variables during a MCMC run, which is used to identify columns in
+                                  `flat_chain`. Use only if `flat_chain` is not None.
     """
     autocorr_plot_kwargs = dict()
 
@@ -447,11 +478,13 @@ def traces(mcmc_fit_instance, traces_to_plot=None, flat_chain=None, variable_lab
     """
     Plots traces of defined parameters.
 
-    :param mcmc_fit_instance: <ADD>;
+    :param mcmc_fit_instance: Union[elisa.analytics.binary_fit.lc_fit.LCFitMCMC,
+                                    elisa.analytics.binary_fit.rv_fit.RVFitMCMC];
     :param traces_to_plot: List; names of variables which traces will be displayed
-    :param flat_chain: numpy.array; flattened chain of all parameters
-    :param variable_labels: List; list of variables during a MCMC run, which is used
-                                  to identify columns in `flat_chain`
+    :param flat_chain: numpy.array; optional, flattened chain of all parameters. If None, internal `flat_chain`
+                                    attribute will be used as a source of the posterior distribution.
+    :param variable_labels: List; list of variables during a MCMC run, which is used to identify columns in
+                                  `flat_chain`. Use only if `flat_chain` is not None.
     :param normalization: Dict[str, Tuple(float, float)]; {var_name: (min_boundary, max_boundary), ...} dictionary
                                                           of boundaries defined by user for each variable needed to
                                                           reconstruct real values from normalized `flat_chain`,
