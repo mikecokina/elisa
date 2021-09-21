@@ -147,8 +147,9 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         :param nsteps_burn_in: int; number of steps for mcmc to explore parameters
         :param p0: numpy.array; initial priors for mcmc
         :param progress: bool; display the progress bar of the sampling
-        :param save: bool; whether to store the chain or not
-        :param fit_id: str; id which identifies fit file (if not specified, current dateime is used)
+        :param save: bool; if true, the MCMC flat chain will be stored
+        :param fit_id: str; id or location (ending with .json) which identifies fit file (if not specified, current
+                            datetime is used)
         :return: emcee.EnsembleSampler;
         """
         self.norm_init_vector = np.array(parameters.vector_normalizer(self.initial_vector, self.fitable.keys(),

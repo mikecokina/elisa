@@ -16,17 +16,25 @@ logger = getPersistentLogger('analytics.binary_fit.mixins')
 
 
 class MCMCMixin(object):
+    """
+    Module for handling of the MCMC chain and the sampler.
+    """
     @staticmethod
     def renormalize_flat_chain(flat_chain, all_lables, labels, normalization):
         """
-        Renormalize values in chain if renormalization Dict is supplied.
+        Re-normalize values in chain stored within (0, 1) interval to their original values.
+
+        :param flat_chain: numpy.array; resulting flatten chain obtained from MCMC sampling
+        :param all_lables: List; names of all variable model parameters
+        :param labels: List; names variable model parameters desired in the output array
+        :param normalization: Dict[str, tuple]; normalization bounds for variable model parameters
+        :return: numpy.array; re-normalized flat chain
         """
         retval = []
         for ii, label in enumerate(labels):
-            if label in labels:
-                idx = all_lables.index(label)
-                retval.append(parameters.renormalize_value(flat_chain[:, idx], normalization[label][0],
-                                                           normalization[label][1]))
+            idx = all_lables.index(label)
+            retval.append(parameters.renormalize_value(flat_chain[:, idx],
+                                                       normalization[label][0], normalization[label][1]))
 
         retval = np.column_stack(retval)
         return retval
@@ -42,7 +50,7 @@ class MCMCMixin(object):
         :param fitable: Dict; fitable parameters
         :param percentiles: List; [percentile for left side error estimation, percentile of the centre,
                                    percentile for right side error estimation]
-        :return: Dict;
+        :return: Dict; JSON with variable model parameters in flat format
         """
         percentiles = [16, 50, 84] if percentiles is None else percentiles
         result = dict()
@@ -71,9 +79,10 @@ class MCMCMixin(object):
     @staticmethod
     def save_flat_chain(flat_chain: np.array, fitable: Dict, norm: Dict, fit_id=None):
         """
-        Store state of mcmc run.
+        Store samples of the MCMC run.
 
-        :param fit_id: str; fit_id of stored chain
+        :param fit_id: str; id or location (ending with .json) which identifies fit file (if not specified, current
+                            datetime is used)
         :param flat_chain: numpy.array; flatted array of parameters values in each mcmc step::
 
             [[param0_0, param1_0, ..., paramk_0],
@@ -83,7 +92,6 @@ class MCMCMixin(object):
         :param norm: Dict; normalization dict
         :param fitable: Union[List, numpy.array]; labels of parameters in order of params in `flat_chain`
         """
-
         home = settings.HOME
         if fit_id is not None:
             if op.isdir(op.dirname(fit_id)):
@@ -114,12 +122,12 @@ class MCMCMixin(object):
     @staticmethod
     def load_flat_chain(fit_id):
         """
-        Restore stored state from mcmc run.
+        Lead the result (flat chain) from the MCMC run.
 
-        :param fit_id: str; base fit_id of stored state
-        :return: Dict;
+        :param fit_id: str; id or location (ending with .json) which identifies fit file (if not specified, current
+                            datetime is used)
+        :return: Dict;  flat_chain, variable parameters, normalization bounds, JSON with results
         """
-
         fname = fit_id if str(fit_id).endswith('.json') else f'{fit_id}.json'
 
         # expected full path
@@ -139,6 +147,21 @@ class MCMCMixin(object):
     @staticmethod
     def worker(sampler, p0, nsteps, nsteps_burn_in,
                save=False, fit_id=None, fitable=None, normalization=None, progress=False):
+        """
+        Multiprocessor worker for MCMC sampling routine.
+
+        :param sampler: emcee.EnsembleSampler;
+        :param p0: numpy.array; (n_walkers x n_variables) distribution of normalized parameters in the initial step
+        :param nsteps: int; number of MCMC sampling iterations
+        :param nsteps_burn_in: int; initial discarded iterations of the MCMC corresponding to the expected
+                                    thermalization portion of the chain
+        :param save: bool; if true, the MCMC flat chain will be stored
+        :param fit_id: str; id or location (ending with .json) which identifies fit file (if not specified, current
+                            dateime is used)
+        :param fitable: Dict; JSON containing variable model parameters
+        :param normalization: Dict[str, tuple]; normalization boundaries
+        :param progress: bool; display the progress bar of the sampling
+        """
         logger.info("running burn-in...")
         p0, _, _ = sampler.run_mcmc(p0, nsteps_burn_in, progress=progress, store=False) \
                        if nsteps_burn_in > 0 else p0, None, None
@@ -158,11 +181,11 @@ class MCMCMixin(object):
     @staticmethod
     def mcmc_nwalkers_vs_ndim_validity_check(nwalkers, ndim):
         """
-        Validate mcmc number of walkers and number of vector dimension.
-        Has to be satisfied `nwalkers < ndim * 2`.
+        Validate number of MCMC walkers satisfies the condition `nwalkers < ndim * 2`, where ndim is a number of free
+        parameters.
 
-        :param nwalkers:
-        :param ndim:
+        :param nwalkers: int; The number of walkers in the ensemble. Minimum is 2 * number of free parameters.
+        :param ndim: int; number of free variables
         :raise: RuntimeError; when condition `nwalkers < ndim * 2` is not satisfied
         """
         if nwalkers < ndim * 2:
