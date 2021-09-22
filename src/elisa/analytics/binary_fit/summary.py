@@ -24,8 +24,7 @@ DASH_N = 126
 
 def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles, dimensionless_radii=True):
     """
-    Function propagates errors of fitted parameters during MCMC fit by evaluating the corresponding
-    chain.
+    Function propagates errors of fitted parameters during MCMC fit by evaluating the corresponding chain.
 
     :param fit_instance: elisa.analytics.binary_fit.lc_fit.LCFit
     :param path: str; results will be written here
@@ -325,13 +324,14 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles, dimen
 
 def evaluate_binary_params(*args):
     """
-    Evaluates mcmc (sub)chain for error propagation evaluation in fit_summary function.
+    Evaluates MCMC (sub)chain for error propagation in fit_summary function.
 
     :param args: Tuple;
 
     ::
 
         Tuple[
+                fit_instance: elisa.analytics.binary_fit.lc_fit.LCFit;
                 param_columns: Dict; name of the column: index of the column,
                 stop_idx: Dict; indices of endpoints for certain parameter groups eg. system, primary parameters,
                                 primary spots etc...,
@@ -405,12 +405,12 @@ def evaluate_binary_params(*args):
 
 def simple_lc_fit_summary(fit_instance, path, dimensionless_radii=True):
     """
-    Function returns or saves to file gives report on given fit with fitted or derived binary parameters.
+    Function returns or saves to file a comprehensive report on given fit procedure. Summary contains all fitted or
+    derived binary parameters.
 
     :param fit_instance: LCFit instance
-    :param path: str;
+    :param path: str; file in which to store a summary
     :param dimensionless_radii: if true, radii are provided in SMA units
-    :return:
     """
     f = None
     if path is not None:
@@ -607,11 +607,11 @@ def simple_lc_fit_summary(fit_instance, path, dimensionless_radii=True):
 
 def simple_rv_fit_summary(fit_instance, path):
     """
-    Function returns or saves to file gives report on given fit with fitted or derived binary parameters.
+    Function returns or saves to file a comprehensive report on given fit procedure. Summary contains all fitted or
+    derived binary parameters.
 
     :param fit_instance: LCFit instance
-    :param path: str;
-    :return:
+    :param path: str; file in which to store a summary
     """
     f = None
     if path is not None:
@@ -665,7 +665,6 @@ def fit_rv_summary_with_error_propagation(fit_instance, path, percentiles):
     :param fit_instance: elisa.analytics.binary_fit.rv_fit.RVFit;
     :param path: str; results will be written here
     :param percentiles: List; [bottom, middle, top] percentiles used for the creation of confidence intervals
-    :return: None;
     """
     f = None
     if path is not None:
@@ -756,6 +755,24 @@ def fit_rv_summary_with_error_propagation(fit_instance, path, percentiles):
 
 
 def evaluate_rv_params(*args):
+    """
+    Produces full set of model parameters from the MCMC chain which will be later used in the error propagation
+    technique.
+
+    :param args: Tuple;
+
+    ::
+
+        Tuple[
+                fit_instance: elisa.analytics.binary_fit.rv_fit.RVFit;
+                param_columns: Dict; name of the column: index of the column, a full set of model parameters
+                stop_idx: Dict; indices of endpoints for certain parameter groups eg. system, primary parameters,
+                                primary spots etc...,
+                renormalized_chain: numpy.array; mcmc chain with renormalized (actual) values
+            ]
+
+    :return: numpy.array; distribution of a full set of model parameters
+    """
     fit_instance, param_columns, stop_idx, renormalized_chain = args
     full_chain = np.empty((renormalized_chain.shape[0], len(param_columns)))
     for ii in tqdm(range(renormalized_chain.shape[0])):
@@ -776,10 +793,11 @@ def evaluate_rv_params(*args):
 def _manage_chain_evaluation(renormalized_chain, eval_function, *args):
     """
     Function manages evaluations of system parameters from flat chains provided by MCMC.
+    Enables the use of multiprocessing.
 
     :param renormalized_chain: numpy.array; glat chain provided by MCMC
-    :param eval_function: function;
-    :return: numpy.array; array of binary parameters
+    :param eval_function: callable; functions called to evaluate the chain batches
+    :return: numpy.array; array of model parameters
     """
     if settings.NUMBER_OF_MCMC_PROCESSES > 1:
         logger.info("starting multiprocessor workers for error propagation technique")
