@@ -18,7 +18,7 @@ logger = getLogger('analytics.dataset.base')
 
 class DataSet(metaclass=ABCMeta):
     """
-    Abstract class dedicated to store eny synthetic or observational data.
+    Abstract class dedicated to store any synthetic or (primarily) observational data.
     """
     TRANSFORM_PROPERTIES_CLS = None
     ID = 1
@@ -47,15 +47,28 @@ class DataSet(metaclass=ABCMeta):
         return self.__class__.TRANSFORM_PROPERTIES_CLS.transform_input(**kwargs)
 
     def copy(self):
+        """
+        Returns a deep copy of the Dataset.
+
+        :return: Dataset;
+        """
         return deepcopy(self)
 
     @staticmethod
     def check_data_validity(**kwargs):
         """
         Function makes sure that the data in the initialized data container are valid (i.e shapes are the same,
-        not containing invalid numbers).
+        not containing invalid numbers). Function chcecks for:
 
-        :param kwargs:
+            - same dimensions of times stamps and observables (with their errors)
+            - checking for invalid numbers inside the dataset
+
+        :param kwargs: Dict;
+        :**kwargs contents**:
+            * :x_data: numpy.array; times of observations or photometric phases
+            * :y_data: numpy.array; observables
+            * :y_err: numpy.array; errors of observables
+
         :return:
         """
         if not np.shape(kwargs['x_data']) == np.shape(kwargs['y_data']):
@@ -77,17 +90,18 @@ class DataSet(metaclass=ABCMeta):
     def load_from_file(cls, filename, x_unit=None, y_unit=None, data_columns=None,
                        delimiter=settings.DELIM_WHITESPACE, downselect_ratio=None, **kwargs):
         """
-        Function loads a RV/LC measurements from text file.
+        Function loads a RV/LC measurements from a file.
 
         :param filename: str; name of the file
         :param x_unit: astropy.unit.Unit;
         :param y_unit: astropy.unit.Unit;
         :param data_columns: Tuple; ordered tuple with column indices of x_data, y_data, y_errors
         :param delimiter: str; regex to define columns separtor
-        :param downselect_ratio: float; (0, 1), selects only a unformly distributed portion of the data to reduce amount of data
+        :param downselect_ratio: float; (0, 1), selects only a uniformly distributed portion of the data to reduce
+                                        amount of data
         :param kwargs: Dict;
         :**kwargs options**:
-            * **reference_magnitude** * -- float; zero point for magnitude conversion in case of LCData
+            * :reference_magnitude: float; zero point for magnitude conversion in case of LCData
 
         :return: Union[RVData, LCData];
         """
@@ -113,12 +127,12 @@ class DataSet(metaclass=ABCMeta):
 
     def convert_to_phases(self, period, t0, centre=0.0):
         """
-        Function converts DataSet with x_data in time unit to dimensionless phases according to an ephemeris.
+        Function converts DataSet with x_data in time unit to dimensionless photometric phases according to an
+        ephemeris.
 
         :param period: float; period according to which fold the data
-        :param t0: float; reference time to consider as phase = 0
+        :param t0: float; reference time where phase = 0
         :param centre: float; phase curve will be centered around this phase
-        :return:
         """
         self.x_data = utils.jd_to_phase(self.x_data, period, t0, centre=centre)
         self.x_unit = u.dimensionless_unscaled
@@ -128,21 +142,23 @@ class DataSet(metaclass=ABCMeta):
         Function converts DataSet with x_data in dimensionless phases to time according to an ephemeris.
 
         :param period: float; period according to which fold the data
-        :param t0: float; reference time to consider as phase = 0
+        :param t0: float; reference time where phase = 0
         :param to_unit: unit to assign the transformed data
-        :return:
         """
         self.x_data = self.x_data * period + t0
         self.x_unit = to_unit
 
     def smooth(self, method='central_moving_average', **kwargs):
         """
-        Convenient function to perform  smoothing of the phased data using various smoothing method.
+        Convenient function to perform smoothing of the phased data using various smoothing methods.
 
-        :param method: str; central_moving_average - assign the average value to the centre of the bin defined by the
-                                                     their number `n_bins` and radius `radius`
-        :param kwargs: see diferent smoothing methods
-        :return:
+        :param method: str;
+        :**method options**:
+
+            * :`central_moving_average`: assign the average value to the centre of the bin defined by the
+                                         their number `n_bins` and radius `radius` in a number of bins
+
+        :param kwargs: see different smoothing methods
         """
         available_methods = ['central_moving_average']
         if method == 'central_moving_average':
@@ -180,11 +196,11 @@ class RVData(DataSet):
 
     Input parameters:
 
-    :param x_data: numpy.array; time or observed phases
+    :param x_data: numpy.array; times of observation or photometric phases
     :param y_data: numpy.array; radial velocities
     :param y_err: numpy.array; radial velocity errors - optional
     :param x_unit: astropy.unit.Unit; if `None` or `astropy.unit.dimensionless_unscaled` is given,
-                                      the `x_data are regarded as phases, otherwise if unit is convertible
+                                      the `x_data are regarded as photometric phases, otherwise if unit is convertible
                                       to days, the `x_data` are regarded to be in JD
     :param y_unit: astropy.unit.Unit; velocity unit of the observed radial velocities and its errors
     """
@@ -220,7 +236,11 @@ class RVData(DataSet):
         Converting data and units to its base counterparts or keeping them dimensionless.
 
         :param kwargs: Dict;
-        :return: Dict;
+        :**kwargs contents**:
+            * :x_data: numpy.array; times of observations or photometric phases
+            * :y_data: numpy.array; radial velocities RV
+            * :y_err: numpy.array; RV errors
+        :return: Dict; observations transformed into base units
         """
         # converting x-axis
         kwargs['x_data'] = dutils.convert_data(kwargs['x_data'], kwargs['x_unit'], u.PERIOD_UNIT)
@@ -264,14 +284,14 @@ class LCData(DataSet):
 
         Input parameters:
 
-        :param x_data: numpy.array; time or observed phases
-        :param y_data: numpy.array; light curves
+        :param x_data: numpy.array; times of observation or photometric phases
+        :param y_data: numpy.array; light curves supplied in normalized fluxes or magnitudes
         :param y_err: numpy.array; light curve errors - optional
         :param x_unit: astropy.unit.Unit; if `None` or `astropy.unit.dimensionless_unscaled` is given,
                                           the `x_data` are regarded as phases, otherwise if unit is convertible
                                           to days, the `x_data` are regarded to be in JD
         :param y_unit: astropy.unit.Unit; unit of the observed flux and its errors
-        :param reference_magnitude: in case that hte input data are in magnitudes, the user can provide a reference
+        :param reference_magnitude: if the input light curve is in magnitudes, the user have to provide a reference
                                     magnitude to use during magnitude to relative flux conversion
     """
     MANDATORY_KWARGS = settings.DATASET_MANDATORY_KWARGS
@@ -308,7 +328,11 @@ class LCData(DataSet):
         Converting data and units to its base counterparts or keeping them dimensionless.
 
         :param kwargs: Dict;
-        :return: Dict;
+        :**kwargs contents**:
+            * :x_data: numpy.array; times of observations or photometric phases
+            * :y_data: numpy.array; light curve
+            * :y_err: numpy.array; light curve errors
+        :return: Dict; observations transformed into base units
         """
         # converting x-axis
         kwargs['x_data'] = dutils.convert_data(kwargs['x_data'], kwargs['x_unit'], u.PERIOD_UNIT)
