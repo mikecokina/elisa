@@ -10,11 +10,12 @@ def normalize_light_curve(y_data, y_err=None, kind='global_maximum', top_fractio
     :param y_err: Dict; dictionary containing errors, {filter: np.ndarray, ...}
     :param kind: str; specifies kind of normalization
     :**kind options**:
-        * ** average ** * -- each curve is normalized to its average
-        * ** global_average ** * -- curves are normalized to their global average
-        * ** maximum ** * -- each curve is normalized to its own maximum
-        * ** global_maximum -- curves are normalized to their global maximum
-    :param top_fraction_to_average: float;
+        * **average**- each curve is normalized to its average
+        * **global_average** - curves are normalized to their global average
+        * **maximum** - each curve is normalized to its own maximum
+        * **global_maximum** - curves are normalized to their global maximum
+    :param top_fraction_to_average: float; top portion of the dataset (in y-axis direction) used in the
+                                           normalization process, from (0, 1) interval
     :return: Dict;
     """
     valid_arguments = ['average', 'global_average', 'maximum', 'global_maximum', 'minimum']

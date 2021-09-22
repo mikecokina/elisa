@@ -31,7 +31,7 @@ class LCFit(FitResultHandler):
         Function returns R^2 for given model parameters and observed data.
 
         :param model_parameters: Dict; set of model parameters in json format
-        :param data: Dict[DataSet]; observational data
+        :param data: Dict[str; LCData]; observational data in each passband
         :param discretization: float; discretization factor for the primary component
         :param interp_treshold: int; a number of observation points above which the synthetic curves will be calculated
                                      using `interp_treshold` equally spaced points that will be subsequently

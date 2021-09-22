@@ -32,8 +32,8 @@ class RVFit(FitResultHandler):
         """
         Function returns R^2 for given model parameters and observed data.
 
-        :param model_parameters: Dict;  Dict; set of model parameters in json format
-        :param data: DataSet; observational data
+        :param model_parameters: Dict; set of model parameters in json format
+        :param data: Dict[str, RVData]; observed RVs for each component
         :param discretization: float; discretization factor for the primary component
         :param interp_treshold: int; a number of observation points above which the synthetic curves will be calculated
                                      using `interp_treshold` equally spaced points that will be subsequently

@@ -262,7 +262,8 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
         :param data: elisa.analytics.dataset.base.LCData;
         :param x0: List[Dict]; initial state (metadata included)
         :param discretization: float; discretization of objects
-        :param interp_treshold: int; data binning treshold
+        :param interp_treshold: int; Above this total number of datapoints, light curve will be interpolated
+                                     using model containing `interp_treshold` equidistant points per epoch
         :param nwalkers: int; The number of walkers in the ensemble. Minimum is 2 * number of free parameters.
         :param nsteps: int; The number of steps to run.
         :param initial_state: numpy.array; initial priors for MCMC
