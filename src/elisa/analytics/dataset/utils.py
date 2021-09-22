@@ -8,24 +8,24 @@ from ... import settings
 
 def convert_data(data, unit, to_unit):
     """
-    Converts data to desired format or leaves it dimensionless.
+    Converts data to desired unit or leaves it dimensionless.
 
-    :param data: numpy.array;
-    :param unit: astropy.unit;
-    :param to_unit: astropy.unit;
-    :return: numpy.array;
+    :param data: numpy.array; data array to be converted
+    :param unit: astropy.unit; `data` unit
+    :param to_unit: astropy.unit; unit into which the `data` will be transformed
+    :return: numpy.array; converted array
     """
     return data if unit == u.dimensionless_unscaled else (data * unit).to(to_unit).value
 
 
 def convert_flux(data, unit, zero_point=None):
     """
-    If data are in magnitudes, they are converted to normalized flux.
+    If the input flux is in magnitudes, they are converted to normalized flux.
 
-    :param data: numpy.array;
-    :param unit: astropy.unit.Unit;
-    :param zero_point: float;
-    :return: numpy.array;
+    :param data: numpy.array; flux array
+    :param unit: astropy.unit.Unit; flux unit of `array` (dimensionless or magnitudes)
+    :param zero_point: float; reference magnitude of the dataset, in case, the flux was provided in magnitudes
+    :return: numpy.array; converted normalized flux
     """
     if unit == u.mag:
         if zero_point is None:
@@ -41,10 +41,10 @@ def convert_flux_error(error, unit, zero_point=None):
     """
     If data an its errors are in magnitudes, they are converted to normalized flux.
 
-    :param error: numpy.array;
-    :param unit: astropy.unit.Unit;
-    :param zero_point: float;
-    :return: numpy.array;
+    :param error: numpy.array; flux error array
+    :param unit: astropy.unit.Unit; flux unit of `error` (dimensionless or magnitudes)
+    :param zero_point: float; float; reference magnitude of the dataset, in case, the flux was provided in magnitudes
+    :return: numpy.array; converted error in normalized flux
     """
     if unit == u.mag:
         if zero_point is None:
@@ -57,11 +57,11 @@ def convert_flux_error(error, unit, zero_point=None):
 
 def convert_unit(unit, to_unit):
     """
-    Converts to desired unit  or leaves it dimensionless.
+    Replacing unit by desired unit or leave it dimensionless.
 
-    :param unit: astropy.unit;
-    :param to_unit: astropy.unit;
-    :return: astropy.unit;
+    :param unit: astropy.unit; old unit
+    :param to_unit: astropy.unit; new unit
+    :return: astropy.unit; new unit
     """
     return unit if unit == u.dimensionless_unscaled else to_unit
 
@@ -69,12 +69,12 @@ def convert_unit(unit, to_unit):
 def read_data_file(filename, data_columns, delimiter=settings.DELIM_WHITESPACE):
     """
     Function loads observation datafile. Rows with column names and comments should start with `#`.
-    It deals with missing data by omitting given line
+    It deals with missing data by omitting given line.
 
     :param delimiter: str; regex to define columns separtor
     :param filename: str;
-    :param data_columns: Tuple;
-    :return: numpy.array;
+    :param data_columns: Tuple; (time column, observable column, observable error column)
+    :return: numpy.array; (N x 3) matrix containing loaded data in columns
     """
     data = pd.read_csv(filename, header=None, comment='#', delimiter=delimiter,
                        error_bad_lines=False, engine='python')[list(data_columns)]
@@ -84,14 +84,14 @@ def read_data_file(filename, data_columns, delimiter=settings.DELIM_WHITESPACE):
 
 def central_moving_average(dt_set, n_bins=100, radius=2, cyclic_boundaries=True):
     """
-    Function performs central moving averages in order to smooth observations in given dataset. Use this function only
-    on phased data.
+    Function performs central moving averages in order to smooth observations in given
+    dataset. The method divides the phase curve into `n_bins`. Afterwards, for each bin, the average flux is
+    calculated for points within `radius` number of bins. Use this function only on phased data.
 
-    :param dt_set:
-    :param n_bins:
-    :param radius:
-    :param cyclic_boundaries:
-    :return:
+    :param dt_set: numpy.array; phase curve to be smoothed
+    :param n_bins: int; number of bins on the phase curve
+    :param radius: int; amount of bins from which the average is calculated
+    :param cyclic_boundaries: bool; last bin is direct neighbour of the first bin
     """
     bin_boundaries = np.linspace(dt_set.x_data.min(), dt_set.x_data.max(), num=n_bins + 1, endpoint=True)
     bin_centres = 0.5 * (bin_boundaries[:-1] + bin_boundaries[1:])
