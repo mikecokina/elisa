@@ -36,7 +36,7 @@ def central_rv_synthetic(x_data, observer, **kwargs):
         "secondary@metallicity": 10000.0,
     })
 
-    x_data, kwargs = time_layer_resolver(x_data, pop=True, **kwargs)
+    x_data_resolved, kwargs = time_layer_resolver(x_data, pop=True, **kwargs)
 
     system_kwargs = serializers.serialize_system_kwargs(**kwargs)
     primary_kwargs = serializers.serialize_primary_kwargs(**kwargs)
@@ -59,7 +59,7 @@ def central_rv_synthetic(x_data, observer, **kwargs):
 
     observer._system = observable
     observer._system_cls = type(observable)
-    _, rv = observer.observe.rv(phases=x_data, normalize=False)
+    _, rv = observer.observe.rv(phases=x_data_resolved, normalize=False)
 
     return rv
 

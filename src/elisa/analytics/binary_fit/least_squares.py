@@ -14,6 +14,7 @@ from . shared import (
 from .. import RVData, LCData
 from .. models import rv as rv_model
 from .. models import lc as lc_model
+from .. models import cost_fns
 from .. tools.utils import time_layer_resolver
 from .. params import parameters
 from ... observer.utils import normalize_light_curve
@@ -81,8 +82,7 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
 
         synthetic, _ = normalize_light_curve(synthetic, kind='average')
 
-        residuals = np.sum([np.sum(np.power((synthetic[band] - self.y_data[band]) / self.y_err[band], 2))
-                            for band in synthetic])
+        residuals = cost_fns.wssr(self.y_data, self.y_err, synthetic)
 
         logger.info(f'current R2: {r_squared(synthetic, self.y_data)}')
 
@@ -191,13 +191,13 @@ class CentralRadialVelocity(AbstractRVFit):
         :return: numpy.array; error weighted sum of squares of residuals
         """
         synthetic = self.prepare_synthetic(xn)
-        return np.array([np.sum(np.power((synthetic[comp][self.x_data_reducer[comp]] - self.y_data[comp])
-                                         / self.y_err[comp], 2)) for comp in synthetic.keys()])
+        synthetic = {comp: synthetic[comp][self.x_data_reducer[comp]] for comp in synthetic}
+        return cost_fns.wssr(self.y_data, self.y_err, synthetic)
 
     def fit(self, data: Dict[str, RVData], x0: parameters.BinaryInitialParameters, **kwargs):
         """
         Method to provide fitting of radial velocities curves.
-        It can handle standadrd physical parameters including component masses `M_1`, `M_2` or astro community
+        It can handle standard physical parameters including component masses `M_1`, `M_2` or astro community
         parameters containing `asini` and `q`. Optimizer based on non-linear least squares method:
         [https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html]
 

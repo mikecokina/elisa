@@ -17,6 +17,7 @@ from . shared import (
 from .. import RVData, LCData
 from .. models import lc as lc_model
 from .. models import rv as rv_model
+from .. models import cost_fns
 from .. params import parameters
 from ..params.conf import NUISANCE_PARSER, PARAM_PARSER
 from .. tools.utils import time_layer_resolver
@@ -24,7 +25,6 @@ from .. tools.utils import time_layer_resolver
 from ... observer.utils import normalize_light_curve
 from ... base.error import ElisaError
 from ... import settings
-from ... const import PI
 from ... graphic.mcmc_graphics import Plot
 from ... logger import getPersistentLogger
 from ... binary_system.system import BinarySystem
@@ -45,17 +45,6 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         self.eval_counter = 0
         self._last_known_lhood = -np.finfo(float).max * np.finfo(float).eps
         self.sigmas = list()
-
-    def s_squared(self, synthetic, ln_f):
-        """
-        Calculates error component of the likelihood function derived from the errors.
-
-        :param synthetic: Dict[str, numpy.array]: synthetic observations for each passband/component
-        :param ln_f: float; error underestimation factor
-        :return: Dict[str, float]; s2 parameter
-        """
-        return {key: np.power(self.y_err[key], 2) + np.power(values, 2) * np.exp(2 * ln_f)
-                for key, values in synthetic.items()}
 
     @staticmethod
     def ln_prior(xn, x0, sigmas):
@@ -88,7 +77,7 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         """
         pass
 
-    def lhood(self, synthetic, ln_f):
+    def likelihood_fn(self, synthetic, ln_f):
         """
         Calculates value of likelihood function for observational data being drawn from distribution around synthetic
         model.
@@ -97,12 +86,7 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         :param synthetic: Dict; {'dataset_name': numpy.array, }
         :return: float; likelihood value
         """
-        sigma2 = self.s_squared(synthetic, ln_f)
-        # print(ln_f)
-        lh = - 0.5 * (np.sum(
-            [np.sum((np.power((self.y_data[key] - synthetic[key]), 2) / sigma2[key]) + np.log(2.0 * PI * sigma2[key]))
-             for key, value in synthetic.items()])
-        )
+        lh = cost_fns.likelihood_fn(self.y_data, self.y_err, synthetic, ln_f)
         self._last_known_lhood = lh if lh < self._last_known_lhood else self._last_known_lhood
         return lh
 
@@ -244,7 +228,7 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
         ln_f_key = f"{NUISANCE_PARSER}{PARAM_PARSER}ln_f"
         ln_f = parameters.prepare_nuisance_properties_set(xn, self.fitable, self.fixed)[ln_f_key]
 
-        return self.lhood(synthetic, ln_f)
+        return self.likelihood_fn(synthetic, ln_f)
 
     def fit(self, data: Dict[str, LCData], x0: parameters.BinaryInitialParameters, discretization=5.0, nwalkers=None,
             nsteps=1000, initial_state=None, burn_in=None, percentiles=None, interp_treshold=None, progress=False,
@@ -342,7 +326,7 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
 
         ln_f_key = f"{NUISANCE_PARSER}{PARAM_PARSER}ln_f"
         ln_f = parameters.prepare_nuisance_properties_set(xn, self.fitable, self.fixed)[ln_f_key]
-        lhood = self.lhood(synthetic, ln_f)
+        lhood = self.likelihood_fn(synthetic, ln_f)
 
         self.eval_counter += 1
         logger.debug(f'eval counter = {self.eval_counter}, likehood = {lhood}')

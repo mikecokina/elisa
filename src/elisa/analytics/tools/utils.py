@@ -87,7 +87,7 @@ def time_layer_resolver(x_data, pop=False, **kwargs):
         if pop:
             kwargs.pop('system@primary_minimum_time')
         period = kwargs['system@period']
-        x_data = t_layer.jd_to_phase(t0, period, x_data, centre=0.5)
+        x_data_new = t_layer.jd_to_phase(t0, period, x_data, centre=0.5)
     else:
-        x_data %= 1.0
-    return x_data, kwargs
+        x_data_new = x_data % 1.0
+    return x_data_new, kwargs
