@@ -6,15 +6,15 @@ from .. models.serializers import (
 )
 
 
-def prepare_binary(discretization=3, _verify=False, **kwargs):
+def prepare_binary(discretization=5, _verify=False, **kwargs):
     """
-    Setup binary system.
-    If `beta` (gravity darkening factor), `albedo`, `metallicity` or `synchronicity` is not supplied,
-    then `1.0` is used as their default value.
+    Setup binary system from initial fit parameter JSON.
+    If `metallicity` is not supplied 0 is used to initialize the parameter. Similarly, default value of `synchronicity`
+    parameter is 1.0.
 
     :param _verify: bool; verify input json
-    :param discretization: float;
-    :param kwargs: Dict;
+    :param discretization: float; primary component's surface discretization factor
+    :param kwargs: Dict; complete set of model parameters in flat format {'parameter@name': value, }
     :return: elisa.binary_system.system.BinarySystem
     """
     kwargs.update({"primary@discretization_factor": discretization})
@@ -29,16 +29,18 @@ def prepare_binary(discretization=3, _verify=False, **kwargs):
     return BinarySystem.from_json(json, _verify=_verify)
 
 
-def synthetic_binary(x_data, discretization, observer, **kwargs):
+def synthetic_binary(phases, discretization, observer, **kwargs):
     """
-    :param x_data: Union[List, numpy.array];
-    :param discretization: float;
-    :param observer: elisa.observer.observer.Observer; instance
-    :param kwargs: Dict;
-    :return: Dict[str, numpy.array];
+    Function returns synthetic light curve of binary system based on a set of model parameter.
+
+    :param phases: Union[List, numpy.array]; photometric phaeses in ehich the curves will be generated
+    :param discretization: float; primary component's surface discretization factor
+    :param observer: elisa.observer.observer.Observer; observer instance
+    :param kwargs: Dict; complete set of model parameters in flat format {'parameter@name': value, }
+    :return: Dict[str, numpy.array]; light curves in in format {'passband_name': LC in filter}
     """
     binary = prepare_binary(discretization, **kwargs)
     observer._system = binary
 
-    lc = observer.observe.lc(phases=x_data, normalize=True)
+    lc = observer.observe.lc(phases=phases, normalize=True)
     return lc[1]
