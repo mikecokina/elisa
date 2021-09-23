@@ -5,6 +5,14 @@ from ... import const
 
 
 def serialize_system_kwargs(**kwargs):
+    """
+    The function is used to extract the system-related parameters used in synthetic model functions during the fit.
+    Those parameters are then returned as `system` component of the input JSON used to initialize the BinarySystem
+    instance.
+
+    :param kwargs: Dict[str, float]; model parameters in flat format
+    :return: Dict[str, float]; `system` model parameters
+    """
     return dict(
         argument_of_periastron=kwargs.get('system@argument_of_periastron', const.HALF_PI),
         gamma=kwargs.get('system@gamma', 0.0),
@@ -22,11 +30,13 @@ def serialize_system_kwargs(**kwargs):
 
 def _serialize_star_kwargs(component, **kwargs):
     """
-    Serialize `xn` input like kwargs to Star kwargs (truncate p__ or s__).
+    General function for extraction of component-related parameters used in synthetic model functions during the fit.
+    Compoenet related parameters are then returned as `primary` or `secondary` component of the input JSON used to
+    initialize the BinarySystem instance.
 
     :param component: str; `primary` or `secondary`
-    :param kwargs: Dict;
-    :return: Dict;
+    :param kwargs: Dict; model parameters in flat format
+    :return: Dict; component-related model parameters
     """
     prefix = lambda prop: f'{component}@{prop}'
     params_tree = {"spots": dict(), "pulsations": dict()}
@@ -57,8 +67,10 @@ def _serialize_star_kwargs(component, **kwargs):
 
 
 def serialize_primary_kwargs(**kwargs):
+    """Parameter extractor for the primary component."""
     return _serialize_star_kwargs(component='primary', **kwargs)
 
 
 def serialize_secondary_kwargs(**kwargs):
+    """Parameter extractor for the secondary component."""
     return _serialize_star_kwargs(component='secondary', **kwargs)
