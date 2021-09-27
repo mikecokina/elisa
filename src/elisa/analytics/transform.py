@@ -4,6 +4,9 @@ from .. import settings
 
 
 class RVBinaryAnalyticsTask(TransformProperties):
+    """
+    Evaluating whether the observational data in elisa.tasks.RVBinaryAnalyticsTask are supplied in valid form.
+    """
     @staticmethod
     def data(value):
         if isinstance(value, dict):
@@ -18,6 +21,9 @@ class RVBinaryAnalyticsTask(TransformProperties):
 
 
 class LCBinaryAnalyticsProperties(TransformProperties):
+    """
+    Evaluating whether the observational data in elisa.tasks.LCBinaryAnalyticsTask are supplied in valid form.
+    """
     @staticmethod
     def data(value):
         if isinstance(value, dict):
