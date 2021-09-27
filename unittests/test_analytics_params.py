@@ -1006,7 +1006,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
 
     def test_is_overcontact(self):
         self.assertTrue(self.initial_parametres.is_overcontact('over-contact'))
-        self.assertFalse(self.initial_parametres.is_overcontact('overcontact'))
+        self.assertTrue(self.initial_parametres.is_overcontact('overcontact'))
         self.assertFalse(self.initial_parametres.is_overcontact('detached'))
 
     def test_unit_conversion_to_default(self):

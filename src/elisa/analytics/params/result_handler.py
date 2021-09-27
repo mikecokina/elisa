@@ -51,7 +51,6 @@ class FitResultHandler(object):
         instances (e.g: LCBinaryAnalyticsTask, RVBinaryAnalyticsTask, etc.).
 
         :param result: Dict; model parameters in JSON format
-        :param result:
         """
         result = eval_constraint_in_dict(result)
         self.result = result

@@ -24,11 +24,12 @@ class AnalyticsTask(metaclass=ABCMeta):
     capability to visualize the resulting fit.
 
     :param name: str; arbitrary name of instance
-    :param data: Dict;
+    :param data: Dict; data to bwe analyzed with the Analytics task instance
     """
-
     ID = 1
-    ALLOWED_METHODS = ('least_squares', 'mcmc')
+    LS_NAMES = ('least_squares', 'least_squares', 'ls', 'LS')
+    MCMC_NAMES = ('mcmc', 'MCMC')
+    ALLOWED_METHODS = LS_NAMES + MCMC_NAMES
     MANDATORY_KWARGS = ["data", ]
     OPTIONAL_KWARGS = []
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
@@ -60,6 +61,12 @@ class AnalyticsTask(metaclass=ABCMeta):
 
     @classmethod
     def validate_method(cls, method):
+        """
+        Checking if the user supplied the correct name for the optimization method.
+
+        :param method: str; name of the optimization method provided by the user
+        :return: Union[None, ValueError];
+        """
         if method not in cls.ALLOWED_METHODS:
             raise ValueError(f'Invalid fitting method. Use one of: {", ".join(cls.ALLOWED_METHODS)}')
 
@@ -97,13 +104,13 @@ class AnalyticsTask(metaclass=ABCMeta):
                                                   to reconstruct real values from normalized `flat_chain` array
         """
 
-        if self.method not in ['mcmc']:
+        if self.method not in self.MCMC_NAMES:
             raise ValueError('Load chain method can be used only with mcmc task.')
         self.fit_cls.load_chain(filename, discard, percentiles)
         return self
 
     def filter_chain(self, **boundaries):
-        if self.method not in ['mcmc']:
+        if self.method not in self.MCMC_NAMES:
             raise ValueError('Filter chain method can be used only with mcmc task.')
         self.fit_cls.filter_chain(**boundaries)
 
@@ -219,10 +226,10 @@ class LCBinaryAnalyticsTask(AnalyticsTask):
 
     def __init__(self, method, expected_morphology='detached', name=None, **kwargs):
         self.validate_method(method)
-        if method in ['mcmc']:
+        if method in self.MCMC_NAMES:
             self.__class__.FIT_CLS = lambda: lc_fit.LCFitMCMC(morphology=expected_morphology)
             self.__class__.PLOT_CLS = LCPlotMCMC
-        elif method in ['least_squares']:
+        elif method in self.LS_NAMES:
             self.__class__.FIT_CLS = lambda: lc_fit.LCFitLeastSquares(morphology=expected_morphology)
             self.__class__.PLOT_CLS = LCPlotLsqr
         super().__init__(method, name, **kwargs)
@@ -251,10 +258,10 @@ class RVBinaryAnalyticsTask(AnalyticsTask):
 
     def __init__(self, method, name=None, **kwargs):
         self.validate_method(method)
-        if method in ['mcmc']:
+        if method in self.MCMC_NAMES:
             self.__class__.FIT_CLS = rv_fit.RVFitMCMC
             self.__class__.PLOT_CLS = RVPlotMCMC
-        elif method in ['least_squares']:
+        elif method in self.LS_NAMES:
             self.__class__.FIT_CLS = rv_fit.RVFitLeastSquares
             self.__class__.PLOT_CLS = RVPlotLsqr
         super().__init__(method, name, **kwargs)
