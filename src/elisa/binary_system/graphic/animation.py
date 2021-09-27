@@ -30,12 +30,25 @@ class Animation(object):
         :param phase_step: float; phase step between animation frames
         :param units: str; unit type of surface colormap `SI` or `cgs`
         :param scale: str; `linear` or `log`, scale of the colormap
-        :param colormap: str; `temperature`, `gravity_acceleration`, `velocity`, `radial_velocity` or None
+        :param colormap: str;
         :param savepath: str; animation will be stored to `savepath`
         :param separate_colormaps: bool; if True, figure will contain separate colormap for each component
         :param subtract_equilibrium: bool; equilibrium part of the quantity is removed (for pulsations)
         :param plot_axis: bool; if False, axis will be hidden
         :param edges: bool; highlight edges of surface faces
+        :**available colormap options**:
+            * :'gravity_acceleration': surface distribution of gravity acceleration,
+            * :'temperature': surface distribution of the effective temperature,
+            * :'velocity': absolute values of surface elements velocities with respect to the observer,
+            * :'radial_velocity': radial component of the surface element velocities relative to the observer,
+            * :'normal_radiance': surface element radiance perpendicular to the surface element,
+            * :'radiance': radiance of the surface element in a direction towards the observer,
+            * :'radius': distance of the surface elements from the centre of mass
+            * :'horizontal_displacement': distribution of the horizontal component of surface displacement
+            * :'horizontal_acceleration': distribution of horizontal component surface acceleration
+            * :'v_r_perturbed': radial component of the pulsation velocity (perpendicular towards
+            * :'v_horizontal_perturbed': horizontal component of the pulsation  velocity
+
         """
         anim_kwargs = dict()
 

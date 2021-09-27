@@ -12,19 +12,34 @@ def add_colormap_to_plt_kwargs(*args, **kwargs):
 
     :param args: tuple;
     :**args options**:
-        * **colormap**: str; 'gravity_acceleration', 'temperature', 'velocity', 'radial_velocity', 'normal_radiance',
-                          'radiance'
+        * **colormap**: str; surface colormap based on given physical parameter, see options below
+                             to see available options
         * **star**:  elisa.base.container.StarContainer;
         * **phase**:  float; photometric phase
         * **com_x**:  float; centre of mass
         * **system_scale**:  float; scaling factor of a system
         * **inclination**:  float; inclination of a system
         * **position**:  float; elisa.const.Position
+
+    :**available colormap options**:
+        * :'gravity_acceleration': surface distribution of gravity acceleration,
+        * :'temperature': surface distribution of the effective temperature,
+        * :'velocity': absolute values of surface elements velocities with respect to the observer,
+        * :'radial_velocity': radial component of the surface element velocities relative to the observer,
+        * :'normal_radiance': surface element radiance perpendicular to the surface element,
+        * :'radiance': radiance of the surface element in a direction towards the observer,
+        * :'radius': distance of the surface elements from the centre of mass
+        * :'horizontal_displacement': distribution of the horizontal component of surface displacement
+        * :'horizontal_acceleration': distribution of horizontal component surface acceleration
+        * :'v_r_perturbed': radial component of the pulsation velocity (perpendicular towards
+        * :'v_horizontal_perturbed': horizontal component of the pulsation  velocity
+
     :param kwargs: Dict;
     :**kwargs options**:
         * **scale**: str; `log` or `linear`
         * **unit**: astropy.units.Unit;
         * **subtract_equilibrium**: bool; if True; equilibrium values are subtracted from surface colormap
+
     :return: numpy.array;
     """
     colorbar_fn = {
@@ -57,22 +72,27 @@ def add_colormap_to_plt_kwargs(*args, **kwargs):
             raise ZeroDivisionError('You are trying to display surface colormap with `subtract_equilibrium`=True but '
                                     'surface of the star does not oscillate.')
 
-    retval = colorbar_fn[colormap](star, scale, unit, subtract_equilibrium, model_scale, inclination, position)
+    args = (scale, unit, subtract_equilibrium, model_scale, inclination, position)
+    retval = colorbar_fn[colormap](star, *args)
 
     return retval
 
 
-def r_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
+def r_cmap(star, *args):
     """
     Returning the radius of the points as a colormap.
 
     :param star: elisa.base.container.StarContainer;
-    :param scale: str; log or linear
-    :param unit: astropy.units.Unit;
-    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
-    :param model_scale: float; scale of the system
-    :return:
+    :param args: Tuple;
+    :**args contents**:
+        * :scale: str; log or linear
+        * :unit: astropy.units.Unit; unit for the colormap
+        * :subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
+        * :model_scale: float; scale of the system
+
+    :return: numpy.array;
     """
+    scale, unit, subtract_equilibrium, model_scale = args[:4]
     if not subtract_equilibrium:
         points = star.points - star.com[None, :]
         value = utils.cartesian_to_spherical(points)[:, 0]
@@ -87,16 +107,21 @@ def r_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, po
     return to_log(value, scale)
 
 
-def horizonatal_displacement_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
+def horizonatal_displacement_cmap(star, *args):
     """
+    Returning the horizontal component of the surface element displacement as a colormap.
 
-    :param star:
-    :param scale:
-    :param unit:
-    :param subtract_equilibrium:
-    :param model_scale:
-    :return:
+    :param star: elisa.base.container.StarContainer;
+    :param args: Tuple;
+    :**args contents**:
+        * :scale: str; log or linear
+        * :unit: astropy.units.Unit; unit for the colormap
+        * :subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
+        * :model_scale: float; scale of the system
+
+    :return: numpy.array;
     """
+    scale, unit, subtract_equilibrium, model_scale = args[:4]
     if not subtract_equilibrium and not star.has_pulsations():
         raise ValueError('Horizontal displacement colormap is relevant only for stars with pulsations.')
     args = (star, 0.0, False, True, True)
@@ -109,17 +134,21 @@ def horizonatal_displacement_cmap(star, scale, unit, subtract_equilibrium, model
     return to_log(value, scale)
 
 
-def v_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
+def v_cmap(star, *args):
     """
-    Returning speed colormap.
+    Returning surface element speed colormap.
 
     :param star: elisa.base.container.StarContainer;
-    :param scale: str; log or linear
-    :param unit: astropy.units.Unit;
-    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
-    :param model_scale: float; scale of the system
+    :param args: Tuple;
+    :**args contents**:
+        * :scale: str; log or linear
+        * :unit: astropy.units.Unit; unit for the colormap
+        * :subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
+        * :model_scale: float; scale of the system
+
     :return: numpy.array;
     """
+    scale, unit, subtract_equilibrium, model_scale = args[:4]
     args = (star, model_scale, False, True, False)
     velocities = container_ops.velocity_perturbation(*args) if subtract_equilibrium else getattr(star, 'velocities')
     velocities = np.linalg.norm(velocities, axis=1)
@@ -128,19 +157,22 @@ def v_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, po
     return to_log(value, scale)
 
 
-def v_rad_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
+def v_rad_cmap(star, *args):
     """
     Returning radial velocity colormap (with respect to the observer).
 
     :param star: elisa.base.container.StarContainer;
-    :param scale: str; log or linear
-    :param unit: astropy.units.Unit;
-    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
-    :param model_scale: float; scale of the system
-    :param inclination: float;
-    :param position: Position;
+    :**args contents**:
+        * :scale: str; log or linear
+        * :unit: astropy.units.Unit; unit for the colormap
+        * :subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
+        * :model_scale: float; scale of the system
+        * :inclination: float;
+        * :position: elisa.const.Position;
+
     :return: numpy.array;
     """
+    scale, unit, subtract_equilibrium, model_scale, inclination, position = args
     if subtract_equilibrium:
         args = (star, model_scale, False, True, False)
         velocities = container_ops.velocity_perturbation(*args)
@@ -155,17 +187,21 @@ def v_rad_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination
     return value
 
 
-def v_rad_pert_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
+def v_rad_pert_cmap(star, *args):
     """
     Returning radial component of the velocity perturbation.
 
     :param star: elisa.base.container.StarContainer;
-    :param scale: str; log or linear
-    :param unit: astropy.units.Unit;
-    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
-    :param model_scale: float; scale of the system
+    :param args: Tuple;
+    :**args contents**:
+        * :scale: str; log or linear
+        * :unit: astropy.units.Unit; unit for the colormap
+        * :subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
+        * :model_scale: float; scale of the system
+
     :return: numpy.array;
     """
+    scale, unit, subtract_equilibrium, model_scale = args[:4]
     if not subtract_equilibrium and not star.has_pulsations():
         raise ValueError('`v_r_perturbed` is relevant only for stars with pulsations.')
     args = (star, model_scale, False, True, True)
@@ -175,17 +211,21 @@ def v_rad_pert_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclin
     return to_log(value, scale)
 
 
-def v_horizontal_pert_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
+def v_horizontal_pert_cmap(star, *args):
     """
     Returning horizontal component of the velocity perturbation.
 
     :param star: elisa.base.container.StarContainer;
-    :param scale: str; log or linear
-    :param unit: astropy.units.Unit;
-    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
-    :param model_scale: float; scale of the system
+    :param args: Tuple;
+    :**args contents**:
+        * :scale: str; log or linear
+        * :unit: astropy.units.Unit; unit for the colormap
+        * :subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
+        * :model_scale: float; scale of the system
+
     :return: numpy.array;
     """
+    scale, unit, subtract_equilibrium, model_scale = args[:4]
     if not subtract_equilibrium and not star.has_pulsations():
         raise ValueError('`v_horizontal_perturbed` colormap is relevant only for stars with pulsations.')
     args = (star, model_scale, False, True, True)
@@ -197,16 +237,21 @@ def v_horizontal_pert_cmap(star, scale, unit, subtract_equilibrium, model_scale,
     return to_log(value, scale)
 
 
-def g_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
+def g_cmap(star, *args):
     """
     Returning gravity acceleration colormap.
 
     :param star: elisa.base.container.StarContainer;
-    :param scale: str; log or linear
-    :param unit: astropy.units.Unit;
-    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
+    :param args: Tuple;
+    :**args contents**:
+        * :scale: str; log or linear
+        * :unit: astropy.units.Unit; unit for the colormap
+        * :subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
+        * :model_scale: float; scale of the system
+
     :return: numpy.array;
     """
+    scale, unit, subtract_equilibrium, model_scale = args[:4]
     if subtract_equilibrium:
         if scale in ['log', 'logarithmic']:
             raise ValueError('Logarithmic scale is not permitted with the `subtract_equilibrium` = True.')
@@ -219,17 +264,21 @@ def g_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, po
     return to_log(value, scale)
 
 
-def horizontal_g_pert_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
+def horizontal_g_pert_cmap(star, *args):
     """
     Returning horizontal component of the acceleration perturbation.
 
     :param star: elisa.base.container.StarContainer;
-    :param scale: str; log or linear
-    :param unit: astropy.units.Unit;
-    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
-    :param model_scale: float; scale of the system
+    :param args: Tuple;
+    :**args contents**:
+        * :scale: str; log or linear
+        * :unit: astropy.units.Unit; unit for the colormap
+        * :subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
+        * :model_scale: float; scale of the system
+
     :return: numpy.array;
     """
+    scale, unit, subtract_equilibrium, model_scale = args[:4]
     if not subtract_equilibrium and not star.has_pulsations():
         raise ValueError('`horizontal_acceleration` colormap is relevant only for stars with pulsations.')
     args = (star, model_scale, False, True, True)
@@ -241,46 +290,60 @@ def horizontal_g_pert_cmap(star, scale, unit, subtract_equilibrium, model_scale,
     return to_log(value, scale)
 
 
-def t_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
+def t_cmap(star, *args):
     """
     Returning temperature colormap.
 
     :param star: elisa.base.container.StarContainer;
-    :param scale: str; log or linear
-    :param unit: astropy.units.Unit;
-    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
+    :param args: Tuple;
+    :**args contents**:
+        * :scale: str; log or linear
+        * :unit: astropy.units.Unit; unit for the colormap
+        * :subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
+        * :model_scale: float; scale of the system
+
     :return: numpy.array;
     """
-    args = (star, model_scale, False, True)
-    temperatures = container_ops.temp_perturbation(*args) if subtract_equilibrium else getattr(star, 'temperatures')
+    scale, unit, subtract_equilibrium, model_scale = args[:4]
+    argss = (star, model_scale, False, True)
+    temperatures = container_ops.temp_perturbation(*argss) if subtract_equilibrium else getattr(star, 'temperatures')
     value = transform_values(temperatures, units.TEMPERATURE_UNIT, unit)
     return to_log(value, scale)
 
 
-def norm_radiance_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
+def norm_radiance_cmap(star, *args):
     """
     Returning radiance in the direction of surface normal vector.
 
     :param star: elisa.base.container.StarContainer;
-    :param scale: str; log or linear
-    :param unit: astropy.units.Unit;
-    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
+    :param args: Tuple;
+    :**args contents**:
+        * :scale: str; log or linear
+        * :unit: astropy.units.Unit; unit for the colormap
+        * :subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
+
     :return: numpy.array;
     """
+    scale, unit, subtract_equilibrium = args[:3]
     normal_radiance = getattr(star, 'normal_radiance')['bolometric']
     value = transform_values(normal_radiance, units.RADIANCE_UNIT, unit)
     return to_log(value, scale)
 
 
-def radiance_cmap(star, scale, unit, subtract_equilibrium, model_scale, inclination, position):
+def radiance_cmap(star, *args):
     """
     Returning radiance in the direction of the observer.
 
     :param star: elisa.base.container.StarContainer;
-    :param scale: str; log or linear
-    :param unit: astropy.units.Unit;
+    :param args: Tuple;
+    :**args contents**:
+        * :scale: str; log or linear
+        * :unit: astropy.units.Unit; unit for the colormap
+        * :subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
+
     :return: numpy.array;
     """
+    scale, unit = args[:2]
     normal_radiance = getattr(star, 'normal_radiance')['bolometric']
     los_cosines = getattr(star, 'los_cosines')
     indices = getattr(star, 'indices')

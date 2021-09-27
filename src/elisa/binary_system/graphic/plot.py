@@ -237,8 +237,7 @@ class Plot(object):
         :param components_to_plot: str; `primary`, `secondary` or `both` (default),
         :param normals: bool; plot normals of the surface phases as arrows
         :param edges: bool; highlight edges of surface faces
-        :param colormap: str; 'gravity_acceleration', 'temperature', 'velocity', 'radial_velocity', 'radiance',
-                              'normal_radiance' or None(default)
+        :param colormap: str;
         :param plot_axis: bool; if False, axis will be hidden
         :param face_mask_primary: array[bool]; mask to select which faces to display
         :param face_mask_secondary: array[bool]: mask to select which faces to display
@@ -256,6 +255,18 @@ class Plot(object):
         :param subtract_equilibrium: bool; if True; equilibrium values are subtracted from surface colormap
         :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
                                              produced figure
+        :**available colormap options**:
+            * :'gravity_acceleration': surface distribution of gravity acceleration,
+            * :'temperature': surface distribution of the effective temperature,
+            * :'velocity': absolute values of surface elements velocities with respect to the observer,
+            * :'radial_velocity': radial component of the surface element velocities relative to the observer,
+            * :'normal_radiance': surface element radiance perpendicular to the surface element,
+            * :'radiance': radiance of the surface element in a direction towards the observer,
+            * :'radius': distance of the surface elements from the centre of mass
+            * :'horizontal_displacement': distribution of the horizontal component of surface displacement
+            * :'horizontal_acceleration': distribution of horizontal component surface acceleration
+            * :'v_r_perturbed': radial component of the pulsation velocity (perpendicular towards
+            * :'v_horizontal_perturbed': horizontal component of the pulsation  velocity
         """
         surface_kwargs = dict()
 

@@ -23,7 +23,7 @@ def calculate_surface_element_fluxes(band, star):
     Function generates outgoing flux from each surface element of given star container in certain band.
 
     :param star: elisa.base.container.StarContainer; star container with all necessary parameters pre-calculated
-    :param band: str; name of the photometric band compatibile with supported names in config
+    :param band: str; name of the photometric band compatible with supported names in config
     :return: numpy.array
     """
     indices = star.indices
@@ -44,7 +44,7 @@ def flux_from_star_container(band, star):
     Function generates outgoing flux from given star container in certain band.
 
     :param star: elisa.base.container.StarContainer; star container with all necessary parameters pre-calculated
-    :param band: str; name of the photometric band compatibile with supported names in config
+    :param band: str; name of the photometric band compatible with supported names in config,
     :return: numpy.array;
     """
 
