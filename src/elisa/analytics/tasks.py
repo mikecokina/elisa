@@ -71,21 +71,62 @@ class AnalyticsTask(metaclass=ABCMeta):
             raise ValueError(f'Invalid fitting method. Use one of: {", ".join(cls.ALLOWED_METHODS)}')
 
     def load_result(self, filename):
+        """
+        Function loads a JSON file containing model parameters and stores it as an attribute of AnalyticsTask fitting
+        instance. This is useful if you want to examine already calculated results using functionality provided by the
+        AnalyticsTask instances (e.g: LCBinaryAnalyticsTask, RVBinaryAnalyticsTask, etc.). I also returns model
+        parameters in standard dict (JSON) format.
+
+        :param filename: str;
+        :return: Dict; model parameters in a standardized format
+        """
         self.fit_cls.load_result(filename)
         return self.fit_cls.get_result()
 
     def save_result(self, filename):
+        """
+        Save result as JSON file.
+
+        :param filename: str; path to file
+        """
         self.fit_cls.save_result(filename)
 
     def set_result(self, result):
-        result = eval_constraint_in_dict(result)
+        """
+        Set model parameters in dictionary (JSON format) as an attribute of AnalyticsTask fitting instance. This is
+        useful if you want to examine already calculated results using functionality provided by the AnalyticsTask
+        instances (e.g: LCBinaryAnalyticsTask, RVBinaryAnalyticsTask, etc.).
+
+        :param result: Dict; model parameters in JSON format
+        """
         self.fit_cls.set_result(result)
-        return self
 
     def get_result(self):
+        """
+        Returns model parameters in standard dict (JSON) format.
+
+        :return: Dict; model parameters in a standardized format
+        """
         return self.fit_cls.get_result()
 
     def result_summary(self, filename=None, **kwargs):
+        """
+        Function produces detailed summary of the current fitting task with the possibility to propagate
+        uncertainties of the fitted binary model parameters if MCMC method was used and `propagate_errors` is True.
+
+        :param filename: path where to store summary
+        :param kwargs: Dict;
+        :**kwargs options for MCMC method**:
+            * :propagate_errors: bool; errors of fitted parameters will be propagated to the rest of EB
+                                       parameters (takes a while to calculate)
+            * :percentiles: List; percentiles used to evaluate confidence intervals from posterior
+                                  distribution of EB parameters in MCMC chain . Used only when if
+                                  `propagate_errors` is True.
+            * :dimensionless_radii: bool; if True (default), radii are provided in SMA, otherwise solRad are used,
+                                          available only for light curve fitting
+
+        :return:
+        """
         self.fit_cls.fit_summary(filename, **kwargs)
 
     fit_summary = result_summary
@@ -110,6 +151,13 @@ class AnalyticsTask(metaclass=ABCMeta):
         return self
 
     def filter_chain(self, **boundaries):
+        """
+        Filtering MCMC chain down to given parameter intervals. This function is useful in case of bimodal distribution
+        of the MCMC chain.
+
+        :param boundaries: Dict; dictionary of boundaries e.g. {'primary@te_ff': (5000, 6000), other parameters ...}
+        :return: numpy.array; filtered flat chain
+        """
         if self.method not in self.MCMC_NAMES:
             raise ValueError('Filter chain method can be used only with mcmc task.')
         self.fit_cls.filter_chain(**boundaries)
@@ -148,6 +196,7 @@ class AnalyticsTask(metaclass=ABCMeta):
                                   chain. Default value is [16, 50, 84] (1-sigma confidence interval)
             * **save** * - bool - save chain
             * **fit_id** * - str - identificator or location of stored chain
+
         :return: Dict; resulting parameters {param_name: {`value`: value, `unit`: astropy.unit, ...}, ...}
         """
         if isinstance(x0, dict):
@@ -200,6 +249,9 @@ class AnalyticsTask(metaclass=ABCMeta):
 
 
 class LCBinaryAnalyticsTask(AnalyticsTask):
+    """
+    Fitting task class aimed to fit light curves of eclipsing binary stars.
+    """
     FIT_CLS = None
     PLOT_CLS = None
     FIT_PARAMS_COMBINATIONS = json.dumps({
@@ -236,6 +288,10 @@ class LCBinaryAnalyticsTask(AnalyticsTask):
 
 
 class RVBinaryAnalyticsTask(AnalyticsTask):
+    """
+    Fitting task class aimed to fit radial velocity (RV) curves of eclipsing binary stars. For now, the method
+    support only kinematic method for calculation of radial velocities (regarding stars as point masses).
+    """
     FIT_CLS = None
     PLOT_CLS = None
     FIT_PARAMS_COMBINATIONS = json.dumps({

@@ -107,14 +107,14 @@ class RVFitMCMC(RVFit):
         Function produces detailed summary about the current RV fitting task with the complete error propagation for RV
         parameters if `propagate_errors` is True
 
-        :param filename: str; path, where to store summary
+        :param filename: str; path where to store summary
         :param kwargs: Dict;
         :**kwargs options**:
-            * ** propagate_errors ** * - bool -- errors of fitted parameters will be propagated to the rest of EB
-                                                 parameters (takes a while to calculate)
-            * ** percentiles ** * - List -- percentiles used to evaluate confidence intervals from posterior
-                                            distribution of EB parameters in MCMC chain . Used only when if
-                                            `propagate_errors` is True.
+            * :propagate_errors: bool; errors of fitted parameters will be propagated to the rest of EB
+                                       parameters (takes a while to calculate)
+            * :percentiles: List; percentiles used to evaluate confidence intervals from posterior
+                                  distribution of EB parameters in MCMC chain . Used only when if
+                                  `propagate_errors` is True.
         """
         propagate_errors = kwargs.get('propagate_errors', False)
         percentiles = kwargs.get('percentiles', [16, 50, 84])

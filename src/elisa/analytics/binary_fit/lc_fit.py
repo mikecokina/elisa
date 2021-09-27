@@ -103,12 +103,12 @@ class LCFitMCMC(LCFit):
         :param filename: str; path, place to store summary
         :param kwargs: Dict;
         :**kwargs options**:
-            * ** propagate_errors ** * - bool -- errors of fitted parameters will be propagated to the rest of EB
-                                                 parameters (takes a while to calculate)
-            * ** percentiles ** * - List -- percentiles used to evaluate confidence intervals from posterior
-                                            distribution of EB parameters in MCMC chain . Used only when if
-                                            `propagate_errors` is True.
-            * ** dimensionless_radii ** * - if True (default), radii are provided in SMA, otherwise solRad are used
+            * :propagate_errors: bool; errors of fitted parameters will be propagated to the rest of EB
+                                       parameters (takes a while to calculate)
+            * :percentiles: List; percentiles used to evaluate confidence intervals from posterior
+                                  distribution of EB parameters in MCMC chain . Used only when if
+                                  `propagate_errors` is True.
+            * :dimensionless_radii: bool; if True (default), radii are provided in SMA, otherwise solRad are used
 
         """
         propagate_errors, percentiles = kwargs.get('propagate_errors', False), kwargs.get('percentiles', [16, 50, 84])
