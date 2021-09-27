@@ -30,6 +30,13 @@ from ... utils import is_empty
 
 
 def deflate_phenomena(flatten):
+    """
+    Conversion of model parameters concerning spots or pulsations from flat format
+    (eg. 'primary@spots@spot1@longitude`) into the standard (nested) JSON format.
+
+    :param flatten: Dict[str, Union[float, bool]]; spot or pulsation mode parameters in flat format
+    :return: Dict;
+    """
     result = dict()
     for phenom_uid, phenom_meta in flatten.items():
         _, _, label, param = str(phenom_uid).split(conf.PARAM_PARSER)
@@ -41,10 +48,38 @@ def deflate_phenomena(flatten):
 
 def deserialize_result(result_dict: Dict) -> Dict:
     """
-    Function converts dictionary of results in user format to flat format.
+    Function converts dictionary of results in user format JSON to flat format.
 
-    :param result_dict:
-    :return:
+    :param result_dict: Dict; standard input format::
+
+        >>> result_dict = {
+        >>>     'system': {
+        >>>         'inclination': {},
+        >>>         # ...
+        >>>     },
+        >>>     'primary': {
+        >>>         't_eff': {},
+        >>>         'spots': [
+        >>>             {
+        >>>                 'label': 'spot1'
+        >>>                 'longitude': {},
+        >>>                 ...
+        >>>             },
+        >>>             ...
+        >>>         ]
+        >>>     }
+        >>>     ...
+        >>> }
+
+    :return: Dict; model parameters in flat format::
+
+        >>> {
+        >>>     'system@inclination': {},
+        >>>     'primary@t_eff': {},
+        >>>     'primary@spots@spot1@longitude': {},
+        >>>     ...
+        >>> }
+
     """
     data = {}
 
@@ -82,10 +117,38 @@ def deserialize_result(result_dict: Dict) -> Dict:
 
 def serialize_result(result_dict: Dict) -> Dict:
     """
-    Function converts dictionary of results of parameter labels back to user format.
+    Function converts dictionary of fit parameters in flat format back to user format.
 
-    :param result_dict: Dict; result dict
-    :return: Dict; user formatted dict
+    :param result_dict: Dict; fit parameters in flat format::
+
+        >>> {
+        >>>     'system@inclination': {},
+        >>>     'primary@t_eff': {},
+        >>>     'primary@spots@spot1@longitude': {},
+        >>>     ...
+        >>> }
+
+    :return: Dict; standard (nested) fit parameter JSON::
+
+        >>> retval = {
+        >>>     'system': {
+        >>>         'inclination': {},
+        >>>         # ...
+        >>>     },
+        >>>     'primary': {
+        >>>         't_eff': {},
+        >>>         'spots': [
+        >>>             {
+        >>>                 'label': 'spot1'
+        >>>                 'longitude': {},
+        >>>                 ...
+        >>>             },
+        >>>             ...
+        >>>         ]
+        >>>     }
+        >>>     ...
+        >>> }
+
     """
 
     ret_dict = dict()
@@ -137,8 +200,8 @@ def serialize_result(result_dict: Dict) -> Dict:
 
 def check_initial_param_validity(x0: Dict[str, 'InitialParameter'], all_fit_params, mandatory_fit_params):
     """
-    Checking if initial parameters system and composite (spots and pulsations) are containing all necessary values and
-    no invalid ones.
+    Checking if initial system parameters including surface features (spots and pulsations) are containing all
+    necessary values and no invalid entries.
 
     :param x0: Dict[str, 'InitialParameter']; dictionary of initial parameters
     :param all_fit_params: List; list of all valid system parameters (spot and pulsation parameters excluded)
@@ -166,8 +229,9 @@ def check_initial_param_validity(x0: Dict[str, 'InitialParameter'], all_fit_para
 
 def xs_reducer(xs):
     """
-    Convert phases `xs` to single list and inverse map related to given passband (in case of light curves)
-    or component (in case of radial velocities).
+    Convert phases `xs` to a single list of photometric phases and produce an inverse mapping which enables to
+    reconstruct the passband- (or component-)specific photometric phases from the resulting array in case of
+    light curves (radial velocities).
 
     :param xs: Dict[str, numpy.array]; phases defined for each passband or ceomponent::
 
@@ -191,56 +255,53 @@ def xs_reducer(xs):
 
 def renormalize_value(val, _min, _max):
     """
-    Renormalize value `val` to value from interval specific for given parameter defined my `_min` and `_max`. Inverse
-    function to `normalize_value`.
+    Convert normalized value `val` to the actual value of the parameter value from interval specific
+    for given parameter defined my `_min` and `_max`. Inverse function to `normalize_value`.
 
-    :param val: float;
-    :param _min: float;
-    :param _max: float;
-    :return: float;
+    :param val: float; eg. 0.5
+    :param _min: float; bottom normalization value, eg. 5000 (K)
+    :param _max: float; top normalization value, eg. 7000 (K)
+    :return: float; eg. 6000 (K)
     """
     return (val * (_max - _min)) + _min
 
 
 def normalize_value(val, _min, _max):
     """
-    Normalize value `val` to value from interval (0, 1) based on `_min` and `_max`.
+    Normalize acutal value of the parameter `val` to value from interval (0, 1) based on `_min` and `_max`.
 
-    :param val: float;
-    :param _min: float;
-    :param _max: float;
-    :return: float;
+    :param val: float; eg. 6000 (K)
+    :param _min: float; bottom normalization value, eg. 5000 (K)
+    :param _max: float; top normalization value, eg. 7000 (K)
+    :return: float; eg. 0.5
     """
     return (val - _min) / (_max - _min)
 
 
 def vector_renormalizer(vector, properties, normalization):
     """
-    Renormalize values from `x` to their native form.
+    Convert array of normalized parameters to their actual values according to the normalization boundaries.
 
     :param vector: List[float]; iterable of normalized parameter values
-    :param properties: Iterable[str]; related parameter names from `x`
+    :param properties: Iterable[str]; parameter names corresponding to `vector`
     :param normalization: Dict[str, Tuple[float, float]]; normalization map
-    :return: List[float];
+                          {parameter@name: (bottom boundary, upper boundary), ...}
+    :return: List[float]; restored values of parameters
     """
     return [renormalize_value(value, *normalization[prop]) for value, prop in zip(vector, properties)]
 
 
 def vector_normalizer(vector, properties, normalization):
     """
-    Normalize values from `x` to value between (0, 1).
+    Normalize `vector` values from actual values to values between (0, 1).
 
-    :param vector: List[float]; iterable of normalized parameter values
-    :param properties: Iterable[str]; related parameter names from `x`
+    :param vector: List[float]; iterable of parameter values
+    :param properties: Iterable[str]; parameter names corresponding to `vector`
     :param normalization: Dict[str, Tuple[float, float]]; normalization map
-    :return: List[float];
+                          {parameter@name: (bottom boundary, upper boundary), ...}
+    :return: List[float]; normalized values of parameters
     """
     return [normalize_value(value, *normalization[prop]) for value, prop in zip(vector, properties)]
-
-
-# def sigma_normalizer(x0, x0_normalized, sigma):
-#
-#     return perturbed - x0_normalized
 
 
 def prepare_properties_set(xn, properties, constrained, fixed):
@@ -248,10 +309,10 @@ def prepare_properties_set(xn, properties, constrained, fixed):
     This will prepare final kwargs for synthetic model evaluation.
 
     :param xn: numpy.array; initial vector
-    :param properties: List; variable labels
-    :param constrained: Dict;
-    :param fixed: Dict;
-    :return: Dict[str, float];
+    :param properties: List; variable labels corresponding to `xn`
+    :param constrained: Dict; constrained initial parameters
+    :param fixed: Dict; fixed initial parameters
+    :return: Dict[str, float]; flat model parameters {'param@name': value, }
     """
     kwargs = dict(zip(properties, xn))
     kwargs.update(constraints_evaluator(kwargs, constrained))
@@ -262,12 +323,12 @@ def prepare_properties_set(xn, properties, constrained, fixed):
 
 def prepare_nuisance_properties_set(xn, properties, fixed):
     """
-    This will prepare final kwargs for synthetic model evaluation.
+    This will extract nuisance parameter values used during MCMC sampling.
 
     :param xn: numpy.array; initial vector
     :param properties: List; variable labels
-    :param fixed: Dict;
-    :return: Dict[str, float];
+    :param fixed: Dict; fixed initial parameters
+    :return: Dict[str, float]; values of nuisance parameters
     """
     kwargs = {key: item for item, key in zip(xn, properties) if conf.NUISANCE_PARSER in key}
     kwargs.update({key: val.value if isinstance(val, InitialParameter) else val for key, val in fixed.items()
@@ -309,6 +370,9 @@ def constraints_evaluator(substitution: Dict, constrained: Dict) -> Dict:
 
 
 class ParameterMeta(object):
+    """
+    Auxiliary handler for fit parameters that ensures that each parameter attribute is present in the results.
+    """
     def __init__(self, **kwargs):
         self.unit = kwargs.get("unit")
         self.param = kwargs.get("param")
@@ -336,6 +400,31 @@ class ParameterMeta(object):
 
 
 class InitialParameter(object):
+    """
+    Object designed for storing attributes of fit parameter.
+
+    :param transform_cls: callable; class used to transform user fit parameters into default units
+    :param kwargs: Dict; fit parameter attributes
+    :**kwargs**:
+        * **param**: str; parameter name
+        * :value: float; value assigned to the fit parameter
+        * :unit: astropy.unit.Unit; unit assigned to the `value`
+        * :fixed: bool; if True, the parameter value will be fixed during the fit procedure
+        * :constraint: Union[None, str]; enables to constrain the parameter value to the different variable
+                                         fit parameter using mathematical expression. Here is the example of
+                                         the constraining the semi_major_axis parameter to the value of
+                                         inclination::
+
+                                            'constraint': '12.528 / sin(system@inclination)'
+
+                                         Each fit parameter definition can contain either
+                                         `fixed` or `constraint` attribute at the same time.
+        * :min: Union[None, float]; minimum allowed value for the parameter
+        * :max: Union[None, float]; maximum allowed value for the parameter, `max` > `min`
+        * :sigma: Union[None, float]; standard deviation of the normal prior distribution for given parameter,
+                                      usefull only in case of MCMC method
+
+    """
     DEFAULT = {
         "param": None,
         "value": None,
@@ -382,9 +471,11 @@ class InitialParameter(object):
         self.unit = conf.DEFAULT_FLOAT_UNITS[self.property]
 
     def copy(self):
+        """Returns deep copy of the InitialParameter"""
         return deepcopy(self)
 
     def to_dict(self):
+        """Transforms InitialParameter into dict format."""
         return dict(
             **{
                 "value": self.value,
@@ -414,10 +505,23 @@ class InitialParameter(object):
 
 
 class InitialParameters(object, metaclass=abc.ABCMeta):
+    """
+    Abstract object for handling sets of initial fit parameters.
+    """
     TRANSFORM_PROPERTIES_CLS = None
     DEFAULT_NORMALIZATION = None
 
     def validity_check(self):
+        """
+        Function examines whether inputted definitions of initial fit parameters make sense.
+        Verifying that InitialParameter.min <= InitialParameter.value <= InitialParameter.max.
+        Verifying that InitialParameter is either:
+
+            * fixed: `InitialParameter.fixed` = False, `InitialParameter.constraint` = None
+            * variable: `InitialParameter.fixed` = True, `InitialParameter.constraint` = None
+            * constrained: `InitialParameter.fixed` = None, `constraint` = `InitialParameter.valid expresion`
+
+        """
         for slot in self.__slots__:
             if not hasattr(self, str(slot)):
                 continue
@@ -435,6 +539,13 @@ class InitialParameters(object, metaclass=abc.ABCMeta):
                                          f'`fixed` and `constraint` parameter.')
 
     def init_parameter(self, parameter: str, items: Dict) -> InitialParameter:
+        """
+        Initialization of InitialParameter instance from dict definition.
+
+        :param parameter: str; name of the fit parameter
+        :param items: Dict; definition of the fit parameter {'value': , 'unit':, 'fixed':, ...}
+        :return: InitialParameter;
+        """
         _kwarg = InitialParameter.DEFAULT.copy()
         _kwarg.update(dict(param=parameter, **items))
         _kwarg.update(dict(min=items.get("min", self.DEFAULT_NORMALIZATION[parameter][0]),
@@ -443,6 +554,9 @@ class InitialParameters(object, metaclass=abc.ABCMeta):
 
 
 class SpotInitialParameters(InitialParameters):
+    """
+    Object for handling spot-related fit parameters.
+    """
     __slots__ = ["longitude", "latitude", "angular_radius", "temperature_factor", "label"]
 
     TRANSFORM_PROPERTIES_CLS = SpotInitialProperties
@@ -457,6 +571,9 @@ class SpotInitialParameters(InitialParameters):
 
 
 class PulsationInitialParameters(InitialParameters):
+    """
+    Object for handling pulsation mode-related fit parameters.
+    """
     __slots__ = ["l", "m", "amplitude", "frequency", "start_phase", "mode_axis_theta", "mode_axis_phi", "label"]
 
     TRANSFORM_PROPERTIES_CLS = PulsationModeInitialProperties
@@ -474,6 +591,9 @@ class PulsationInitialParameters(InitialParameters):
 
 
 class StarInitialParameters(InitialParameters):
+    """
+    Object for handling component-related fit parameters.
+    """
     __slots__ = ["spots", "pulsations", "t_eff", "metallicity", "surface_potential",
                  "albedo", "gravity_darkening", "synchronicity", "mass"]
 
@@ -501,6 +621,10 @@ class StarInitialParameters(InitialParameters):
 
 
 class NuisanceInitialPrameters(InitialParameters):
+    """
+    Object for handling auxiliary `nuisance` fit parameters used during the MCMC fit to produce a
+    realistic estimations of confidence intervals.
+    """
     __slots__ = ["ln_f"]
 
     TRANSFORM_PROPERTIES_CLS = NuisanceInitialProperties
@@ -514,6 +638,9 @@ class NuisanceInitialPrameters(InitialParameters):
 
 
 class BinaryInitialParameters(InitialParameters):
+    """
+    Object for handling binary system-related fit parameters.
+    """
     __slots__ = ["primary", "secondary", "eccentricity", "argument_of_periastron",
                  "inclination", "gamma", "period", "mass_ratio", "asini", "semi_major_axis",
                  "additional_light", "phase_shift", "primary_minimum_time", conf.NUISANCE_PARSER]
@@ -552,6 +679,8 @@ class BinaryInitialParameters(InitialParameters):
 
     @property
     def data(self):
+        """Returns a complete set of binary system model parameters
+        compiled from BinaryInitialParameters instance in standard nested JSON format."""
         return self._data
 
     def __getitem__(self, item):
@@ -563,9 +692,17 @@ class BinaryInitialParameters(InitialParameters):
         return data if iterable else data[-1]
 
     def to_flat_json(self):
+        """
+        Returns a complete set of binary system model parameters
+        compiled from BinaryInitialParameters instance in flat JSON format.
+        :return:
+        """
         return [{key: val.to_dict()} for key, val in self.data.items()]
 
     def unique_labels_validation(self):
+        """
+        Making sure that labels of surface features (spots or pulsation modes have unique names.
+        """
         def _test(_what):
             for component in settings.BINARY_COUNTERPARTS:
                 if hasattr(self, component):
@@ -579,6 +716,11 @@ class BinaryInitialParameters(InitialParameters):
         _test('pulsations')
 
     def serialize_flat_set(self):
+        """
+        Returns a nested set of 'InitialParameter's in the same JSON format as fit results.
+
+        :return: Dict[str, Union[Dict[...], InitialParameter]];
+        """
         data = {}
 
         for system_slot in self.__slots__:
@@ -653,6 +795,10 @@ class BinaryInitialParameters(InitialParameters):
                 raise ValidationError(msg)
 
     def validate_data(self):
+        """
+        Validate whether fit parameters contain at least one variable parameter. Function also checks
+        constrained parameters for validity.
+        """
         # validate that at least one parameter is not fixed
         if len(self.get_fitable(jsonify=False)) == 0:
             raise ValidationError('There are no variable parameters to fit.')
@@ -661,12 +807,18 @@ class BinaryInitialParameters(InitialParameters):
         self.constraint_validator()
 
     def adjust_overcontact_potential(self, morphology):
+        """
+        If overcontact morphology is expected during the fit, this function constrains the secondary
+        component potential to the primary component potential.
+
+        :param morphology: str; over-contact or detached
+        """
         if self.is_overcontact(morphology):
-            update_surfcae_potential = self.primary.surface_potential.copy()
-            update_surfcae_potential.fixed = None
-            update_surfcae_potential.constraint = 'primary@surface_potential'
-            self.secondary.surface_potential = update_surfcae_potential
-            self.data['secondary@surface_potential'] = update_surfcae_potential
+            update_surface_potential = self.primary.surface_potential.copy()
+            update_surface_potential.fixed = None
+            update_surface_potential.constraint = 'primary@surface_potential'
+            self.secondary.surface_potential = update_surface_potential
+            self.data['secondary@surface_potential'] = update_surface_potential
 
     def validate_lc_parameters(self, morphology):
         """
@@ -701,7 +853,7 @@ class BinaryInitialParameters(InitialParameters):
         if is_oc and all_fixed and are_same:
             return
         if is_oc and all_fixed and not are_same:
-            msg = 'Different potential in over-contact morphology with all fixed (pontetial) value are not allowed.'
+            msg = 'Different potential in over-contact morphology with all fixed (potential) value are not allowed.'
             raise ValidationError(msg)
         if is_oc and any_fixed:
             msg = 'Just one fixed potential in over-contact morphology is not allowed.'
@@ -751,7 +903,7 @@ class BinaryInitialParameters(InitialParameters):
 
     def get_fitable(self, jsonify=False):
         """
-        Transform native form to `fitable` parameters only: {key: InitialParam, ...}
+        Transform native form to `fitable` (variable) parameters only: {key: InitialParam, ...}
         :return: Dict[str, InitialParam];
         """
         if jsonify:
@@ -759,6 +911,12 @@ class BinaryInitialParameters(InitialParameters):
         return {key: val for key, val in self.data.items() if not val.constraint and not val.fixed}
 
     def get_substitution_dict(self):
+        """
+        Return dictionary of fit parameter models containing parameter name and its
+        value except for constrained parameters.
+
+        :return: Dict[str, float]; {param@name}
+        """
         return {key: val.value for key, val in self.data.items() if not val.constraint}
 
     def get_normalization_map(self):
@@ -771,6 +929,6 @@ class BinaryInitialParameters(InitialParameters):
     @staticmethod
     def is_overcontact(morphology):
         """
-        Is string equal to `over-contact`?
+        Checking if system morphology is over-contact.
         """
-        return morphology in ['over-contact']
+        return morphology in ['over-contact', 'overcontact']
