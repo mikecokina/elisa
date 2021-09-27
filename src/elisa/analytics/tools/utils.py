@@ -4,68 +4,36 @@ from ... import units as u
 from ... binary_system import t_layer
 
 
-def convert_dict_to_json_format(dictionary):
+def lightcurves_mean_error(lc):
     """
-    Converts initial vector to JSON compatibile format.
+    If observation errors are not provided, the default 5 percent relative error
+    is used to generate synthetic errors.
 
-    :param dictionary: Dict; vector of initial parameters
-
-    ::
-
-        {
-            paramname: {
-                            value: value,
-                            min: ...
-                       }, ...
-        }
-
-    :return: List; [{param: paramname, value: value, ...}, ...]
+    :param lc: numpy.array; light curve
+    :return: numpy.array; synthetic errors
     """
-    retval = list()
-    for key, val in dictionary.items():
-        val.update({'param': key})
-        retval.append(val)
-    return retval
-
-
-def convert_json_to_dict_format(json):
-    """
-    Converts initial vector to JSON compatibile format.
-
-    :param json: List; vector of initial parameters {paramname:{value: value, min: ...}, ...}
-    :return: List; [{param: paramname, value: value, ...}, ...]
-    """
-    retval = dict()
-    for item in json:
-        param = item.pop('param')
-        retval.update({param: item, })
-    return retval
-
-
-def unify_unit_string_representation(dictionary):
-    """
-    transform user units to unified format
-
-    :param dictionary: Dict; model parameter
-    :return: Dict; model parameter
-    """
-    for key, val in dictionary.items():
-        if 'unit' in val.keys():
-            val['unit'] = u.Unit(val['unit']) if isinstance(val['unit'], str) else val['unit']
-            val['unit'] = val['unit'].to_string()
-
-    return dictionary
-
-
-def lightcurves_mean_error(lc, *args):
     return np.mean(lc) * 0.05
 
 
 def radialcurves_mean_error(rv):
+    """
+    If observation errors are not provided, the default 5 percent relative error
+    is used to generate synthetic errors.
+
+    :param rv: numpy.array; radial velocities
+    :return: numpy.array; synthetic errors
+    """
     return np.mean(rv) * 0.05
 
 
 def is_time_dependent(labels):
+    """
+    If 'system@primary_minimum_time' is located in the fit parameters, the fit parameters are considered
+    time dependent and observations are therefore expected to be supplied in JD.
+
+    :param labels: List[str]; parameter labels
+    :return: bool
+    """
     if 'system@period' in labels and 'system@primary_minimum_time' in labels:
         return True
     return False
@@ -73,10 +41,11 @@ def is_time_dependent(labels):
 
 def time_layer_resolver(x_data, pop=False, **kwargs):
     """
-    If kwargs contain `period` and `primary_minimum_time`, then xs is expected to be JD time not phases.
-    Then, xs has to be converted to phases.
+    If kwargs contain `period` and `primary_minimum_time`, then xs is expected to be JD
+    time not phases. Then, x_data (observational time) has to be converted to phases.
 
-    :param pop: bool; determine if kick system@primary_minimum_time or just read it
+    :param pop: bool; determine if remove the system@primary_minimum_time parameter from the fit
+                      parameters or just read it
     :param x_data: Union[List, numpy.array];
     :param kwargs: Dict;
     :return: Tuple;
