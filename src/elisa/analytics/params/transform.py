@@ -1,5 +1,5 @@
 """
-Transform to default float like units.
+Converting input parameters to default internal units.
 """
 
 
@@ -21,7 +21,7 @@ from ... pulse.transform import PulsationModeProperties
 
 def angular(value):
     """
-    Transform all angular units to elisa default float expected unit.
+    Transform all angular units to ELISa's default internal angular unit.
 
     :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
     :return: float;
@@ -37,6 +37,9 @@ def angular(value):
 
 
 class BinaryInitialProperties(TransformProperties):
+    """
+    Module that handles conversion of binary system parameters units.
+    """
     @staticmethod
     def semi_major_axis(value):
         if isinstance(value, u.Quantity):
@@ -75,19 +78,31 @@ class BinaryInitialProperties(TransformProperties):
 
 
 class StarInitialProperties(StarProperties):
+    """
+    Module that handles conversion of component's parameters units.
+    """
     mass = BinaryInitialProperties.mass
 
 
 class SpotInitialProperties(SpotProperties):
+    """
+    Module that handles conversion of spot's parameters units.
+    """
     latitude = angular
     longitude = angular
     angular_radius = angular
 
 
 class NuisanceInitialProperties(TransformProperties):
+    """
+    Module that handles unit conversion of nuisance fit parameters.
+    """
     ln_f = lambda x: x
 
 
 class PulsationModeInitialProperties(PulsationModeProperties):
+    """
+    Module that handles unit conversion of pulsation mode parameters.
+    """
     mode_axis_theta = angular
     mode_axis_phi = angular

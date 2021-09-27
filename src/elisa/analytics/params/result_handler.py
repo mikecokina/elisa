@@ -52,7 +52,6 @@ class FitResultHandler(object):
 
         :param result: Dict; model parameters in JSON format
         :param result:
-        :return:
         """
         result = eval_constraint_in_dict(result)
         self.result = result
