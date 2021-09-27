@@ -3,7 +3,7 @@ import numpy as np
 
 def surface_area_coverage(size, visible, visible_coverage, partial=None, partial_coverage=None):
     """
-    Prepare array with coverage os surface areas.
+    Prepare array with coverage of surface areas.
 
     :param size: int; size of array
     :param visible: numpy.array; full visible areas (numpy fancy indexing), array like [False, True, True, False]

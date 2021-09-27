@@ -7,7 +7,7 @@ from ... import umpy as up
 
 def initialize_model_container(vertices_map):
     """
-    Initializes basic data structure `model` objects that will contain faces divided by its origin (star or spots)
+    Initializes basic data structure `model` objects that will contain faces sorted by its origin (star or spots)
     and data structure containing spot candidates with its index and center point.
     Structure is based on input `verties_map`.
     Example of return Tuple

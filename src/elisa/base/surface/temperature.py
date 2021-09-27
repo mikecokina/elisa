@@ -49,8 +49,8 @@ def calculate_polar_effective_temperature(star_container):
 
 def renormalize_temperatures(star):
     """
-    In case of spot presence, renormalize temperatures to fit effective temperature again,
-    since spots disrupt effective temperature of Star as entity.
+    In case of spot presence, renormalize temperatures to match the effective temperature of the star,
+    since spots disrupt the original effective temperature of Star.
     """
     # no need to calculate surfaces they had to be calculated already, otherwise there is nothing to renormalize
     total_surface = np.sum(star.areas)

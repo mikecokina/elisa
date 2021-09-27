@@ -22,7 +22,7 @@ class AbstractOrbit(metaclass=ABCMeta):
     @classmethod
     def true_phase(cls, phase, phase_shift):
         """
-        Returns shifted phase of the orbit by the amount phase_shift.
+        Returns shifted phase of the orbit by the amount `phase_shift`.
 
         :param phase: Union[numpy.array, float];
         :param phase_shift: float;
