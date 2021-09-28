@@ -37,6 +37,7 @@ def kinematic_radial_velocity(binary, **kwargs):
     :**kwargs options**:
         * **position_method** * -- function that is used to calculate orbital motion
         * **phases** * -- phases in which to calculate
+
     :return: Dict[str, Unionp[float, numpy.array]; index of values are related to index of phases
     """
     position_method = kwargs.pop("position_method")
@@ -71,6 +72,7 @@ def compute_circular_synchronous_rv_curve(binary, **kwargs):
             * ** right_bandwidth ** * - float
             * ** position_method** * - function definition; to evaluate orbital positions
             * ** phases ** * - numpy.array
+
     :return: Dict[str, numpy.array];
     """
     initial_system = c_router.prep_initial_system(binary)
@@ -90,6 +92,7 @@ def compute_circular_spotty_asynchronous_rv_curve(binary, **kwargs):
         * ** left_bandwidth ** - float
         * ** right_bandwidth ** - float
         * ** atlas ** - str
+
     :return: Dict; rv for each component
     """
     rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
@@ -107,6 +110,7 @@ def compute_circular_pulsating_rv_curve(binary, **kwargs):
         * ** left_bandwidth ** - float
         * ** right_bandwidth ** - float
         * ** atlas ** - str
+
     :return: Dict; rv for each component
     """
     initial_system = c_router.prep_initial_system(binary, **dict(build_pulsations=False))
@@ -127,6 +131,7 @@ def compute_eccentric_rv_curve_no_spots(binary, **kwargs):
         * ** left_bandwidth ** - float
         * ** right_bandwidth ** - float
         * ** atlas ** - str
+
     :return: Dict; rv for each component
     """
     rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
@@ -144,6 +149,7 @@ def compute_eccentric_spotty_rv_curve(binary, **kwargs):
         * ** left_bandwidth ** - float
         * ** right_bandwidth ** - float
         * ** atlas ** - str
+
     :return: Dict; rv for each component
     """
     rv_labels = list(settings.BINARY_COUNTERPARTS.keys())

@@ -107,6 +107,7 @@ def produce_circular_sync_curves(binary, initial_system, phases, curve_fn, crv_l
         * ** right_bandwidth ** * - float
         * ** position_method** * - function definition; to evaluate orbital positions
         * ** phases ** * - numpy.array
+
     :return: Dict; calculated curves
     """
 
@@ -127,6 +128,7 @@ def produce_circular_spotty_async_curves(binary, curve_fn, crv_labels, **kwargs)
         * ** passband ** * - Dict[str, elisa .observer.PassbandContainer]
         * ** left_bandwidth ** * - float
         * ** right_bandwidth ** * - float
+
     :return: Dict; curves
     """
     phases = kwargs.pop("phases")
@@ -164,6 +166,7 @@ def produce_circular_pulsating_curves(binary, initial_system, curve_fn, crv_labe
         * ** passband ** * - Dict[str, elisa .observer.PassbandContainer]
         * ** left_bandwidth ** * - float
         * ** right_bandwidth ** * - float
+
     :return: Dict; curves
     """
     phases = kwargs.pop("phases")
@@ -185,6 +188,7 @@ def produce_ecc_curves_no_spots(binary, curve_fn, crv_labels, **kwargs):
         * ** passband ** * - Dict[str, elisa .observer.PassbandContainer]
         * ** left_bandwidth ** * - float
         * ** right_bandwidth ** * - float
+
     :return: Dict; curves
     """
     phases = kwargs.pop("phases")
@@ -227,6 +231,7 @@ def produce_ecc_curves_with_spots(binary, curve_fn, crv_labels, **kwargs):
         * ** passband ** * - Dict[str, elisa .observer.PassbandContainer]
         * ** left_bandwidth ** * - float
         * ** right_bandwidth ** * - float
+
     :return: Dict; curves
     """
     phases = kwargs.pop("phases")

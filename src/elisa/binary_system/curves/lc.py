@@ -45,6 +45,7 @@ def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
         * ** left_bandwidth ** - float
         * ** right_bandwidth ** - float
         * ** atlas ** - str
+
     :return: Dict; fluxes for each filter
     """
     lc_labels = [*kwargs["passband"].keys()]
@@ -62,6 +63,7 @@ def compute_circular_pulsating_lightcurve(binary, **kwargs):
         * ** left_bandwidth ** - float
         * ** right_bandwidth ** - float
         * ** atlas ** - str
+
     :return: Dict; fluxes for each filter
     """
     initial_system = c_router.prep_initial_system(binary, **dict(build_pulsations=False))
@@ -82,6 +84,7 @@ def compute_eccentric_lightcurve_no_spots(binary, **kwargs):
         * ** left_bandwidth ** - float
         * ** right_bandwidth ** - float
         * ** atlas ** - str
+
     :return: Dict; fluxes for each filter
     """
     lc_labels = [*kwargs["passband"].keys()]
@@ -99,6 +102,7 @@ def compute_eccentric_spotty_lightcurve(binary, **kwargs):
         * ** left_bandwidth ** - float
         * ** right_bandwidth ** - float
         * ** atlas ** - str
+
     :return: Dict; dictionary of fluxes for each filter
     """
     lc_labels = list(kwargs["passband"].keys())

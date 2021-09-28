@@ -1,5 +1,4 @@
 import numpy as np
-from copy import copy
 
 from .. import utils as butils
 from ... import atm, ld, const
@@ -19,6 +18,7 @@ def get_limbdarkening_cfs(system, component="all", **kwargs):
         * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
         * ** left_bandwidth ** * - float
         * ** right_bandwidth ** * - float
+
     :return: Dict[str, numpy.array];
     """
     components = butils.component_to_list(component)
@@ -71,6 +71,7 @@ def _get_normal_radiance(system, component="all", **kwargs):
         * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
         * ** left_bandwidth ** * - float
         * ** right_bandwidth ** * - float
+
     :return: Dict[String, dict]
     """
     components = butils.component_to_list(component)
@@ -335,7 +336,7 @@ def adjust_eclipse_width(true_anomalies, true_anomaly_of_eclipse):
     
     :param true_anomalies: numpy.array; true anomalies of the orbital positions
     :param true_anomaly_of_eclipse: float; true anomaly of the eclipse
-    :return: 
+    :return: float; adjusted width of an eclipse
     """
     distances = np.abs(true_anomalies - true_anomaly_of_eclipse)
     inverse_points_mask = distances > const.PI
