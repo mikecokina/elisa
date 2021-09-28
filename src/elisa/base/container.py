@@ -19,6 +19,9 @@ logger = getLogger("base.container")
 
 
 class PropertiesContainer(object):
+    """
+    General object for storing attributes of modelled objects.
+    """
     def __init__(self, **kwargs):
         self.properties = kwargs
         for k, v in kwargs.items():
@@ -35,14 +38,23 @@ class PropertiesContainer(object):
 
 
 class StarPropertiesContainer(PropertiesContainer):
+    """
+    Object for handling attributes of Star objects.
+    """
     pass
 
 
 class SystemPropertiesContainer(PropertiesContainer):
+    """
+    Object for handling attributes of System objects.
+    """
     pass
 
 
 class PositionContainer(object):
+    """
+    General object for handling system models at a given time or photometric phase.
+    """
     def __init__(self, position):
         self._flatten = False
         self._components = list()
@@ -82,7 +94,14 @@ class PositionContainer(object):
         return self._flatten
 
     def flat_it(self):
-        # naive implementation of idempotence
+        """
+        Function merges surface attributes for each system component which were previously assigned to
+        component surface or spot attributes. Resulting attributes such as points, faces, temperatures. etc.
+        are then stored in unified arrays as component attributes.
+
+        :return: PositionContainer; flattened container
+        """
+        # naive implementation of idempotency
         if self._flatten:
             return self
 
@@ -96,10 +115,10 @@ class PositionContainer(object):
 
     def apply_rotation(self):
         """
-        Rotate quantities defined in __PROPERTIES_TO_ROTATE__ in case of
-        components defined in __PROPERTIES_TO_ROTATE__.
-        Rotation is made in orbital plane and inclination direction in respective order.
+        Rotate quantities defined in __PROPERTIES_TO_ROTATE__.
+        Rotation is made in orbital plane (around z-axis) and inclination (y-axis) direction in respective order.
         Angle are defined in self.position and self.inclination.
+
         :return: elisa.base.PositionContainer;
         """
         __PROPERTIES_TO_ROTATE__ = ["points", "normals", "velocities", "face_centres"]
@@ -124,7 +143,7 @@ class PositionContainer(object):
 
     def add_secular_velocity(self):
         """
-        Addition of secular radial velocity of centre of mass to convert velocieties to reference frame of observer
+        Addition of secular radial velocity of centre of mass to convert velocities to reference frame of observer
         """
         gamma = getattr(self, "gamma")
         for component in self._components:
@@ -194,8 +213,8 @@ class PositionContainer(object):
 
 class StarContainer(object):
     """
-    Container carrying non-static properties of Star objecet (properties which vary from phase to phase) and also
-    all properties set on create.
+    Container carrying non-static properties of Star object (properties which vary from phase to phase) and also
+    all properties set during creation of the parent BinarySystem.
     Method `from_properties_container` or `from_star_instance` has to be used to create container properly.
     Following parameters are gathered from Star object
 
@@ -209,8 +228,10 @@ class StarContainer(object):
     >>> kwargs = {}
     >>> inst = StarContainer(**kwargs)
 
-    and setup static parameter latter of not at all if not necessary for further use.
-    Bellow are optional imput parameters of StarContainer.
+    and setup static parameter latter of not at all if not necessary for further use. However, the StarContainer
+    instance is intialized within a given PositionContainer during its initialization.
+
+    Bellow are optional input parameters of StarContainer.
     kwargs: Dict;
     :**kwargs options**:
 
@@ -388,6 +409,12 @@ class StarContainer(object):
 
     @classmethod
     def from_star_instance(cls, star):
+        """
+        Initialize StarContainer from Star instance.
+
+        :param star: elisa.base.star.Star;
+        :return: StarContainer;
+        """
         return cls.from_properties_container(star.to_properties_container())
 
     @classmethod
@@ -403,15 +430,35 @@ class StarContainer(object):
         return container
 
     def has_spots(self):
+        """
+        True if StarContainer contains spots.
+
+        :return: bool;
+        """
         return len(self.spots) > 0
 
     def has_pulsations(self):
+        """
+        True if StarContainer contains pulsation modes.
+
+        :return: bool;
+        """
         return len(self.pulsations) > 0
 
     def symmetry_test(self):
+        """
+        True if stellar surface can utilize surface symmetry during the model calculation.
+
+        :return: bool;
+        """
         return not self.has_spots() and not self.has_pulsations()
 
     def is_flat(self):
+        """
+        Returns True if StarContainer is flattened.
+
+        :return: bool;
+        """
         return self._flatten
 
     def copy(self):
@@ -450,7 +497,7 @@ class StarContainer(object):
 
     def calculate_areas(self):
         """
-        Returns areas of each face of the star surface. (spots not included)
+        Returns areas of each face of the star surface. (spots not included if StarContainer is not flattened)
 
         :return: numpy.array:
 
@@ -531,12 +578,12 @@ class StarContainer(object):
 
     def flat_it(self):
         """
-        Make properties "points", "normals", "faces", "temperatures", "log_g", "rals", "centers", "areas"
+        Make properties "points", "normals", "faces", "temperatures", "log_g", "centers", "areas"
         of container flat. It means all properties of start and spots are put together.
 
         :return: self
         """
-        # naive implementation of idempotence
+        # naive implementation of idempotency
         if self._flatten:
             return self
 
