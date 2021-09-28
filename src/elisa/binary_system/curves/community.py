@@ -73,7 +73,7 @@ class RadialVelocitySystem(object):
         """
         Transform and validate input kwargs.
 
-        :param kwargs: Dict;
+        :param kwargs: Dict; model parameters
         :return: Dict;
         """
         return RadialVelocityObserverProperties.transform_input(**kwargs)
@@ -88,7 +88,14 @@ class RadialVelocitySystem(object):
 
     def radial_velocity(self, **kwargs):
         """
-        Method for simulation of observation radial velocity curves in community format (on params `asini` and `q`).
+        Method for producing synthetic radial velocity curves in community format (on params `asini` and `q`).
+
+        :param kwargs: Dict;
+        :**kwargs options**:
+            * :phases: numpy.array; photometric phases used to calculate synthetic radial velocities
+            * :position_method: callable; function producing an array of elisa.const.Position tuples that describe
+                                          position and orientation of system components at given photometric phase
+
         """
         phases = kwargs.pop("phases")
         position_method = kwargs.pop("position_method")
@@ -114,6 +121,13 @@ class RadialVelocitySystem(object):
 
     @staticmethod
     def distance_to_center_of_mass(q, distance):
+        """
+        Returns distance from component's centre of mass to the barycentre.
+
+        :param q: float; mass ratio
+        :param distance: float; components distance
+        :return: Tuple; primary, secondary com distance from barycentre
+        """
         com_from_primary = (q * distance) / (1.0 + q)
         return com_from_primary, distance - com_from_primary
 
@@ -122,10 +136,10 @@ class RadialVelocitySystem(object):
         """
         Compute radial velocity for given paramters.
 
-        :param asini: float
-        :param eccentricity: float
-        :param argument_of_periastron: float
-        :param true_anomaly: float or numpy.array
+        :param asini: float;
+        :param eccentricity: float;
+        :param argument_of_periastron: float;
+        :param true_anomaly: Union[float, numpy.array];
         :param period: float
         :return: Union[float, numpy.array];
         """
@@ -138,10 +152,26 @@ class RadialVelocitySystem(object):
         return self.orbit.orbital_motion
 
     def compute_rv(self, **kwargs):
+        """
+        Method for producing synthetic radial velocity curves in community format (on params `asini` and `q`).
+
+        :param kwargs: Dict;
+        :**kwargs options**:
+            * :phases: numpy.array; photometric phases used to calculate synthetic radial velocities
+            * :position_method: callable; function producing an array of elisa.const.Position tuples that describe
+                                          position and orientation of system components at given photometric phase
+
+        """
         return self.radial_velocity(**kwargs)
 
     @staticmethod
     def prepare_json(data):
+        """
+        Filtering out parameters necessary to initialize RadialVelocitySystem
+
+        :param data: Dict; possibly containing items not valid for initialization of RadialVelocitySystem instance
+        :return: Dict; set of argument necessary to initialize RadialVelocitySystem instance
+        """
         return dict(
             eccentricity=data['eccentricity'],
             argument_of_periastron=data['argument_of_periastron'],
