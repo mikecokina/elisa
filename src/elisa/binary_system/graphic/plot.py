@@ -267,6 +267,8 @@ class Plot(object):
             * :'horizontal_acceleration': distribution of horizontal component surface acceleration
             * :'v_r_perturbed': radial component of the pulsation velocity (perpendicular towards
             * :'v_horizontal_perturbed': horizontal component of the pulsation  velocity
+
+        :return: Union[None, matplotlib.pyplot.figure]
         """
         surface_kwargs = dict()
 
