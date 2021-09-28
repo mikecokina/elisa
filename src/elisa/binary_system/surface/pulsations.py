@@ -15,7 +15,6 @@ def build_harmonics(system, component, components_distance):
     :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     :param component: Union[str, None];
     :param components_distance: float;
-    :return: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     components = bsutils.component_to_list(component)
     for component in components:

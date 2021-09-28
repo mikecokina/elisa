@@ -14,7 +14,6 @@ def build_faces(system_container):
     function creates faces of the star surface provided you already calculated surface points of the star
 
     :param system_container: SystemContainer;
-    :return:
     """
     # build surface if there is no spot specified
     if not system_container.star.spots:

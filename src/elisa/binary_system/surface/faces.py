@@ -23,8 +23,6 @@ from ... base.surface.faces import (
 logger = getLogger("binary_system.surface.faces")
 
 
-# TODO: a lot of these functions are not BinarySystem specific and are needed elsewhere, relocate them to suitable
-# place in base directory
 def visibility_test(centres, xlim, component):
     """
     Tests if given faces are visible from the other star.
@@ -71,10 +69,18 @@ def get_visibility_tests(centres, q_test, xlim, component, morphology):
 
 
 def faces_visibility_x_limits(primary_polar_radius, secondary_polar_radius, components_distance):
+    """
+    Returns x coordinates of `primary` and `secondary` surface elements which can be visible from the other star.
+
+    :param primary_polar_radius: float;
+    :param secondary_polar_radius: float;
+    :param components_distance: float; in SMA
+    :return: Tuple; x_min for primary, x_max for secondary
+    """
     # this section calculates the visibility of each surface face
     # don't forget to treat system visibility of faces on the same star in over-contact system
 
-    # if stars are too close and with too different radii, you can see more (less) than a half of the stellare
+    # if stars are too close and with too different radii, you can see more (less) than a half of the stellar
     # surface, calculating excess angle
 
     primary_polar_r, secondary_polar_r = primary_polar_radius, secondary_polar_radius
