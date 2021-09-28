@@ -16,9 +16,9 @@ logger = getLogger("base.spots")
 
 class Spot(object):
     """
-    Spot data container. It is available as a list item of a `Star.spots` attribute after the initialization of the host
-    system. This spot class is producing a circular spot at a specified coordinates with a temperature difference with
-    respect to the effective temperature of the host star described by the `temperature_factor` defined as
+    Spot object container. It is available as a list item of a `Star.spots` attribute after the initialization of the
+    host system. This spot class is producing a circular spot at a specified coordinates with a temperature difference
+    between the spot and the host star described by the `temperature_factor` defined as
     t_eff,spot/t_eff,star.
 
     Input parameters:
@@ -36,17 +36,17 @@ class Spot(object):
 
     Output parameters that describing the spot:
     
-    :boundary: numpy.array;
-    :boundary_center: float;
-    :center: float;
-    :points: numpy.array;
-    :normals: numpy.array;
-    :faces: numpy.array;
-    :face_centres: numpy.array;
-    :areas: numpy.array;
+    :boundary: numpy.array; points at the spot/star
+    :boundary_center: float; geometrical centre of the spot boundary
+    :center: float; coordinates of the spot centre
+    :points: numpy.array; surface points belonging to spot
+    :normals: numpy.array; outward facing normal vectors of surface elements belonging to the spot
+    :faces: numpy.array; surface element (triangle) simplices
+    :face_centres: numpy.array; centers of spot surface elements
+    :areas: numpy.array; areas of spot surface elements
     :potential_gradient_magnitudes: numpy.array;
-    :temperatures: numpy.array;
-    :log_g: numpy.array;
+    :temperatures: numpy.array; effective temperatures of surface elements
+    :log_g: numpy.array; surface gravity distribution over the surface elements
 
     """
     MANDATORY_KWARGS = ["longitude", "latitude", "angular_radius", "temperature_factor"]
@@ -212,20 +212,19 @@ def setup_body_points(on_container, points):
 def incorporate_spots_mesh(to_container, component_com):
     """
     Based on spots definitions, evaluate spot points on Star surface and remove those points of Star itself
-    which are inside of any spots. Do the same operation with spot to each other.
+    which are inside of any spots. Do the same operation with iteratively for each Spot instance defined previously.
     Evaluation is running from index 0, what means that spot with lower index
-    is overwriten by spot with higher index.
+    is overwriten by spot with higher index if located on top of each other.
 
     All points are assigned to given object (Star points to Star object and Spot points to related Spot object).
 
-    # todo: change structure flat array like [-1, -1, -1, ..., 0, ..., 1, ...]
-    Defines variable `vertices_map` used in others method. Strutcure of this variable is following::
+    Function defines variable `vertices_map` used in other methods. Structure of this variable is following::
 
-        [{"enum": -1}, {"enum": 0}, {"enum": 1}, ..., {"enum": N}].
+        [-1, -1, -1, ..., 0, ..., 1, ...]
 
-    Enum index -1 means that points in joined array of points on current
+    Value -1 means that points on given
     index position of vertices_map belongs to Star point.
-    Enum indices >= 0 means the same, but for Spot.
+    Enum indices >= 0 means that given point belongs to Spot with given index.
 
     :param to_container: Union; instace to incorporate spots into
     :param component_com: float; center of mass of component (it's x coordinate)
