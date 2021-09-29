@@ -569,6 +569,7 @@ class SingleSystem(System):
         used depending on the user-defined method.
 
         :param kwargs: Dict;
+        :**kwargs options**:
             * :method: str; `kinematic` (motion of the centre of mass) or
                             `radiometric` (radiance weighted contribution of each visible element)
             * :position_method: callable; method for obtaining orientation of the star

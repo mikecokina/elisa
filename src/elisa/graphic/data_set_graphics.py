@@ -4,9 +4,17 @@ from .. import units as u
 
 def display_observations(**kwargs):
     """
-    Graphics method for displaying the DataSet content
+    Graphics method for displaying the DataSet content.
+
     :param kwargs: Dict;
-    :return:
+    :**kwargs options**:
+        * :x_data: numpy.array;
+        * :x_unit: astropy.unit.Unit;
+        * :y_data: numpy.array;
+        * :y_err: numpy.array;
+        * :y_unit: astropy.unit.Unit;
+        * :plot_kwargs: Dict; plot arguments fot plotting functions
+                              (matplotlib.pyplot.errorbar or matplotlib.pyplot.scatter).
     """
     figure = plt.figure()
     if kwargs['y_err'] is not None:
