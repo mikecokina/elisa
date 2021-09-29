@@ -112,7 +112,13 @@ def find_apsidally_corresponding_positions(binary, radii, base_arr, supplement_a
 def resolve_object_geometry_update(has_spots, size, rel_d, max_allowed_difference=None):
     """
     Evaluate where on orbital position is necessary to fully update geometry.
-    Evaluation depends on difference of relative radii between upcomming orbital positions.
+    Evaluation depends on difference of relative radii between neighbouring orbital positions.
+
+    :param has_spots: bool; define if system has spots
+    :param size: int; number of orbital positions
+    :param rel_d: numpy.array; parameter characterizing change in flux due to change in surface geometry
+    :param max_allowed_difference: float; maximum allowed change in flux change estimation between orbital positions
+    :return: numpy.array[bool];
     """
     return _resolve_geometry_update(has_spots=has_spots, size=size, rel_d=rel_d, resolve="object",
                                     max_allowed_difference=max_allowed_difference or settings.MAX_D_FLUX)
@@ -122,7 +128,15 @@ def resolve_spots_geometry_update(spots_longitudes, size, pulsations_tests,
                                   max_allowed_difference=None):
     """
     Evaluate where on orbital position is necessary to fully update geometry.
-    Evaluation depends on difference of spots longitudes between upcomming orbital positions.
+    Evaluation depends on difference of spots longitudes between neighboring orbital positions.
+
+    :param spots_longitudes: numpy.array; array of spot longitudes of spots during orbital motion
+    :param size: int; number of orbital positions
+    :param pulsations_tests: Tuple[bool]; True if component contains pulsations
+    :param max_allowed_difference: float; maximum allowed difference of spot position on neighbouring orbital positions
+    :return: Tuple[numpy.array[bool], numpy.array[bool]]; geometry update arrays for primary and secondary array.
+                                                          If value in array is True, component geometry has to be
+                                                          recalculated at a given orbital position.
     """
     reducer = {}
     for component in settings.BINARY_COUNTERPARTS.keys():
@@ -152,10 +166,10 @@ def _resolve_geometry_update(has_spots, size, rel_d, max_allowed_difference, res
     """
     Evaluate where on orbital position is necessary to fully update geometry.
 
-    :param max_allowed_difference: float;
     :param has_spots: bool; define if system has spots
-    :param size: int;
-    :param rel_d: numpy.array; array, based on geometry change is going to be evaluated
+    :param size: int; number of orbital positions
+    :param rel_d: numpy.array; parameter characterizing change in flux due to change in surface geometry
+    :param max_allowed_difference: float; maximum allowed change in flux change estimation between orbital positions
     :param resolve: str; decision parameter whether resolved object on eccentric orbit or spots movement,
                          "object" or "spots"
     :return: numpy.array[bool];
@@ -191,9 +205,9 @@ def resolve_irrad_update(rel_d_irrad, size):
     """
     Evaluate where new temperature distribution should be calculated
 
-    :param rel_d_irrad: numpy.array;
-    :param size: int;
-    :return: numpy.array; bool array
+    :param rel_d_irrad: numpy.array; change in flux due to the change in mutual irradiation
+    :param size: int; number of orbital positions
+    :return: numpy.array[bool]; if true orbital position has to be recalculated due to change in reflected flux
     """
     require_new_build = np.ones(size, dtype=np.bool)
 
@@ -209,19 +223,19 @@ def resolve_irrad_update(rel_d_irrad, size):
     return require_new_build
 
 
-def phase_crv_symmetry(self, phase):
+def phase_crv_symmetry(binary_system, phase):
     """
-    Utilizing symmetry of circular systems without spots and pulastions where you need to evaluate only half
+    Utilizing symmetry of circular systems without spots and pulsations where you need to evaluate only half
     of the phases. Function finds such redundant phases and returns only unique phases.
     Expects phases from 0 to 1.0.
 
-    :param self: elisa.binary_system.system.BinarySystem;
+    :param binary_system: elisa.binary_system.system.BinarySystem;
     :param phase: numpy.array;
     :return: Tuple[numpy.array, numpy.array];
     """
     # keep those fucking methods imutable
     phase = phase.copy()
-    if (not self.has_pulsations()) & (not self.has_spots()):
+    if (not binary_system.has_pulsations()) & (not binary_system.has_spots()):
         symmetrical_counterpart = phase > 0.5
         phase[symmetrical_counterpart] = np.round(1.0 - phase[symmetrical_counterpart], 9)
         res_phases, reverse_idx = np.unique(phase, return_inverse=True)
