@@ -4,7 +4,7 @@ from .. import umpy as up
 
 def static_potential_primary_fn(radius, *args):
     """
-    Pontetial function which defines surface of primary component of binary system in spherical coordinates.
+    Potential function which defines surface of primary component of binary system in spherical coordinates.
     It is exposed for multiprocessing to avoid pickling of classes, loggers, etc.
 
     :param radius: float;
@@ -24,7 +24,7 @@ def static_potential_primary_fn(radius, *args):
 
 def static_potential_secondary_fn(radius, *args):
     """
-    Pontetial function which defines surface of primary component of binary system in spherical coordinates.
+    Potential function which defines surface of primary component of binary system in spherical coordinates.
     It is exposed for multiprocessing to avoid pickling of classes, loggers, etc.
 
     :param radius: float;
@@ -44,8 +44,8 @@ def static_potential_secondary_fn(radius, *args):
 
 def static_potential_primary_cylindrical_fn(radius, *args):
     """
-    Pontetial function which defines surface of primary component of binary system in cylindrical coordinates.
-    Usefull for W UMa systems.
+    Potential function which defines surface of primary component of binary system in cylindrical coordinates.
+    Useful for W UMa systems.
 
     :param radius: float;
     :param args: Tuple; (mass_ratio, surface_potential, a, b, c, d, e, f)
@@ -63,8 +63,8 @@ def static_potential_primary_cylindrical_fn(radius, *args):
 
 def static_potential_secondary_cylindrical_fn(radius, *args):
     """
-    Pontetial function which defines surface of primary component of binary system in cylindrical coordinates.
-    Usefull for W UMa systems.
+    Potential function which defines surface of primary component of binary system in cylindrical coordinates.
+    Useful for W UMa systems.
 
     :param radius: float;
     :param args: Tuple; (mass_ratio, surface_potential, a, b, c, d, e, f)
@@ -180,7 +180,6 @@ def potential_secondary_cylindrical_fn(radius, *args):
     :param args: Tuple: pre calculated values for potential function and desired value of potential
     :return: float;
     """
-    # return self.potential_value_secondary_cylindrical(radius, *args) - self.secondary.surface_potential
     return potential_value_secondary_cylindrical(radius, *args[0]) - args[1]
 
 
@@ -195,8 +194,7 @@ def radial_primary_potential_derivative(radius, *args):
     :return: Union[float, numpy.array];
     """
     # auxiliary values pre-calculated in pre_calculate_for_potential_value_primary()
-    # fixme: it is inappropriate to take *args but use just args[0], solve it on higher layer
-    mass_ratio, b, c, d, e = args[0]
+    mass_ratio, b, c, d, e = args
     radius2 = up.power(radius, 2)
 
     return - 1 / radius2 + 0.5 * mass_ratio * (c - 2 * radius) / up.power(b - c * radius + radius2, 1.5) \
@@ -214,7 +212,7 @@ def radial_secondary_potential_derivative(radius, *args):
     :return: float;
     """
     # auxiliary values pre-calculated in pre_calculate_for_potential_value_primary()
-    mass_ratio, b, c, d, e, f = args[0]
+    mass_ratio, b, c, d, e, f = args
     radius2 = up.power(radius, 2)
 
     return - mass_ratio / radius2 + (0.5 * c - radius) / up.power(b - c * radius + radius2, 1.5) \
@@ -289,7 +287,7 @@ def radial_primary_potential_derivative_cylindrical(radius, *args):
     :type args: Tuple;
     :return: float;
     """
-    mass_ratio, a, b, c, d, e = args[0]
+    mass_ratio, a, b, c, d, e = args
 
     radius2 = up.power(radius, 2)
     return + 0 - radius / up.power(a + radius2, 1.5) - radius * mass_ratio / up.power(b + radius2, 1.5) \
@@ -306,7 +304,7 @@ def radial_secondary_potential_derivative_cylindrical(radius, *args):
     :type args: Tuple;
     :return: float;
     """
-    mass_ratio, a, b, c, d, e, f = args[0]
+    mass_ratio, a, b, c, d, e, f = args
 
     radius2 = up.power(radius, 2)
     return + 0 - radius * mass_ratio / up.power(a + radius2, 1.5) - radius / up.power(b + radius2, 1.5) \

@@ -118,7 +118,7 @@ class MeshUtilsTestCase(ElisaTestCase):
         for ii, ss in enumerate(self._singles):
             p_args = (ss.star.mass, ss.angular_velocity, 0.0)
             args = (model.pre_calculate_for_potential_value(*p_args),)
-            obtained.append(model.radial_potential_derivative(radii[ii], *args))
+            obtained.append(model.radial_potential_derivative(radii[ii], *args[0]))
 
         obtained = np.round(np.array(obtained), 3)
         assert_array_equal(expected, obtained)

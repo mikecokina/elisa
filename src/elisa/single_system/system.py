@@ -491,7 +491,7 @@ class SingleSystem(System):
         args = (model.pre_calculate_for_potential_value(*precalc_args), 0.0)
 
         x0 = - c.G * self.star.mass / self.star.surface_potential
-        solution = optimize.newton(model.radial_potential_derivative, x0, args=args, tol=1e-12)
+        solution = optimize.newton(model.radial_potential_derivative, x0, args=args[0], tol=1e-12)
         if np.isnan(solution):
             raise ValueError("Iteration process to solve critical potential seems "
                              "to lead nowhere (critical potential solver has failed).")

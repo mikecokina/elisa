@@ -1004,7 +1004,6 @@ def mesh_spots(system, components_distance, component="all"):
             num_radial = int(np.round(spot_radius / alpha)) + 1
             logger.debug(f'number of rings in spot {spot_instance.kwargs_serializer()} is {num_radial}')
             thetas = np.linspace(lat, lat + spot_radius, num=num_radial, endpoint=True)
-# star.points[seam_points_mask] *= utils.discretization_correction_factor(star.discretization_factor/1.003)
 
             num_azimuthal = [1 if i == 0 else int(i * 2.0 * const.PI * x0 // x0) for i in range(0, len(thetas))]
             deltas = [np.linspace(0., const.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]

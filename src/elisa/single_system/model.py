@@ -69,7 +69,7 @@ def radial_potential_derivative(radius, *args):
     :type args: Tuple;
     :return:
     """
-    a, b = args[0]
+    a, b = args
 
     return a / np.power(radius, 2) - 2 * b * radius
 
