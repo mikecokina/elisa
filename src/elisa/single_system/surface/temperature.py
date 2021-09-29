@@ -10,8 +10,8 @@ def build_temperature_distribution(system_container):
     """
     Function calculates temperature distribution on across all faces.
 
-    :param system_container: elisa.Single_system.container.SystemContainer;
-    :return: elisa.Single_system.container.SystemContainer;
+    :param system_container: elisa.single_system.container.SinglePositionContainer;
+    :return: elisa.single_system.container.SinglePositionContainer;
     """
     star_container = system_container.star
 
@@ -35,8 +35,8 @@ def build_temperature_perturbations(system_container):
     """
     adds position perturbations to container mesh
 
-    :param system_container: elisa.Single_system.container.SystemContainer;
-    :return: elisa.Single_system.container.SystemContainer;
+    :param system_container: elisa.single_system.container.SinglePositionContainer;
+    :return: elisa.single_system.container.SinglePositionContainer;
     """
     if system_container.has_pulsations():
         star = getattr(system_container, 'star')

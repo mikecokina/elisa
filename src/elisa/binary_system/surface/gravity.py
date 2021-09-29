@@ -102,7 +102,7 @@ def calculate_polar_gravity_acceleration(star, components_distance, mass_ratio, 
 def build_surface_gravity(system, components_distance, component="all"):
     """
     Function calculates gravity potential gradient magnitude (surface gravity) for each face.
-    Value assigned to face is mean of values calculated in corners of given face.
+    Value assigned to face is calculated as a mean of surface gravity values calculated in corners of given face.
 
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param component: str; `primary` or `secondary`

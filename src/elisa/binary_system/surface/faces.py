@@ -354,7 +354,7 @@ def set_all_normals(star_container, com):
 
 def build_velocities(system, components_distance, component='all'):
     """
-    Function calculates velocity vector for each face relative to the centre of mass.
+    Function calculates velocity vector for each face relative to the system's centre of mass.
 
     :param system: elisa.binary_system.container.SystemContainer;
     :param components_distance: float;

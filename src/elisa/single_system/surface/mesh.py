@@ -22,10 +22,10 @@ CORRECTION_FACTORS = np.load(settings.PATH_TO_SINGLE_CORRECTIONS, allow_pickle=F
 
 def build_mesh(system):
     """
-    Build points of surface for including spots.
+    Build surface point mesh including spots.
 
     :param system: elisa.single_system.contaier.PositionContainer; instance
-    :return: elisa.single_system.contaier.PositionContainer; instance
+    :return: elisa.single_system.container.SinglePositionContainer; instance
     """
     a, c, d = mesh(system_container=system, symmetry_output=True)
 

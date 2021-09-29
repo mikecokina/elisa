@@ -11,15 +11,18 @@ logger = getLogger("single_system.surface.faces")
 
 def build_faces(system_container):
     """
-    function creates faces of the star surface provided you already calculated surface points of the star
+    Function tessellates the stellar surface points into a set of triangles
+    covering the star without gaps and overlaps.
 
-    :param system_container: SystemContainer;
+    :return: elisa.single_system.container.SinglePositionContainer;
     """
     # build surface if there is no spot specified
     if not system_container.star.spots:
         build_surface_with_no_spots(system_container)
     else:
         build_surface_with_spots(system_container)
+
+    return system_container
 
 
 def build_surface_with_no_spots(system_container):
@@ -98,10 +101,10 @@ def build_surface_with_spots(system_container):
 
 def compute_all_surface_areas(system_container):
     """
-    Compute surface are of all faces (spots included).
+    Compute surface areas of all faces (spots included).
 
-    :param system_container: elisa.binary_system.container.OrbitalPositionContainer; instance
-    :return: system; elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    :param system_container: elisa.single_system.container.SinglePositionContainer; instance
+    :return: system; elisa.single_system.container.SinglePositionContainer; instance
     """
     star_container = system_container.star
     logger.debug(f'computing surface areas of component: '
@@ -112,6 +115,12 @@ def compute_all_surface_areas(system_container):
 
 
 def build_faces_orientation(system_container):
+    """
+    Compute face orientation (normals) for each face.
+
+    :param system_container: elisa.single_system.container.SinglePositionContainer;
+    :return: elisa.single_system.container.SinglePositionContainer;
+    """
     com_x = 0.0
 
     star = system_container.star
@@ -144,10 +153,10 @@ def set_all_normals(star_container, com):
 
 def build_velocities(system):
     """
-    Function calculates velocity vector for each face relative to the centre of mass
+    Function calculates velocity vector for each face relative to the observer.
 
-    :param system: elisa.single_system.container.SystemContainer
-    :return: elisa.single_system.container.SystemContainer
+    :param system: elisa.single_system.container.SingleSystemContainer
+    :return: elisa.single_system.container.SingleSystemContainer
     """
     star = system.star
     omega = np.array([0, 0, system.angular_velocity])

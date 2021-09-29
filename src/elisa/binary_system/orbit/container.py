@@ -87,7 +87,7 @@ class OrbitalSupplements(Sequence):
         Sorting of mirrors is based on sorting of bodies.
 
         :param by: str; `index`, `distance` or `radius` sorting orbital positions in `body` an `mirror` according to
-                         the index of `body positions or by component distances.
+                         the index of `body` positions or by component distances.
         :return: self; sorted OrbitalSupplements object
         """
 

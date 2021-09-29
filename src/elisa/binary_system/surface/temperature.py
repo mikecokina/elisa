@@ -252,7 +252,7 @@ def apply_reflection_effect(system, components_distance, iterations):
 
 def build_temperature_distribution(system, components_distance, component="all"):
     """
-    Function calculates temperature distribution on across all faces.
+    Function calculates temperature distribution across all surface faces.
 
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param components_distance: float; distance of components in SMA units

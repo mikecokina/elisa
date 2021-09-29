@@ -30,8 +30,8 @@ CORRECTION_FACTORS['double-contact'] = CORRECTION_FACTORS['detached']
 
 def build_mesh(system, components_distance, component="all"):
     """
-    Build points of surface for primary or/and secondary component. Mesh is evaluated with spots.
-    Points are assigned to system.
+    Build surface points for primary or/and secondary component. In case of spots,
+    the spot point mesh is incorporated into the model. Points are assigned to system.
 
     :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     :param component: Union[str, None];
