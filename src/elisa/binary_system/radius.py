@@ -55,21 +55,61 @@ def calculate_radius(synchronicity, mass_ratio, surface_potential, component, *a
 
 
 def calculate_polar_radius(synchronicity, mass_ratio, components_distance, surface_potential, component):
+    """
+    Radius of the star in the direction of the pole.
+
+    :param synchronicity: float;
+    :param mass_ratio: float;
+    :param components_distance: float;
+    :param surface_potential: float;
+    :param component: str; `primary` a `secondary`
+    :return: float;
+    """
     args = (components_distance, 0.0, 0.0)
     return calculate_radius(synchronicity, mass_ratio, surface_potential, component, *args)
 
 
 def calculate_side_radius(synchronicity, mass_ratio, components_distance, surface_potential, component):
+    """
+    Radius of the star in the direction perpendicular to the pole and component join vector.
+
+    :param synchronicity: float;
+    :param mass_ratio: float;
+    :param components_distance: float;
+    :param surface_potential: float;
+    :param component: str; `primary` a `secondary`
+    :return: float;
+    """
     args = (components_distance, const.HALF_PI, const.HALF_PI)
     return calculate_radius(synchronicity, mass_ratio, surface_potential, component, *args)
 
 
 def calculate_backward_radius(synchronicity, mass_ratio, components_distance, surface_potential, component):
+    """
+    Radius of the star in the direction away from the companion.
+
+    :param synchronicity: float;
+    :param mass_ratio: float;
+    :param components_distance: float;
+    :param surface_potential: float;
+    :param component: str; `primary` a `secondary`
+    :return: float;
+    """
     args = (components_distance, const.PI, const.HALF_PI)
     return calculate_radius(synchronicity, mass_ratio, surface_potential, component, *args)
 
 
 def calculate_forward_radius(synchronicity, mass_ratio, components_distance, surface_potential, component):
+    """
+    Radius of the star in the direction towards the companion.
+
+    :param synchronicity: float;
+    :param mass_ratio: float;
+    :param components_distance: float;
+    :param surface_potential: float;
+    :param component: str; `primary` a `secondary`
+    :return: float;
+    """
     args = (components_distance, 0.0, const.HALF_PI)
     return calculate_radius(synchronicity, mass_ratio, surface_potential, component, *args)
 

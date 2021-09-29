@@ -493,6 +493,11 @@ class BinarySystem(System):
         return self._components
 
     def properties_serializer(self):
+        """
+        Return binary system properties in form of a JSON file.
+
+        :return: Dict; {`primary`: {}, `secondary`: {}, `system`: {}}
+        """
         props = BinarySystemProperties.transform_input(**self.kwargs_serializer())
         props.update({
             "semi_major_axis": self.semi_major_axis,
@@ -1209,7 +1214,7 @@ class BinarySystem(System):
             * ** right_bandwidth ** * - float
             * ** phases ** * - numpy.array
             * ** position_method ** * - method
-        :return: Dict
+        :return: Dict; {`passband`: numpy.array, }
         """
         curve_fn = c_router.resolve_curve_method(self, curve='lc')
         return curve_fn(**kwargs)
@@ -1231,6 +1236,19 @@ class BinarySystem(System):
 
     # radial velocity curves *******************************************************************************************
     def compute_rv(self, **kwargs):
+        """
+        This function decides which radial velocities generator function is
+        used depending on the user-defined method.
+
+        :param kwargs: Dict;
+        :**kwargs options**:
+            * :method: str; `kinematic` (motion of the centre of mass) or
+                            `radiometric` (radiance weighted contribution of each visible element)
+            * :position_method: callable; method for obtaining orbital positions
+            * :phases: numpy.array; photometric phases
+
+        :return: Dict; {`primary`: numpy.array, `secondary`: numpy.array}
+        """
         if kwargs['method'] == 'kinematic':
             return rv.kinematic_radial_velocity(self, **kwargs)
         elif kwargs['method'] == 'radiometric':

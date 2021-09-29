@@ -548,7 +548,7 @@ class SingleSystem(System):
             * ** right_bandwidth ** * - float
             * ** phases ** * - numpy.array
             * ** position_method ** * - method
-        :return: Dict
+        :return: Dict; {`passband`: numpy.array, }
         """
         fn_arr = (self._compute_light_curve_without_pulsations,
                   self._compute_light_curve_with_pulsations)
@@ -564,6 +564,18 @@ class SingleSystem(System):
 
     # radial velocity curves *******************************************************************************************
     def compute_rv(self, **kwargs):
+        """
+        This function decides which radial velocities generator function is
+        used depending on the user-defined method.
+
+        :param kwargs: Dict;
+            * :method: str; `kinematic` (motion of the centre of mass) or
+                            `radiometric` (radiance weighted contribution of each visible element)
+            * :position_method: callable; method for obtaining orientation of the star
+            * :phases: numpy.array; photometric phases
+
+        :return: Dict; {`star`: numpy.array}
+        """
         if kwargs['method'] == 'kinematic':
             return rv.com_radial_velocity(self, **kwargs)
         if kwargs['method'] == 'radiometric':
