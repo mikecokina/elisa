@@ -36,6 +36,7 @@ def produce_circ_sync_curves_mp(*args):
 
     :return: Dict;
     """
+    # todo: too much replicated code from produce_circ_pulsating_curves_mp
     binary, initial_system, phase_batch, crv_labels, curves_fn, kwargs = args
 
     position_method = kwargs.pop("position_method")
@@ -164,6 +165,7 @@ def produce_circ_pulsating_curves_mp(*args):
 
     :return:
     """
+    # todo: too much replicated code from produce_circ_sync_curves_mp
     binary, initial_system, phase_batch, crv_labels, curves_fn, kwargs = args
 
     position_method = kwargs.pop("position_method")
@@ -182,7 +184,6 @@ def produce_circ_pulsating_curves_mp(*args):
 
         on_pos.build_pulsations(components_distance=position.distance)
         crv_utils.prep_surface_params(on_pos, return_values=False, write_to_containers=True, **kwargs)
-
         on_pos = bsutils.move_sys_onpos(on_pos, position, on_copy=False, recalculate_velocities=False)
 
         compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=in_eclipse[pos_idx],
@@ -369,9 +370,8 @@ def integrate_eccentric_curve_w_orbital_symmetry(*args):
                                      return_values=False, write_to_containers=True)
 
         # normal radiances and ld coefficients will be used for both base and mirror orbital positions
-        normal_radiance, ld_cfs = _update_ldc_and_radiance_on_orb_pair(new_build_mask[idx],
-                                                                       on_pos_base, on_pos_mirror, normal_radiance,
-                                                                       ld_cfs, **kwargs)
+        args = (new_build_mask[idx], on_pos_base, on_pos_mirror, normal_radiance, ld_cfs)
+        normal_radiance, ld_cfs = _update_ldc_and_radiance_on_orb_pair(*args, **kwargs)
 
         curves_body = curve_fn(curves_body, idx, crv_labels, on_pos_base)
         curves_mirror = curves_mirror if on_pos_mirror is None else \

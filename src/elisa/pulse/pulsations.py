@@ -78,9 +78,9 @@ def assign_amplitudes(star_container, normalization_constant=1.0):
     for mode_index, mode in star_container.pulsations.items():
 
         # horizontal/radial amplitude (Aerts 2010), p. 198
-        mode.horizontal_to_radial_amplitude_ratio = \
-            np.sqrt(mode.l * (mode.l + 1)) * mult / mode.angular_frequency ** 2 \
-                if mode.horizontal_to_radial_amplitude_ratio is None else mode.horizontal_to_radial_amplitude_ratio
+        if mode.horizontal_to_radial_amplitude_ratio is None:
+            amp_ratio = np.sqrt(mode.l * (mode.l + 1)) * mult / mode.angular_frequency ** 2
+            mode.horizontal_to_radial_amplitude_ratio = amp_ratio
 
         amplitude = mode.amplitude / mode.angular_frequency
 
@@ -89,8 +89,8 @@ def assign_amplitudes(star_container, normalization_constant=1.0):
 
         if mode.temperature_amplitude_factor is None:
             if mode.l == 0 or mode.horizontal_to_radial_amplitude_ratio == 0.0:
-                raise ValueError('Parameter `temperature_amplitude_factor` needs to be supplied in case of In case '
-                                 'radial modes or in case of modes with radial motion .')
+                raise ValueError('Parameter `temperature_amplitude_factor` needs to be supplied in '
+                                 'case of radial modes or in case of modes with radial motion.')
             mode.temperature_amplitude_factor = temp_amplitude(mode) * mode.radial_amplitude / r_equiv
 
         surf_ampl = mode.horizontal_amplitude / r_equiv
@@ -106,10 +106,12 @@ def assign_amplitudes(star_container, normalization_constant=1.0):
 
 def temp_amplitude(mode):
     """
-    Returns temperature perturbation amplitude in form of the scalar therm in eq 22 in Townsend 2003:
+    Returns temperature perturbation amplitude in form of the scalar therm in eq 22 in Townsend 2003::
 
-    delta T = temp_amplitude * (delta r / r) * T;
-    temp_amplitude = nabla_ad * (Kl(l+1) - 4 - 1/K)  where K is our horizontal to radial amplitude ratio
+        delta T = temp_amplitude * (delta r / r) * T;
+        temp_amplitude = nabla_ad * (Kl(l+1) - 4 - 1/K)
+
+    where K is our horizontal to radial amplitude ratio.
 
     :param mode: PulsationMode;
     :return: float;
@@ -118,6 +120,3 @@ def temp_amplitude(mode):
         mode.horizontal_to_radial_amplitude_ratio * mode.l * (mode.l + 1) - 4 -
         1 / mode.horizontal_to_radial_amplitude_ratio
     )
-
-
-

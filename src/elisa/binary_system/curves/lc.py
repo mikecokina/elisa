@@ -23,14 +23,14 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
     """
     initial_system = c_router.prep_initial_system(binary)
 
-    lc_labels = [*kwargs["passband"].keys()]
+    band_labels = [*kwargs["passband"].keys()]
     phases = kwargs.pop("phases")
     unique_phase_interval, reverse_phase_map = dynamic.phase_crv_symmetry(initial_system, phases)
 
-    band_curves = c_router.produce_circular_sync_curves(binary, initial_system, unique_phase_interval,
-                                                        lc_point.compute_lc_on_pos, lc_labels, **kwargs)
-
+    _args = (binary, initial_system, unique_phase_interval, lc_point.compute_lc_on_pos, band_labels)
+    band_curves = c_router.produce_circular_sync_curves(*_args, **kwargs)
     band_curves = {band: band_curves[band][reverse_phase_map] for band in band_curves}
+
     return band_curves
 
 
@@ -62,13 +62,13 @@ def compute_circular_pulsating_lightcurve(binary, **kwargs):
         * ** left_bandwidth ** - float
         * ** right_bandwidth ** - float
         * ** atlas ** - str
+        * ** phases ** * - numpy.array
     :return: Dict; fluxes for each filter
     """
     initial_system = c_router.prep_initial_system(binary, **dict(build_pulsations=False))
-
-    lc_labels = list(kwargs["passband"].keys())
-    args = (binary, initial_system, lc_point.compute_lc_on_pos, lc_labels)
-    return c_router.produce_circular_pulsating_curves(*args, **kwargs)
+    band_labels = list(kwargs["passband"].keys())
+    _args = (binary, initial_system, kwargs.pop("phases"), lc_point.compute_lc_on_pos, band_labels)
+    return c_router.produce_circular_pulsating_curves(*_args, **kwargs)
 
 
 def compute_eccentric_lightcurve_no_spots(binary, **kwargs):

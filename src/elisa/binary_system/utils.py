@@ -259,7 +259,7 @@ def correction_to_com(distance, mass_ratio, scom):
     :param distance: float;
     :param mass_ratio: float
     :param scom: float; secondary component component of mass
-    :return: correction to com in primary-centered system
+    :return: float; correction to com in primary-centered system
     """
     distances_to_com = distance * mass_ratio / (1 + mass_ratio)
     dir_to_secondary = scom / np.linalg.norm(scom)

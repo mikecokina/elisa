@@ -58,17 +58,17 @@ def produce_curves_with_pulsations_mp(*args):
     curves = {key: np.zeros(phase_batch.shape) for key in crv_labels}
 
     for pos_idx, position in enumerate(rotational_motion):
-        on_pos = initial_system.copy()
-        on_pos.set_on_position_params(position)
-        on_pos.set_time()
+        sys_on_pos = initial_system.copy()
+        sys_on_pos.set_on_position_params(position)
+        sys_on_pos.set_time()
 
-        on_pos.build_pulsations()
-        utils.prep_surface_params(on_pos, return_values=False, write_to_containers=True, **kwargs)
+        sys_on_pos.build_pulsations()
+        utils.prep_surface_params(sys_on_pos, return_values=False, write_to_containers=True, **kwargs)
 
-        on_pos = ssutils.move_sys_onpos(on_pos, position, on_copy=False)
-        star = on_pos.star
+        sys_on_pos = ssutils.move_sys_onpos(sys_on_pos, position, on_copy=False)
+        star = sys_on_pos.star
         setattr(star, 'coverage', star.areas)
 
-        curves = curves_fn(curves, pos_idx, crv_labels, on_pos)
+        curves = curves_fn(curves, pos_idx, crv_labels, sys_on_pos)
 
     return curves

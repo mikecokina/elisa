@@ -270,8 +270,8 @@ def integrate_eccentric_curve_appx_one(
     Function calculates curves for eccentric orbits for selected filters using approximation
     where curve points on the one side of the apsidal line are calculated exactly and the second
     half of the curve points are calculated by mirroring the surface geometries of the first
-    half of the points to the other side of the apsidal line. Since those mirrored
-    points are not alligned with desired phases, the fluxes for each phase is interpolated.
+    half of the points to the other side of the apsidal line. Since those mirrored points are not
+    usually alligned with desired phases, the fluxes for each user defined phase is interpolated.
 
     :param binary: elisa.binary_system.system.BinarySystem;
     :param radii: numpy.array; forward radii

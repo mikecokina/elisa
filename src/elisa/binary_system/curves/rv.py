@@ -75,7 +75,7 @@ def compute_circular_synchronous_rv_curve(binary, **kwargs):
     """
     initial_system = c_router.prep_initial_system(binary)
     rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
-    args = binary, initial_system, kwargs.pop("phases"), rv_point.compute_rv_at_pos, rv_labels
+    args = (binary, initial_system, kwargs.pop("phases"), rv_point.compute_rv_at_pos, rv_labels)
     return c_router.produce_circular_sync_curves(*args, **kwargs)
 
 
@@ -107,12 +107,12 @@ def compute_circular_pulsating_rv_curve(binary, **kwargs):
         * ** left_bandwidth ** - float
         * ** right_bandwidth ** - float
         * ** atlas ** - str
+        * ** phases ** * - numpy.array
     :return: Dict; rv for each component
     """
     initial_system = c_router.prep_initial_system(binary, **dict(build_pulsations=False))
-
     rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
-    args = (binary, initial_system, rv_point.compute_rv_at_pos, rv_labels)
+    args = (binary, initial_system, kwargs.pop("phases"), rv_point.compute_rv_at_pos, rv_labels)
     return c_router.produce_circular_pulsating_curves(*args, **kwargs)
 
 

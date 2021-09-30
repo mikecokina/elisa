@@ -10,7 +10,7 @@ from ... import const
 
 def build_harmonics(system, component, components_distance):
     """
-    Adds pre-calculated harmonics for the respective pulsation modes
+    Adds pre-calculated harmonics for the respective pulsation modes.
 
     :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     :param component: Union[str, None];
@@ -32,7 +32,7 @@ def build_harmonics(system, component, components_distance):
 
 def build_perturbations(system, component, components_distance):
     """
-    adds position perturbations to container mesh
+    Adds position perturbations to container mesh.
 
     :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     :param component: Union[str, None];

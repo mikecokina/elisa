@@ -111,8 +111,9 @@ def produce_circular_sync_curves(binary, initial_system, phases, curve_fn, crv_l
     """
 
     crv_utils.prep_surface_params(initial_system, return_values=False, write_to_containers=True, **kwargs)
-    fn_args = binary, initial_system, crv_labels, curve_fn
-    return manage_observations(fn=c_managed.produce_circ_sync_curves_mp, fn_args=fn_args, position=phases, **kwargs)
+    fn = c_managed.produce_circ_sync_curves_mp
+    fn_args = (binary, initial_system, crv_labels, curve_fn)
+    return manage_observations(fn=fn, fn_args=fn_args, position=phases, **kwargs)
 
 
 def produce_circular_spotty_async_curves(binary, curve_fn, crv_labels, **kwargs):
@@ -151,12 +152,13 @@ def produce_circular_spotty_async_curves(binary, curve_fn, crv_labels, **kwargs)
     return manage_observations(fn=fn, fn_args=fn_args, position=orbital_motion, **kwargs)
 
 
-def produce_circular_pulsating_curves(binary, initial_system, curve_fn, crv_labels, **kwargs):
+def produce_circular_pulsating_curves(binary, initial_system, phases, curve_fn, crv_labels, **kwargs):
     """
     Function returns curve of pulsating systems with circular orbits.
 
     :param binary: elisa.binary_system.system.BinarySystem;
     :param initial_system: elisa.binary_system.container.OrbitalPositionContainer;
+    :param phases: numpy.array;
     :param curve_fn: callable; curve function
     :param crv_labels: labels of the calculated curves (passbands, components,...)
     :param kwargs: Dict;
@@ -166,10 +168,9 @@ def produce_circular_pulsating_curves(binary, initial_system, curve_fn, crv_labe
         * ** right_bandwidth ** * - float
     :return: Dict; curves
     """
-    phases = kwargs.pop("phases")
+    fn = c_managed.produce_circ_pulsating_curves_mp
     fn_args = (binary, initial_system, crv_labels, curve_fn)
-    args = (c_managed.produce_circ_pulsating_curves_mp, fn_args, phases)
-    return manage_observations(*args, **kwargs)
+    return manage_observations(fn=fn, fn_args=fn_args, position=phases, **kwargs)
 
 
 def produce_ecc_curves_no_spots(binary, curve_fn, crv_labels, **kwargs):
@@ -199,9 +200,8 @@ def produce_ecc_curves_no_spots(binary, curve_fn, crv_labels, **kwargs):
     position_method = kwargs.pop("position_method")
     try_to_find_appx = c_appx_router.look_for_approximation(not binary.has_pulsations())
 
-    appx_uid, run = \
-        c_appx_router.resolve_ecc_approximation_method(binary, phases, position_method, try_to_find_appx,
-                                                       phases_span_test, crv_labels, curve_fn, **kwargs)
+    _args = binary, phases, position_method, try_to_find_appx, phases_span_test, crv_labels, curve_fn
+    appx_uid, run = c_appx_router.resolve_ecc_approximation_method(*_args, **kwargs)
 
     logger_messages = {
         'zero': 'curve will be calculated in a rigorous `phase to phase manner` without approximations',

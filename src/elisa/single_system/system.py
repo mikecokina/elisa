@@ -550,8 +550,7 @@ class SingleSystem(System):
             * ** position_method ** * - method
         :return: Dict
         """
-        fn_arr = (self._compute_light_curve_without_pulsations,
-                  self._compute_light_curve_with_pulsations)
+        fn_arr = (self._compute_light_curve_without_pulsations, self._compute_light_curve_with_pulsations)
 
         curve_fn = c_router.resolve_curve_method(self, fn_arr)
         return curve_fn(**kwargs)
