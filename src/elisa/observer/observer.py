@@ -304,15 +304,17 @@ class Observer(object):
         """
         Converts input time series parameters into photometric phases.
 
-        :param from_phase: float;
-        :param to_phase: float;
-        :param phase_step: float;
-        :param phases: numpy.array;
-        :param from_time: float;
-        :param to_time: float;
-        :param time_step: float;
-        :param times: numpy.array;
-        :return: numpy.array;
+        :param from_phase: float; starting phase of the observation
+        :param to_phase: float; end phase of the observation
+        :param phase_step: float; phase increment of the observations
+        :param phases: Iterable float; array of phases at which to perform an observations, if this parameter is
+                                       provided the supplied 'from_phase`, `to_phase` `phase_step` becomes irrelevant
+        :param from_time: float; starting time of the observation
+        :param to_time: float; end time of the observation
+        :param time_step: float; time increment of the observations
+        :param times: Iterable float; array of times at which to perform an observations, if this parameter is provided
+                                      the suplied 'from_time`, `to_time` `time_step` becomes irrelevant
+
         """
         phases_supplied = not (phases is None and (from_phase is None or to_phase is None or phase_step is None))
         times_supplied = not (times is None and (from_time is None or to_time is None or time_step is None))

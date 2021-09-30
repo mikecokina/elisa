@@ -1,10 +1,4 @@
-import numpy as np
-
-from . import c_managed
-from .. container import SinglePositionContainer
-from ... import const
 from ... logger import getLogger
-from ... observer.mp_manager import manage_observations
 from . import c_router, lc_point
 
 logger = getLogger('single_system.curves.lc')
@@ -20,7 +14,8 @@ def compute_light_curve_without_pulsations(single, **kwargs):
         * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
         * ** left_bandwidth ** * - float
         * ** right_bandwidth ** * - float
-        * ** position_method** * - function definition; to evaluate orbital positions
+        * ** position_method ** * - function definition; to evaluate orbital positions
+
     :return: Dict[str, numpy.array];
     """
     initial_system = c_router.prep_initial_system(single)
@@ -42,7 +37,8 @@ def compute_light_curve_with_pulsations(single, **kwargs):
         * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
         * ** left_bandwidth ** * - float
         * ** right_bandwidth ** * - float
-        * ** position_method** * - function definition; to evaluate orbital positions
+        * ** position_method ** * - function definition; to evaluate orbital positions
+
     :return: Dict[str, numpy.array];
     """
     initial_system = c_router.prep_initial_system(single, **dict(build_pulsations=False))

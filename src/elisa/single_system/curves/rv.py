@@ -20,8 +20,8 @@ def compute_rv_curve_without_pulsations(single, **kwargs):
     Function for calculation radial velocity curves with radiometric methods for single system without pulsations.
 
     :param single: elisa.single_system.system.SingleSystem;
-    :param kwargs:
-    :return:
+    :param kwargs: Dict;
+    :return: Dict[str, numpy.array];
     """
     initial_system = c_router.prep_initial_system(single)
     rv_labels = ['star', ]

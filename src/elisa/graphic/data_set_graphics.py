@@ -15,6 +15,7 @@ def display_observations(**kwargs):
         * :y_unit: astropy.unit.Unit;
         * :plot_kwargs: Dict; plot arguments fot plotting functions
                               (matplotlib.pyplot.errorbar or matplotlib.pyplot.scatter).
+
     """
     figure = plt.figure()
     if kwargs['y_err'] is not None:

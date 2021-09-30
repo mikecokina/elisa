@@ -18,6 +18,7 @@ def produce_curves_wo_pulsations_mp(*args):
         * ** crv_labels ** * - List;
         * ** curves_fn ** * - function to calculate curve points at given orbital positions
         * ** kwargs ** * - Dict;
+
     :return:
     """
     single, initial_system, phase_batch, crv_labels, curves_fn, kwargs = args
@@ -49,6 +50,7 @@ def produce_curves_with_pulsations_mp(*args):
         * ** crv_labels ** * - List;
         * ** curves_fn ** * - function to calculate curve points at given orbital positions
         * ** kwargs ** * - Dict;
+
     :return:
     """
     single, initial_system, phase_batch, crv_labels, curves_fn, kwargs = args

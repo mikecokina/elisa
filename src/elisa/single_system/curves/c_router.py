@@ -57,6 +57,7 @@ def produce_curves_wo_pulsations(single, initial_system, phases, curve_fn, crv_l
             * ** right_bandwidth ** * - float
             * ** position_method** * - function definition; to evaluate orbital positions
             * ** phases ** * - numpy.array
+
     :return: Dict; calculated curves
     """
     crv_utils.prep_surface_params(initial_system, return_values=False, write_to_containers=True, **kwargs)
@@ -79,6 +80,7 @@ def produce_curves_with_pulsations(single, initial_system, phases, curve_fn, crv
             * ** right_bandwidth ** * - float
             * ** position_method** * - function definition; to evaluate orbital positions
             * ** phases ** * - numpy.array
+
     :return: Dict; calculated curves
     """
     fn_args = (single, initial_system, crv_labels, curve_fn)

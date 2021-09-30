@@ -1214,6 +1214,7 @@ class BinarySystem(System):
             * ** right_bandwidth ** * - float
             * ** phases ** * - numpy.array
             * ** position_method ** * - method
+
         :return: Dict; {`passband`: numpy.array, }
         """
         curve_fn = c_router.resolve_curve_method(self, curve='lc')

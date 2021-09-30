@@ -5,7 +5,7 @@ from ... observer.passband import init_bolometric_passband
 
 def prep_surface_params(system, return_values=True, write_to_containers=False, **kwargs):
     """
-    Prepares normal radiances and limb darkening coefficients variables.
+    Prepares normal radiance and limb darkening coefficients variables.
 
     :param system: elisa.single_system.container.SystemContainer;
     :param return_values: bool; return normal radiances and limb darkening coefficients
@@ -15,6 +15,7 @@ def prep_surface_params(system, return_values=True, write_to_containers=False, *
         * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
         * ** left_bandwidth ** * - float
         * ** right_bandwidth ** * - float
+
     :return:
     """
     # obtain limb darkening factor for each face
@@ -56,6 +57,7 @@ def get_normal_radiance(system, **kwargs):
         * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
         * ** left_bandwidth ** * - float
         * ** right_bandwidth ** * - float
+
     :return: Dict[String, numpy.array]
     """
     star = system.star
