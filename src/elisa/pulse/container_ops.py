@@ -12,8 +12,8 @@ from .. base.surface.faces import (
 
 def generate_harmonics(star_container, com_x, phase, time):
     """
-    Generating spherical harmonics Y_l^m in shapes(2, n_points) and (2, n_faces) and its derivatives to be subsequently
-    used for calculation of perturbed properties.
+    Generating spherical harmonics Y_l^m in shapes(2, n_points) and (2, n_faces)
+    and its derivatives to be subsequently used for calculation of perturbed properties.
 
     :param star_container: elisa.base.container.StarContainer;
     :param com_x: float; centre of mass for the component
@@ -23,11 +23,12 @@ def generate_harmonics(star_container, com_x, phase, time):
     """
     if not star_container.is_flat():
         raise ValueError('Pulsations can be calculated only on flattened container.')
-    star_container.points_spherical = \
-        star_container.transform_points_to_spherical_coordinates(kind='points', com_x=com_x)
+    _kwargs = dict(kind='points', com_x=com_x)
+    star_container.points_spherical = star_container.transform_points_to_spherical_coordinates(**_kwargs)
 
-    star_container.pulsations[0].tilt_phi, star_container.pulsations[0].tilt_theta = \
-        putils.generate_tilt_coordinates(star_container, phase)
+    tilt_phi, tilt_theta = putils.generate_tilt_coordinates(star_container, phase)
+    star_container.pulsations[0].tilt_phi, star_container.pulsations[0].tilt_theta = tilt_phi, tilt_theta
+
     tilted_points = putils.tilt_mode_coordinates(
         star_container.points_spherical, star_container.pulsations[0].tilt_phi, star_container.pulsations[0].tilt_theta
     )
@@ -35,8 +36,7 @@ def generate_harmonics(star_container, com_x, phase, time):
     # assigning tilted points in spherical coordinates only to the first mode (the rest will share the same points)
     star_container.pulsations[0].points = tilted_points
 
-    exponential = dict()
-    norm_constant = dict()
+    exponential, norm_constant = dict(), dict()
     for mode_index, mode in star_container.pulsations.items():
         # beware of this in case you want use the container at different phase
         exponential[mode_index] = putils.generate_time_exponential(mode, time)
@@ -45,14 +45,14 @@ def generate_harmonics(star_container, com_x, phase, time):
         harmonics = np.zeros((2, tilted_points.shape[0]), dtype=np.complex)
         harmonics[0] = pulsations.spherical_harmonics(mode, tilted_points, exponential[mode_index])
         if mode.m != mode.l:
-            harmonics[1] = pulsations.spherical_harmonics(mode, tilted_points, exponential[mode_index],
-                                                          order=mode.m + 1, degree=mode.l)
+            _args, _kwargs = (mode, tilted_points, exponential[mode_index]), dict(order=mode.m + 1, degree=mode.l)
+            harmonics[1] = pulsations.spherical_harmonics(*_args, **_kwargs)
 
         # generating derivatives of spherical harmonics by phi an theta
         derivatives = np.empty((2, tilted_points.shape[0]), dtype=np.complex)
         derivatives[0] = pulsations.diff_spherical_harmonics_by_phi(mode, harmonics)
-        derivatives[1] = pulsations.diff_spherical_harmonics_by_theta(mode, harmonics, tilted_points[:, 1],
-                                                                      tilted_points[:, 2])
+        _args = (mode, harmonics, tilted_points[:, 1], tilted_points[:, 2])
+        derivatives[1] = pulsations.diff_spherical_harmonics_by_theta(*_args)
 
         # renormalizing horizontal amplitude to 1
         if mode.l > 0:
@@ -96,8 +96,8 @@ def incorporate_pulsations_to_model(star_container, com_x, scale=1.0):
 
 def complex_displacement(star, scale):
     """
-    Assigning complex displacement for surface points. Complex displacement is then used to calculate the kinematic
-    quantities (r,v,a).
+    Assigning complex displacement for surface points. Complex displacement
+    is then used to calculate the kinematic quantities (r, v, a).
 
     :param star: base.container.StarContainer;
     :param scale: float;
@@ -115,8 +115,13 @@ def complex_displacement(star, scale):
     return star
 
 
-def position_perturbation(star, com_x=0, update_container=True, return_perturbation=False,
-                          spherical_perturbation=False):
+def position_perturbation(
+        star,
+        com_x=0,
+        update_container=True,
+        return_perturbation=False,
+        spherical_perturbation=False
+):
     """
     Calculates the deformation of the surface mesh due to the pulsations.
 
@@ -152,8 +157,14 @@ def position_perturbation(star, com_x=0, update_container=True, return_perturbat
     return displacement if return_perturbation else None
 
 
-def velocity_perturbation(star, scale, update_container=False, return_perturbation=False, spherical_perturbation=False,
-                          point_perturbations=False):
+def velocity_perturbation(
+        star,
+        scale,
+        update_container=False,
+        return_perturbation=False,
+        spherical_perturbation=False,
+        point_perturbations=False
+):
     """
     Calculates velocity perturbation on a surface of a pulsating star.
 
@@ -197,8 +208,14 @@ def velocity_perturbation(star, scale, update_container=False, return_perturbati
         return None
 
 
-def gravity_acc_perturbation(star, scale, update_container=False, return_perturbation=False,
-                             spherical_perturbation=False, point_perturbations=False):
+def gravity_acc_perturbation(
+        star,
+        scale,
+        update_container=False,
+        return_perturbation=False,
+        spherical_perturbation=False,
+        point_perturbations=False
+):
     """
     Calculates acceleration perturbation on a surface of a pulsating star.
 

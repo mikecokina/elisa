@@ -136,8 +136,8 @@ class PulsationModeProperties(SystemProperties):
     @staticmethod
     def tidally_locked(value):
         """
-        Defines whether the pulsation mode is fixed with respect to the tidal axis. If false, the mode axis will drift
-        with the stellar surface.
+        Defines whether the pulsation mode is fixed with respect to the tidal axis.
+        If false, the mode axis will drift with the stellar surface.
 
         :param value: bool;
         :return: bool
