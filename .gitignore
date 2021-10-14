@@ -30,3 +30,4 @@ dist/*
 elisa.egg-info
 docs/build/*
 /jupyter_tutorials/.ipynb_checkpoints/
+/env37/

@@ -138,8 +138,8 @@ def produce_circ_spotty_async_curves_mp(*args):
         on_pos, normal_radiance, ld_cfs = \
             crv_utils.update_surface_params(require_build_test, on_pos, normal_radiance, ld_cfs, **kwargs)
 
-        compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=in_eclipse[pos_idx],
-                                 return_values=False, write_to_containers=True)
+        _kwargs = dict(in_eclipse=in_eclipse[pos_idx], return_values=False, write_to_containers=True)
+        compute_surface_coverage(on_pos, binary.semi_major_axis, **_kwargs)
 
         curves = curve_fn(curves, pos_idx, crv_labels, on_pos)
 
@@ -207,7 +207,6 @@ def integrate_eccentric_curve_exactly(*args):
                 potentials: Dict; corrected surface potentials
                 phase_batch: numpy.array; phases at which to calculate curves,
                 spots_longitudes: longitudes of each spots for each orbital position
-                crv_labels: List;
                 curves_fn: function to calculate curve points at given orbital positions,
                 kwargs: Dict,
             ]
@@ -227,8 +226,8 @@ def integrate_eccentric_curve_exactly(*args):
 
         crv_utils.prep_surface_params(on_pos, return_values=False, write_to_containers=True, **kwargs)
         # TODO: properly calculate in_eclipse parameter
-        compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=True, return_values=False,
-                                 write_to_containers=True)
+        _kwargs = dict(in_eclipse=True, return_values=False, write_to_containers=True)
+        compute_surface_coverage(on_pos, binary.semi_major_axis, **_kwargs)
 
         curves = curve_fn(curves, run_idx, crv_labels, on_pos)
     return curves
@@ -355,8 +354,8 @@ def integrate_eccentric_curve_w_orbital_symmetry(*args):
         initial_system = _update_surface_in_ecc_orbits(initial_system, base_orb_pos, new_build_mask[idx])
 
         on_pos_base = bsutils.move_sys_onpos(initial_system, base_orb_pos, on_copy=True)
-        compute_surface_coverage(on_pos_base, binary.semi_major_axis, in_eclipse=True,
-                                 return_values=False, write_to_containers=True)
+        _kwargs = dict(in_eclipse=True, return_values=False, write_to_containers=True)
+        compute_surface_coverage(on_pos_base, binary.semi_major_axis, **_kwargs)
 
         if OrbitalSupplements.is_empty(mirror):
             on_pos_mirror = None
@@ -364,10 +363,10 @@ def integrate_eccentric_curve_w_orbital_symmetry(*args):
             # orbital velocities are not symmetrical along apsidal lines
             d_distance = mirror_orb_pos.distance - base_orb_pos.distance
             initial_system.secondary.points[:, 0] += d_distance
-            on_pos_mirror = bsutils.move_sys_onpos(initial_system, mirror_orb_pos, recalculate_velocities=True,
-                                                   on_copy=True)
-            compute_surface_coverage(on_pos_mirror, binary.semi_major_axis, in_eclipse=True,
-                                     return_values=False, write_to_containers=True)
+            _kwargs = dict(recalculate_velocities=True, on_copy=True)
+            on_pos_mirror = bsutils.move_sys_onpos(initial_system, mirror_orb_pos, **_kwargs)
+            _kwargs = dict(in_eclipse=True, return_values=False, write_to_containers=True)
+            compute_surface_coverage(on_pos_mirror, binary.semi_major_axis, **_kwargs)
 
         # normal radiances and ld coefficients will be used for both base and mirror orbital positions
         args = (new_build_mask[idx], on_pos_base, on_pos_mirror, normal_radiance, ld_cfs)

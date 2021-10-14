@@ -295,11 +295,8 @@ def integrate_eccentric_curve_appx_one(
 
     orbital_positions = np.stack((orbital_supplements.body, orbital_supplements.mirror), axis=1)
     fn_args = (binary, potentials, radii, crv_labels, curve_fn)
-
-    stacked_band_curves = manage_observations(fn=c_managed.integrate_eccentric_curve_w_orbital_symmetry,
-                                              fn_args=fn_args,
-                                              position=orbital_positions,
-                                              **kwargs)
+    fn = c_managed.integrate_eccentric_curve_w_orbital_symmetry
+    stacked_band_curves = manage_observations(fn=fn, fn_args=fn_args, position=orbital_positions, **kwargs)
 
     # interpolation of the points in the second half of the light curves using splines
     x = np.concatenate((orbital_supplements.body[:, 4], orbital_supplements.mirror[:, 4]))
