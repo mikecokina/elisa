@@ -2,6 +2,60 @@
 See:
 https://packaging.python.org/en/latest/distributing.html
 https://github.com/pypa/sampleproject
+
+Pre-release steps
+-----------------
+
+1.  make sure all newly added data files are listed in `setup.py` in variable
+    `package_data`as well as in `MANIFEST.in` file
+
+2.  make sure version information in following destinations is up to date:
+
+    - `version.py` in function `get_version()`
+    - `README.rst` in yellow version badge https://img.shields.io/badge/version-<VERSION>-yellow.svg
+    - in `src/elisa/__init__.py`, variable `__version__`
+
+3.  make sure a latest docstsring documentation is generated and there is no error during Sphinx HTML build
+    (for more comprehensive information take a look into `docs/README.rst`)
+
+4.  make sure all newly added dependencies are listed in `requirements.txt` as well as in
+    `setup.py` in variable `install_requires`
+
+5.  make sure that `CHANGELOG.rst` is up to date; content as well as release date and valid version
+
+6.  make sure setup.cfg contains all supported Python versions
+
+7.  commit changes
+
+8.  create release branch with name `release/<VERSION>` and push changes
+
+9.  make sure all unittests are running
+
+10. create a tag::
+
+    >> git tag -a v<VERSION> -m "version <VERSION>"
+    >> git push origin --tags
+
+11. build package with command::
+
+    >> python setup.py sdist bdist_wheel
+
+12. configure pypi repositories if necessary (use following configuration template with valid credentials)::
+
+        # ~/.pypirc
+        [distutils] # this tells distutils what package indexes you can push to
+        index-servers =
+            pypi
+
+        [pypi]
+        repository = https://upload.pypi.org/legacy/
+        username = <username>
+        password = <password>
+
+
+13. release packages with following command (install twine if necessary with `pip install twine`)::
+
+    >> twine upload dist/* -r pypi
 """
 
 # Always prefer setuptools over distutils
