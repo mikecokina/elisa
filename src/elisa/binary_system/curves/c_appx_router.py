@@ -26,10 +26,13 @@ def look_for_approximation(not_pulsations_test):
     :param not_pulsations_test: bool;
     :return: bool;
     """
-    appx_one = settings.MAX_NU_SEPARATION > 0 and settings.MAX_NU_SEPARATION is not None and settings.USE_APPROX1
-    appx_two = settings.USE_APPROX2
-    appx_three = settings.MAX_D_FLUX > 0 and settings.MAX_D_FLUX is not None and settings.USE_APPROX3
-    appx = appx_one or appx_three or appx_two
+    valid_nu_separation = settings.MAX_NU_SEPARATION > 0 and settings.MAX_NU_SEPARATION is not None
+    valid_max_d_flux = settings.MAX_D_FLUX > 0 and settings.MAX_D_FLUX is not None
+
+    interp_approx = valid_nu_separation and settings.USE_INTERPOLATION_APPROXIMATION
+    symmetrical_approx = settings.USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION
+    neighbour_approx = valid_max_d_flux and settings.USE_SIMILAR_NEIGHBOURS_APPROXIMATION
+    appx = interp_approx or neighbour_approx or symmetrical_approx
     return appx and not_pulsations_test
 
 
@@ -62,9 +65,9 @@ def resolve_ecc_approximation_method(
     """
     approx_method_list = [
         integrate_eccentric_curve_exactly,
-        integrate_eccentric_curve_appx_one,
-        integrate_eccentric_curve_appx_two,
-        integrate_eccentric_curve_appx_three
+        integrate_eccentric_curve_interp_appx,
+        integrate_eccentric_curve_symmetrical_counterparts_appx,
+        integrate_eccentric_curve_similar_neighbours_appx
     ]
 
     params = dict(input_argument=phases, return_nparray=True, calculate_from='phase')
@@ -90,23 +93,24 @@ def resolve_ecc_approximation_method(
 
     # APPX ONE *********************************************************************************************************
     args = (binary, phases_span_test, reduced_orbit_arr, counterpart_postion_arr, reduced_orbit_supplement_arr)
-    appx_one, reduced_orbit_arr, counterpart_postion_arr = eval_approximation_one(*args)
+    interp_appx, reduced_orbit_arr, counterpart_postion_arr = eval_interpolation_approximation(*args)
 
-    if appx_one:
+    if interp_appx:
         args = (binary, radii, phases, reduced_orbit_arr, counterpart_postion_arr, potentials, crv_labels, curve_fn)
         return 'one', lambda: approx_method_list[1](*args, **kwargs)
 
     # APPX TWO *********************************************************************************************************
     args = binary, radii, reduced_orbit_arr, reduced_orbit_supplement_arr, phases_span_test
-    appx_two, orbital_supplements = eval_approximation_two(*args)
+    symmetrical_counterparts_appx, orbital_supplements = eval_symmetrical_counterparts_approximation(*args)
 
-    if appx_two:
+    if symmetrical_counterparts_appx:
         args = (binary, radii, phases, orbital_supplements, potentials, crv_labels, curve_fn)
         return 'two', lambda: approx_method_list[2](*args, **kwargs)
 
     # APPX THREE *******************************************************************************************************
-    approx_three, new_geometry_mask, sorted_positions = eval_approximation_three(binary, radii, all_orbital_pos_arr)
-    if approx_three:
+    _args = (binary, radii, all_orbital_pos_arr)
+    similar_neighbours_appx, new_geometry_mask, sorted_positions = eval_similar_neighbours_approximation(*_args)
+    if similar_neighbours_appx:
         args = (binary, sorted_positions, new_geometry_mask, potentials, crv_labels, curve_fn)
         return 'three', lambda: approx_method_list[3](*args, **kwargs)
 
@@ -115,7 +119,7 @@ def resolve_ecc_approximation_method(
 
 
 # *******************************************evaluate_approximations****************************************************
-def eval_approximation_one(
+def eval_interpolation_approximation(
         binary,
         phases_span_test,
         reduced_orbit_array,
@@ -123,7 +127,7 @@ def eval_approximation_one(
         reduced_orbit_supplement_arr
 ):
     """
-    Test if it is possible to compute eccentric binary system with approximation approximation one.
+    Test if it is possible to compute eccentric binary system with interpolation approximation.
 
     :param binary: elisa.binary_system.system.BinarySystem;
     :param phases_span_test: bool; test for sufficient phase span of observations
@@ -133,13 +137,13 @@ def eval_approximation_one(
                                          'reduced_orbit_array' side of the apsidal line
     :return: bool;
     """
-    # true anomalies of orbital positions modelled by approximation 1
+    # true anomalies of orbital positions modelled by interpolation approximation
     true_anomalies_supplements = reduced_orbit_supplement_arr[:, 3]
 
     # base test to establish, if curve contains enough points
     max_nu_sep = np.max(np.diff(np.sort(true_anomalies_supplements)))
     if max_nu_sep > settings.MAX_NU_SEPARATION or 0 > settings.MAX_NU_SEPARATION or not phases_span_test or \
-            not settings.USE_APPROX1:
+            not settings.USE_INTERPOLATION_APPROXIMATION:
         logger.debug('Orbit is not sufficiently populated to implement interpolation approximation 1')
         return False, reduced_orbit_array, counterpart_position_array
 
@@ -186,7 +190,8 @@ def eval_approximation_one(
             rowstack_args = (counterpart_position_array, np.full((points_in_ecl_suplements, 5), np.nan))
             counterpart_position_array = np.row_stack(rowstack_args)
         else:
-            # approx 1 causes artifacts in case of the very flat plateaus in the bottom of the eclipse
+            # interpolation approximation causes artifacts in case of the very
+            # flat plateaus in the bottom of the eclipse
             return False, reduced_orbit_array, counterpart_position_array
 
     # removing duplicite entries
@@ -197,9 +202,9 @@ def eval_approximation_one(
     return True, reduced_orbit_array, counterpart_position_array
 
 
-def eval_approximation_two(binary, radii, base_orbit_arr, orbit_supplement_arr, phases_span_test):
+def eval_symmetrical_counterparts_approximation(binary, radii, base_orbit_arr, orbit_supplement_arr, phases_span_test):
     """
-    Test if it is possible to compute eccentric binary system with approximation approx two.
+    Test if it is possible to compute eccentric binary system with symmetrical counterparts approximation.
 
     :param binary: elisa.binary_system.system.BinarySystem;
     :param radii: numpy.array; forward potentials
@@ -208,8 +213,9 @@ def eval_approximation_two(binary, radii, base_orbit_arr, orbit_supplement_arr, 
     :param phases_span_test: bool;
     :return: Tuple; approximation test, orbital supplements
     """
-    if not phases_span_test or not settings.USE_APPROX2:
-        logger.debug('phase span of the observation is not sufficient to utilize approximation 2')
+    if not phases_span_test or not settings.USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION:
+        logger.debug('Phase span of the observation is not sufficient to '
+                     'utilize symmetrical counterparts approximation.')
         return False, None
 
     # create object of separated objects and supplements to bodies
@@ -226,16 +232,16 @@ def eval_approximation_two(binary, radii, base_orbit_arr, orbit_supplement_arr, 
     return True, orbital_supplements
 
 
-def eval_approximation_three(binary, radii, all_orbital_pos_arr):
+def eval_similar_neighbours_approximation(binary, radii, all_orbital_pos_arr):
     """
-    Test if it is possible to compute eccentric binary system with approximation approx three.
+    Test if it is possible to compute eccentric binary system with similar neighbours approximation.
 
     :param binary: elisa.binary_system.system.BinarySystem;
     :param radii: numpy.array; forward radii for all_orbital_pos_arr)
     :param all_orbital_pos_arr: numpy.array; array of all orbital positions
     :return: Tuple; (bool, numpy.array), approximation test, new_geometry_test
     """
-    if not settings.USE_APPROX3:
+    if not settings.USE_SIMILAR_NEIGHBOURS_APPROXIMATION:
         return False, None, None
 
     sort_idxs = all_orbital_pos_arr[:, 1].argsort()
@@ -255,7 +261,7 @@ def eval_approximation_three(binary, radii, all_orbital_pos_arr):
 
 
 # *******************************************approximation curve_methods************************************************
-def integrate_eccentric_curve_appx_one(
+def integrate_eccentric_curve_interp_appx(
         binary,
         radii,
         phases,
@@ -324,7 +330,7 @@ def integrate_eccentric_curve_appx_one(
     return band_curves
 
 
-def integrate_eccentric_curve_appx_two(
+def integrate_eccentric_curve_symmetrical_counterparts_appx(
         binary,
         radii,
         phases,
@@ -370,7 +376,7 @@ def integrate_eccentric_curve_appx_two(
     return band_curves
 
 
-def integrate_eccentric_curve_appx_three(
+def integrate_eccentric_curve_similar_neighbours_appx(
         binary,
         orbital_positions,
         new_geometry_mask,
@@ -397,7 +403,7 @@ def integrate_eccentric_curve_appx_three(
     :return: Dict[str, numpy.array];
     """
     fn_args = (binary, potentials, new_geometry_mask, crv_labels, curve_fn)
-    fn = c_managed.integrate_eccentric_curve_approx_three
+    fn = c_managed.similar_neighbour_approximation_ecc_curve_integration
     band_curves_unsorted = manage_observations(fn=fn, fn_args=fn_args, position=orbital_positions, **kwargs)
 
     # re-arranging points to original order

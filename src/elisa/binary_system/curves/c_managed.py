@@ -233,7 +233,7 @@ def integrate_eccentric_curve_exactly(*args):
     return curves
 
 
-# eccentric approximation managed ######################################################################################
+# managing approximations in eccentric orbits ##########################################################################
 
 def _update_surface_in_ecc_orbits(system, orbital_position, new_geometry_test):
     """
@@ -379,7 +379,7 @@ def integrate_eccentric_curve_w_orbital_symmetry(*args):
     return {key: np.stack((curves_body[key], curves_mirror[key]), axis=1) for key in crv_labels}
 
 
-def integrate_eccentric_curve_approx_three(*args):
+def similar_neighbour_approximation_ecc_curve_integration(*args):
     """
     Curve generator for eccentric curves without spots for orbital positions that are sufficiently similar that surfaces
     does not have to be fully recalculated.

@@ -425,19 +425,19 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.json", TOL, -0.2, 1.2, 0.1)
 
     def test_eccentric_system_approximation_one(self):
-        settings.configure(**APPROX_SETTINGS["approx_one"])
+        settings.configure(**APPROX_SETTINGS["interp_approx"])
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_one.json", TOL, 0.0, 1.0, 0.007)
 
     def test_eccentric_system_approximation_two(self):
-        settings.configure(**APPROX_SETTINGS["approx_two"])
+        settings.configure(**APPROX_SETTINGS["symm_counterparts"])
         ec_params = PARAMS["eccentric"].copy()
         ec_params["argument_of_periastron"] = 90 * u.deg
         bs = prepare_binary_system(ec_params)
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_two.json", TOL, -0.2, 1.15, 0.05)
 
     def test_eccentric_system_approximation_three(self):
-        settings.configure(**APPROX_SETTINGS["approx_three"])
+        settings.configure(**APPROX_SETTINGS["similar_neighbours"])
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_three.json", TOL, -0.0, 0.01, 0.002)
 
@@ -524,7 +524,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         self.do_comparison(bs)
 
     def test_eccentric_system_approximation_one(self):
-        settings.configure(**APPROX_SETTINGS["approx_one"])
+        settings.configure(**APPROX_SETTINGS["interp_approx"])
         with open(self.CONFIG_FILE, "a") as f:
             f.write(f"[computational]"
                     f"\nmax_nu_separation={settings.MAX_NU_SEPARATION}"
@@ -534,7 +534,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         self.do_comparison(bs, start_phs=-0.2, stop_phs=1.2, step=0.1)
 
     def test_eccentric_system_approximation_two(self):
-        settings.configure(**APPROX_SETTINGS["approx_two"])
+        settings.configure(**APPROX_SETTINGS["symm_counterparts"])
         settings.configure(**{"MAX_D_FLUX": 0.0})
 
         with open(self.CONFIG_FILE, "a") as f:
@@ -546,7 +546,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         self.do_comparison(bs, start_phs=-0.2, stop_phs=1.2, step=0.1)
 
     def test_eccentric_system_approximation_three(self):
-        settings.configure(**APPROX_SETTINGS["approx_three"])
+        settings.configure(**APPROX_SETTINGS["similar_neighbours"])
 
         with open(self.CONFIG_FILE, "a") as f:
             f.write(f"[computational]"
@@ -574,7 +574,7 @@ class CompareApproxVsExact(ElisaTestCase):
         bs = prepare_binary_system(PARAMS["eccentric"])
 
         phase_step = 1.0/150
-        settings.configure(**APPROX_SETTINGS["approx_one"])
+        settings.configure(**APPROX_SETTINGS["interp_approx"])
         settings.configure(**{"NUMBER_OF_PROCESSES": 4})
         o = Observer(passband=['Generic.Bessell.V'], system=bs)
         ap_res = o.lc(from_phase=-0.1, to_phase=1.1, phase_step=phase_step)
@@ -600,7 +600,7 @@ class CompareApproxVsExact(ElisaTestCase):
     def test_approximation_two(self):
         bs = prepare_binary_system(PARAMS["eccentric"])
 
-        settings.configure(**APPROX_SETTINGS["approx_two"])
+        settings.configure(**APPROX_SETTINGS["symm_counterparts"])
         settings.configure(**{"NUMBER_OF_PROCESSES": 4})
         o = Observer(passband=['Generic.Bessell.V'], system=bs)
         ap_res = o.lc(from_phase=-0.1, to_phase=1.1, phase_step=0.01)
@@ -624,7 +624,7 @@ class CompareApproxVsExact(ElisaTestCase):
     def test_approximation_three(self):
         bs = prepare_binary_system(PARAMS["eccentric"])
 
-        settings.configure(**APPROX_SETTINGS["approx_three"])
+        settings.configure(**APPROX_SETTINGS["similar_neighbours"])
         settings.configure(**{"NUMBER_OF_PROCESSES": 4})
         o = Observer(passband=['Generic.Bessell.V'], system=bs)
         ap_res = o.lc(from_phase=-0.1, to_phase=0.6, phase_step=0.01)

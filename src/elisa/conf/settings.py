@@ -177,9 +177,9 @@ class Settings(_Const):
     DEFORMATION_TOL = 0.05
     MCMC_SAVE_INTERVAL = 1800
     USE_SINGLE_LD_COEFFICIENTS = False
-    USE_APPROX1 = True
-    USE_APPROX2 = True
-    USE_APPROX3 = True
+    USE_INTERPOLATION_APPROXIMATION = True
+    USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION = True
+    USE_SIMILAR_NEIGHBOURS_APPROXIMATION = True
 
     TIMER = 0.0
 
@@ -251,9 +251,9 @@ class Settings(_Const):
             "MCMC_SAVE_INTERVAL": cls.MCMC_SAVE_INTERVAL,
             "CUDA": cls.CUDA,
             "USE_SINGLE_LD_COEFFICIENTS": cls.USE_SINGLE_LD_COEFFICIENTS,
-            "USE_APPROX1": cls.USE_APPROX1,
-            "USE_APPROX2": cls.USE_APPROX2,
-            "USE_APPROX3": cls.USE_APPROX3,
+            "USE_INTERPOLATION_APPROXIMATION": cls.USE_INTERPOLATION_APPROXIMATION,
+            "USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION": cls.USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION,
+            "USE_SIMILAR_NEIGHBOURS_APPROXIMATION": cls.USE_SIMILAR_NEIGHBOURS_APPROXIMATION,
         }
 
     @staticmethod
@@ -397,9 +397,21 @@ class Settings(_Const):
 
             cls.USE_SINGLE_LD_COEFFICIENTS = c_parse.getboolean('computational', 'use_single_ld_coefficients',
                                                                 fallback=cls.USE_SINGLE_LD_COEFFICIENTS)
-            cls.USE_APPROX1 = c_parse.getboolean('computational', 'use_approx1', fallback=cls.USE_APPROX1)
-            cls.USE_APPROX2 = c_parse.getboolean('computational', 'use_approx2', fallback=cls.USE_APPROX2)
-            cls.USE_APPROX3 = c_parse.getboolean('computational', 'use_approx3', fallback=cls.USE_APPROX3)
+
+            cls.USE_INTERPOLATION_APPROXIMATION = c_parse.getboolean(
+                'computational', 'use_interpolation_approximation', fallback=cls.USE_INTERPOLATION_APPROXIMATION
+            )
+
+            cls.USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION = c_parse.getboolean(
+                'computational', 'use_symmetrical_counterparts_approximation',
+                fallback=cls.USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION
+            )
+
+            cls.USE_SIMILAR_NEIGHBOURS_APPROXIMATION = c_parse.getboolean(
+                'computational', 'use_similar_neighbours_approximation',
+                fallback=cls.USE_SIMILAR_NEIGHBOURS_APPROXIMATION
+            )
+
         # **************************************************************************************************************
         if c_parse.has_section('support'):
             cls.LD_TABLES = c_parse.get('support', 'ld_tables', fallback=cls.LD_TABLES)
