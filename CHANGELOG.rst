@@ -247,6 +247,11 @@ v0.5_
       cylindrical symmetry from polar_radius to 0.25 * polar radius. This prevents a crash of solver for points near
       the neck.
 
+v0.6
+----
+
+**Release date:** ****-**-**
+
 
 Future plans
 ============
