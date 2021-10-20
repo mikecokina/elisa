@@ -188,8 +188,8 @@ v0.4_
     - surface areas produced by numeric noise when total eclipse is occuring are mitigated
     - renormalization of temperature (temperatures powered to exponent of 4)
 
-v0.5
-----
+v0.5_
+-----
 
 .. v0.5_: https://github.com/mikecokina/elisa/commits/release/0.5
 
