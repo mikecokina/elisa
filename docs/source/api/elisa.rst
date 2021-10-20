@@ -5,7 +5,6 @@ Subpackages
 -----------
 
 .. toctree::
-   :maxdepth: 4
 
    elisa.analytics
    elisa.base
@@ -86,6 +85,7 @@ elisa.utils module
    :members:
    :undoc-members:
    :show-inheritance:
+
 
 Module contents
 ---------------

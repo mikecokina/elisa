@@ -12,6 +12,7 @@ elisa.analytics.dataset.graphic.plot module
    :undoc-members:
    :show-inheritance:
 
+
 Module contents
 ---------------
 

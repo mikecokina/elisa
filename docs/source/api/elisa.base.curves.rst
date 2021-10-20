@@ -20,6 +20,7 @@ elisa.base.curves.utils module
    :undoc-members:
    :show-inheritance:
 
+
 Module contents
 ---------------
 

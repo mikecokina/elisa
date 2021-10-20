@@ -15,13 +15,13 @@ Pre-release steps
     - `README.rst` in yellow version badge https://img.shields.io/badge/version-<VERSION>-yellow.svg
     - in `src/elisa/__init__.py`, variable `__version__`
 
-3.  make sure a latest docstsring documentation is generated and there is no error during Sphinx HTML build
-    (for more comprehensive information take a look into `docs/README.rst`)
+3.  make sure that `CHANGELOG.rst` is up to date; content as well as release date and valid version
 
 4.  make sure all newly added dependencies are listed in `requirements.txt` as well as in
     `setup.py` in variable `install_requires`
 
-5.  make sure that `CHANGELOG.rst` is up to date; content as well as release date and valid version
+5.  make sure a latest docstsring documentation is generated and there is no error during Sphinx HTML build
+    (for more comprehensive information take a look into `docs/README.rst`)
 
 6.  make sure setup.cfg contains all supported Python versions
 
@@ -129,14 +129,14 @@ setup(
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        'astropy>>=4.0.1.post1',
+        'astropy>=4.0.1.post1',
         'corner>=2.0.1,<=2.1.0',
         'emcee==3.0.1',
         'jsonschema>=3.2.0',
         'matplotlib==3.3.2',
         'numpy>=1.16.2,<=1.19.2',
         'pandas>=0.24.0,<=1.1.2',
-        'pypex==0.1.0',
+        'pypex==0.2.0',
         'python-dateutil>=2.6.1,<=2.8.1',
         'scipy>=1.0.0,<=1.5.2',
         'tqdm>=4.43.0',

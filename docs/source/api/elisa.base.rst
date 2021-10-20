@@ -5,7 +5,6 @@ Subpackages
 -----------
 
 .. toctree::
-   :maxdepth: 4
 
    elisa.base.curves
    elisa.base.graphics
@@ -70,6 +69,7 @@ elisa.base.transform module
    :members:
    :undoc-members:
    :show-inheritance:
+
 
 Module contents
 ---------------

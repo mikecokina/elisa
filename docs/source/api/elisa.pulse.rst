@@ -5,7 +5,6 @@ Subpackages
 -----------
 
 .. toctree::
-   :maxdepth: 4
 
    elisa.pulse.surface
 
@@ -51,6 +50,7 @@ elisa.pulse.utils module
    :members:
    :undoc-members:
    :show-inheritance:
+
 
 Module contents
 ---------------

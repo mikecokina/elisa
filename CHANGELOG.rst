@@ -188,13 +188,12 @@ v0.4_
     - surface areas produced by numeric noise when total eclipse is occuring are mitigated
     - renormalization of temperature (temperatures powered to exponent of 4)
 
-Future plans
-============
-
 v0.5
 ----
 
-**Release date:** ????-??-??
+.. v0.5_: https://github.com/mikecokina/elisa/commits/release/0.5
+
+**Release date:** 2021-10-20
 
 **Features**
 
@@ -247,6 +246,10 @@ v0.5
     - starting value for implicit solver adjusted in case of near-side parts of overcontact stars generated in
       cylindrical symmetry from polar_radius to 0.25 * polar radius. This prevents a crash of solver for points near
       the neck.
+
+
+Future plans
+============
 
 v1.0
 ----

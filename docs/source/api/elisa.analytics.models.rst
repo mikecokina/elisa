@@ -36,6 +36,7 @@ elisa.analytics.models.serializers module
    :undoc-members:
    :show-inheritance:
 
+
 Module contents
 ---------------
 
