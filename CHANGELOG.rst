@@ -252,6 +252,14 @@ v0.6
 
 **Release date:** ****-**-**
 
+**Features**
+
+    - firts run configuration manager - minimal required configuration wizzard on first start when not configured
+    - download manager - download limb darkening and atmospheres via download manager instead of manual copying it
+
+**Fixes**
+
+    - configuration parser will not crash when `general.home` is set in config file
 
 Future plans
 ============
