@@ -12,6 +12,7 @@ scipy>=1.0.0,<=1.5.2
 tqdm==4.43.0
 parameterized>=0.7.4
 numba==0.51.2
+requests>=2.26.0
 
 # keep it commented
 # torch==1.7.0   +cuda
