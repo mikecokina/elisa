@@ -270,7 +270,7 @@ class Settings(_Const, DefaultSettings):
             cls.set_up_logging()
 
             cls.SUPPRESS_LOGGER = c_parse.getboolean('general', 'suppress_logger', fallback=cls.SUPPRESS_LOGGER)
-            cls.HOME = c_parse.getboolean('general', 'home', fallback=cls.HOME)
+            cls.HOME = c_parse.get('general', 'home', fallback=cls.HOME)
         # **************************************************************************************************************
         if c_parse.has_section('physics'):
             cls.REFLECTION_EFFECT = c_parse.getboolean('physics', 'reflection_effect', fallback=cls.REFLECTION_EFFECT)
