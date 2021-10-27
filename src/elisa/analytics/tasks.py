@@ -11,7 +11,6 @@ from . binary_fit.plot import (
 )
 from .. import utils
 from .. logger import getLogger
-from elisa.analytics.binary_fit.shared import eval_constraint_in_dict
 from elisa import settings
 
 logger = getLogger('analytics.tasks')
