@@ -142,10 +142,12 @@ class LCFitMCMC(LCFit):
         """
         Function returns MCMC fitting class suitable for the model based on its morphology.
 
-        :param morphology: str; `detached` or `overcontact`
+        :param morphology: str; `detached` or `over-contact`
         :return: Union[mcmc.DetachedLightCurveFit, mcmc.OvercontactLightCurveFit]
         """
-        _cls = {"detached": mcmc.DetachedLightCurveFit, "over-contact": mcmc.OvercontactLightCurveFit}
+        _cls = {"detached": mcmc.DetachedLightCurveFit,
+                "over-contact": mcmc.OvercontactLightCurveFit,
+                "overcontact": mcmc.OvercontactLightCurveFit}
         return _cls[morphology]
 
 
@@ -190,8 +192,10 @@ class LCFitLeastSquares(LCFit):
         """
         Function returns Least-Squares fitting class suitable for the model based on its morphology.
 
-        :param morphology: str; `detached` or `overcontact`
+        :param morphology: str; `detached` or `over-contact`
         :return: Union[least_squares.DetachedLightCurveFit, least_squares.OvercontactLightCurveFit]
         """
-        _cls = {"detached": least_squares.DetachedLightCurveFit, "over-contact": least_squares.OvercontactLightCurveFit}
+        _cls = {"detached": least_squares.DetachedLightCurveFit,
+                "over-contact": least_squares.OvercontactLightCurveFit,
+                "overcontact": least_squares.OvercontactLightCurveFit}
         return _cls[morphology]

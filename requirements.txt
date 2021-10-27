@@ -8,7 +8,7 @@ pandas>=0.24.0,<=1.1.2
 pypex==0.2.0
 pytest==3.2.3
 python-dateutil>=2.6.1,<=2.8.1
-scipy>=1.0.0
+scipy>=1.0.0,<=1.7.1
 tqdm==4.43.0
 parameterized>=0.7.4
 numba>=0.51.2
