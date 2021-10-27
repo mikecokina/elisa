@@ -64,7 +64,8 @@ class DefaultSettings(object):
 
 
 class SettingsManager(object):
-    def __init__(self):
+    @staticmethod
+    def run():
         def _create_configuration_path_input(_directory):
             if not op.isdir(_directory):
                 os.makedirs(_directory, exist_ok=True)
@@ -90,7 +91,7 @@ class SettingsManager(object):
 
         proceed = input("Do you want to continue [y/N]: ")
         if not proceed.lower() == "y":
-            sys.exit(0)
+            _system_exit(0)
 
         # sections
         section_general = "general"
@@ -143,6 +144,3 @@ class SettingsManager(object):
         # write file
         _write_ini_file(config, default_config_path)
 
-        print("You are all set.\n"
-              "Please, restart your program now.\n")
-        _system_exit(exit_code=0)

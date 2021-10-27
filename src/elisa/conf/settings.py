@@ -8,10 +8,11 @@ from configparser import ConfigParser
 from logging import config as log_conf
 from os.path import dirname, isdir
 
-from ..managers.settings_manager import SettingsManager, DefaultSettings
 from .. schema_registry import registry
+from .. managers.settings_manager import SettingsManager, DefaultSettings
 
 
+first_time_user = False
 c_parse = ConfigParser()
 env_variable_config = os.environ.get('ELISA_CONFIG', '')
 venv_config = op.join(os.environ.get('VIRTUAL_ENV', ''), 'conf', 'elisa_conf.ini')
@@ -26,11 +27,9 @@ elif op.isfile(default_config):
     config_file = default_config
 else:
     # provide a minimal configuration for first time running users
-    settings_manager = SettingsManager()
-    raise LookupError("Couldn't resolve configuration file. To define it \n "
-                      "  - Set the environment variable ELISA_CONFIG with absolute path of config file, or \n "
-                      "  - Add file conf/elisa_conf.ini under your virtualenv root, or \n "
-                      "  - Add file ~/.elisa/config.ini. \n ")
+    config_file = default_config
+    first_time_user = True
+    SettingsManager.run()
 
 
 class _Const(object):
@@ -151,6 +150,7 @@ class Settings(_Const, DefaultSettings):
 
     # basic app configuration
     CONFIG_FILE = config_file
+    FIRST_TIME_USER = first_time_user
     ####################################################################################################################
 
     def __new__(cls):
