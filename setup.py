@@ -110,6 +110,7 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
     ],
 
     # What does your project relate to?
@@ -129,17 +130,18 @@ setup(
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        'astropy>=4.0.1.post1,<=4.1.0',
+        'astropy>=4.0.1,<4.4',
         'corner>=2.0.1,<=2.1.0',
         'emcee==3.0.1',
         'jsonschema>=3.2.0',
-        'matplotlib==3.3.2',
-        'numpy>=1.16.2,<=1.19.2',
-        'pandas>=0.24.0,<=1.1.2',
-        'pypex==0.2.0',
+        'matplotlib>=3.3.2,<3.5',
+        'numpy>=1.16.2,<=1.20.3',
+        'pandas>=0.24.0,<1.4',
+        'pypex>=0.2.0',
         'python-dateutil>=2.6.1,<=2.8.1',
-        'scipy>=1.0.0,<=1.5.2',
-        'tqdm>=4.43.0',
+        'scipy>=1.0.0,<1.8',
+        'tqdm==4.43.0',
+        'parameterized>=0.7.4',
         'numba>=0.51.2',
         'requests>=2.26.0'
     ],
