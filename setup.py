@@ -140,7 +140,7 @@ setup(
         'python-dateutil>=2.6.1,<=2.8.1',
         'scipy>=1.0.0',
         'tqdm>=4.43.0',
-        'numba==0.51.2',
+        'numba>=0.51.2',
         'requests>=2.26.0'
     ],
 
