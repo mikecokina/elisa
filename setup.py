@@ -138,7 +138,7 @@ setup(
         'pandas>=0.24.0,<=1.1.2',
         'pypex==0.2.0',
         'python-dateutil>=2.6.1,<=2.8.1',
-        'scipy>=1.0.0,<=1.5.2',
+        'scipy>=1.0.0',
         'tqdm>=4.43.0',
         'numba==0.51.2',
         'requests>=2.26.0'
