@@ -129,7 +129,7 @@ setup(
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        'astropy>=4.0.1.post1',
+        'astropy>=4.0.1.post1,<=4.1.0',
         'corner>=2.0.1,<=2.1.0',
         'emcee==3.0.1',
         'jsonschema>=3.2.0',
