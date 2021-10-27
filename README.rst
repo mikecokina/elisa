@@ -56,6 +56,8 @@ Requirements
 
 **ELISa** is a python package which requires ``python v3.6+`` and has following dependencies::
 
+    REQUIRES UPDATE
+
     astropy>=4.0.1.post1
     corner>=2.0.1,<=2.1.0
     emcee==3.0.1
@@ -171,10 +173,19 @@ How to build API docs
 
 Read this readme_ file to see detailed instruction how to generate up to date documentation.
 
-.. _readme: https://github.com/mikecokina/elisa/docs/README.rst
+.. _readme: https://github.com/mikecokina/elisa/blob/master/docs/README.rst
 
 Minimal configuration
 ---------------------
+
+From version **0.6**, ELISa provides a feature to make configuration easier for first time running users. We implemented
+`Settings Manager` and `Download Manager`. When any ELISa script is first time executed and there is missing configuration
+file a wizzard will walk you through basic configuration (default configuration will be stored in path `~/.elisa/config.ini` file).
+It asks you to supply a directories to store atmospheres and limb darkening files and default atmosphere atlas. It also gives
+you a chance to automatically download given files without any futher needs to do it manually.
+
+Manual configuration
+~~~~~~~~~~~~~~~~~~~~
 
 ``ELISa`` requires minimal configuration before the first run provided by the config file. Initially, it is necessary to
 download Atmospheres_ models and Limb-Darkening_ tables.
