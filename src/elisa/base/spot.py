@@ -21,6 +21,7 @@ class Spot(object):
     between the spot and the host star described by the `temperature_factor` defined as
     t_eff,spot/t_eff,star.
 
+
     Input parameters:
 
     :param longitude: Union[(numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity];
