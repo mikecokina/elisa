@@ -72,7 +72,7 @@ class AnalyticsTask(metaclass=ABCMeta):
     def load_result(self, filename):
         """
         Function loads a JSON file containing model parameters and stores it as an attribute of AnalyticsTask fitting
-        instance.  This is useful if you want to examine already calculated results using functionality provided by the
+        instance. This is useful if you want to examine already calculated results using functionality provided by the
         AnalyticsTask instances (e.g: LCBinaryAnalyticsTask, RVBinaryAnalyticsTask, etc.). I also returns model
         parameters in standard dict (JSON) format.
 
