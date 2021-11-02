@@ -256,6 +256,7 @@ v0.6
 
     - firts run configuration manager - minimal required configuration wizzard on first start when not configured
     - download manager - download limb darkening and atmospheres via download manager instead of manual copying it
+    - support python 3.9
 
 **Fixes**
 
