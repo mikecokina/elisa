@@ -16,7 +16,7 @@ logger = getLogger("base.spots")
 
 class Spot(object):
     """
-    Spot object container. It is available as a list item of a `Star.spots` attribute after the initialization of the
+    Spot object container.  It is available as a list item of a `Star.spots` attribute after the initialization of the
     host system. This spot class is producing a circular spot at a specified coordinates with a temperature difference
     between the spot and the host star described by the `temperature_factor` defined as
     t_eff,spot/t_eff,star.
