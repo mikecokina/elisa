@@ -195,6 +195,8 @@ class AnalyticsTask(metaclass=ABCMeta):
                                   chain. Default value is [16, 50, 84] (1-sigma confidence interval)
             * **save** * - bool - save chain
             * **fit_id** * - str - identificator or location of stored chain
+            * **samples** * - Union[str, List]; 'uniform' (equidistant sampling in phase), 'adaptive'
+                                                (equidistant sampling on curve) or list with phases in (0, 1) interval
 
         :return: Dict; resulting parameters {param_name: {`value`: value, `unit`: astropy.unit, ...}, ...}
         """
