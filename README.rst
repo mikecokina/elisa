@@ -3,7 +3,7 @@
 .. |Travis build| image:: https://travis-ci.org/mikecokina/elisa.svg?branch=dev
     :target: https://travis-ci.org/mikecokina/elisa
 
-.. |GitHub version| image:: https://img.shields.io/badge/version-0.5-yellow.svg
+.. |GitHub version| image:: https://img.shields.io/badge/version-0.5.1-yellow.svg
    :target: https://github.com/Naereen/StrapDown.js
 
 .. |Python version| image:: https://img.shields.io/badge/python-3.6|3.7|3.8-orange.svg
@@ -57,7 +57,7 @@ Requirements
 **ELISa** is a python package which requires ``python v3.6+`` and has following dependencies::
 
     astropy>=4.0.1.post1
-    corner>=2.0.1,<=2.1.0
+    corner>=2.2.1
     emcee==3.0.1
     jsonschema>=3.2.0
     matplotlib==3.3.2

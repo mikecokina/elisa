@@ -247,6 +247,19 @@ v0.5_
       cylindrical symmetry from polar_radius to 0.25 * polar radius. This prevents a crash of solver for points near
       the neck.
 
+v0.5.1_
+-------
+
+.. v0.5.1_: https://github.com/mikecokina/elisa/commits/release/0.5.1
+
+**Release date:** 2021-11-04
+
+**Fixes**
+
+    - fixed requirements to avoid installation error::
+
+        ERROR: packaging 21.2 has requirement pyparsing<3,>=2.0.2, but you'll have pyparsing 3.0.4 which is incompatible.
+
 
 Future plans
 ============
