@@ -14,6 +14,7 @@ from .. tools.utils import (
 from .. models import lc as lc_model
 from .. models import rv as rv_model
 from ... utils import is_empty
+from ... import units
 from ... import settings
 from ... observer.observer import Observer
 from ... observer.utils import normalize_light_curve
@@ -65,6 +66,7 @@ class AbstractFit(metaclass=ABCMeta):
         :param passband: List; list of used passbands, use None in case of RV fit
         :param kwargs: Dict; class dependent content (see inheritor classes)
         """
+        self._check_data_param_consistency(x0, data)
         setattr(self, 'fixed', x0.get_fixed(jsonify=False))
         setattr(self, 'constrained', x0.get_constrained(jsonify=False))
         setattr(self, 'fitable', x0.get_fitable(jsonify=False))
@@ -88,6 +90,38 @@ class AbstractFit(metaclass=ABCMeta):
 
         setattr(self, 'initial_vector', [val.value for val in self.fitable.values()])
         setattr(self, 'flat_result', dict())
+
+    @staticmethod
+    def _check_data_param_consistency(x0: BinaryInitialParameters, data: Dict):
+        """
+        Checking whether input observations have time stamps either in JD or photometric phase.
+        Function also cheks for compatibility between input observational data and initial parameters.
+
+        :param x0: BinaryInitialParameters; initial state of model parameters
+        :param data: Dict[Union[elisa.analytics.dataset.base.LCData, elisa.analytics.dataset.base.RVData]];
+                     observational data in photometric filters:
+        :return: None
+        """
+        x_units = {key: val.x_unit for key, val in data.items()}
+        x_units_reduced = list(set(x_units.values()))
+        if len(x_units_reduced) > 1:
+            raise ValueError(f"Please make sure that all synthetic observations are supplied "
+                             f"in BJD or photometric phases. Current state: {x_units}")
+
+        try:
+            getattr(x0, 'primary_minimum_time')
+        except AttributeError:
+            if x_units_reduced[0] == units.d:
+                raise ValueError("Your initial parameters do not contain `primary_minimum_time`, yet you provided "
+                                 "your synthetic observations in JD. Either convert your observations to photometric "
+                                 "phases using `DataSet.convert_to_phases(period, t0)` or include "
+                                 "`primary_minimum_time` to your initial fit parameters.")
+        else:
+            if x_units_reduced[0] == units.dimensionless_unscaled:
+                raise ValueError("Your initial parameters contain `primary_minimum_time`, yet you provided "
+                                 "your synthetic observations in photometric phases. Either convert your observations "
+                                 "to JD using `DataSet.convert_to_time(period, t0)` or remove `primary_minimum_"
+                                 "time` from your initial fit parameters.")
 
     @abstractmethod
     def fit(self, *args, **kwargs):
