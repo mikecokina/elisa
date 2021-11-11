@@ -336,6 +336,22 @@ def prepare_nuisance_properties_set(xn, properties, fixed):
     return kwargs
 
 
+def check_for_invalid_constraint(constrained, allowed_params):
+    """
+    Making sure that constrains after substitution of valid parameters for their current values does not contain
+    any invalid model parameters.
+
+    :param constrained: dict; {parameter@name: constraint}
+    :param allowed_params: Union[list, dict_keys]; names of valid model parameters
+    :return: None
+    """
+    for c_param, constraint in constrained.items():
+        if conf.PARAM_PARSER in constraint:
+            raise InitialParamsError(f'Your constraint for parameter {c_param} is currently looks: {constraint} and '
+                                     f'contains non-variable parameter. Only following parameters can be used to '
+                                     f'define a constrained parameter: {allowed_params}')
+
+
 def constraints_evaluator(substitution: Dict, constrained: Dict) -> Dict:
     """
     Substitute variables in constraint with values and evaluate to number.
@@ -362,6 +378,10 @@ def constraints_evaluator(substitution: Dict, constrained: Dict) -> Dict:
     subst = {key: utils.str_repalce(val, substitution.keys(), substitution.values())
              for key, val in constrained.items()}
     numpy_callable = {key: utils.str_repalce(val, allowed_methods, numpy_methods) for key, val in subst.items()}
+
+    # raising error if invalid parameter is used to define a constraint
+    check_for_invalid_constraint(numpy_callable, substitution.keys())
+
     try:
         evaluated = {key:  eval(val) for key, val in numpy_callable.items()}
     except Exception as e:
