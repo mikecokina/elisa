@@ -18,7 +18,7 @@ logger = getLogger('analytics.tasks')
 
 class AnalyticsTask(metaclass=ABCMeta):
     """
-    Abstract class defining fitting task. This structure aims to provide a framework for solving inverse problem for
+    Abstract class defining fitting task.  This structure aims to provide a framework for solving inverse problem for
     one object that embeds observed data and fitting methods and provides unified output from fitting methods along with
     capability to visualize the resulting fit.
 
