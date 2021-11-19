@@ -14,6 +14,7 @@ from .. import (
     units as u,
     umpy as up
 )
+from .. import settings
 
 logger = getLogger('base.body')
 
@@ -46,7 +47,7 @@ class Body(metaclass=ABCMeta):
         self.synchronicity: float = np.nan
         self.mass: float = np.nan
         self.albedo: float = np.nan
-        self.discretization_factor: float = np.float64(up.radians(5))
+        self.discretization_factor: float = np.float64(up.radians(settings.DEFAULT_DISCRETIZATION_FACTOR))
         self.t_eff: float = np.nan
         self.polar_radius: float = np.nan
         self._spots: Dict = dict()

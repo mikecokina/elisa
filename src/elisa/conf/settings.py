@@ -181,6 +181,7 @@ class Settings(_Const, DefaultSettings):
             "RV_LAMBDA_INTERVAL": cls.RV_LAMBDA_INTERVAL,
             "MAX_DISCRETIZATION_FACTOR": cls.MAX_DISCRETIZATION_FACTOR,
             "MIN_DISCRETIZATION_FACTOR": cls.MIN_DISCRETIZATION_FACTOR,
+            "DEFAULT_DISCRETIZATION_FACTOR": cls.DEFAULT_DISCRETIZATION_FACTOR,
             "NUMBER_OF_THREADS": cls.NUMBER_OF_THREADS,
             "NUMBER_OF_PROCESSES": cls.NUMBER_OF_PROCESSES,
             "NUMBER_OF_MCMC_PROCESSES": cls.NUMBER_OF_MCMC_PROCESSES,
@@ -296,6 +297,9 @@ class Settings(_Const, DefaultSettings):
                                                              fallback=cls.MAX_DISCRETIZATION_FACTOR)
             cls.MIN_DISCRETIZATION_FACTOR = c_parse.getfloat('computational', 'min_discretization_factor',
                                                              fallback=cls.MIN_DISCRETIZATION_FACTOR)
+            cls.DEFAULT_DISCRETIZATION_FACTOR = c_parse.getint(
+                'computational', 'default_discretization_factor', fallback=cls.DEFAULT_DISCRETIZATION_FACTOR
+            )
             cls.NUMBER_OF_THREADS = c_parse.getint('computational', 'number_of_threads', fallback=cls.NUMBER_OF_THREADS)
             if cls.NUMBER_OF_THREADS <= 0:
                 raise ValueError("Invalid value for `number_of_threads`, allowed >= 1")
