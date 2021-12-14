@@ -16,7 +16,6 @@ def move_sys_onpos(system, position, on_copy=True):
     Prepares a postion container for given orbital position.
     Supplied `system` is not affected if `on_copy` is set to True.
 
-
     Following methods are applied::
 
         system.set_on_position_params()
