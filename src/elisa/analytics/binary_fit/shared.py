@@ -458,6 +458,9 @@ def check_for_boundary_surface_potentials(result_dict, morphology=None):
     if "primary@surface_potential" not in result_dict.keys() or "secondary@surface_potential" not in result_dict.keys():
         return result_dict
 
+    if result_dict['primary@surface_potential']['value'] == result_dict['secondary@surface_potential']['value']:
+        return result_dict
+
     for component in settings.BINARY_COUNTERPARTS:
         pot = result_dict[f"{component}@surface_potential"]
         if "fixed" not in pot.keys() or "value" not in pot.keys():
