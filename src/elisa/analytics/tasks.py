@@ -69,7 +69,7 @@ class AnalyticsTask(metaclass=ABCMeta):
         if method not in cls.ALLOWED_METHODS:
             raise ValueError(f'Invalid fitting method. Use one of: {", ".join(cls.ALLOWED_METHODS)}')
 
-    def load_result(self, filename):
+    def load_result(self, filename, autofill_sma):
         """
         Function loads a JSON file containing model parameters and stores it as an attribute of AnalyticsTask fitting
         instance. This is useful if you want to examine already calculated results using functionality provided by the
@@ -77,9 +77,11 @@ class AnalyticsTask(metaclass=ABCMeta):
         parameters in standard dict (JSON) format.
 
         :param filename: str;
+        :param autofill_sma; bool; if True, the semi-major axis will be autofilled to fitting
+                                   parameters if absent
         :return: Dict; model parameters in a standardized format
         """
-        self.fit_cls.load_result(filename)
+        self.fit_cls.load_result(filename, autofill_sma=autofill_sma)
         return self.fit_cls.get_result()
 
     def save_result(self, filename):
@@ -90,15 +92,17 @@ class AnalyticsTask(metaclass=ABCMeta):
         """
         self.fit_cls.save_result(filename)
 
-    def set_result(self, result):
+    def set_result(self, result, autofill_sma=False):
         """
         Set model parameters in dictionary (JSON format) as an attribute of AnalyticsTask fitting instance. This is
         useful if you want to examine already calculated results using functionality provided by the AnalyticsTask
         instances (e.g: LCBinaryAnalyticsTask, RVBinaryAnalyticsTask, etc.).
 
         :param result: Dict; model parameters in JSON format
+        :param autofill_sma; bool; if True, the semi-major axis will be autofilled to fitting
+                                   parameters if absent
         """
-        self.fit_cls.set_result(result)
+        self.fit_cls.set_result(result, autofill_sma=autofill_sma)
 
     def get_result(self):
         """
@@ -286,6 +290,12 @@ class LCBinaryAnalyticsTask(AnalyticsTask):
             self.__class__.FIT_CLS = lambda: lc_fit.LCFitLeastSquares(morphology=expected_morphology)
             self.__class__.PLOT_CLS = LCPlotLsqr
         super().__init__(method, name, **kwargs)
+
+    def load_result(self, filename, autofill_sma=True):
+        return super().load_result(filename, autofill_sma=autofill_sma)
+
+    def set_result(self, result, autofill_sma=True):
+        return super().set_result(result, autofill_sma=autofill_sma)
 
 
 class RVBinaryAnalyticsTask(AnalyticsTask):

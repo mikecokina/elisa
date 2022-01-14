@@ -274,6 +274,12 @@ v0.6
 **Enhancements**
 
     - ability to set default_discretization_factor that governs fidelity of the surface mesh
+    - ability to automatically fill the semi-major axis (SMA) in fit parameters while fitting the LC data.
+      In such cases, the SMA cannot be derived and it has to be fixed at some sensible value which will put component
+      surface gravity accelerations within the the range supported by atmospheric models.
+      The `LCBinaryAnalyticsTask.set_result()` and `load_result()` functions have default argument
+      `autofill_sma`=True that will try to generate a sensible value of SMA if `semi_major_axis` fitting parameter is
+      missing in initial fitting parameters JSON/dictionary.
 
 **Fixes**
 

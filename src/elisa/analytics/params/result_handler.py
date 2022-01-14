@@ -20,17 +20,19 @@ class FitResultHandler(object):
         """
         return self.result
 
-    def load_result(self, path):
+    def load_result(self, path, autofill_sma=False):
         """
         Function loads a JSON file containing model parameters and stores it as an attribute of AnalyticsTask fitting
         instance. This is useful if you want to examine already calculated results using functionality provided by the
         AnalyticsTask instances (e.g: LCBinaryAnalyticsTask, RVBinaryAnalyticsTask, etc.).
 
         :param path: str; location of a JSON file with parameters
+        :param autofill_sma; bool; if True, the semi-major axis will be autofilled to fitting
+                                   parameters if absent
         """
         with open(path, 'r') as f:
             loaded_result = json.load(f)
-        self.set_result(loaded_result)
+        self.set_result(loaded_result, autofill_sma=autofill_sma)
 
     def save_result(self, path):
         """
@@ -44,14 +46,17 @@ class FitResultHandler(object):
         with open(path, 'w') as f:
             json.dump(self.result, f, separators=(',', ': '), indent=4)
 
-    def set_result(self, result):
+    def set_result(self, result, autofill_sma=False):
         """
         Set model parameters in dictionary (JSON format) as an attribute of AnalyticsTask fitting instance. This is
         useful f you want to examine already calculated results using functionality provided by the AnalyticsTask
         instances (e.g: LCBinaryAnalyticsTask, RVBinaryAnalyticsTask, etc.).
 
         :param result: Dict; model parameters in JSON format
+        :param autofill_sma; bool; if True, function will try to autofill the semi-major axis to fitting
+                                   parameters if absent
         """
         result = eval_constraint_in_dict(result)
+        result = parameters.extend_result_with_sma(result) if autofill_sma else result
         self.result = result
         self.flat_result = parameters.deserialize_result(self.result)

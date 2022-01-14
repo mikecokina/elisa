@@ -22,11 +22,17 @@ from ..params.transform import (
     PulsationModeInitialProperties,
     NuisanceInitialProperties
 )
-from ... import units as u
-from ... import utils
-from ... import settings
+from ... import (
+    units as u,
+    utils,
+    settings
+)
 from ... base.error import InitialParamsError
 from ... utils import is_empty
+from ... logger import getLogger
+from ... binary_system.utils import calculate_sma_estimate
+
+logger = getLogger('analytics.params.parameters')
 
 
 def deflate_phenomena(flatten):
@@ -387,6 +393,40 @@ def constraints_evaluator(substitution: Dict, constrained: Dict) -> Dict:
     except Exception as e:
         raise InitialParamsError(f'Invalid syntax or value in constraint, {str(e)}.')
     return evaluated
+
+
+def extend_result_with_sma(fit_parameters):
+    """
+    This function extends the fitting parameter dictionary for semi-major axis parameter that in case of fit,
+    based solely on LC, has to be fixed on some sensible value.
+
+    :param fit_parameters: Dict; input fitting parameters
+    :return: result dictionary (with sma autofilled)
+    """
+    if 'mass_ratio' not in fit_parameters['system'].keys():
+        logger.debug('Binary system parameters are supplied in standard format where SMA does not figure. '
+                     'Nothing to add.')
+        return fit_parameters
+
+    if 'semi_major_axis' in fit_parameters['system'].keys():
+        logger.debug('Binary system parameters already contains `semi_major_axis` parameters.')
+        return fit_parameters
+
+    sma_estimate = []
+    mid_g = 270  # m.s^-2, a reasonable estimate of surface g
+    mass_ratio = fit_parameters['system']['mass_ratio']['value']
+    period = fit_parameters['system']['period']['value']
+    for component in settings.BINARY_COUNTERPARTS.keys():
+        synchronicity = fit_parameters[component].get('synchronicity', {'value': 1.0})['value']
+        potential = fit_parameters[component]['surface_potential']['value']
+        sma_estimate.append(calculate_sma_estimate(mass_ratio, synchronicity, potential, period, component, mid_g))
+
+    fit_parameters['system']['semi_major_axis'] = {
+        'value': np.mean(sma_estimate),
+        'fixed': True,
+        'unit': u.solRad
+    }
+    return fit_parameters
 
 
 class ParameterMeta(object):
