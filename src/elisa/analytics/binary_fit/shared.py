@@ -49,12 +49,13 @@ class AbstractFit(metaclass=ABCMeta):
         :x_data_reducer: Dict[str, numpy.array]; x_data[passband] = x_data_reduced[x_data_reducer[passband]]
         :y_data: Dict[str, numpy.array]; fluxes in each filter
         :y_err: Dict[str, numpy.array]; observational errors of y_data
+        :atmosphere_model: Union[dict(), None]: atmosphere models for each component {component: atm_model, ...}
     """
     MEAN_ERROR_FN = None
 
     __slots__ = ['fixed', 'constrained', 'fitable', 'observer', 'x_data', 'y_data', 'num_of_points'
                  'y_err', 'x_data_reduced', 'x_data_reducer', 'initial_vector', 'normalization', 'flat_result',
-                 'discretization', 'interp_treshold']
+                 'discretization', 'interp_treshold', 'atmosphere_model']
 
     def set_up(self, x0: BinaryInitialParameters, data: Dict, passband: Iterable = None, **kwargs):
         """
@@ -90,6 +91,10 @@ class AbstractFit(metaclass=ABCMeta):
 
         setattr(self, 'initial_vector', [val.value for val in self.fitable.values()])
         setattr(self, 'flat_result', dict())
+
+        if not isinstance(self.atmosphere_model, (dict, type(None))):
+            raise ValueError('Please provide argument `atmosphere_mode` in format '
+                             '{component (primary or secondary): atmosphere_model_name (ck04, bb, ...), }')
 
     @staticmethod
     def _check_data_param_consistency(x0: BinaryInitialParameters, data: Dict):

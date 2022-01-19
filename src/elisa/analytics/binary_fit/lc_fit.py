@@ -21,10 +21,11 @@ class LCFit(FitResultHandler):
     """
     Class with common methods used during an LC fit.
     """
-    def __init__(self, morphology):
+    def __init__(self, morphology, atmosphere_model):
         super().__init__()
         self.morphology = morphology
         self.fit_method_instance: Union[LCFitLeastSquares, LCFitMCMC, None] = None
+        self.atmosphere_model: Union[dict, None] = None
 
     def coefficient_of_determination(self, model_parameters, data, discretization, interp_treshold):
         """
@@ -52,9 +53,10 @@ class LCFitMCMC(LCFit):
     """
     Class for LC fitting using the MCMC method.
     """
-    def __init__(self, morphology):
-        super().__init__(morphology)
+    def __init__(self, morphology, atmosphere_model):
+        super().__init__(morphology, atmosphere_model)
         self.fit_method_instance = self.resolve_fit_cls(morphology)()
+        self.fit_method_instance.atmosphere_model = atmosphere_model
 
         self.flat_chain = None
         self.flat_chain_path = None
@@ -155,8 +157,8 @@ class LCFitLeastSquares(LCFit):
     """
     Class for LC fitting using the Least-Squares method.
     """
-    def __init__(self, morphology):
-        super().__init__(morphology)
+    def __init__(self, morphology, atmosphere_model):
+        super().__init__(morphology, atmosphere_model)
         self.fit_method_instance = self.resolve_fit_cls(morphology)()
 
     def fit(self, x0: BinaryInitialParameters, data, **kwargs):
