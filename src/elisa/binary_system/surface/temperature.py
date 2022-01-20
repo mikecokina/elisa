@@ -521,4 +521,7 @@ def interpolate_albedo(temperature):
     interp_temps = data['x']
     interp_a = data['y']
 
+    if temperature <= 0:
+        raise ValueError('Negative temperature of the star encountered.')
+
     return np.interp(np.log10(temperature), interp_temps, interp_a)

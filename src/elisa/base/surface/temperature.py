@@ -84,4 +84,7 @@ def interpolate_bolometric_gravity_darkening(temperature):
     interp_temps = data['x']
     interp_betas = data['y']
 
+    if temperature <= 0:
+        raise ValueError('Negative temperature of the star encountered.')
+
     return np.interp(np.log10(temperature), interp_temps, interp_betas)
