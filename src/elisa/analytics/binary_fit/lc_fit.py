@@ -160,6 +160,7 @@ class LCFitLeastSquares(LCFit):
     def __init__(self, morphology, atmosphere_model):
         super().__init__(morphology, atmosphere_model)
         self.fit_method_instance = self.resolve_fit_cls(morphology)()
+        self.fit_method_instance.atmosphere_model = atmosphere_model
 
     def fit(self, x0: BinaryInitialParameters, data, **kwargs):
         """

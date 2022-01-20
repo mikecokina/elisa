@@ -92,7 +92,7 @@ class AbstractFit(metaclass=ABCMeta):
         setattr(self, 'initial_vector', [val.value for val in self.fitable.values()])
         setattr(self, 'flat_result', dict())
 
-        if not isinstance(self.atmosphere_model, (dict, type(None))):
+        if not isinstance(getattr(self, 'atmosphere_model', None), (dict, type(None))):
             raise ValueError('Please provide argument `atmosphere_mode` in format '
                              '{component (primary or secondary): atmosphere_model_name (ck04, bb, ...), }')
 
@@ -278,10 +278,10 @@ class AbstractLCFit(AbstractFit):
         if np.shape(phases)[0] < self.interp_treshold:
             return None
 
-        if samples is 'uniform':
+        if samples == 'uniform':
             diff = 1.0 / self.interp_treshold
             return np.linspace(0.0 - diff, 1.0 + diff, num=self.interp_treshold + 2)
-        elif samples is 'adaptive':
+        elif samples == 'adaptive':
             logger.info('Generating equidistant samples along the light curve using adaptive sampling method')
             return self.adaptive_sampling()
         elif isinstance(samples, (list, np.ndarray)):

@@ -281,15 +281,15 @@ class LCBinaryAnalyticsTask(AnalyticsTask):
     }, indent=4)
     TRANSFORM_PROPERTIES_CLS = transform.LCBinaryAnalyticsProperties
 
-    def __init__(self, method, expected_morphology='detached', name=None, atmosphere_model=None, **kwargs):
+    def __init__(self, method, expected_morphology='detached', name=None, atmosphere_models=None, **kwargs):
         self.validate_method(method)
         if method in self.MCMC_NAMES:
             self.__class__.FIT_CLS = lambda: \
-                lc_fit.LCFitMCMC(morphology=expected_morphology, atmosphere_model=atmosphere_model)
+                lc_fit.LCFitMCMC(morphology=expected_morphology, atmosphere_model=atmosphere_models)
             self.__class__.PLOT_CLS = LCPlotMCMC
         elif method in self.LS_NAMES:
             self.__class__.FIT_CLS = lambda: \
-                lc_fit.LCFitLeastSquares(morphology=expected_morphology, atmosphere_model=atmosphere_model)
+                lc_fit.LCFitLeastSquares(morphology=expected_morphology, atmosphere_model=atmosphere_models)
             self.__class__.PLOT_CLS = LCPlotLsqr
         super().__init__(method, name, **kwargs)
 
@@ -325,7 +325,7 @@ class RVBinaryAnalyticsTask(AnalyticsTask):
     }, indent=4)
     TRANSFORM_PROPERTIES_CLS = transform.RVBinaryAnalyticsTask
 
-    def __init__(self, method, name=None, atmosphere_model=None, **kwargs):
+    def __init__(self, method, name=None, atmosphere_models=None, **kwargs):
         self.validate_method(method)
         if method in self.MCMC_NAMES:
             self.__class__.FIT_CLS = lambda: rv_fit.RVFitMCMC()

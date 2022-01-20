@@ -24,7 +24,6 @@ from ... import settings
 from ... binary_system.system import BinarySystem
 from ... binary_system.curves.community import RadialVelocitySystem
 
-
 logger = getPersistentLogger('analytics.binary_fit.least_squares')
 
 
@@ -64,6 +63,10 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
         else:
             fit_xs = self.fit_xs
         args = fit_xs, self.discretization, self.observer
+
+        if self.atmosphere_model is not None:
+            kwargs = parameters.extend_json_with_atm_models(kwargs, self.atmosphere_model)
+
         fn = lc_model.synthetic_binary
 
         try:

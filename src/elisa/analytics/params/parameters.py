@@ -204,6 +204,56 @@ def serialize_result(result_dict: Dict) -> Dict:
     return ret_dict
 
 
+def extend_json_with_atm_models(params, atmosphere_models):
+    """
+    Function will extend the initialization JSON with custom atmosphere models.
+
+    :param params: Dict; flattened json used to initialize the system eg::
+
+        >>> {
+        >>>     'system@mass_ratio': 1.0,
+        >>>         ...
+        >>>     'primary@teff': 80000,
+        >>>         ...
+        >>>     'secondary@teff': 5000,
+        >>>         ...
+        >>>     },
+        >>> }
+
+    :param atmosphere_models: dict; desired atmosphere models for each component, eg::
+
+        >>> {
+        >>>     'primary': 'bb',
+        >>>     'secondary': 'ck04'
+        >>> }
+
+    :return: dict; updated parameter json, eg::
+
+        >>> {
+        >>>     'system@mass_ratio': 1.0,
+        >>>         ...
+        >>>     'primary@teff': 80000,
+        >>>     'primary@atmosphere': 'bb',
+        >>>         ...
+        >>>     'secondary@teff': 5000,
+        >>>     'secondary@atmosphere': 'ck04',
+        >>>         ...
+        >>>     },
+        >>> }
+
+    """
+    component_list = ','.join(list(params.keys()))
+    for component, atm_model in atmosphere_models.items():
+        if component in component_list:
+            params[f'{component}{conf.PARAM_PARSER}atmposphere'] = atm_model
+        else:
+            raise ValueError(f'Component {component} does not figure in your fit parameters JSON. Make sure that your '
+                             f'`atmosphere_models` contain `primary` and `secondary` components in case of binary '
+                             f'systems and `star` in case of single star.')
+
+    return params
+
+
 def check_initial_param_validity(x0: Dict[str, 'InitialParameter'], all_fit_params, mandatory_fit_params):
     """
     Checking if initial system parameters including surface features (spots and pulsations) are containing all
