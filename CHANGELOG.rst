@@ -284,6 +284,8 @@ v0.6
 **Fixes**
 
     - configuration parser will not crash when `general.home` is set in config file
+    - prior probability in case of normal distribution now clips the edges of the
+      distributions correctly according to `min` and `max` fit parameter configuration arguments.
 
 Future plans
 ============
