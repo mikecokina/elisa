@@ -105,6 +105,10 @@ class System(metaclass=ABCMeta):
                 for attr in self.STAR_ALL_KWARGS if getattr(instance, attr) is not None
             }})
 
+            for item in ['atmosphere', 'limb_darkening_coefficients']:
+                if getattr(instance, item, None):
+                    json_data[component].update({item: getattr(instance, item)})
+
             if instance.has_spots():
                 spot_list = list()
                 for spot in instance.spots.values():
