@@ -1,10 +1,11 @@
 import numpy as np
 
 from .. import utils as butils
-from ... import atm, ld, const
+from ... import atm, const
 from ... import settings
 from ... observer.passband import init_bolometric_passband
 from ... binary_system import radius as bsradius
+from ... base.curves.utils import get_component_limbdarkening_cfs
 
 
 def get_limbdarkening_cfs(system, component="all", **kwargs):
@@ -26,86 +27,11 @@ def get_limbdarkening_cfs(system, component="all", **kwargs):
     symmetry_test = not system.has_spots() and not system.has_pulsations()
     temperatures, log_g = dict(), dict()
 
-    ld_cfs = dict()
-    for c_name in components:
-        component_instance = getattr(system, c_name)
-
-        if component_instance.limb_darkening_coefficients is not None:
-            # TODO: wrong shape
-            ld_cfs[c_name] = {passband: np.tile(
-                component_instance.limb_darkening_coefficients, component_instance.temperatures.shape
-            ) for passband in kwargs['passband']}
-        else:
-            temperatures[c_name], log_g[c_name] = generate_teff_logg_for_ld_cfs(component_instance, symmetry_test)
-
-            ld_cfs[c_name] = ld.interpolate_on_ld_grid(
-                temperature=temperatures[c_name],
-                log_g=log_g[c_name],
-                metallicity=component_instance.metallicity,
-                passband=kwargs["passband"]
-            )
-
-            if symmetry_test:
-                if settings.USE_SINGLE_LD_COEFFICIENTS:
-                    ld_cfs[c_name] = {fltr: vals[np.zeros(getattr(system, c_name).temperatures.shape, dtype=np.int)]
-                                      for fltr, vals in ld_cfs[c_name].items()}
-                else:
-                    ld_cfs[c_name] = {fltr: getattr(system, c_name).mirror_face_values(vals)
-                                      for fltr, vals in ld_cfs[c_name].items()}
-
-    # for c_name in components:
-    #     component_instance = getattr(system, c_name)
-    #     if settings.USE_SINGLE_LD_COEFFICIENTS:
-    #         temperatures[c_name] = np.array([component_instance.t_eff, ])
-    #         log_g[c_name] = np.array([np.max(component_instance.log_g), ])
-    #     elif symmetry_test:
-    #         temperatures[c_name] = component_instance.symmetry_faces(component_instance.temperatures)
-    #         log_g[c_name] = component_instance.symmetry_faces(component_instance.log_g)
-    #     else:
-    #         temperatures[c_name] = component_instance.temperatures
-    #         log_g[c_name] = component_instance.log_g
-    #
-    # ld_cfs = {
-    #     component:
-    #         ld.interpolate_on_ld_grid(
-    #             temperature=temperatures[component],
-    #             log_g=log_g[component],
-    #             metallicity=getattr(system, component).metallicity,
-    #             passband=kwargs["passband"]
-    #         ) for component in components
-    # }
-    # # mirroring symmetrical part back to the rest of the surface
-    # if symmetry_test:
-    #     for c_name in components:
-    #         if settings.USE_SINGLE_LD_COEFFICIENTS:
-    #             ld_cfs[c_name] = {fltr: vals[np.zeros(getattr(system, c_name).temperatures.shape, dtype=np.int)]
-    #                               for fltr, vals in ld_cfs[c_name].items()}
-    #         else:
-    #             ld_cfs[c_name] = {fltr: getattr(system, c_name).mirror_face_values(vals)
-    #                               for fltr, vals in ld_cfs[c_name].items()}
-
-    return ld_cfs
-
-
-def generate_teff_logg_for_ld_cfs(component_instance, symmetry_test):
-    """
-    Generates temperatures and log_g parameters either for full star or symmetrical part based on the symmetry test.
-
-    :param component_instance: elisa.base.container.StarContainer; star container
-    :param symmetry_test: bool; whether to use star symmetry
-    :return: Tuple;
-    """
-    if settings.USE_SINGLE_LD_COEFFICIENTS:
-        temperatures = np.array([component_instance.t_eff, ])
-        log_g = np.array([np.max(component_instance.log_g), ])
-    elif symmetry_test:
-        temperatures = component_instance.symmetry_faces(component_instance.temperatures)
-        log_g = component_instance.symmetry_faces(component_instance.log_g)
-    else:
-        temperatures = component_instance.temperatures
-        log_g = component_instance.log_g
-
-    return temperatures, log_g
+    return {c_name: get_component_limbdarkening_cfs(
+        getattr(system, c_name),
+        symmetry_test,
+        kwargs['passband']
+    ) for c_name in components}
 
 
 def _get_normal_radiance(system, component="all", **kwargs):

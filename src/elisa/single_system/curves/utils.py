@@ -1,6 +1,7 @@
 from ... import atm, ld
 from ... import settings
 from ... observer.passband import init_bolometric_passband
+from ... base.curves.utils import get_component_limbdarkening_cfs
 
 
 def prep_surface_params(system, return_values=True, write_to_containers=False, **kwargs):
@@ -104,24 +105,9 @@ def get_limbdarkening_cfs(system, **kwargs):
     star_container = system.star
     symmetry_test = not system.has_spots() and not system.has_pulsations()
 
-    # utilizing surface symmetry in case of a clear surface
-    if symmetry_test:
-        temperatures = star_container.symmetry_faces(star_container.temperatures)
-        log_g = star_container.symmetry_faces(star_container.log_g)
-    else:
-        temperatures = star_container.temperatures
-        log_g = star_container.log_g
+    return {'star': get_component_limbdarkening_cfs(
+        star_container,
+        symmetry_test,
+        kwargs['passband']
+    )}
 
-    retval = {
-        'star': ld.interpolate_on_ld_grid(
-                    temperature=temperatures,
-                    log_g=log_g,
-                    metallicity=star_container.metallicity,
-                    passband=kwargs["passband"]
-                )
-    }
-
-    if symmetry_test:
-        retval['star'] = {band: star_container.mirror_face_values(vals) for band, vals in retval['star'].items()}
-
-    return retval
