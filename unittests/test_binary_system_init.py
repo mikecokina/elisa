@@ -6,7 +6,12 @@ import numpy as np
 
 from copy import copy
 from numpy.testing import assert_array_equal
-from elisa import const as c, units as u, get_default_binary_definition
+from elisa import (
+    const as c,
+    units as u,
+    get_default_binary_definition,
+    settings
+)
 from elisa.base.star import Star
 from elisa.binary_system.system import BinarySystem
 from unittests.utils import ElisaTestCase, prepare_binary_system
@@ -466,6 +471,8 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
                 "discretization_factor": 5,
                 "albedo": 1.0,
                 "metallicity": 0.0,
+                "atmosphere": 'bb',
+                "limb_darkening_coefficients": 0.5,
                 "spots": [
                     {
                         'longitude': 90,
@@ -534,6 +541,8 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
                 "discretization_factor": 5,
                 "albedo": 1.0,
                 "metallicity": 0.0,
+                "atmosphere": 'bb',
+                "limb_darkening_coefficients": [0.5, ],
                 "spots": [
                     {
                         'longitude': 90,
@@ -612,11 +621,46 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
 
 
 class BinarySystemSeparatedAtmospheres(ElisaTestCase):
+    def setUp(self):
+        super(BinarySystemSeparatedAtmospheres, self).setUp()
+
     @staticmethod
     def test_atmospheres_of_components_differs():
         definition = get_default_binary_definition()
         definition["primary"].update({**definition["primary"], "atmosphere": "bb"})
         definition["secondary"].update({**definition["secondary"], "atmosphere": "ck04"})
         binary = BinarySystem.from_json(definition)
-        assert binary.primary.atmosphere, "bb"
-        assert binary.secondary.atmosphere, "ck04"
+        assert binary.primary.atmosphere == "bb"
+        assert binary.secondary.atmosphere == "ck04"
+
+    @staticmethod
+    def test_custom_lds_linear():
+        definition = get_default_binary_definition()
+        definition["primary"].update({**definition["primary"], "limb_darkening_coefficients": 0.5})
+        binary = BinarySystem.from_json(definition)
+        assert_array_equal(binary.primary.limb_darkening_coefficients, [0.5, ])
+
+    @staticmethod
+    def test_custom_lds_log():
+        settings.LIMB_DARKENING_LAW = 'logarithmic'
+        definition = get_default_binary_definition()
+        definition["primary"].update({**definition["primary"], "limb_darkening_coefficients": [0.5, 0.4]})
+        binary = BinarySystem.from_json(definition)
+        assert_array_equal(binary.primary.limb_darkening_coefficients, [0.5, 0.4])
+
+    @staticmethod
+    def test_custom_lds_sqrt():
+        settings.LIMB_DARKENING_LAW = 'square_root'
+        definition = get_default_binary_definition()
+        definition["primary"].update({**definition["primary"], "limb_darkening_coefficients": [0.5, 0.4]})
+        binary = BinarySystem.from_json(definition)
+        assert_array_equal(binary.primary.limb_darkening_coefficients, [0.5, 0.4])
+
+    def test_raise_custom_lds_mismatch(self):
+        settings.LIMB_DARKENING_LAW = 'square_root'
+        definition = get_default_binary_definition()
+        definition["primary"].update({**definition["primary"], "limb_darkening_coefficients": [0.5]})
+        with self.assertRaises(Exception) as context:
+            BinarySystem.from_json(definition)
+        self.assertTrue(f"however, you provided a vector with "
+                        f"{len(definition['primary']['limb_darkening_coefficients'])}" in str(context.exception))
