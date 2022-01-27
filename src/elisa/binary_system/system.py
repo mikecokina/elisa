@@ -235,7 +235,7 @@ class BinarySystem(System):
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     STAR_MANDATORY_KWARGS = ['mass', 't_eff', 'surface_potential', 'synchronicity']
-    STAR_OPTIONAL_KWARGS = ['metallicity', 'gravity_darkening', 'albedo', 'limb_darkening_coefficients']
+    STAR_OPTIONAL_KWARGS = ['metallicity', 'gravity_darkening', 'albedo']
     STAR_ALL_KWARGS = STAR_MANDATORY_KWARGS + STAR_OPTIONAL_KWARGS
 
     def __init__(self, primary, secondary, name=None, **kwargs):
