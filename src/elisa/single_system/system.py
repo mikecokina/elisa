@@ -52,11 +52,17 @@ class SingleSystem(System):
                              function assumes that supplied value is in K.
         :param polar_log_g: float; log_10 of the polar surface gravity
 
-    following mandatory arguments are also available:
+    following optional arguments are also available:
 
         :param metallicity: float; log[M/H] default value is 0.0
         :param gravity_darkening: float; gravity darkening factor, if not supplied, it is interpolated from Claret 2003
                                          based on t_eff
+        :param limb_darkening_coefficients: Union[float, list, numpy.array]; optional limb darkening coefficients used
+                                                                             for the whole star usefull in case the
+                                                                             modelled star is outside the supported
+                                                                             range of atmospheric parameters. If unused,
+                                                                             elisa will interpolate the values from
+                                                                             supplied limb-darkening tables.
 
     Each component instance will after initialization contain following attributes:
 
@@ -160,7 +166,7 @@ class SingleSystem(System):
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     STAR_MANDATORY_KWARGS = ['mass', 't_eff', 'polar_log_g']
-    STAR_OPTIONAL_KWARGS = ['metallicity', 'gravity_darkening']
+    STAR_OPTIONAL_KWARGS = ['metallicity', 'gravity_darkening', 'limb_darkening_coefficients']
     STAR_ALL_KWARGS = STAR_MANDATORY_KWARGS + STAR_OPTIONAL_KWARGS
 
     def __init__(self, star, name=None, **kwargs):
@@ -291,9 +297,10 @@ class SingleSystem(System):
                 "discretization_factor": [degrees],
                 "metallicity": [dimensionless],
                 "semi_major_axis": [solRad],
-                "mass_ratio": [dimensionless]
-                "polar_log_g": [dex(m*s-2)]
-                "equivalent_radius": [solRad]
+                "mass_ratio": [dimensionless],
+                "polar_log_g": [dex(m*s-2)],
+                "equivalent_radius": [solRad],
+                "limb_darkening_coefficients": [dimensionless]
             }
 
         :return: elisa.single_system.system.SingleSystem

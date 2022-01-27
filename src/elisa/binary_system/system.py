@@ -77,6 +77,12 @@ class BinarySystem(System):
 
         :param albedo: float; surface albedo, value from <0, 1> interval, if not supplied,
                               Claret 2001 will be used for interpolation
+        :param limb_darkening_coefficients: Union[float, list, numpy.array]; optional limb darkening coefficients used
+                                                                             for the whole star usefull in case the
+                                                                             modelled star is outside the supported
+                                                                             range of atmospheric parameters. If unused,
+                                                                             elisa will interpolate the values from
+                                                                             supplied limb-darkening tables.
 
 
     Each component instance will after initialization contain following attributes:
@@ -229,7 +235,7 @@ class BinarySystem(System):
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     STAR_MANDATORY_KWARGS = ['mass', 't_eff', 'surface_potential', 'synchronicity']
-    STAR_OPTIONAL_KWARGS = ['metallicity', 'gravity_darkening', 'albedo']
+    STAR_OPTIONAL_KWARGS = ['metallicity', 'gravity_darkening', 'albedo', 'limb_darkening_coefficients']
     STAR_ALL_KWARGS = STAR_MANDATORY_KWARGS + STAR_OPTIONAL_KWARGS
 
     def __init__(self, primary, secondary, name=None, **kwargs):
@@ -404,9 +410,9 @@ class BinarySystem(System):
                 "discretization_factor": [degrees],
                 "albedo": [dimensionless],
                 "metallicity": [dimensionless],
-
                 "semi_major_axis": [solRad],
-                "mass_ratio": [dimensionless]
+                "mass_ratio": [dimensionless],
+                "limb_darkening_coefficients": [dimensionless]
             }
 
         :return: elisa.binary_system.system.BinarySystem;

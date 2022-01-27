@@ -122,6 +122,7 @@ class _DefaultStarUnits(BaseUnits):
     discretization_factor = ARC_UNIT
     polar_log_g = LOG_ACCELERATION_UNIT
     equivalent_radius = DISTANCE_UNIT
+    limb_darkening_coefficients = dimensionless_unscaled
     spots = _DefaultSpotUnits()
     pulsations = _DefaultPulsationsUnits()
 
@@ -136,6 +137,7 @@ class _DefaultBinarySystemUnits(BaseUnits):
         gravity_darkening = _DefaultStarUnits.gravity_darkening
         albedo = _DefaultStarUnits.albedo
         discretization_factor = _DefaultStarUnits.discretization_factor
+        limb_darkening_coefficients = dimensionless_unscaled
         spots = _DefaultSpotUnits()
         pulsations = _DefaultPulsationsUnits()
 
@@ -172,6 +174,7 @@ class _DefaultSingleSystemUnits(BaseUnits):
         gravity_darkening = _DefaultStarUnits.gravity_darkening
         discretization_factor = _DefaultStarUnits.discretization_factor
         equivalent_radius = _DefaultStarUnits.equivalent_radius
+        limb_darkening_coefficients = dimensionless_unscaled
         spots = _DefaultSpotUnits()
         pulsations = _DefaultPulsationsUnits()
 
@@ -225,6 +228,7 @@ class _DefaultStarInputUnits(BaseUnits):
     discretization_factor = deg
     polar_log_g = u.dex(cm / s ** 2)
     equivalent_radius = solRad
+    limb_darkening_coefficients = dimensionless_unscaled
     spots = _DefaultSpotInputUnits()
     pulsations = _DefaultPulsationsInputUnits()
 
@@ -239,6 +243,7 @@ class _DefaultBinarySystemInputUnits(BaseUnits):
         gravity_darkening = _DefaultStarInputUnits.gravity_darkening
         albedo = _DefaultStarInputUnits.albedo
         discretization_factor = _DefaultStarInputUnits.discretization_factor
+        limb_darkening_coefficients = dimensionless_unscaled
         spots = _DefaultSpotInputUnits()
         pulsations = _DefaultPulsationsInputUnits()
 
@@ -275,6 +280,7 @@ class _DefaultSingleSystemInputUnits(BaseUnits):
         gravity_darkening = _DefaultStarInputUnits.gravity_darkening
         discretization_factor = _DefaultStarInputUnits.discretization_factor
         equivalent_radius = _DefaultStarInputUnits.equivalent_radius
+        limb_darkening_coefficients = dimensionless_unscaled
         spots = _DefaultSpotInputUnits()
         pulsations = _DefaultPulsationsInputUnits()
 

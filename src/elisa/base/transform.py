@@ -2,7 +2,8 @@ import numpy as np
 
 from .. import (
     units as u,
-    const
+    const,
+    settings
 )
 from .. units import (
     DefaultStarInputUnits,
@@ -294,6 +295,27 @@ class StarProperties(BodyProperties):
         if value > 1 or value < 0:
             raise ValueError(f'Parameter gravity darkening = {value} is out of range <0, 1>')
         return np.float64(value)
+
+    @staticmethod
+    def limb_darkening_coefficients(value):
+        if isinstance(value, WHEN_FLOAT64):
+            if settings.LIMB_DARKENING_LAW in ['linear', 'cosine']:
+                retval = [value, ]
+            else:
+                raise TypeError('Scalar limb darkening coefficient is available only for linear (cosine) law.')
+        elif isinstance(value, WHEN_ARRAY):
+            desired_vector_length = len(settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW])
+            if np.shape(value)[0] != desired_vector_length:
+                raise ValueError(f'{settings.LIMB_DARKENING_LAW} limb-darkening law requires {desired_vector_length} '
+                                 f'components in a vector eith shape ({desired_vector_length}, ), however, you '
+                                 f'provided a vector with {len(value)} components with shape {np.shape(value)}')
+            else:
+                retval = value
+        else:
+            raise TypeError('Expected type for `limb_darkening_coefficient` parameter is float (for linear law) '
+                            'and/or list (numpy.array) in other cases.')
+
+        return retval
 
 
 class SpotProperties(BodyProperties):
