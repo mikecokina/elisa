@@ -311,6 +311,8 @@ class StarProperties(BodyProperties):
                                  f'provided a vector with {len(value)} components with shape {np.shape(value)}')
             else:
                 retval = value
+        elif value is None:
+            retval = None  # default case of interpolated LD coefficients
         else:
             raise TypeError('Expected type for `limb_darkening_coefficient` parameter is float (for linear law) '
                             'and/or list (numpy.array) in other cases.')
