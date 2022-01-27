@@ -134,8 +134,11 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
         uvw_values = interpolate.griddata(xyz_domain, xyz_values, uvw_domain, method="linear")
 
         if np.any(up.isnan(uvw_values)):
-            raise LimbDarkeningError("Limb darkening interpolation lead to numpy.nan/None value. "
-                                         "It might be caused by definition of unphysical object on input.")
+            raise LimbDarkeningError("Limb darkening interpolation lead to numpy.nan/None value. \n"
+                                     "Some of the surface parameters (t_eff, log_g, metallicity) are \n"
+                                     "probably outside of the supported range. Change the parameters \n"
+                                     "of the stars or use your custom ld coefficients that can be passed in \n"
+                                     "Star.limb_darkening_coefficients.")
 
         results[band] = uvw_values
 
