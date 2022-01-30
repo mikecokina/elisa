@@ -242,9 +242,12 @@ any need for setting an environmental variable.
 Now you are all setup and ready to code.
 
 
-Usage
+Tutorials
 -------
-For in depth tutorials, see directory ``elisa/jupyter_tutorials``.
+In-depth tutorials can be found here_. This directory is not a part of the elisa install 
+and it should be downloaded separately from github.
+
+.. _here: https://github.com/mikecokina/elisa/tree/dev/jupyter_tutorials
 
 
 Physics
