@@ -1,6 +1,7 @@
 # keep it first
 # due to stupid astropy units/constants implementation
 from unittests import set_astropy_units
+import os
 
 import numpy as np
 
@@ -642,7 +643,7 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
 
     @staticmethod
     def test_custom_lds_log():
-        settings.LIMB_DARKENING_LAW = 'logarithmic'
+        settings.configure(**{"LIMB_DARKENING_LAW": 'logarithmic'})
         definition = get_default_binary_definition()
         definition["primary"].update({**definition["primary"], "limb_darkening_coefficients": [0.5, 0.4]})
         binary = BinarySystem.from_json(definition)
@@ -650,14 +651,14 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
 
     @staticmethod
     def test_custom_lds_sqrt():
-        settings.LIMB_DARKENING_LAW = 'square_root'
+        settings.configure(**{"LIMB_DARKENING_LAW": 'square_root'})
         definition = get_default_binary_definition()
         definition["primary"].update({**definition["primary"], "limb_darkening_coefficients": [0.5, 0.4]})
         binary = BinarySystem.from_json(definition)
         assert_array_equal(binary.primary.limb_darkening_coefficients, [0.5, 0.4])
 
     def test_raise_custom_lds_mismatch(self):
-        settings.LIMB_DARKENING_LAW = 'square_root'
+        settings.configure(**{"LIMB_DARKENING_LAW": 'square_root'})
         definition = get_default_binary_definition()
         definition["primary"].update({**definition["primary"], "limb_darkening_coefficients": [0.5]})
         with self.assertRaises(Exception) as context:

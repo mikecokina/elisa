@@ -48,7 +48,7 @@ class BuildSpotFreeTemperatureTestCase(ElisaTestCase):
     def test_build_temperatures_detached(self):
         with self.assertRaises(Exception) as context:
             self.generator_test_temperatures('detached')
-        self.assertTrue("It might be caused by definition of unphysical object on input" in str(context.exception))
+        self.assertTrue("Limb darkening interpolation lead to numpy.nan/None value." in str(context.exception))
 
     def test_build_temperatures_detached_physical(self):
         self.generator_test_temperatures('detached-physical', [[4998, 5002], [4999, 5004]])
