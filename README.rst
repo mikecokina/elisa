@@ -199,7 +199,7 @@ Default tables location
 By default, the Elisa will search for atmosphere and limb darkening tables in:
 
  - atmospheres: $HOME/.elisa/atmosphere/
- - limb darkening: $HOME/.elisa/limb_darkening/
+ - limb darkening: $HOME/.elisa/limbdarkening/
 
 therefore, atmosphere and limb darkening tables stored at those locations will be used by elisa by default.
 
