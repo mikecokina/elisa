@@ -16,6 +16,7 @@ from elisa import (
 from elisa.base.star import Star
 from elisa.binary_system.system import BinarySystem
 from unittests.utils import ElisaTestCase, prepare_binary_system
+from elisa import Observer
 
 set_astropy_units()
 
@@ -473,7 +474,7 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
                 "albedo": 1.0,
                 "metallicity": 0.0,
                 "atmosphere": 'bb',
-                "limb_darkening_coefficients": 0.5,
+                "limb_darkening_coefficients": {'bolometric': 0.5},
                 "spots": [
                     {
                         'longitude': 90,
@@ -543,7 +544,7 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
                 "albedo": 1.0,
                 "metallicity": 0.0,
                 "atmosphere": 'bb',
-                "limb_darkening_coefficients": [0.5, ],
+                "limb_darkening_coefficients": {'bolometric': [0.5, ]},
                 "spots": [
                     {
                         'longitude': 90,
@@ -637,31 +638,61 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
     @staticmethod
     def test_custom_lds_linear():
         definition = get_default_binary_definition()
-        definition["primary"].update({**definition["primary"], "limb_darkening_coefficients": 0.5})
+        definition["primary"].update({**definition["primary"], "limb_darkening_coefficients": {'bolometric': 0.5}})
         binary = BinarySystem.from_json(definition)
-        assert_array_equal(binary.primary.limb_darkening_coefficients, [0.5, ])
+        assert_array_equal(binary.primary.limb_darkening_coefficients['bolometric'], [0.5, ])
 
     @staticmethod
     def test_custom_lds_log():
         settings.configure(**{"LIMB_DARKENING_LAW": 'logarithmic'})
         definition = get_default_binary_definition()
-        definition["primary"].update({**definition["primary"], "limb_darkening_coefficients": [0.5, 0.4]})
+        definition["primary"].update({**definition["primary"],
+                                      "limb_darkening_coefficients": {'bolometric': [0.5, 0.4]}})
         binary = BinarySystem.from_json(definition)
-        assert_array_equal(binary.primary.limb_darkening_coefficients, [0.5, 0.4])
+        assert_array_equal(binary.primary.limb_darkening_coefficients['bolometric'], [0.5, 0.4])
 
     @staticmethod
     def test_custom_lds_sqrt():
         settings.configure(**{"LIMB_DARKENING_LAW": 'square_root'})
         definition = get_default_binary_definition()
-        definition["primary"].update({**definition["primary"], "limb_darkening_coefficients": [0.5, 0.4]})
+        definition["primary"].update({**definition["primary"],
+                                      "limb_darkening_coefficients": {'bolometric': [0.5, 0.4]}})
         binary = BinarySystem.from_json(definition)
-        assert_array_equal(binary.primary.limb_darkening_coefficients, [0.5, 0.4])
+        assert_array_equal(binary.primary.limb_darkening_coefficients['bolometric'], [0.5, 0.4])
 
     def test_raise_custom_lds_mismatch(self):
         settings.configure(**{"LIMB_DARKENING_LAW": 'square_root'})
         definition = get_default_binary_definition()
-        definition["primary"].update({**definition["primary"], "limb_darkening_coefficients": [0.5]})
+        definition["primary"].update({**definition["primary"],
+                                      "limb_darkening_coefficients": {'bolometric': [0.5, ]}})
         with self.assertRaises(Exception) as context:
             BinarySystem.from_json(definition)
-        self.assertTrue(f"however, you provided a vector with "
-                        f"{len(definition['primary']['limb_darkening_coefficients'])}" in str(context.exception))
+
+        length = len(definition['primary']['limb_darkening_coefficients']['bolometric'])
+        self.assertTrue(f"however, you provided a vector with {length}" in str(context.exception))
+
+    def test_raise_missing_passband_lds(self):
+        definition = get_default_binary_definition()
+        definition["primary"].update({**definition["primary"],
+                                      "limb_darkening_coefficients": {'bolometric': 0.5}})
+
+        bs = BinarySystem.from_json(definition)
+        o = Observer(passband=["TESS"], system=bs)
+        with self.assertRaises(Exception) as context:
+            o.lc(phases=[0.0,])
+
+        self.assertTrue('Please supply limb-darkening factors for [\'TESS\'] '
+                        'pasband(s) as well.' in str(context.exception))
+
+    def test_raise_missing_bolometric_passband_lds(self):
+        definition = get_default_binary_definition()
+        definition["primary"].update({**definition["primary"],
+                                      "limb_darkening_coefficients": {'TESS': 0.5}})
+
+        bs = BinarySystem.from_json(definition)
+        o = Observer(passband=["TESS"], system=bs)
+        with self.assertRaises(Exception) as context:
+            o.lc(phases=[0.0, ])
+
+        self.assertTrue('Please ad `bolometric` limb-darkening coefficients to '
+                        'your custom set of limb-darkening coefficients.' in str(context.exception))

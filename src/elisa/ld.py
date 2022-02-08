@@ -229,9 +229,21 @@ def calculate_integrated_limb_darkening_factor(limb_darkening_law=None, coeffici
 
 
 def get_bolometric_ld_coefficients(temperature, log_g, metallicity, custom_ld_coefs=None):
+    """
+    Obtains necessary LD coefficients for each face.
+
+    :param temperature: numpy.array; triangle-wise
+    :param log_g: numpy.array; triangle-wise
+    :param metallicity: float;
+    :param custom_ld_coefs: Union[ńone, dict]; if None
+    :return:
+    """
     if custom_ld_coefs is not None:
+        if 'bolometric' not in custom_ld_coefs:
+            raise ValueError('Please ad `bolometric` limb-darkening coefficients to your '
+                             'custom set of limb-darkening coefficients.')
         desired_repeats = (temperature.shape[0], 1)
-        coeffs = np.tile(custom_ld_coefs, desired_repeats)
+        coeffs = np.tile(custom_ld_coefs['bolometric'], desired_repeats)
     else:
         coeffs = interpolate_on_ld_grid(temperature, log_g, metallicity, passband=["bolometric"])["bolometric"]
 

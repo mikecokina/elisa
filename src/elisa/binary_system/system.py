@@ -77,13 +77,11 @@ class BinarySystem(System):
 
         :param albedo: float; surface albedo, value from <0, 1> interval, if not supplied,
                               Claret 2001 will be used for interpolation
-        :param limb_darkening_coefficients: Union[float, list, numpy.array]; optional limb darkening coefficients used
-                                                                             for the whole star usefull in case the
-                                                                             modelled star is outside the supported
-                                                                             range of atmospheric parameters. If unused,
-                                                                             elisa will interpolate the values from
-                                                                             supplied limb-darkening tables.
-
+        :param limb_darkening_coefficients: Union[float, dict]; optional limb darkening coefficients
+                                            used for the whole star useful in case the modelled star is outside the
+                                            supported range of atmospheric parameters. Limb darkening coefficients can
+                                            be supplied as dict {passband: ld_coefs}. If unused, elisa will
+                                            interpolate the values from supplied limb-darkening tables.
 
     Each component instance will after initialization contain following attributes:
 

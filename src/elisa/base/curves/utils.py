@@ -74,10 +74,22 @@ def generate_teff_logg_for_ld_cfs(component_instance, symmetry_test):
 
 
 def get_component_limbdarkening_cfs(component_instance, symmetry_test, passbands):
+    """
+    Returns limb darkening coefficients for given component in each passband.
+
+    :param component_instance: elisa.base.container.StarContainer;
+    :param symmetry_test: bool;
+    :param passbands: list;
+    :return: Dict;
+    """
     if component_instance.limb_darkening_coefficients is not None:
         desired_repeats = (component_instance.temperatures.shape[0], 1)
-        ld_cfs = {passband: np.tile(component_instance.limb_darkening_coefficients, desired_repeats)
-                  for passband in passbands}
+        try:
+            ld_cfs = {passband: np.tile(component_instance.limb_darkening_coefficients[passband], desired_repeats)
+                      for passband in passbands}
+        except KeyError:
+            missing_passbands = list(set(passbands) - set(component_instance.limb_darkening_coefficients.keys()))
+            raise KeyError(f'Please supply limb-darkening factors for {missing_passbands} pasband(s) as well.')
     else:
         temperatures, log_g = generate_teff_logg_for_ld_cfs(component_instance, symmetry_test)
 
