@@ -29,7 +29,7 @@ from . import (
     ld,
 )
 from . buffer import buffer
-from . tensor.etensor import Tensor
+from .tensor.etensor import Tensor
 
 logger = getLogger(__name__)
 
@@ -341,7 +341,7 @@ class NaiveInterpolatedAtm(object):
         result = (weights * (top_flux_matrix.T - bottom_flux_matrix.T) + bottom_flux_matrix.T).T
 
         logger.info(f"time {time.time() - t}")
-        return result.to_ndarray()
+        return result.get()
 
     @staticmethod
     def interpolate_spectra(passbanded_atm_containers, flux_matrices, temperature):
