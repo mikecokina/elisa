@@ -2,20 +2,20 @@ import numpy as np
 from .. import settings
 
 if settings.CUDA:
-    import torch
+    import cupy as cp
 
 
 class Tensor(object):
-    def __init__(self, value):
+    def __init__(self, value, dtype='float32'):
         self.value = value
-        self._is_pytorch = False
+        self._dtype = dtype
+        self._is_cuda = False
 
         if settings.CUDA:
-            self._is_pytorch = True
+            self._is_cuda = True
 
-            if not isinstance(self.value, torch.Tensor):
-                self.value = torch.Tensor(self.value)
-                self.value = self.to_cuda()
+            if not isinstance(self.value, cp.ndarray):
+                self.value = cp.array(self.value, dtype=self._dtype)
 
     def __sub__(self, other):
         return Tensor(self.value - other.value)
@@ -29,23 +29,23 @@ class Tensor(object):
     def __mul__(self, other):
         return Tensor(self.value * other.value)
 
-    def to_cpu(self):
-        if self._is_pytorch:
-            self.value = self.value.to("cpu")
-        return self.value
+    def __copy__(self):
+        return Tensor(self.value.copy())
 
-    def to_cuda(self):
-        if self._is_pytorch:
-            self.value = self.value.to("cuda")
-        return self.value
-
-    def to_pytorch(self):
-        pass
+    def copy(self):
+        return self.__copy__()
 
     def to_ndarray(self):
-        if self._is_pytorch:
-            self.to_cpu()
-        return np.array(self.value)
+        if self._is_cuda:
+            return np.array(self.value.get())
+        return self.value
+
+    @property
+    def ndim(self):
+        return self.value.ndim
+
+    def __getitem__(self, item):
+        return Tensor(self.value[item])
 
     @property
     def T(self):

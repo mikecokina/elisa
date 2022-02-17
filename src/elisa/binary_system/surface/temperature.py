@@ -60,9 +60,8 @@ def apply_reflection_effect(system, components_distance, iterations):
 
     components = bsutils.component_to_list(component='all')
 
-    xlim = bsfaces.faces_visibility_x_limits(system.primary.polar_radius,
-                                             system.secondary.polar_radius,
-                                             components_distance)
+    _args = (system.primary.polar_radius, system.secondary.polar_radius, components_distance)
+    xlim = bsfaces.faces_visibility_x_limits(*_args)
 
     # this tests if you can use surface symmetries
     not_pulsation_test = not system.has_pulsations()

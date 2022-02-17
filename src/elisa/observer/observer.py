@@ -153,7 +153,7 @@ class Observer(object):
             raise ValueError('Invalid or unsupported passband function.')
         file_path = os.path.join(settings.PASSBAND_TABLES, str(passband) + '.csv')
         df = pd.read_csv(file_path)
-        df[settings.PASSBAND_DATAFRAME_WAVE] = df[settings.PASSBAND_DATAFRAME_WAVE] * 10.0
+        df[settings.PASSBAND_DATAFRAME_WAVE] *= 10.0
         return df
 
     def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False,

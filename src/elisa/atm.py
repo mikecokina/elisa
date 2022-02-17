@@ -332,10 +332,15 @@ class NaiveInterpolatedAtm(object):
 
     @staticmethod
     def compute_unknown_intensity_from_surounded_flux_matrices(weights, top_flux_matrix, bottom_flux_matrix):
+        import time
+        t = time.time()
+
         weights = Tensor(weights)
         top_flux_matrix = Tensor(top_flux_matrix)
         bottom_flux_matrix = Tensor(bottom_flux_matrix)
         result = (weights * (top_flux_matrix.T - bottom_flux_matrix.T) + bottom_flux_matrix.T).T
+
+        logger.info(f"time {time.time() - t}")
         return result.to_ndarray()
 
     @staticmethod
