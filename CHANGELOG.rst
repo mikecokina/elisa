@@ -280,6 +280,12 @@ v0.6
       The `LCBinaryAnalyticsTask.set_result()` and `load_result()` functions have default argument
       `autofill_sma`=True that will try to generate a sensible value of SMA if `semi_major_axis` fitting parameter is
       missing in initial fitting parameters JSON/dictionary.
+    - setting custom atmosphere models and limb-darkening coefficients for components of modelled system. In case of
+      `SingleSystem` and `Binary system`, custom atmosphere model is set with `atmosphere` argument of the `Star`
+      instance and custom limb-darkening coefficients can be passed in `limb_darkening_coefficients` for each
+      passband filter. Custom limb-darkening coefficients are, however, set constant across the whole surface. In case
+      of fitting tasks, custom atmospheres and limb-darkening coefficients are passed as arguments of `AnalyticsTask'
+      instance.
 
 **Fixes**
 

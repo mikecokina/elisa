@@ -64,8 +64,11 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
             fit_xs = self.fit_xs
         args = fit_xs, self.discretization, self.observer
 
-        if self.atmosphere_model is not None:
-            kwargs = parameters.extend_json_with_atm_models(kwargs, self.atmosphere_model)
+        kwargs = parameters.extend_json_with_atm_params(
+            kwargs,
+            atmosphere_model=self.atmosphere_model,
+            limb_darkening_coefficients=self.limb_darkening_coefficients
+        )
 
         fn = lc_model.synthetic_binary
 

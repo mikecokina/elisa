@@ -204,9 +204,10 @@ def serialize_result(result_dict: Dict) -> Dict:
     return ret_dict
 
 
-def extend_json_with_atm_models(params, atmosphere_models):
+def extend_json_with_atm_params(params, atmosphere_model=None, limb_darkening_coefficients=None):
     """
-    Function will extend the initialization JSON with custom atmosphere models.
+    Function will extend the initialization JSON with custom atmosphere-related parameters
+    (atmosphere, limb_darkening_coefficients).
 
     :param params: Dict; flattened json used to initialize the system eg::
 
@@ -220,11 +221,21 @@ def extend_json_with_atm_models(params, atmosphere_models):
         >>>     },
         >>> }
 
-    :param atmosphere_models: dict; desired atmosphere models for each component, eg::
+    :param atmosphere_model: dict; desired atmosphere `atmosphere` models::
 
         >>> {
         >>>     'primary': 'bb',
         >>>     'secondary': 'ck04'
+        >>> }
+
+    :param limb_darkening_coefficients: dict; custom limb-darkening coefficients::
+
+        >>> {
+        >>>     'primary': {
+        >>>         'bolometric': [0.5, 0.5],  # for logarithmic and square_root law
+        >>>         'TESS': [0.68, 0.32]
+        >>>     },
+        >>>     'secondary': ...
         >>> }
 
     :return: dict; updated parameter json, eg::
@@ -234,6 +245,10 @@ def extend_json_with_atm_models(params, atmosphere_models):
         >>>         ...
         >>>     'primary@teff': 80000,
         >>>     'primary@atmosphere': 'bb',
+        >>>     'primary@limb_darkening_coefficients': {
+        >>>         'bolometric': [0.5, 0.5],
+        >>>         'TESS': [0.68, 0.32]
+        >>>      }
         >>>         ...
         >>>     'secondary@teff': 5000,
         >>>     'secondary@atmosphere': 'ck04',
@@ -242,14 +257,21 @@ def extend_json_with_atm_models(params, atmosphere_models):
         >>> }
 
     """
-    component_list = ','.join(list(params.keys()))
-    for component, atm_model in atmosphere_models.items():
-        if component in component_list:
-            params[f'{component}{conf.PARAM_PARSER}atmposphere'] = atm_model
-        else:
-            raise ValueError(f'Component {component} does not figure in your fit parameters JSON. Make sure that your '
-                             f'`atmosphere_models` contain `primary` and `secondary` components in case of binary '
-                             f'systems and `star` in case of single star.')
+    var_names = ['atmosphere', 'limb_darkening_coefficients']
+    for ii, atmosphere_param in enumerate([atmosphere_model, limb_darkening_coefficients]):
+        if atmosphere_param is None:
+            continue
+
+        component_list = ','.join(list(params.keys()))
+        for component, atm_param in atmosphere_param.items():
+            if not atm_param:
+                continue
+            if component in component_list:
+                params[f'{component}{conf.PARAM_PARSER}{var_names[ii]}'] = atm_param
+            else:
+                raise ValueError(f'Component {component} does not figure in your fit parameters JSON. Make sure that '
+                                 f'your `{var_names[ii]}` contain `primary` and `secondary` components in case of '
+                                 f'binary system and `star` in case of a single star.')
 
     return params
 

@@ -427,13 +427,17 @@ class BinarySystem(System):
         return cls(primary=primary, secondary=secondary, **data_cp["system"])
 
     @classmethod
-    def from_fit_results(cls, results):
+    def from_fit_results(cls, results, atmosphere=None, limb_darkening_coefficients=None):
         """
         Building binary system from standard fit results format.
 
         :param results: Dict; {'component': {'param_name': {'value': value, fixed: ...}}}
+        :param atmosphere: dict; atmosphere model for each component eg. 'ck04' or 'bb'
+        :param limb_darkening_coefficients: dict; custom limb-darkening coefficents for each component and passband
         :return: elisa.binary_system.system.BinarySystem;
         """
+        extra_parameters = {'atmosphere': atmosphere, 'limb_darkening_coefficients':limb_darkening_coefficients}
+
         data = dict()
         for key, component in results.items():
             if key == 'r_squared':
@@ -452,6 +456,10 @@ class BinarySystem(System):
                     data[key][param] = features
                 else:
                     data[key][param] = content['value']
+
+            for extra_param, val in extra_parameters.items():
+                if val is not None:
+                    data[key][extra_param] = val[key]
 
         return BinarySystem.from_json(data=data)
 

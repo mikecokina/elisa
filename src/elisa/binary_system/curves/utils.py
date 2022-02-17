@@ -25,7 +25,6 @@ def get_limbdarkening_cfs(system, component="all", **kwargs):
     components = butils.component_to_list(component)
 
     symmetry_test = not system.has_spots() and not system.has_pulsations()
-    temperatures, log_g = dict(), dict()
 
     return {c_name: get_component_limbdarkening_cfs(
         getattr(system, c_name),
