@@ -871,6 +871,7 @@ def binary_lc_fit_plot(**kwargs):
         'Generic.Stromgren.y': '#00e600',
         'Kepler': '#E50000',
         'GaiaDR2': 'black',
+        'TESS': '#003849'
     }
     datapoint_clrs = {
         'bolometric': 'gray',
