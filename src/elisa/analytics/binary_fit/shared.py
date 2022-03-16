@@ -349,7 +349,14 @@ class AbstractLCFit(AbstractFit):
                           self.x_data_reducer, 1.0 / self.interp_treshold, self.interp_treshold,
                           self.observer.system_cls)
         flat_result = parameters.deserialize_result(model_parameters)
+
         r_dict = {key: value['value'] for key, value in flat_result.items()}
+        r_dict = parameters.extend_json_with_atm_params(
+            r_dict,
+            atmosphere_model=self.atmosphere_model,
+            limb_darkening_coefficients=self.limb_darkening_coefficients
+        )
+
         logger.info("Evaluating light curve for calculation of R^2.")
         r_squared_result = lc_r_squared(lc_model.synthetic_binary, *r_squared_args, **r_dict)
         logger.info("Calculation of R^2 finished.")

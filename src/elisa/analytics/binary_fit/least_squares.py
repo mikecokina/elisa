@@ -151,6 +151,12 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
                           self.observer.system_cls)
 
         r_dict = {key: value['value'] for key, value in result_dict.items()}
+        r_dict = parameters.extend_json_with_atm_params(
+            r_dict,
+            atmosphere_model=self.atmosphere_model,
+            limb_darkening_coefficients=self.limb_darkening_coefficients
+        )
+
         r_squared_result = lc_r_squared(lc_model.synthetic_binary, *r_squared_args, **r_dict)
         result_dict["r_squared"] = {'value': r_squared_result, "unit": None}
 
