@@ -308,6 +308,13 @@ class AbstractLCFit(AbstractFit):
 
         kwargs = parameters.prepare_properties_set(self.initial_vector, self.fitable.keys(), self.constrained,
                                                    self.fixed)
+
+        kwargs = parameters.extend_json_with_atm_params(
+            kwargs,
+            atmosphere_model=self.atmosphere_model,
+            limb_darkening_coefficients=self.limb_darkening_coefficients
+        )
+
         observer = Observer(passband='bolometric', system=None)
         setattr(observer, 'system_cls', getattr(self.observer, 'system_cls'))
         try:
