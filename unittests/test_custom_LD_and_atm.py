@@ -7,7 +7,7 @@ from elisa import (
 )
 
 from elisa import BinarySystem, Observer
-from unittests.utils import ElisaTestCase, prepare_binary_system
+from unittests.utils import ElisaTestCase
 from elisa.base.curves.utils import get_component_limbdarkening_cfs
 
 
@@ -86,7 +86,7 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
         self.assertTrue('Please ad `bolometric` limb-darkening coefficients to '
                         'your custom set of limb-darkening coefficients.' in str(context.exception))
 
-    def test_custold_coeff_distribution(self):
+    def test_custom_ld_coeff_distribution(self):
         expected_ldc = [0.5, 0.4]
         passband = 'bolometric'
         settings.configure(**{"LIMB_DARKENING_LAW": 'square_root'})
