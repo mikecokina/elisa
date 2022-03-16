@@ -1,5 +1,6 @@
+import numpy as np
 from ... import settings, ld, umpy as up
-from ... observer.passband import init_rv_passband
+from ...observer.passband import init_rv_passband
 
 
 def include_passband_data_to_kwargs(**kwargs):
@@ -49,3 +50,62 @@ def flux_from_star_container(band, star):
     """
 
     return up.sum(calculate_surface_element_fluxes(band, star))
+
+
+def generate_teff_logg_for_ld_cfs(component_instance, symmetry_test):
+    """
+    Generates temperatures and log_g parameters either for full star or symmetrical part based on the symmetry test.
+
+    :param component_instance: elisa.base.container.StarContainer; star container
+    :param symmetry_test: bool; whether to use star symmetry
+    :return: Tuple;
+    """
+    if settings.USE_SINGLE_LD_COEFFICIENTS:
+        temperatures = np.array([component_instance.t_eff, ])
+        log_g = np.array([np.max(component_instance.log_g), ])
+    elif symmetry_test:
+        temperatures = component_instance.symmetry_faces(component_instance.temperatures)
+        log_g = component_instance.symmetry_faces(component_instance.log_g)
+    else:
+        temperatures = component_instance.temperatures
+        log_g = component_instance.log_g
+
+    return temperatures, log_g
+
+
+def get_component_limbdarkening_cfs(component_instance, symmetry_test, passbands):
+    """
+    Returns limb darkening coefficients for given component in each passband.
+
+    :param component_instance: elisa.base.container.StarContainer;
+    :param symmetry_test: bool;
+    :param passbands: list;
+    :return: Dict;
+    """
+    if component_instance.limb_darkening_coefficients is not None:
+        desired_repeats = (component_instance.temperatures.shape[0], 1)
+        try:
+            ld_cfs = {passband: np.tile(component_instance.limb_darkening_coefficients[passband], desired_repeats)
+                      for passband in passbands}
+        except KeyError:
+            missing_passbands = list(set(passbands) - set(component_instance.limb_darkening_coefficients.keys()))
+            raise KeyError(f'Please supply limb-darkening factors for {missing_passbands} pasband(s) as well.')
+    else:
+        temperatures, log_g = generate_teff_logg_for_ld_cfs(component_instance, symmetry_test)
+
+        ld_cfs = ld.interpolate_on_ld_grid(
+            temperature=temperatures,
+            log_g=log_g,
+            metallicity=component_instance.metallicity,
+            passband=passbands
+        )
+
+        if symmetry_test:
+            if settings.USE_SINGLE_LD_COEFFICIENTS:
+                ld_cfs = {fltr: vals[np.zeros(component_instance.temperatures.shape, dtype=np.int)]
+                          for fltr, vals in ld_cfs.items()}
+            else:
+                ld_cfs = {fltr: component_instance.mirror_face_values(vals)
+                          for fltr, vals in ld_cfs.items()}
+
+    return ld_cfs

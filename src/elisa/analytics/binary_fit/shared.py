@@ -50,12 +50,14 @@ class AbstractFit(metaclass=ABCMeta):
         :y_data: Dict[str, numpy.array]; fluxes in each filter
         :y_err: Dict[str, numpy.array]; observational errors of y_data
         :atmosphere_model: Union[dict(), None]: atmosphere models for each component {component: atm_model, ...}
+        :limb_darkening_coefficients: Union[dict(), None]: custom limb-darkening coefficients used for components
+                                      in format {component: {passband: ld_coeffs, }, }
     """
     MEAN_ERROR_FN = None
 
     __slots__ = ['fixed', 'constrained', 'fitable', 'observer', 'x_data', 'y_data', 'num_of_points'
                  'y_err', 'x_data_reduced', 'x_data_reducer', 'initial_vector', 'normalization', 'flat_result',
-                 'discretization', 'interp_treshold', 'atmosphere_model']
+                 'discretization', 'interp_treshold', 'atmosphere_model', 'limb_darkening_coefficients']
 
     def set_up(self, x0: BinaryInitialParameters, data: Dict, passband: Iterable = None, **kwargs):
         """
@@ -95,6 +97,10 @@ class AbstractFit(metaclass=ABCMeta):
         if not isinstance(getattr(self, 'atmosphere_model', None), (dict, type(None))):
             raise ValueError('Please provide argument `atmosphere_mode` in format '
                              '{component (primary or secondary): atmosphere_model_name (ck04, bb, ...), }')
+
+        if not isinstance(getattr(self, 'limb_darkening_coefficients', None), (dict, type(None))):
+            raise ValueError('Please provide argument `limb_darkening_coefficients` in format '
+                             '{component (primary or secondary): {passband: ld_coeffs (float, list), }, }')
 
     @staticmethod
     def _check_data_param_consistency(x0: BinaryInitialParameters, data: Dict):

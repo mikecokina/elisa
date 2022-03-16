@@ -107,7 +107,9 @@ def apply_reflection_effect(system, components_distance, iterations):
 
     # limb darkening coefficients for each face of each component
     ldc = {cmp: ld.get_bolometric_ld_coefficients(temperatures[cmp], log_g[cmp],
-                                                  getattr(system, cmp).metallicity) for cmp in components}
+                                                  getattr(system, cmp).metallicity,
+                                                  getattr(system, cmp).limb_darkening_coefficients)
+           for cmp in components}
 
     # calculating C_A = (albedo_A / D_intB) - scalar
     # D_intB - bolometric limb darkening factor

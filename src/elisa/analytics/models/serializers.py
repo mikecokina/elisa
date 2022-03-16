@@ -61,6 +61,9 @@ def _serialize_star_kwargs(component, **kwargs):
         **{"mass": kwargs[prefix("mass")]} if kwargs.get(prefix("mass")) else {},
         **{"discretization_factor": kwargs[prefix("discretization_factor")]}
         if kwargs.get(prefix("discretization_factor")) else {},
+        **{"atmosphere": kwargs[prefix("atmosphere")]} if kwargs.get(prefix("atmosphere")) else {},
+        **{"limb_darkening_coefficients": kwargs[prefix("limb_darkening_coefficients")]}
+        if kwargs.get(prefix("limb_darkening_coefficients")) else {},
         **{"spots": spots},
         **{"pulsations": pulsations},
     )

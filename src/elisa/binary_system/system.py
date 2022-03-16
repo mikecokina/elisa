@@ -77,7 +77,11 @@ class BinarySystem(System):
 
         :param albedo: float; surface albedo, value from <0, 1> interval, if not supplied,
                               Claret 2001 will be used for interpolation
-
+        :param limb_darkening_coefficients: Union[float, dict]; optional limb darkening coefficients
+                                            used for the whole star useful in case the modelled star is outside the
+                                            supported range of atmospheric parameters. Limb darkening coefficients can
+                                            be supplied as dict {passband: ld_coefs}. If unused, elisa will
+                                            interpolate the values from supplied limb-darkening tables.
 
     Each component instance will after initialization contain following attributes:
 
@@ -404,9 +408,9 @@ class BinarySystem(System):
                 "discretization_factor": [degrees],
                 "albedo": [dimensionless],
                 "metallicity": [dimensionless],
-
                 "semi_major_axis": [solRad],
-                "mass_ratio": [dimensionless]
+                "mass_ratio": [dimensionless],
+                "limb_darkening_coefficients": [dimensionless]
             }
 
         :return: elisa.binary_system.system.BinarySystem;
@@ -423,13 +427,17 @@ class BinarySystem(System):
         return cls(primary=primary, secondary=secondary, **data_cp["system"])
 
     @classmethod
-    def from_fit_results(cls, results):
+    def from_fit_results(cls, results, atmosphere=None, limb_darkening_coefficients=None):
         """
         Building binary system from standard fit results format.
 
         :param results: Dict; {'component': {'param_name': {'value': value, fixed: ...}}}
+        :param atmosphere: dict; atmosphere model for each component eg. 'ck04' or 'bb'
+        :param limb_darkening_coefficients: dict; custom limb-darkening coefficents for each component and passband
         :return: elisa.binary_system.system.BinarySystem;
         """
+        extra_parameters = {'atmosphere': atmosphere, 'limb_darkening_coefficients':limb_darkening_coefficients}
+
         data = dict()
         for key, component in results.items():
             if key == 'r_squared':
@@ -448,6 +456,10 @@ class BinarySystem(System):
                     data[key][param] = features
                 else:
                     data[key][param] = content['value']
+
+            for extra_param, val in extra_parameters.items():
+                if val is not None:
+                    data[key][extra_param] = val[key]
 
         return BinarySystem.from_json(data=data)
 

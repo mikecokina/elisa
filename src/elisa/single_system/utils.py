@@ -127,6 +127,6 @@ def transform_json_radius_to_std(data):
     period = (SystemProperties.period(copy(data["system"]["rotation_period"])) * units.PERIOD_UNIT).to(units.s).value
 
     polar_radius = polar_from_equatorial_radius(radius, period, mass)
-    data['star']['polar_log_g'] = np.log10(const.G * mass / np.power(polar_radius, 2))
+    data['star']['polar_log_g'] = np.log10(const.G * mass / np.power(polar_radius, 2)) + 2.0
 
     return data

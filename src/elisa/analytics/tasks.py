@@ -30,7 +30,7 @@ class AnalyticsTask(metaclass=ABCMeta):
     MCMC_NAMES = ('mcmc', 'MCMC')
     ALLOWED_METHODS = LS_NAMES + MCMC_NAMES
     MANDATORY_KWARGS = ["data", ]
-    OPTIONAL_KWARGS = ["atmosphere_model"]
+    OPTIONAL_KWARGS = ["atmosphere_model", "limb_darkening_coefficients"]
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
     CONSTRAINT_OPERATORS = bonds.ALLOWED_CONSTRAINT_METHODS + bonds.ALLOWED_CONSTRAINT_CHARS
     FIT_CLS = None
@@ -281,15 +281,20 @@ class LCBinaryAnalyticsTask(AnalyticsTask):
     }, indent=4)
     TRANSFORM_PROPERTIES_CLS = transform.LCBinaryAnalyticsProperties
 
-    def __init__(self, method, expected_morphology='detached', name=None, atmosphere_models=None, **kwargs):
+    def __init__(self, method, expected_morphology='detached', name=None,
+                 atmosphere_models=None, limb_darkening_coefficients=None, **kwargs):
         self.validate_method(method)
         if method in self.MCMC_NAMES:
             self.__class__.FIT_CLS = lambda: \
-                lc_fit.LCFitMCMC(morphology=expected_morphology, atmosphere_model=atmosphere_models)
+                lc_fit.LCFitMCMC(morphology=expected_morphology,
+                                 atmosphere_model=atmosphere_models,
+                                 limb_darkening_coefficients=limb_darkening_coefficients)
             self.__class__.PLOT_CLS = LCPlotMCMC
         elif method in self.LS_NAMES:
             self.__class__.FIT_CLS = lambda: \
-                lc_fit.LCFitLeastSquares(morphology=expected_morphology, atmosphere_model=atmosphere_models)
+                lc_fit.LCFitLeastSquares(morphology=expected_morphology,
+                                         atmosphere_model=atmosphere_models,
+                                         limb_darkening_coefficients=limb_darkening_coefficients)
             self.__class__.PLOT_CLS = LCPlotLsqr
         super().__init__(method, name, **kwargs)
 
@@ -325,7 +330,7 @@ class RVBinaryAnalyticsTask(AnalyticsTask):
     }, indent=4)
     TRANSFORM_PROPERTIES_CLS = transform.RVBinaryAnalyticsTask
 
-    def __init__(self, method, name=None, atmosphere_models=None, **kwargs):
+    def __init__(self, method, name=None, atmosphere_models=None, limb_darkening_factor=None, **kwargs):
         self.validate_method(method)
         if method in self.MCMC_NAMES:
             self.__class__.FIT_CLS = lambda: rv_fit.RVFitMCMC()

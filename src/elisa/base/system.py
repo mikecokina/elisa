@@ -102,8 +102,12 @@ class System(metaclass=ABCMeta):
         for component, instance in self.components.items():
             json_data.update({component: {
                 attr: (getattr(instance, attr) * sys_units[component][attr]).to(sys_input[component][attr]).value
-                for attr in self.STAR_ALL_KWARGS
+                for attr in self.STAR_ALL_KWARGS if getattr(instance, attr) is not None
             }})
+
+            for item in ['atmosphere', 'limb_darkening_coefficients']:
+                if getattr(instance, item, None):
+                    json_data[component].update({item: getattr(instance, item)})
 
             if instance.has_spots():
                 spot_list = list()

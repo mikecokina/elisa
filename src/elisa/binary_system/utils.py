@@ -282,5 +282,5 @@ def calculate_sma_estimate(mass_ratio, synchronicity, potential, period, compone
     :return: float; sma estimate in solar radii
     """
     radius = calculate_side_radius(synchronicity, mass_ratio, 1.0, potential, component)
-    q_funcval = 1. + mass_ratio if component == 'primary' else mass_ratio / (1. + mass_ratio)
-    return 1.4374e-9 * mid_g * (radius * 86400 * period)**2 / (4 * const.PI * q_funcval)
+    q_funcval = 1.0 / (1. + mass_ratio) if component == 'primary' else mass_ratio / (1. + mass_ratio)
+    return 1.4374e-9 * mid_g * (radius * 86400 * period)**2 / (4 * const.PI ** 2 * q_funcval)
