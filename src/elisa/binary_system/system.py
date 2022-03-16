@@ -458,7 +458,7 @@ class BinarySystem(System):
                     data[key][param] = content['value']
 
             for extra_param, val in extra_parameters.items():
-                if val is not None:
+                if val.get(key) is not None:
                     data[key][extra_param] = val[key]
 
         return BinarySystem.from_json(data=data)
