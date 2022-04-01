@@ -72,7 +72,7 @@ class Observer(object):
         self.phases = None
         self.times = None
         self.fluxes = None
-        self.fluxes_unit = None
+        self._flux_unit = None
         self.radial_velocities = dict()
         self.rv_unit = None
 
@@ -86,6 +86,14 @@ class Observer(object):
     @system_cls.setter
     def system_cls(self, value):
         self._system_cls = value
+
+    @property
+    def flux_unit(self):
+        return self._flux_unit
+
+    @flux_unit.setter
+    def flux_unit(self, value):
+        self._flux_unit = u.Unit(value)
 
     def init_passband(self, passband):
         """
