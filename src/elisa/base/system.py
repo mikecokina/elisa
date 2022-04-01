@@ -8,6 +8,8 @@ from .. import utils
 from .. pulse import pulsations
 from elisa import units as u
 from elisa.base.surface.temperature import interpolate_bolometric_gravity_darkening
+from elisa import const
+
 
 logger = getLogger('base.system')
 
@@ -34,6 +36,7 @@ class System(metaclass=ABCMeta):
         self.t0: float = np.nan
         self.gamma: float = np.nan
         self.additional_light: float = 0.0
+        self.distance: float = const.PC
 
         self._components: Union[None, Dict] = None
 

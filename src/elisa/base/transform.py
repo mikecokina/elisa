@@ -150,6 +150,19 @@ class SystemProperties(TransformProperties):
             raise ValueError("Invalid value of semi_major_axis, use value > 0!")
         return value
 
+    @staticmethod
+    def distance(value):
+        if isinstance(value, (u.Quantity, str)):
+            value = u.Quantity(value) if isinstance(value, str) else value
+            value = np.float64(value.to(u.DISTANCE_UNIT))
+        elif isinstance(value, WHEN_FLOAT64):
+            value = np.float64(value * DefaultBinarySystemInputUnits.system.distance.to(u.DISTANCE_UNIT))
+        else:
+            raise TypeError('User input is not (numpy.)int or (numpy.)float '
+                            'nor astropy.unit.quantity.Quantity instance (or its string representation).')
+        if value <= 0:
+            raise ValueError("Invalid value of system`s distance, use value > 0!")
+
 
 class BodyProperties(TransformProperties):
     @staticmethod

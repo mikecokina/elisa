@@ -44,6 +44,7 @@ dimensionless_unscaled = u.dimensionless_unscaled
 kg = u.kg
 dex = u.dex
 mag = u.mag
+pc = u.pc
 
 Unit = u.Unit
 Quantity = u.quantity.Quantity
@@ -151,6 +152,7 @@ class _DefaultBinarySystemUnits(BaseUnits):
         additional_light = dimensionless_unscaled
         primary_minimum_time = DEFAULT_PERIOD_UNIT
         semi_major_axis = DISTANCE_UNIT
+        distance = DISTANCE_UNIT
 
     system = __DefaultBinarySystemUnits()
     primary = __DefaultBinaryComponentUnits()
@@ -177,6 +179,7 @@ class _DefaultSingleSystemUnits(BaseUnits):
         limb_darkening_coefficients = dimensionless_unscaled
         spots = _DefaultSpotUnits()
         pulsations = _DefaultPulsationsUnits()
+        distance = DISTANCE_UNIT
 
     system = __DefaultSingleSystemUnits()
     star = __DefaultSingleSystemStarUnits()
@@ -193,6 +196,7 @@ DefaultSingleSystemUnits = _DefaultSingleSystemUnits()
 DEFAULT_INCLINATION_INPUT_UNIT = deg
 DEFAULT_PERIOD_INPUT_UNIT = d
 DEFAULT_GAMMA_INPUT_UNIT = m/s
+DISTANCE_TO_OBS_INPUT_UNIT = pc
 
 
 class _DefaultSpotInputUnits(BaseUnits):
@@ -257,6 +261,7 @@ class _DefaultBinarySystemInputUnits(BaseUnits):
         additional_light = dimensionless_unscaled
         primary_minimum_time = d
         semi_major_axis = solRad
+        distance = DISTANCE_TO_OBS_INPUT_UNIT
 
     system = __DefaultBinarySystemInputUnits()
     primary = __DefaultBinaryComponentInputUnits()
@@ -271,6 +276,7 @@ class _DefaultSingleSystemInputUnits(BaseUnits):
         phase_shift = dimensionless_unscaled
         additional_light = dimensionless_unscaled
         gamma = DEFAULT_GAMMA_INPUT_UNIT
+        distance = DISTANCE_TO_OBS_INPUT_UNIT
 
     class __DefaultSingleSystemStarInputUnits(BaseUnits):
         mass = _DefaultStarInputUnits.mass
@@ -283,6 +289,7 @@ class _DefaultSingleSystemInputUnits(BaseUnits):
         limb_darkening_coefficients = dimensionless_unscaled
         spots = _DefaultSpotInputUnits()
         pulsations = _DefaultPulsationsInputUnits()
+
 
     system = __DefaultSingleSystemInputUnits()
     star = __DefaultSingleSystemStarInputUnits()
