@@ -197,12 +197,18 @@ class Observer(object):
             curves[items] += correction
 
         self.phases = phases + self._system.phase_shift
-        if normalize:
+        if normalize or self.flux_unit == u.dimensionless_unscaled:
             self.fluxes, _ = outils.normalize_light_curve(y_data=curves, kind='maximum', top_fraction_to_average=0.0)
-            self.fluxes_unit = u.dimensionless_unscaled
-        else:
+            self.flux_unit = u.dimensionless_unscaled
+        elif self.flux_unit in [None, u.W / u.m ** 2]:
             self.fluxes = curves
-            self.fluxes_unit = u.W / u.m ** 2
+            self.flux_unit = u.W / u.m ** 2
+        elif self.flux_unit == u.mag:
+            # TODO include magnitude calculation
+            pass
+        else:
+            raise ValueError(f'Unknown value for `Observer.flux_unit`: {self.flux_unit}')
+
         logger.info("observation finished")
         return self.phases, self.fluxes
 

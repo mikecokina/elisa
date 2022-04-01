@@ -36,13 +36,13 @@ class Plot(object):
             "return_figure_instance": return_figure_instance,
             "phases": self.observer.phases if phases is None else phases,
             "fluxes": self.observer.fluxes if fluxes is None else fluxes,
-            "unit": self.observer.fluxes_unit if unit is None else unit,
+            "unit": self.observer.flux_unit if unit is None else unit,
             "legend": legend,
             "legend_location": legend_location
         }
         if isinstance(unit, type(u.W/u.m**2)) and fluxes is None:
             for _filter, fluxes in kwargs['fluxes'].items():
-                kwargs['fluxes'][_filter] = (fluxes*self.observer.fluxes_unit).to(unit).value
+                kwargs['fluxes'][_filter] = (fluxes * self.observer.flux_unit).to(unit).value
 
         return graphics.phase_curve(**kwargs)
 
