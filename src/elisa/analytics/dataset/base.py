@@ -137,7 +137,7 @@ class DataSet(metaclass=ABCMeta):
         self.x_data = utils.jd_to_phase(self.x_data, period, t0, centre=centre)
         self.x_unit = u.dimensionless_unscaled
 
-    def convert_to_time(self, period, t0, to_unit=u.PERIOD_UNIT):
+    def convert_to_time(self, period, t0, to_unit=u.DEFAULT_PERIOD_UNIT):
         """
         Function converts DataSet with x_data in dimensionless phases to time according to an ephemeris.
 
@@ -243,8 +243,8 @@ class RVData(DataSet):
         :return: Dict; observations transformed into base units
         """
         # converting x-axis
-        kwargs['x_data'] = dutils.convert_data(kwargs['x_data'], kwargs['x_unit'], u.PERIOD_UNIT)
-        kwargs['x_unit'] = dutils.convert_unit(kwargs['x_unit'], u.PERIOD_UNIT)
+        kwargs['x_data'] = dutils.convert_data(kwargs['x_data'], kwargs['x_unit'], u.DEFAULT_PERIOD_UNIT)
+        kwargs['x_unit'] = dutils.convert_unit(kwargs['x_unit'], u.DEFAULT_PERIOD_UNIT)
 
         # converting y-axis
         kwargs['y_data'] = dutils.convert_data(kwargs['y_data'], kwargs['y_unit'], u.VELOCITY_UNIT)
@@ -335,8 +335,8 @@ class LCData(DataSet):
         :return: Dict; observations transformed into base units
         """
         # converting x-axis
-        kwargs['x_data'] = dutils.convert_data(kwargs['x_data'], kwargs['x_unit'], u.PERIOD_UNIT)
-        kwargs['x_unit'] = dutils.convert_unit(kwargs['x_unit'], u.PERIOD_UNIT)
+        kwargs['x_data'] = dutils.convert_data(kwargs['x_data'], kwargs['x_unit'], u.DEFAULT_PERIOD_UNIT)
+        kwargs['x_unit'] = dutils.convert_unit(kwargs['x_unit'], u.DEFAULT_PERIOD_UNIT)
         kwargs['reference_magnitude'] = kwargs.get('reference_magnitude', None)
 
         # convert errors

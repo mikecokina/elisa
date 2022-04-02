@@ -370,7 +370,7 @@ def build_velocities(system, components_distance, component='all'):
 
     velocities = orbit.create_orb_vel_vectors(system, components_distance)
 
-    orb_period = (system.period * u.PERIOD_UNIT).to(u.s).value
+    orb_period = (system.period * u.DEFAULT_PERIOD_UNIT).to(u.TIME_UNIT).value
     omega_orb = np.array([0, 0, const.FULL_ARC / orb_period])
 
     for _component in component:

@@ -128,7 +128,29 @@ class _DefaultStarUnits(BaseUnits):
     pulsations = _DefaultPulsationsUnits()
 
 
+class _DefaultSystemUnits(BaseUnits):
+    inclination = DEFAULT_INCLINATION_UNIT
+    period = DEFAULT_PERIOD_UNIT
+    gamma = DEFAULT_GAMMA_UNIT
+    phase_shift = dimensionless_unscaled
+    additional_light = dimensionless_unscaled
+    t0 = DEFAULT_PERIOD_UNIT
+    distance = DISTANCE_UNIT
+
+
 class _DefaultBinarySystemUnits(BaseUnits):
+    class __DefaultBinarySystemUnits(BaseUnits):
+        inclination = _DefaultSystemUnits.inclination
+        period = _DefaultSystemUnits.period
+        eccentricity = dimensionless_unscaled
+        argument_of_periastron = ARC_UNIT
+        gamma = _DefaultSystemUnits.gamma
+        phase_shift = _DefaultSystemUnits.phase_shift
+        additional_light = _DefaultSystemUnits.additional_light
+        primary_minimum_time = _DefaultSystemUnits.t0
+        semi_major_axis = DISTANCE_UNIT
+        distance = _DefaultSystemUnits.distance
+
     class __DefaultBinaryComponentUnits(BaseUnits):
         mass = _DefaultStarUnits.mass
         t_eff = _DefaultStarUnits.t_eff
@@ -138,35 +160,25 @@ class _DefaultBinarySystemUnits(BaseUnits):
         gravity_darkening = _DefaultStarUnits.gravity_darkening
         albedo = _DefaultStarUnits.albedo
         discretization_factor = _DefaultStarUnits.discretization_factor
-        limb_darkening_coefficients = dimensionless_unscaled
+        limb_darkening_coefficients = _DefaultStarUnits.limb_darkening_coefficients
         spots = _DefaultSpotUnits()
         pulsations = _DefaultPulsationsUnits()
 
-    class __DefaultBinarySystemUnits(BaseUnits):
-        inclination = DEFAULT_INCLINATION_UNIT
-        period = DEFAULT_PERIOD_UNIT
-        eccentricity = dimensionless_unscaled
-        argument_of_periastron = ARC_UNIT
-        gamma = DEFAULT_GAMMA_UNIT
-        phase_shift = dimensionless_unscaled
-        additional_light = dimensionless_unscaled
-        primary_minimum_time = DEFAULT_PERIOD_UNIT
-        semi_major_axis = DISTANCE_UNIT
-        distance = DISTANCE_UNIT
-
     system = __DefaultBinarySystemUnits()
+    component = __DefaultBinaryComponentUnits()
     primary = __DefaultBinaryComponentUnits()
     secondary = __DefaultBinaryComponentUnits()
 
 
 class _DefaultSingleSystemUnits(BaseUnits):
     class __DefaultSingleSystemUnits(BaseUnits):
-        inclination = DEFAULT_INCLINATION_UNIT
-        rotation_period = DEFAULT_PERIOD_UNIT
-        reference_time = DEFAULT_PERIOD_UNIT
-        phase_shift = dimensionless_unscaled
-        additional_light = dimensionless_unscaled
-        gamma = DEFAULT_GAMMA_UNIT
+        inclination = _DefaultSystemUnits.inclination
+        rotation_period = _DefaultSystemUnits.period
+        reference_time = _DefaultSystemUnits.t0
+        phase_shift = _DefaultSystemUnits.phase_shift
+        additional_light = _DefaultSystemUnits.additional_light
+        gamma = _DefaultSystemUnits.gamma
+        distance = _DefaultSystemUnits.distance
 
     class __DefaultSingleSystemStarUnits(BaseUnits):
         mass = _DefaultStarUnits.mass
@@ -176,10 +188,9 @@ class _DefaultSingleSystemUnits(BaseUnits):
         gravity_darkening = _DefaultStarUnits.gravity_darkening
         discretization_factor = _DefaultStarUnits.discretization_factor
         equivalent_radius = _DefaultStarUnits.equivalent_radius
-        limb_darkening_coefficients = dimensionless_unscaled
+        limb_darkening_coefficients = _DefaultStarUnits.limb_darkening_coefficients
         spots = _DefaultSpotUnits()
         pulsations = _DefaultPulsationsUnits()
-        distance = DISTANCE_UNIT
 
     system = __DefaultSingleSystemUnits()
     star = __DefaultSingleSystemStarUnits()
@@ -237,6 +248,16 @@ class _DefaultStarInputUnits(BaseUnits):
     pulsations = _DefaultPulsationsInputUnits()
 
 
+class _DefaultSystemInputUnits(BaseUnits):
+    inclination = DEFAULT_INCLINATION_INPUT_UNIT
+    period = DEFAULT_PERIOD_INPUT_UNIT
+    gamma = DEFAULT_GAMMA_INPUT_UNIT
+    phase_shift = dimensionless_unscaled
+    additional_light = dimensionless_unscaled
+    t0 = DEFAULT_PERIOD_INPUT_UNIT
+    distance = DISTANCE_TO_OBS_INPUT_UNIT
+
+
 class _DefaultBinarySystemInputUnits(BaseUnits):
     class __DefaultBinaryComponentInputUnits(BaseUnits):
         mass = _DefaultStarInputUnits.mass
@@ -247,36 +268,37 @@ class _DefaultBinarySystemInputUnits(BaseUnits):
         gravity_darkening = _DefaultStarInputUnits.gravity_darkening
         albedo = _DefaultStarInputUnits.albedo
         discretization_factor = _DefaultStarInputUnits.discretization_factor
-        limb_darkening_coefficients = dimensionless_unscaled
+        limb_darkening_coefficients = _DefaultStarInputUnits.limb_darkening_coefficients
         spots = _DefaultSpotInputUnits()
         pulsations = _DefaultPulsationsInputUnits()
 
     class __DefaultBinarySystemInputUnits(BaseUnits):
-        inclination = DEFAULT_INCLINATION_INPUT_UNIT
-        period = DEFAULT_PERIOD_INPUT_UNIT
+        inclination = _DefaultSystemInputUnits.inclination
+        period = _DefaultSystemInputUnits.period
         eccentricity = dimensionless_unscaled
         argument_of_periastron = deg
-        gamma = DEFAULT_GAMMA_INPUT_UNIT
-        phase_shift = dimensionless_unscaled
-        additional_light = dimensionless_unscaled
-        primary_minimum_time = d
+        gamma = _DefaultSystemInputUnits.gamma
+        phase_shift = _DefaultSystemInputUnits.phase_shift
+        additional_light = _DefaultSystemInputUnits.additional_light
+        primary_minimum_time = _DefaultSystemInputUnits.t0
         semi_major_axis = solRad
-        distance = DISTANCE_TO_OBS_INPUT_UNIT
+        distance = _DefaultSystemInputUnits.distance
 
     system = __DefaultBinarySystemInputUnits()
+    component = __DefaultBinaryComponentInputUnits()
     primary = __DefaultBinaryComponentInputUnits()
     secondary = __DefaultBinaryComponentInputUnits()
 
 
 class _DefaultSingleSystemInputUnits(BaseUnits):
     class __DefaultSingleSystemInputUnits(BaseUnits):
-        inclination = DEFAULT_INCLINATION_INPUT_UNIT
-        rotation_period = DEFAULT_PERIOD_INPUT_UNIT
-        reference_time = d
-        phase_shift = dimensionless_unscaled
-        additional_light = dimensionless_unscaled
-        gamma = DEFAULT_GAMMA_INPUT_UNIT
-        distance = DISTANCE_TO_OBS_INPUT_UNIT
+        inclination = _DefaultSystemInputUnits.inclination
+        rotation_period = _DefaultSystemInputUnits.period
+        reference_time = _DefaultSystemInputUnits.t0
+        phase_shift = _DefaultSystemInputUnits.phase_shift
+        additional_light = _DefaultSystemInputUnits.additional_light
+        gamma = _DefaultSystemInputUnits.gamma
+        distance = _DefaultSystemInputUnits.distance
 
     class __DefaultSingleSystemStarInputUnits(BaseUnits):
         mass = _DefaultStarInputUnits.mass
@@ -286,7 +308,7 @@ class _DefaultSingleSystemInputUnits(BaseUnits):
         gravity_darkening = _DefaultStarInputUnits.gravity_darkening
         discretization_factor = _DefaultStarInputUnits.discretization_factor
         equivalent_radius = _DefaultStarInputUnits.equivalent_radius
-        limb_darkening_coefficients = dimensionless_unscaled
+        limb_darkening_coefficients = _DefaultStarInputUnits.limb_darkening_coefficients
         spots = _DefaultSpotInputUnits()
         pulsations = _DefaultPulsationsInputUnits()
 
@@ -300,3 +322,5 @@ DefaultPulsationsInputUnits = _DefaultPulsationsInputUnits()
 DefaultStarInputUnits = _DefaultStarInputUnits()
 DefaultBinarySystemInputUnits = _DefaultBinarySystemInputUnits()
 DefaultSingleSystemInputUnits = _DefaultSingleSystemInputUnits()
+DefaultSystemInputUnits = _DefaultSystemInputUnits()
+DefaultSystemUnits = _DefaultSystemUnits()

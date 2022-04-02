@@ -49,7 +49,7 @@ def kinematic_radial_velocity(binary, **kwargs):
     # in base SI units
     sma_primary *= binary.semi_major_axis
     sma_secondary *= binary.semi_major_axis
-    period = np.float64((binary.period * u.PERIOD_UNIT).to(u.s))
+    period = np.float64((binary.period * u.DEFAULT_PERIOD_UNIT).to(u.TIME_UNIT))
 
     rv_primary = _radial_velocity(sma_primary, binary.inclination, binary.eccentricity,
                                   binary.argument_of_periastron, period, orbital_motion[:, 3]) * -1.0

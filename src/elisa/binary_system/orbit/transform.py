@@ -32,7 +32,7 @@ class OrbitProperties(TransformProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """
-        return quantity_transform(value, u.PERIOD_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, u.DefaultBinarySystemUnits.system.period, WHEN_FLOAT64)
 
     @staticmethod
     def argument_of_periastron(value):

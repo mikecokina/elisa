@@ -84,8 +84,8 @@ DEFAULT_FLOAT_UNITS = {
     'mass_ratio': None,
     'semi_major_axis': u.solRad,
     'asini': u.solRad,
-    'period': u.PERIOD_UNIT,
-    'primary_minimum_time': u.PERIOD_UNIT,
+    'period': u.DEFAULT_PERIOD_UNIT,
+    'primary_minimum_time': u.DEFAULT_PERIOD_UNIT,
     'additional_light': None,
     'phase_shift': None,
     # SPOTS

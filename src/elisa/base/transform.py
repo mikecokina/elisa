@@ -7,7 +7,9 @@ from .. import (
 )
 from .. units import (
     DefaultStarInputUnits,
-    DefaultBinarySystemInputUnits
+    DefaultBinarySystemInputUnits,
+    DefaultSystemInputUnits,
+    DefaultSystemUnits
 )
 
 WHEN_FLOAT64 = (int, np.int, np.int32, np.int64, float, np.float, np.float32, np.float64)
@@ -86,7 +88,7 @@ class SystemProperties(TransformProperties):
             value = u.Quantity(value) if isinstance(value, str) else value
             value = np.float64(value.to(u.ARC_UNIT))
         elif isinstance(value, (int, np.int, float, np.float)):
-            value = np.float64((value * u.DEFAULT_INCLINATION_INPUT_UNIT).to(u.ARC_UNIT))
+            value = np.float64((value * DefaultSystemInputUnits.inclination).to(DefaultSystemUnits.inclination))
         else:
             raise TypeError('Input of variable `inclination` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance (or its string representation).')
@@ -104,7 +106,7 @@ class SystemProperties(TransformProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """
-        return quantity_transform(value, u.PERIOD_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, DefaultSystemUnits.period, WHEN_FLOAT64)
 
     @staticmethod
     def gamma(value):
