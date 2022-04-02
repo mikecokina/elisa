@@ -552,7 +552,7 @@ class BinarySystem(System):
 
         :return: float;
         """
-        period = np.float64((self.period * u.DEFAULT_PERIOD_UNIT).to(u.TIME_UNIT))
+        period = np.float64((self.period * u.DefaultBinarySystemUnits.system.period).to(u.TIME_UNIT))
         return (const.G * (self.primary.mass + self.secondary.mass) * period ** 2 / (4 * const.PI ** 2)) ** (1.0 / 3)
 
     def compute_morphology(self):
