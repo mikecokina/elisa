@@ -138,15 +138,17 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles, dimen
     io_tools.write_propagated_ln(full_chain_results[:, param_columns['system@mass_ratio']], flat_params,
                                  'system@mass_ratio', 'Mass ratio (q=M_2/M_1):', write_fn, line_sep, '-')
 
-    sma = (full_chain_results[:, param_columns['system@semi_major_axis']] *
-           u.DISTANCE_UNIT).to(u.solRad).value
+    sma_value = full_chain_results[:, param_columns['system@semi_major_axis']]
+    sma = (sma_value * u.DefaultBinarySystemUnits.system.semi_major_axis).\
+        to(u.DefaultBinarySystemInputUnits.system.semi_major_axis).value
     sma_factor = sma if not dimensionless_radii else np.array([1.0, 0.0, 0.0])
     sma_unit = 'solRad' if not dimensionless_radii else 'SMA'
     io_tools.write_propagated_ln(sma, flat_params, 'system@semi_major_axis', 'Semi major axis (a):', write_fn, line_sep,
                                  'solRad')
 
-    asini = (full_chain_results[:, param_columns['system@asini']] *
-           u.DISTANCE_UNIT).to(u.solRad).value
+    asini_value = full_chain_results[:, param_columns['system@asini']]
+    asini = (asini_value * u.DefaultBinarySystemUnits.system.semi_major_axis).\
+        to(u.DefaultBinarySystemInputUnits.system.semi_major_axis).value
     io_tools.write_propagated_ln(asini, flat_params, 'system@asini', 'a*sin(i):', write_fn,
                                  line_sep, 'solRad')
 
@@ -443,9 +445,10 @@ def simple_lc_fit_summary(fit_instance, path, dimensionless_radii=True):
             sma_unit = str(result_dict['system@semi_major_axis']['unit']) if not dimensionless_radii else 'SMA'
         else:
             io_tools.write_ln(write_fn, q_desig, binary_instance.mass_ratio, '', '', '', 'derived', line_sep, 3)
-            sma = (binary_instance.semi_major_axis * u.DISTANCE_UNIT).to(u.solRad).value
+            sma = (binary_instance.semi_major_axis * u.DefaultBinarySystemUnits.system.semi_major_axis).\
+                to(u.DefaultBinarySystemInputUnits.system.semi_major_axis).value
             io_tools.write_ln(write_fn, a_desig, sma, '', '', 'solRad', 'derived', line_sep, 3)
-            sma_factor = (binary_instance.semi_major_axis * u.DISTANCE_UNIT).to(u.solRad).value
+            sma_factor = sma
             sma_unit = 'solRad' if not dimensionless_radii else 'SMA'
 
         io_tools.write_param_ln(result_dict, 'system@inclination', 'Inclination (i):', write_fn, line_sep, 2)

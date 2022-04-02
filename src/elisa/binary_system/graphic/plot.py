@@ -62,7 +62,7 @@ class Plot(object):
 
         # if axis are without unit a = 1
         if axis_units != u.dimensionless_unscaled:
-            a = self.binary.semi_major_axis * u.DISTANCE_UNIT.to(axis_units)
+            a = self.binary.semi_major_axis * u.DefaultBinarySystemUnits.system.semi_major_axis.to(axis_units)
             radius = a * ellipse[:, 0]
         else:
             radius = ellipse[:, 0]
@@ -348,7 +348,8 @@ class Plot(object):
                 })
 
             if axis_unit != u.dimensionless_unscaled:
-                sma = (self.binary.semi_major_axis * u.DISTANCE_UNIT).to(axis_unit).value
+                sma = (self.binary.semi_major_axis * u.DefaultBinarySystemUnits.system.semi_major_axis).\
+                    to(axis_unit).value
                 surface_kwargs[f'points_{component}'] *= sma
 
                 if normals:

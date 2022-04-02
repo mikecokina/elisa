@@ -39,7 +39,7 @@ class Plot(object):
         equipotential_kwargs = dict()
 
         points = self.single.calculate_equipotential_boundary()
-        points = (points * u.DISTANCE_UNIT).to(axis_unit)
+        points = (points * u.DefaultSingleSystemUnits.star.equivalent_radius).to(axis_unit)
 
         equipotential_kwargs.update({
             'return_figure_instance': return_figure_instance,
@@ -74,9 +74,10 @@ class Plot(object):
         position_container.build_perturbations()
 
         mesh = position_container.star.get_flatten_parameter('points')
-        denominator = (1 * axis_unit.to(u.DISTANCE_UNIT))
+        denominator = (1 * axis_unit.to(u.DefaultSingleSystemUnits.star.equivalent_radius))
         mesh /= denominator
-        equatorial_radius = position_container.star.equatorial_radius * u.DISTANCE_UNIT.to(axis_unit)
+        equatorial_radius = \
+            position_container.star.equatorial_radius * u.DefaultSingleSystemUnits.star.equivalent_radius.to(axis_unit)
 
         single_mesh_kwargs.update({
             'return_figure_instance': return_figure_instance,
@@ -117,9 +118,10 @@ class Plot(object):
         position_container.build_faces()
 
         points, faces = position_container.star.surface_serializer()
-        denominator = (1 * axis_unit.to(u.DISTANCE_UNIT))
+        denominator = (1 * axis_unit.to(u.DefaultSingleSystemUnits.star.equivalent_radius))
         points /= denominator
-        equatorial_radius = position_container.star.equatorial_radius * u.DISTANCE_UNIT.to(axis_unit)
+        equatorial_radius = \
+            position_container.star.equatorial_radius * u.DefaultSingleSystemUnits.star.equivalent_radius.to(axis_unit)
 
         wireframe_kwargs.update({
             'return_figure_instance': return_figure_instance,
@@ -231,11 +233,14 @@ class Plot(object):
             })
 
         # normals
-        unit_mult = (1*u.DISTANCE_UNIT).to(axis_unit).value
+        unit_mult = (1*u.DefaultSingleSystemUnits.star.equivalent_radius).to(axis_unit).value
         surface_kwargs['points'] *= unit_mult
 
         if normals:
             surface_kwargs['centres'] *= unit_mult
+
+        equatorial_radius = (star_container.equatorial_radius*u.DefaultSingleSystemUnits.star.equivalent_radius).\
+            to(axis_unit).value
 
         surface_kwargs.update({
             'phase': phase,
@@ -251,7 +256,7 @@ class Plot(object):
             'colorbar_orientation': colorbar_orientation,
             'colorbar': colorbar,
             'scale': scale,
-            'equatorial_radius': (star_container.equatorial_radius*u.DISTANCE_UNIT).to(axis_unit).value,
+            'equatorial_radius': equatorial_radius,
             'surface_color': surface_color,
             'colorbar_separation': colorbar_separation,
             'colorbar_size': colorbar_size,

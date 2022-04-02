@@ -142,9 +142,10 @@ class SystemProperties(TransformProperties):
         """
         if isinstance(value, (u.Quantity, str)):
             value = u.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(u.DISTANCE_UNIT))
+            value = np.float64(value.to(u.DefaultBinarySystemUnits.system.semi_major_axis))
         elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(value * DefaultBinarySystemInputUnits.system.semi_major_axis.to(u.DISTANCE_UNIT))
+            value = np.float64(value * DefaultBinarySystemInputUnits.system.semi_major_axis.
+                               to(u.DefaultBinarySystemUnits.system.semi_major_axis))
         else:
             raise TypeError('User input is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance (or its string representation).')
@@ -156,9 +157,9 @@ class SystemProperties(TransformProperties):
     def distance(value):
         if isinstance(value, (u.Quantity, str)):
             value = u.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(u.DISTANCE_UNIT))
+            value = np.float64(value.to(u.DefaultSystemUnits.distance))
         elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(value * DefaultBinarySystemInputUnits.system.distance.to(u.DISTANCE_UNIT))
+            value = np.float64(value * DefaultBinarySystemInputUnits.system.distance.to(u.DefaultSystemUnits.distance))
         else:
             raise TypeError('User input is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance (or its string representation).')
@@ -229,9 +230,9 @@ class StarProperties(BodyProperties):
         """
         if isinstance(value, (u.Quantity, str)):
             value = u.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(u.DISTANCE_UNIT))
+            value = np.float64(value.to(u.DefaultStarUnits.equivalent_radius))
         elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(value * DefaultStarInputUnits.equivalent_radius.to(u.DISTANCE_UNIT))
+            value = np.float64(value * DefaultStarInputUnits.equivalent_radius.to(u.DefaultStarUnits.equivalent_radius))
         else:
             raise TypeError('User input is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance (or its string representation).')

@@ -122,8 +122,8 @@ def transform_json_radius_to_std(data):
 
     mass = StarProperties.mass(data['star']['mass'])
     # default unit of radius is the same as for the semi-major axis
-    radius = (SystemProperties.semi_major_axis(data['star'].pop('equivalent_radius'))
-              * units.DISTANCE_UNIT).to(units.m).value
+    radius = SystemProperties.semi_major_axis(data['star'].pop('equivalent_radius'))
+
     period_val = copy(data["system"]["rotation_period"])
     period = (SystemProperties.period(period_val) * units.DefaultSingleSystemUnits.system.rotation_period).\
         to(units.TIME_UNIT).value
