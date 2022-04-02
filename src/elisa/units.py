@@ -115,8 +115,6 @@ class _DefaultPulsationsUnits(BaseUnits):
 class _DefaultStarUnits(BaseUnits):
     mass = MASS_UNIT
     t_eff = TEMPERATURE_UNIT
-    surface_potential = dimensionless_unscaled
-    synchronicity = dimensionless_unscaled
     metallicity = dimensionless_unscaled
     gravity_darkening = dimensionless_unscaled
     albedo = dimensionless_unscaled
@@ -150,12 +148,13 @@ class _DefaultBinarySystemUnits(BaseUnits):
         primary_minimum_time = _DefaultSystemUnits.t0
         semi_major_axis = DISTANCE_UNIT
         distance = _DefaultSystemUnits.distance
+        mass_ratio = dimensionless_unscaled
 
     class __DefaultBinaryComponentUnits(BaseUnits):
         mass = _DefaultStarUnits.mass
         t_eff = _DefaultStarUnits.t_eff
-        surface_potential = _DefaultStarUnits.surface_potential
-        synchronicity = _DefaultStarUnits.synchronicity
+        surface_potential = dimensionless_unscaled
+        synchronicity = dimensionless_unscaled
         metallicity = _DefaultStarUnits.metallicity
         gravity_darkening = _DefaultStarUnits.gravity_darkening
         albedo = _DefaultStarUnits.albedo
@@ -223,7 +222,7 @@ class _DefaultPulsationsInputUnits(BaseUnits):
     m = dimensionless_unscaled
     amplitude = VELOCITY_UNIT
     frequency = u.d ** (-1)
-    start_phase = ARC_UNIT
+    start_phase = deg
     mode_axis_theta = deg
     mode_axis_phi = deg
     temperature_perturbation_phase_shift = ARC_UNIT
@@ -235,8 +234,6 @@ class _DefaultPulsationsInputUnits(BaseUnits):
 class _DefaultStarInputUnits(BaseUnits):
     mass = solMass
     t_eff = K
-    surface_potential = dimensionless_unscaled
-    synchronicity = dimensionless_unscaled
     metallicity = dimensionless_unscaled
     gravity_darkening = dimensionless_unscaled
     albedo = dimensionless_unscaled
@@ -262,8 +259,8 @@ class _DefaultBinarySystemInputUnits(BaseUnits):
     class __DefaultBinaryComponentInputUnits(BaseUnits):
         mass = _DefaultStarInputUnits.mass
         t_eff = _DefaultStarInputUnits.t_eff
-        surface_potential = _DefaultStarInputUnits.surface_potential
-        synchronicity = _DefaultStarInputUnits.synchronicity
+        surface_potential = dimensionless_unscaled
+        synchronicity = dimensionless_unscaled
         metallicity = _DefaultStarInputUnits.metallicity
         gravity_darkening = _DefaultStarInputUnits.gravity_darkening
         albedo = _DefaultStarInputUnits.albedo
@@ -283,6 +280,7 @@ class _DefaultBinarySystemInputUnits(BaseUnits):
         primary_minimum_time = _DefaultSystemInputUnits.t0
         semi_major_axis = solRad
         distance = _DefaultSystemInputUnits.distance
+        mass_ratio = dimensionless_unscaled
 
     system = __DefaultBinarySystemInputUnits()
     component = __DefaultBinaryComponentInputUnits()
