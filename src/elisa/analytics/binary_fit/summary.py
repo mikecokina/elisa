@@ -190,7 +190,8 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles, dimen
         io_tools.write_ln(*intro)
         write_fn(f"{'-' * DASH_N}{line_sep}")
 
-        mass = (full_chain_results[:, param_columns[f'{component}@mass']] * u.MASS_UNIT).to(u.solMass).value
+        mass = (full_chain_results[:, param_columns[f'{component}@mass']] * u.DefaultBinarySystemUnits.component.mass).\
+            to(u.solMass).value
         io_tools.write_propagated_ln(mass, flat_params, f'{component}@mass', f'Mass (M_{comp_n}):', write_fn, line_sep,
                                      'solMas')
 
@@ -479,7 +480,7 @@ def simple_lc_fit_summary(fit_instance, path, dimensionless_radii=True):
             if f'{component}@mass' in result_dict:
                 io_tools.write_param_ln(result_dict, f'{component}@mass', m_desig, write_fn, line_sep, 3)
             else:
-                mass = (star_instance.mass * u.MASS_UNIT).to(u.solMass).value
+                mass = (star_instance.mass * u.DefaultBinarySystemUnits.component.mass).to(u.solMass).value
                 io_tools.write_ln(write_fn, m_desig, mass,
                                   '-', '-', 'solMass', 'Derived', line_sep, 3)
 

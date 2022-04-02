@@ -120,8 +120,7 @@ def transform_json_radius_to_std(data):
         rho = equatorial_to_polar_radius(r_eq, period, mass)
         return r_eq / np.power(rho, 2.0/3.0)
 
-    mass = (StarProperties.mass(data['star']['mass']) * units.DefaultSingleSystemUnits.star.mass).\
-        to(units.MASS_UNIT).value
+    mass = StarProperties.mass(data['star']['mass'])
     # default unit of radius is the same as for the semi-major axis
     radius = (SystemProperties.semi_major_axis(data['star'].pop('equivalent_radius'))
               * units.DISTANCE_UNIT).to(units.m).value

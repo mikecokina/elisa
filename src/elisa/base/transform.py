@@ -251,9 +251,9 @@ class StarProperties(BodyProperties):
        """
         if isinstance(value, (u.Quantity, str)):
             value = u.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(u.MASS_UNIT))
+            value = np.float64(value.to(u.DefaultStarUnits.mass))
         elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(value * DefaultStarInputUnits.mass.to(u.MASS_UNIT))
+            value = np.float64(value * DefaultStarInputUnits.mass.to(u.DefaultStarUnits.mass))
         else:
             raise TypeError('User input is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance (or its string representation).')
