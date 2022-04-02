@@ -214,7 +214,7 @@ class BodyProperties(TransformProperties):
         :param value: Union[int, numpy.int, float, numpy.float, astropy.unit.quantity.Quantity]
         :return: float
         """
-        return quantity_transform(value, u.TEMPERATURE_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, u.DefaultStarUnits.t_eff, WHEN_FLOAT64)
 
 
 class StarProperties(BodyProperties):
