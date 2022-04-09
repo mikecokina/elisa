@@ -63,7 +63,8 @@ class Plot(object):
         """
         single_mesh_kwargs = dict()
 
-        inclination = transform.deg_transform(inclination, u.deg, when_float64=transform.WHEN_FLOAT64) \
+        inclination = transform.deg_transform(inclination, u.deg, transform.WHEN_FLOAT64,
+                                              u.DefaultSingleSystemInputUnits.system.inclination) \
             if inclination is not None else np.degrees(self.single.inclination)
         azim = self.single.orbit.rotational_motion(phase=phase)[0][0]
         azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \
@@ -107,7 +108,8 @@ class Plot(object):
         """
         wireframe_kwargs = dict()
 
-        inclination = transform.deg_transform(inclination, u.deg, when_float64=transform.WHEN_FLOAT64) \
+        inclination = transform.deg_transform(inclination, u.deg, transform.WHEN_FLOAT64,
+                                              u.DefaultSingleSystemInputUnits.system.inclination) \
             if inclination is not None else np.degrees(self.single.inclination)
         azim = self.single.orbit.rotational_motion(phase=phase)[0][0]
         azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \

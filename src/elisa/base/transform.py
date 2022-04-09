@@ -38,7 +38,7 @@ def quantity_transform(value, unit, when_float64=WHEN_FLOAT64):
     return value
 
 
-def deg_transform(value, unit, when_float64):
+def deg_transform(value, unit, when_float64, default_input_unit=u.deg):
     """
     General transform function for angular quantities which fit such interface.
 
@@ -47,13 +47,14 @@ def deg_transform(value, unit, when_float64):
                                                                                            units
     :param unit: astropy.units.Quantity; unit of the output
     :param when_float64:
+    :param default_input_unit: astropy.units.Unit; assumed unit of input it unit is not supplied in `value`
     :return: float;
     """
     if isinstance(value, (u.Quantity, str)):
         value = u.Quantity(value) if isinstance(value, str) else value
         value = np.float64(value.to(unit))
     elif isinstance(value, when_float64):
-        value = np.float64(value)*u.deg.to(unit)
+        value = np.float64(value)*default_input_unit.to(unit)
     else:
         raise TypeError('Input of the angular variable is not (numpy.)int or (numpy.)float '
                         'nor astropy.unit.quantity.Quantity instance (or its string representation).')
@@ -201,7 +202,7 @@ class BodyProperties(TransformProperties):
         :param value: Union[float, astropy.quantity.Quantity]
         :return: float
         """
-        value = deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
+        value = deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64, u.DefaultStarInputUnits.discretization_factor)
         if value > const.HALF_PI:
             raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
         return value
@@ -356,7 +357,7 @@ class SpotProperties(BodyProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """
-        return deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
+        return deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64, u.DefaultSpotInputUnits.latitude)
 
     @staticmethod
     def longitude(value):
@@ -366,7 +367,7 @@ class SpotProperties(BodyProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """
-        return deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
+        return deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64, u.DefaultSpotInputUnits.longitude)
 
     @staticmethod
     def angular_radius(value):
@@ -376,7 +377,7 @@ class SpotProperties(BodyProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return:
         """
-        return deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
+        return deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64, u.DefaultSpotInputUnits.angular_radius)
 
     @staticmethod
     def temperature_factor(value):
@@ -398,7 +399,7 @@ class SpotProperties(BodyProperties):
         :param value: Union[float, astropy.quantity.Quantity]
         :return: float
         """
-        value = deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
+        value = deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64, u.DefaultSpotInputUnits.discretization_factor)
         if value > const.HALF_PI:
             raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
         return value

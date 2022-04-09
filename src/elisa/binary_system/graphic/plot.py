@@ -142,7 +142,8 @@ class Plot(object):
         """
 
         binary_mesh_kwargs = dict()
-        inclination = transform.deg_transform(inclination, u.deg, when_float64=transform.WHEN_FLOAT64) \
+        inclination = transform.deg_transform(inclination, u.deg, transform.WHEN_FLOAT64,
+                                              u.DefaultBinarySystemInputUnits.system.inclination) \
             if inclination is not None else up.degrees(self.binary.inclination)
         components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
 
@@ -188,7 +189,8 @@ class Plot(object):
                                              produced figure
         """
         binary_wireframe_kwargs = dict()
-        inclination = transform.deg_transform(inclination, u.deg, when_float64=transform.WHEN_FLOAT64) \
+        inclination = transform.deg_transform(inclination, u.deg, transform.WHEN_FLOAT64,
+                                              u.DefaultBinarySystemInputUnits.system.inclination) \
             if inclination is not None else up.degrees(self.binary.inclination)
         components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
         azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \
