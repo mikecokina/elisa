@@ -19,7 +19,7 @@ def angular_velocity(rotation_period):
     :param rotation_period: float;
     :return: float;
     """
-    return c.FULL_ARC / (rotation_period * u.DefaultBinarySystemUnits.system.period).to(u.TIME_UNIT).value
+    return c.FULL_ARC / (rotation_period * u.DefaultSingleSystemUnits.system.rotation_period).to(u.TIME_UNIT).value
 
 
 def true_phase_to_azimuth(phase):
