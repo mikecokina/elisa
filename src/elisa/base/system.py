@@ -203,7 +203,7 @@ class System(metaclass=ABCMeta):
             if kwarg in ['argument_of_periastron', 'inclination']:
                 value = getattr(self, kwarg)
                 if not isinstance(value, u.Quantity):
-                    value = value * u.ARC_UNIT
+                    value = value * getattr(u.DefaultBinarySystemUnits.system, kwarg)
                 serialized_kwargs[kwarg] = value
             else:
                 serialized_kwargs[kwarg] = getattr(self, kwarg)

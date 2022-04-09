@@ -133,10 +133,10 @@ class Spot(object):
         """
 
         default_units = {
-            "longitude": u.ARC_UNIT,
-            "latitude": u.ARC_UNIT,
-            "angular_radius": u.ARC_UNIT,
-            "discretization_factor": u.ARC_UNIT
+            "longitude": u.DefaultSpotUnits.longitude,
+            "latitude": u.DefaultSpotUnits.latitude,
+            "angular_radius": u.DefaultSpotUnits.angular_radius,
+            "discretization_factor": u.DefaultSpotUnits.discretization_factor
         }
 
         serialized_kwargs = dict()

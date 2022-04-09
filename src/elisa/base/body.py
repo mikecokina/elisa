@@ -129,7 +129,7 @@ class Body(metaclass=ABCMeta):
         if is_empty(spot_instance.discretization_factor):
             logger.debug(f'angular density of the spot {spot_index} on {self.name} component was not supplied '
                          f'and discretization factor of star {self.discretization_factor} was used.')
-            spot_instance.discretization_factor = (0.9 * self.discretization_factor * u.ARC_UNIT).value
+            spot_instance.discretization_factor = 0.9 * self.discretization_factor
         if spot_instance.discretization_factor > spot_instance.angular_radius:
             logger.debug(f'angular density {self.discretization_factor} of the spot {spot_index} on {self.name} '
                          f'component was larger than its angular radius. Therefore value of angular density was '

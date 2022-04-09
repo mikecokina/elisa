@@ -86,7 +86,7 @@ class SystemProperties(TransformProperties):
         """
         if isinstance(value, (u.Quantity, str)):
             value = u.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(u.ARC_UNIT))
+            value = np.float64(value.to(u.DefaultSystemUnits.inclination))
         elif isinstance(value, (int, np.int, float, np.float)):
             value = np.float64((value * DefaultSystemInputUnits.inclination).to(DefaultSystemUnits.inclination))
         else:

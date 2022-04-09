@@ -153,14 +153,14 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles, dimen
                                  line_sep, 'solRad')
 
     incl = (full_chain_results[:, param_columns['system@inclination']] *
-            u.ARC_UNIT).to(u.deg).value
+            u.DefaultBinarySystemUnits.system.inclination).to(u.deg).value
     io_tools.write_propagated_ln(incl, flat_params, 'system@inclination', 'Inclination (i):', write_fn, line_sep, 'deg')
 
     io_tools.write_propagated_ln(full_chain_results[:, param_columns['system@eccentricity']], flat_params,
                                  'system@eccentricity', 'Eccentricity (e):', write_fn, line_sep, '-')
 
     omega = (full_chain_results[:, param_columns['system@argument_of_periastron']] *
-             u.ARC_UNIT).to(u.deg).value
+             u.DefaultBinarySystemUnits.system.argument_of_periastron).to(u.deg).value
     io_tools.write_propagated_ln(omega, flat_params, 'system@argument_of_periastron', 'Argument of periastron (omega):',
                                  write_fn, line_sep, 'deg')
 
@@ -257,15 +257,15 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles, dimen
 
             for spot_lbl in spot_lbls[component]:
                 longitude = (full_chain_results[:, param_columns[f'{component}@spot@{spot_lbl}@longitude']] *
-                             u.ARC_UNIT).to(u.deg).value
+                             u.DefaultSpotUnits.longitude).to(u.deg).value
                 io_tools.write_propagated_ln(longitude, flat_params, f'{component}@spot@{spot_lbl}@longitude',
                                              'Longitude: ', write_fn, line_sep, 'deg')
                 latitude = (full_chain_results[:, param_columns[f'{component}@spot@{spot_lbl}@latitude']] *
-                            u.ARC_UNIT).to(u.deg).value
+                            u.DefaultSpotUnits.latitude).to(u.deg).value
                 io_tools.write_propagated_ln(latitude, flat_params, f'{component}@spot@{spot_lbl}@latitude',
                                              'Latitude: ', write_fn, line_sep, 'deg')
                 ang_rad = (full_chain_results[:, param_columns[f'{component}@spot@{spot_lbl}@angular_radius']] *
-                           u.ARC_UNIT).to(u.deg).value
+                           u.DefaultSpotUnits.angular_radius).to(u.deg).value
                 io_tools.write_propagated_ln(ang_rad, flat_params, f'{component}@spot@{spot_lbl}@angular_radius',
                                              'Angular radius: ', write_fn, line_sep, 'deg')
                 io_tools.write_propagated_ln(
@@ -306,14 +306,14 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles, dimen
                 )
                 mode_phi = (full_chain_results[:,
                             param_columns[f'{component}@spot@{pulse_lbl}@mode_axis_phi']] *
-                            u.ARC_UNIT).to(u.deg).value
+                            u.DefaultPulsationsUnits.mode_axis_phi).to(u.deg).value
                 io_tools.write_propagated_ln(
                     mode_phi, flat_params, f'{component}@pulsation@{pulse_lbl}@mode_axis_phi',
                     'Longitude of mode axis: ', write_fn, line_sep, 'deg'
                 )
                 mode_theta = (full_chain_results[:,
                               param_columns[f'{component}@spot@{pulse_lbl}@mode_axis_theta']] *
-                              u.ARC_UNIT).to(u.deg).value
+                              u.DefaultPulsationsUnits.mode_axis_theta).to(u.deg).value
                 io_tools.write_propagated_ln(
                     mode_theta, flat_params, f'{component}@pulsation@{pulse_lbl}@mode_axis_theta',
                     'Latitude of mode axis: ', write_fn, line_sep, 'deg'
@@ -739,7 +739,7 @@ def fit_rv_summary_with_error_propagation(fit_instance, path, percentiles):
                                  'system@eccentricity', 'Eccentricity (e):', write_fn, line_sep, '-')
 
     omega = (full_chain_results[:, param_columns['system@argument_of_periastron']] *
-             u.ARC_UNIT).to(u.deg).value
+             u.DefaultBinarySystemUnits.system.argument_of_periastron).to(u.deg).value
     io_tools.write_propagated_ln(omega, flat_params, 'system@argument_of_periastron', 'Argument of periastron (omega):',
                                  write_fn, line_sep, 'deg')
 
