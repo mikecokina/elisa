@@ -83,7 +83,8 @@ class PulsationModeProperties(SystemProperties):
         :param value: float;
         :return: float;
         """
-        return quantity_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, u.DefaultPulsationsUnits.start_phase, WHEN_FLOAT64,
+                                  u.DefaultPulsationsInputUnits.start_phase)
 
     @staticmethod
     def mode_axis_theta(value):

@@ -59,7 +59,8 @@ class BinarySystemProperties(SystemProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float;
         """
-        return quantity_transform(value, units.DefaultBinarySystemInputUnits.system.period, WHEN_FLOAT64)
+        return quantity_transform(value, units.DefaultBinarySystemUnits.system.primary_minimum_time, WHEN_FLOAT64,
+                                  units.DefaultBinarySystemInputUnits.system.primary_minimum_time)
 
     @classmethod
     def t0(cls, value):

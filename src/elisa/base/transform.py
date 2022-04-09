@@ -16,7 +16,7 @@ WHEN_FLOAT64 = (int, np.int, np.int32, np.int64, float, np.float, np.float32, np
 WHEN_ARRAY = (list, np.ndarray, tuple)
 
 
-def quantity_transform(value, unit, when_float64=WHEN_FLOAT64):
+def quantity_transform(value, unit, when_float64=WHEN_FLOAT64, default_input_unit=None):
     """
     General transform function for quantities which fit such interface.
 
@@ -25,13 +25,15 @@ def quantity_transform(value, unit, when_float64=WHEN_FLOAT64):
                                                                                            units
     :param unit: astropy.units.Quantity; unit of the output
     :param when_float64: Tuple(Types)
+    :param default_input_unit: astropy.units.Unit; assumed unit of input it unit is not supplied in `value`
     :return: float
     """
     if isinstance(value, (u.Quantity, str)):
         value = u.Quantity(value) if isinstance(value, str) else value
         value = np.float64(value.to(unit))
     elif isinstance(value, when_float64):
-        value = np.float64(value)
+        value = np.float64(value) if default_input_unit is None \
+            else (value * default_input_unit).to(unit).value
     else:
         raise TypeError('Input of variable is not (numpy.)int or (numpy.)float '
                         'nor astropy.unit.quantity.Quantity instance (or its string representation).')
@@ -107,7 +109,7 @@ class SystemProperties(TransformProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """
-        return quantity_transform(value, DefaultSystemUnits.period, WHEN_FLOAT64)
+        return quantity_transform(value, DefaultSystemUnits.period, WHEN_FLOAT64, u.DefaultSystemInputUnits.period)
 
     @staticmethod
     def gamma(value):
@@ -119,7 +121,7 @@ class SystemProperties(TransformProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return:
         """
-        return quantity_transform(value, u.VELOCITY_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, u.DefaultSystemUnits.gamma, WHEN_FLOAT64, u.DefaultSystemInputUnits.gamma)
 
     @staticmethod
     def additional_light(value):
@@ -216,7 +218,7 @@ class BodyProperties(TransformProperties):
         :param value: Union[int, numpy.int, float, numpy.float, astropy.unit.quantity.Quantity]
         :return: float
         """
-        return quantity_transform(value, u.DefaultStarUnits.t_eff, WHEN_FLOAT64)
+        return quantity_transform(value, u.DefaultStarUnits.t_eff, WHEN_FLOAT64, u.DefaultStarInputUnits.t_eff)
 
 
 class StarProperties(BodyProperties):

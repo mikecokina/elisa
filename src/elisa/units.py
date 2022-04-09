@@ -222,7 +222,7 @@ class _DefaultPulsationsInputUnits(BaseUnits):
     m = dimensionless_unscaled
     amplitude = VELOCITY_UNIT
     frequency = u.d ** (-1)
-    start_phase = deg
+    start_phase = ARC_UNIT
     mode_axis_theta = deg
     mode_axis_phi = deg
     temperature_perturbation_phase_shift = ARC_UNIT

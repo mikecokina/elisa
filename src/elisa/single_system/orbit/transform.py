@@ -26,4 +26,4 @@ class OrbitProperties(TransformProperties):
         :param value: Union[float, astropy.units.Quantity]
         :return: float
         """
-        return quantity_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, u.DefaultSingleSystemUnits.system.inclination, WHEN_FLOAT64)

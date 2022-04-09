@@ -11,7 +11,8 @@ class SingleSystemProperties(SystemProperties):
         :param value: quantity or float; rotation period
         :return: float
         """
-        return quantity_transform(value, u.DefaultSingleSystemUnits.system.rotation_period, WHEN_FLOAT64)
+        return quantity_transform(value, u.DefaultSingleSystemUnits.system.rotation_period, WHEN_FLOAT64,
+                                  u.DefaultSingleSystemInputUnits.system.rotation_period)
 
     @staticmethod
     def reference_time(value):
@@ -21,4 +22,5 @@ class SingleSystemProperties(SystemProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """
-        return quantity_transform(value, u.DefaultSingleSystemUnits.system.reference_time, WHEN_FLOAT64)
+        return quantity_transform(value, u.DefaultSingleSystemUnits.system.reference_time, WHEN_FLOAT64,
+                                  u.DefaultSingleSystemInputUnits.system.reference_time)

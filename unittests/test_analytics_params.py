@@ -50,7 +50,7 @@ class ConfTestCase(ElisaTestCase):
             'm': u.dimensionless_unscaled,
             'amplitude': u.VELOCITY_UNIT,
             'frequency': u.dimensionless_unscaled / u.d,
-            'start_phase': u.deg,
+            'start_phase': u.rad,
             'mode_axis_theta': u.deg,
             'mode_axis_phi': u.deg,
             # NUISANCE
@@ -742,7 +742,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "param": "start_phase",
                 "min": None,
                 "max": None,
-                "unit": "deg",
+                "unit": "rad",
                 "sigma": None,
                 "constraint": "2.0 * primary@pulsation@bionic@frequency"
             },
