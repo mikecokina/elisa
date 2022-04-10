@@ -42,3 +42,15 @@ def normalize_light_curve(y_data, y_err=None, kind='global_maximum', top_fractio
     y_err = {key: np.array(val) / coeff[key] if not is_empty(val) else None for key, val in y_err.items()} \
         if not is_empty(y_err) else None
     return y_data, y_err
+
+
+def adjust_flux_for_distance(curves, distance):
+    """
+    Adjusting the light curve flux to levels corresponding to the system`s distance.
+
+    :param curves: dict; band-wise flux
+    :param distance: float; distance to the observer
+    :return: dict; corrected band-wise flux
+    """
+    d_squared = np.power(distance, 2)
+    return {band: curve/d_squared for band, curve in curves.items()}

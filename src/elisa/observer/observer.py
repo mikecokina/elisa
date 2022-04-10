@@ -201,7 +201,7 @@ class Observer(object):
             self.fluxes, _ = outils.normalize_light_curve(y_data=curves, kind='maximum', top_fraction_to_average=0.0)
             self.flux_unit = u.dimensionless_unscaled
         elif self.flux_unit in [None, u.W / u.m ** 2]:
-            self.fluxes = curves
+            self.fluxes = outils.adjust_flux_for_distance(curves, self._system.distance)
             self.flux_unit = u.W / u.m ** 2
         elif self.flux_unit == u.mag:
             # TODO include magnitude calculation

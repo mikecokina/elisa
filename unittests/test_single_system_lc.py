@@ -108,6 +108,6 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         expected = 1362.0
 
         obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
-        obtained_flux = obtained[1]["bolometric"][0] / np.power(c.AU, 2)
+        obtained_flux = obtained[1]["bolometric"][0]
 
         np.testing.assert_almost_equal(obtained_flux, expected, decimal=0)

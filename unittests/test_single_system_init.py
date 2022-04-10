@@ -282,7 +282,8 @@ class SingleSystemSerializersTestCase(ElisaTestCase):
                 "rotation_period": 10.1,
                 "gamma": 10000,
                 "reference_time": 0.5,
-                "phase_shift": 0.0
+                "phase_shift": 0.0,
+                "distance": "10 pc"
             },
             "star": {
                 "mass": 1.0,
@@ -339,7 +340,8 @@ class SingleSystemSerializersTestCase(ElisaTestCase):
                 "gamma": 10000,
                 "reference_time": 0.5,
                 "phase_shift": 0.0,
-                "additional_light": 0.0
+                "additional_light": 0.0,
+                "distance": 10
             },
             "star": {
                 "mass": 1.0,

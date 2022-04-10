@@ -45,6 +45,7 @@ kg = u.kg
 dex = u.dex
 mag = u.mag
 pc = u.pc
+au = u.au
 
 Unit = u.Unit
 Quantity = u.quantity.Quantity
@@ -200,6 +201,14 @@ DefaultPulsationsUnits = _DefaultPulsationsUnits()
 DefaultStarUnits = _DefaultStarUnits()
 DefaultBinarySystemUnits = _DefaultBinarySystemUnits()
 DefaultSingleSystemUnits = _DefaultSingleSystemUnits()
+
+default_unit_map = {
+    'SingleSystem': DefaultSingleSystemUnits.system,
+    'BinarySystem': DefaultBinarySystemUnits.system,
+    'Star': DefaultStarUnits,
+    'Spot': DefaultSpotUnits,
+
+}
 
 # DEFAULT ELISa OUTTER/USER INPUT UNITS (MORE CONVENIENT FOR USER BUT NOT SO MUCH FOR PROGRAMMER) ----------------------
 

@@ -36,7 +36,7 @@ class System(metaclass=ABCMeta):
         self.t0: float = np.nan
         self.gamma: float = np.nan
         self.additional_light: float = 0.0
-        self.distance: float = const.PC
+        self.distance: float = 10 * const.PC
 
         self._components: Union[None, Dict] = None
 
@@ -198,15 +198,22 @@ class System(metaclass=ABCMeta):
 
         :return: Dict;
         """
+        cls_name = type(self).__name__
         serialized_kwargs = dict()
         for kwarg in self.ALL_KWARGS:
-            if kwarg in ['argument_of_periastron', 'inclination']:
-                value = getattr(self, kwarg)
-                if not isinstance(value, u.Quantity):
-                    value = value * getattr(u.DefaultBinarySystemUnits.system, kwarg)
-                serialized_kwargs[kwarg] = value
-            else:
+            # if kwarg in ['argument_of_periastron', 'inclination', 'distance']:
+            #     value = getattr(self, kwarg)
+            #     if not isinstance(value, u.Quantity):
+            #         value = value * getattr(u.DefaultBinarySystemUnits.system, kwarg)
+            #     serialized_kwargs[kwarg] = value
+            # else:
+            #     serialized_kwargs[kwarg] = getattr(self, kwarg)
+            value = getattr(self, kwarg)
+            if isinstance(value, u.Quantity):
                 serialized_kwargs[kwarg] = getattr(self, kwarg)
+            else:
+                def_unit = getattr(u.default_unit_map[cls_name], kwarg)
+                serialized_kwargs[kwarg] = value if def_unit == u.dimensionless_unscaled else value * def_unit
         return serialized_kwargs
 
     def setup_betas(self):

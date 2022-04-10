@@ -459,7 +459,8 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
                 "primary_minimum_time": "0.0 d",
                 "phase_shift": 0.0,
                 "mass_ratio": 0.75,
-                "semi_major_axis": 29.854
+                "semi_major_axis": 29.854,
+                "distance": "1 pc"
             },
             "primary": {
                 "surface_potential": 7.1,
@@ -528,7 +529,8 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
                 "primary_minimum_time": 0.0,
                 "phase_shift": 0.0,
                 "semi_major_axis": 29.854,
-                "additional_light": 0.0
+                "additional_light": 0.0,
+                "distance": 1.0
             },
             "primary": {
                 "mass": 2.0,
