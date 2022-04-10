@@ -165,7 +165,7 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles, dimen
                                  write_fn, line_sep, 'deg')
 
     gamma = (full_chain_results[:, param_columns['system@gamma']] *
-             u.VELOCITY_UNIT).to(u.km / u.s).value
+             u.DefaultBinarySystemUnits.system.gamma).to(u.km / u.s).value
     io_tools.write_propagated_ln(gamma, flat_params, 'system@gamma', 'Centre of mass velocity (gamma):',
                                  write_fn, line_sep, 'km/s')
 
@@ -744,7 +744,7 @@ def fit_rv_summary_with_error_propagation(fit_instance, path, percentiles):
                                  write_fn, line_sep, 'deg')
 
     omega = (full_chain_results[:, param_columns['system@gamma']] *
-             u.VELOCITY_UNIT).to(u.km/u.s).value
+             u.DefaultBinarySystemUnits.system.gamma).to(u.km/u.s).value
     io_tools.write_propagated_ln(omega, flat_params, 'system@gamma', 'Centre of mass velocity (gamma):',
                                  write_fn, line_sep, 'km/s')
 
