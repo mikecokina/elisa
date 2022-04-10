@@ -95,7 +95,8 @@ class PulsationModeProperties(SystemProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.units.units.Quantity]
         :return: float;
         """
-        retval = deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64, u.DefaultPulsationsInputUnits.mode_axis_theta)
+        retval = deg_transform(value, u.DefaultPulsationsUnits.mode_axis_theta, WHEN_FLOAT64,
+                               u.DefaultPulsationsInputUnits.mode_axis_theta)
         if not 0 <= retval < c.PI:
             raise ValueError(f'Value of `mode_axis_theta`: {retval} is outside bounds (0, pi).')
 
@@ -110,7 +111,8 @@ class PulsationModeProperties(SystemProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float;
         """
-        return deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64, u.DefaultPulsationsInputUnits.mode_axis_phi)
+        return deg_transform(value, u.DefaultPulsationsUnits.mode_axis_phi, WHEN_FLOAT64,
+                             u.DefaultPulsationsInputUnits.mode_axis_phi)
 
     @staticmethod
     def temperature_perturbation_phase_shift(value):
@@ -120,7 +122,7 @@ class PulsationModeProperties(SystemProperties):
         :param value: float; phase shift in radians
         :return:
         """
-        return deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64,
+        return deg_transform(value, u.DefaultPulsationsUnits.temperature_perturbation_phase_shift, WHEN_FLOAT64,
                              u.DefaultPulsationsInputUnits.temperature_perturbation_phase_shift)
 
     @staticmethod

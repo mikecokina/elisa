@@ -30,9 +30,11 @@ class BinarySystemProperties(SystemProperties):
         """
         if isinstance(value, (units.Quantity, str)):
             value = units.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(units.ARC_UNIT))
+            value = np.float64(value.to(units.DefaultBinarySystemUnits.system.argument_of_periastron))
         elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64((value * DefaultBinarySystemInputUnits.system.argument_of_periastron).to(units.ARC_UNIT))
+            value = np.float64((value * DefaultBinarySystemInputUnits.system.argument_of_periastron).to(
+                units.DefaultBinarySystemUnits.system.argument_of_periastron)
+            )
         else:
             raise TypeError('Input of variable `argument_of_periastron` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
