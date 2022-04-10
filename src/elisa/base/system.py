@@ -201,13 +201,6 @@ class System(metaclass=ABCMeta):
         cls_name = type(self).__name__
         serialized_kwargs = dict()
         for kwarg in self.ALL_KWARGS:
-            # if kwarg in ['argument_of_periastron', 'inclination', 'distance']:
-            #     value = getattr(self, kwarg)
-            #     if not isinstance(value, u.Quantity):
-            #         value = value * getattr(u.DefaultBinarySystemUnits.system, kwarg)
-            #     serialized_kwargs[kwarg] = value
-            # else:
-            #     serialized_kwargs[kwarg] = getattr(self, kwarg)
             value = getattr(self, kwarg)
             if isinstance(value, u.Quantity):
                 serialized_kwargs[kwarg] = getattr(self, kwarg)
