@@ -141,6 +141,7 @@ class BinarySystem(System):
         >>>     inclination=85 * u.deg,
         >>>     primary_minimum_time=2440000.00000 * u.d,
         >>>     phase_shift=0.0,
+        >>>     distance=162 * u.pc
         >>> )
     
     or by using the BinarySystem.from_json(<dict>) function that accepts various parameter combination in form of
@@ -155,7 +156,8 @@ class BinarySystem(System):
         >>>         "gamma": "0.0 m / s",  # you can define quantity using string representation of the astropy units
         >>>         "eccentricity": 0.3,
         >>>         "primary_minimum_time": 0.0,
-        >>>         "phase_shift": 0.0
+        >>>         "phase_shift": 0.0,
+        >>>         "distance": "152 pc"
         >>>     },
         >>>     "primary": {
         >>>         "mass": 2.15,
@@ -226,10 +228,11 @@ class BinarySystem(System):
                                true_phase is used during calculations, where: true_phase = phase + phase_shift.;
     :param primary_minimum_time: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity];
     :param additional_light: float; fraction of light that does not originate from the `BinarySystem`
+    :param distance: float: distance between system and the observer
     """
 
     MANDATORY_KWARGS = ['inclination', 'period', 'eccentricity', 'argument_of_periastron']
-    OPTIONAL_KWARGS = ['gamma', 'phase_shift', 'additional_light', 'primary_minimum_time']
+    OPTIONAL_KWARGS = ['gamma', 'phase_shift', 'additional_light', 'primary_minimum_time', 'distance']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     STAR_MANDATORY_KWARGS = ['mass', 't_eff', 'surface_potential', 'synchronicity']
@@ -328,7 +331,8 @@ class BinarySystem(System):
                 "gamma": 0.0,
                 "eccentricity": 0.3,
                 "primary_minimum_time": 0.0,
-                "phase_shift": 0.0
+                "phase_shift": 0.0,
+                "distance": 155
               },
               "primary": {
                 "mass": 2.0,
@@ -366,7 +370,8 @@ class BinarySystem(System):
                 "primary_minimum_time": 0.0,
                 "phase_shift": 0.0,
                 "semi_major_axis": 10.5,
-                "mass_ratio": 0.5
+                "mass_ratio": 0.5,
+                "distance": "125 pc"
               },
               "primary": {
                 "surface_potential": 7.1,
@@ -400,6 +405,7 @@ class BinarySystem(System):
                 "eccentricity": [dimensionless],
                 "primary_minimum_time": [d],
                 "phase_shift": [dimensionless],
+                "distance": [pc]
                 "mass": [solMass],
                 "surface_potential": [dimensionless],
                 "synchronicity": [dimensionless],

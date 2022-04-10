@@ -169,6 +169,8 @@ class SystemProperties(TransformProperties):
         if value <= 0:
             raise ValueError("Invalid value of system`s distance, use value > 0!")
 
+        return value
+
 
 class BodyProperties(TransformProperties):
     @staticmethod

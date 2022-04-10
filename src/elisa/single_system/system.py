@@ -92,7 +92,8 @@ class SingleSystem(System):
             gamma=0*u.km/u.s,
             inclination=90*u.deg,
             rotation_period=25.380*u.d,
-            reference_time=0.0*u.d
+            reference_time=0.0*u.d,
+            distance = 153*u.pc
         )
 
     or by using the SingleSystem.from_json(dict) function that accepts various parameter combination in form of
@@ -105,7 +106,8 @@ class SingleSystem(System):
                 "rotation_period": 10.1,
                 "gamma": '10000 K',  # you can define quantity using a string representation of the astropy quantities
                 "reference_time": 0.5,
-                "phase_shift": 0.0
+                "phase_shift": 0.0,
+                "distance": 64  # pc
             },
             "star": {
                 "mass": 1.0,
@@ -158,10 +160,11 @@ class SingleSystem(System):
     :param gamma: Union[float, astropy.unit.quantity.Quantity]; Center of mass velocity.
                   Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int
                   otherwise TypeError will be raised. If unit is not specified, default velocity unit is assumed (m/s).
+    :param distance: float: distance between system and the observer
     """
 
     MANDATORY_KWARGS = ['inclination', 'rotation_period']
-    OPTIONAL_KWARGS = ['reference_time', 'phase_shift', 'additional_light', 'gamma']
+    OPTIONAL_KWARGS = ['reference_time', 'phase_shift', 'additional_light', 'gamma', 'distance']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     STAR_MANDATORY_KWARGS = ['mass', 't_eff', 'polar_log_g']
@@ -248,7 +251,8 @@ class SingleSystem(System):
                     "rotation_period": 10.1,
                     "gamma": 10000,
                     "reference_time": 0.5,
-                    "phase_shift": 0.0
+                    "phase_shift": 0.0,
+                    "distance": "452 pc"
                 },
                 "star": {
                     "mass": 1.0,
@@ -268,7 +272,8 @@ class SingleSystem(System):
                     "rotation_period": 10.1,
                     "gamma": 10000,
                     "reference_time": 0.5,
-                    "phase_shift": 0.0
+                    "phase_shift": 0.0,
+                    "distance": "984 pc"
                 },
                 "star": {
                     "mass": 1.0,
@@ -288,6 +293,7 @@ class SingleSystem(System):
                 "gamma": [m/s],
                 "reference_time": [d],
                 "phase_shift": [dimensionless],
+                "distance": [pc],
                 "mass": [solMass],
                 "surface_potential": [dimensionless],
                 "synchronicity": [dimensionless],
