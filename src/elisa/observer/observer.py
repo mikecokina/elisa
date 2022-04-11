@@ -72,6 +72,7 @@ class Observer(object):
         self.phases = None
         self.times = None
         self.fluxes = None
+        self.magnitudes = None
         self._flux_unit = None
         self.radial_velocities = dict()
         self.rv_unit = None
@@ -150,7 +151,7 @@ class Observer(object):
         return df
 
     def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False,
-           from_time=None, to_time=None, time_step=None, times=None):
+           from_time=None, to_time=None, time_step=None, times=None, flux_unit=None):
         """
         Method for simulated light curve observation. Computes a light curve based on input parameters and the System
         supplied during initialization of the Observer instance. Returns light curves for each passband defined in the
@@ -167,8 +168,16 @@ class Observer(object):
         :param phase_step: float; phase increment of the observations
         :param phases: Iterable float; array of phases at which to perform an observations, if this parameter is
                                        provided the supplied 'from_phase`, `to_phase` `phase_step` becomes irrelevant
+        :param flux_unit: astropy.Units; unit of flux
         :return: Dict;
         """
+        if flux_unit not in [None, u.dimensionless_unscaled]:
+            if normalize:
+                raise ValueError('You can either produce normalized light curve or specify `flux_unit` other '
+                                 'than dimensionless unscaled. Change input parameters.')
+            else:
+                self.flux_unit = flux_unit
+
         phases = self.manage_time_series(from_phase, to_phase, phase_step, phases, from_time, to_time, time_step, times)
 
         # reduce phases to only unique ones from interval (0, 1) in general case without pulsations
@@ -200,14 +209,17 @@ class Observer(object):
         if normalize or self.flux_unit == u.dimensionless_unscaled:
             self.fluxes, _ = outils.normalize_light_curve(y_data=curves, kind='maximum', top_fraction_to_average=0.0)
             self.flux_unit = u.dimensionless_unscaled
-        elif self.flux_unit in [None, u.W / u.m ** 2]:
-            self.fluxes = outils.adjust_flux_for_distance(curves, self._system.distance)
-            self.flux_unit = u.W / u.m ** 2
-        elif self.flux_unit == u.mag:
-            # TODO include magnitude calculation
-            pass
         else:
-            raise ValueError(f'Unknown value for `Observer.flux_unit`: {self.flux_unit}')
+            curves = outils.adjust_flux_for_distance(curves, self._system.distance)
+            if self.flux_unit in [None, u.W / u.m ** 2]:
+                self.fluxes = curves
+                self.flux_unit = u.W / u.m ** 2
+            elif self.flux_unit == u.mag:
+                self.fluxes = outils.convert_to_magnitudes(curves)
+                self.magnitudes = self.fluxes
+                self.flux_unit = u.mag
+            else:
+                raise ValueError(f'Unknown value for `Observer.flux_unit`: {self.flux_unit}')
 
         logger.info("observation finished")
         return self.phases, self.fluxes

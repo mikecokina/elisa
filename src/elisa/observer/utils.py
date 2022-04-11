@@ -1,5 +1,9 @@
 import numpy as np
 from .. utils import is_empty
+from ..photometric_standards.standards_handlers import load_standard
+
+
+ZERO_POINTS = load_standard('vega')
 
 
 def normalize_light_curve(y_data, y_err=None, kind='global_maximum', top_fraction_to_average=0.1):
@@ -54,3 +58,17 @@ def adjust_flux_for_distance(curves, distance):
     """
     d_squared = np.power(distance, 2)
     return {band: curve/d_squared for band, curve in curves.items()}
+
+
+def convert_to_magnitudes(curves):
+    """
+    Conversion from flux to magnitudes.
+
+    :param curves: dict;
+    :return: dict;
+    """
+    ret_dict = dict()
+    for band, curve in curves.items():
+        ret_dict[band] = -2.5 * np.log10(curve/ZERO_POINTS['fluxes'][band])
+
+    return ret_dict
