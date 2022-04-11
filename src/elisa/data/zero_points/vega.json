@@ -1,0 +1,24 @@
+{
+    "system": "vega",
+    "unit": "W / m2",
+    "fluxes": {
+        "bolometric": 2.8442971445230222e-08,
+        "Generic.Bessell.U": 1.417838644243355e-09,
+        "Generic.Bessell.B": 4.392667416668542e-09,
+        "Generic.Bessell.V": 3.0442580558278433e-09,
+        "Generic.Bessell.R": 2.0899057361278053e-09,
+        "Generic.Bessell.I": 2.300454640493288e-09,
+        "SLOAN.SDSS.u": 1.2615965468613184e-09,
+        "SLOAN.SDSS.g": 6.56461025001848e-09,
+        "SLOAN.SDSS.r": 2.6917310649444563e-09,
+        "SLOAN.SDSS.i": 1.4500788830623188e-09,
+        "SLOAN.SDSS.z": 1.5668505168244407e-09,
+        "Generic.Stromgren.u": 7.898538189579246e-10,
+        "Generic.Stromgren.v": 1.0325341371586182e-09,
+        "Generic.Stromgren.b": 7.693662867997883e-10,
+        "Generic.Stromgren.y": 5.665129617494099e-10,
+        "Kepler": 5.967573901480336e-09,
+        "GaiaDR2": 7.91022739269331e-09,
+        "TESS": 4.420108812333042e-09
+    }
+}
