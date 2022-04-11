@@ -766,6 +766,9 @@ def phase_curve(**kwargs):
     if isinstance(kwargs['unit'], type(u.W/u.m**2)):
         uu = kwargs['unit']
         plt.ylabel(f'Flux/({uu:latex})')
+    elif isinstance(kwargs['unit'], type(u.mag)):
+        plt.ylabel(f'Magnitude')
+        plt.gca().invert_yaxis()
     else:
         plt.ylabel('Flux')
     if kwargs['legend']:

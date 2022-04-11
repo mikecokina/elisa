@@ -73,7 +73,7 @@ class Observer(object):
         self.times = None
         self.fluxes = None
         self.magnitudes = None
-        self._flux_unit = None
+        self._flux_unit = u.W / u.m**2
         self.radial_velocities = dict()
         self.rv_unit = None
 
@@ -171,12 +171,14 @@ class Observer(object):
         :param flux_unit: astropy.Units; unit of flux
         :return: Dict;
         """
-        if flux_unit not in [None, u.dimensionless_unscaled]:
-            if normalize:
+        if normalize:
+            if flux_unit in [None, u.dimensionless_unscaled]:
+                self.flux_unit = u.dimensionless_unscaled
+            else:
                 raise ValueError('You can either produce normalized light curve or specify `flux_unit` other '
                                  'than dimensionless unscaled. Change input parameters.')
-            else:
-                self.flux_unit = flux_unit
+        else:
+            self.flux_unit = u.Unit(flux_unit) if flux_unit is not None else self.flux_unit
 
         phases = self.manage_time_series(from_phase, to_phase, phase_step, phases, from_time, to_time, time_step, times)
 
@@ -208,16 +210,13 @@ class Observer(object):
         self.phases = phases + self._system.phase_shift
         if normalize or self.flux_unit == u.dimensionless_unscaled:
             self.fluxes, _ = outils.normalize_light_curve(y_data=curves, kind='maximum', top_fraction_to_average=0.0)
-            self.flux_unit = u.dimensionless_unscaled
         else:
             curves = outils.adjust_flux_for_distance(curves, self._system.distance)
             if self.flux_unit in [None, u.W / u.m ** 2]:
                 self.fluxes = curves
-                self.flux_unit = u.W / u.m ** 2
             elif self.flux_unit == u.mag:
                 self.fluxes = outils.convert_to_magnitudes(curves)
                 self.magnitudes = self.fluxes
-                self.flux_unit = u.mag
             else:
                 raise ValueError(f'Unknown value for `Observer.flux_unit`: {self.flux_unit}')
 
