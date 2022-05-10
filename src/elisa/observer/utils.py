@@ -1,9 +1,5 @@
 import numpy as np
 from .. utils import is_empty
-from ..photometric_standards.standards_handlers import load_standard
-
-
-ZERO_POINTS = load_standard('vega')
 
 
 def normalize_light_curve(y_data, y_err=None, kind='global_maximum', top_fraction_to_average=0.1):
@@ -60,15 +56,18 @@ def adjust_flux_for_distance(curves, distance):
     return {band: curve/d_squared for band, curve in curves.items()}
 
 
-def convert_to_magnitudes(curves):
+def convert_to_magnitudes(curves, zero_points):
     """
     Conversion from flux to magnitudes.
 
     :param curves: dict;
+    :param zero_points: dict; fluxes corresponding to 0 mag
     :return: dict;
     """
     ret_dict = dict()
     for band, curve in curves.items():
-        ret_dict[band] = -2.5 * np.log10(curve/ZERO_POINTS['fluxes'][band])
+        if zero_points['reference_magnitudes'][band] is None:
+            raise ValueError(f'Calibration reference magnitude is not available for the filter {band}')
+        ret_dict[band] = zero_points['reference_magnitudes'][band]-2.5 * np.log10(curve/zero_points['fluxes'][band])
 
     return ret_dict

@@ -14,6 +14,7 @@ from .. import (
     units as u,
     umpy as up
 )
+from ..photometric_standards.standards_handlers import load_standard
 
 logger = getLogger('observer.observer')
 
@@ -76,6 +77,7 @@ class Observer(object):
         self._flux_unit = u.W / u.m**2
         self.radial_velocities = dict()
         self.rv_unit = None
+        self.zero_points = dict(system=None)
 
         self.plot = Plot(self)
         self.observe = Observables(self)
@@ -215,7 +217,9 @@ class Observer(object):
             if self.flux_unit in [None, u.W / u.m ** 2]:
                 self.fluxes = curves
             elif self.flux_unit == u.mag:
-                self.fluxes = outils.convert_to_magnitudes(curves)
+                if self.zero_points['system'] != settings.MAGNITUDE_SYSTEM.lower():
+                    self.zero_points = load_standard(settings.MAGNITUDE_SYSTEM)
+                self.fluxes = outils.convert_to_magnitudes(curves, self.zero_points)
                 self.magnitudes = self.fluxes
             else:
                 raise ValueError(f'Unknown value for `Observer.flux_unit`: {self.flux_unit}')

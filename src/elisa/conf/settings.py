@@ -206,6 +206,7 @@ class Settings(_Const, DefaultSettings):
             "USE_INTERPOLATION_APPROXIMATION": cls.USE_INTERPOLATION_APPROXIMATION,
             "USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION": cls.USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION,
             "USE_SIMILAR_NEIGHBOURS_APPROXIMATION": cls.USE_SIMILAR_NEIGHBOURS_APPROXIMATION,
+            "MAGNITUDE_SYSTEM": cls.MAGNITUDE_SYSTEM
         }
 
     @staticmethod
@@ -402,6 +403,8 @@ class Settings(_Const, DefaultSettings):
             if not isdir(cls.PASSBAND_TABLES) and not cls.SUPPRESS_WARNINGS:
                 warnings.warn(f"path {cls.PASSBAND_TABLES} to passband tables doesn't exists\n"
                               f"Specifiy it in elisa_conf.ini file", UserWarning)
+
+            cls.MAGNITUDE_SYSTEM = c_parse.get('support', 'magnitude_system', fallback='vega')
         # **************************************************************************************************************
 
     @classmethod

@@ -63,6 +63,7 @@ class DefaultSettings(object):
         "k93": K93_ATM_TABLES
     }
     CUDA = False
+    MAGNITUDE_SYSTEM = 'vega'
 
 
 class SettingsManager(object):
