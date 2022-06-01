@@ -23,11 +23,15 @@ class Observables(object):
     def __init__(self, observer):
         self.observer = observer
 
-    def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
-        return self.observer.lc(from_phase, to_phase, phase_step, phases, normalize)
+    def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False,
+           from_time=None, to_time=None, time_step=None, times=None, flux_unit=None):
+        return self.observer.lc(from_phase, to_phase, phase_step, phases, normalize,
+                                from_time, to_time, time_step, times, flux_unit)
 
-    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False, method=None):
-        return self.observer.rv(from_phase, to_phase, phase_step, phases, normalize, method)
+    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False, method=None,
+           from_time=None, to_time=None, time_step=None, times=None):
+        return self.observer.rv(from_phase, to_phase, phase_step, phases, normalize, method,
+                                from_time, to_time, time_step, times)
 
 
 class Observer(object):
