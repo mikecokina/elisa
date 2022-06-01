@@ -286,6 +286,12 @@ v0.6
       passband filter. Custom limb-darkening coefficients are, however, set constant across the whole surface. In case
       of fitting tasks, custom atmospheres and limb-darkening coefficients are passed as arguments of `AnalyticsTask'
       instance.
+    - `BinarySystem` and `SingleSystem` have a new parameter `distance` which defines a distance between observer on
+      the system's centre of mass. If not supplied, default value of 10 pc is used.
+    - Observer module is now capable of producing light curves ni magnitudes by setting `Observer.flux_unit = u.mag`
+      or by keyword argument `flux_unit` in Observer.observe.lc() function.
+    - New configuration parameter `MAGNITUDE_SYSTEM` was introduced to define sets of zero points used to
+      calculate magnitudes. Available magnitude system are `vega`(default), `ab`, `st`.
 
 **Fixes**
 
