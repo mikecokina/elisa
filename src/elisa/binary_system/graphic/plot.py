@@ -282,7 +282,8 @@ class Plot(object):
         orbital_position = Position(0, orbital_position[0], orbital_position[1],
                                     orbital_position[2], orbital_position[3])
         
-        azimuth = azimuth if azimuth is not None else 180
+        azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \
+            if azimuth is not None else up.degrees(azim) - 90
 
         if separate_colormaps is None:
             separate_colormaps = self.binary.morphology != 'over-contact' and \
