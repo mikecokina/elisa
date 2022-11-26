@@ -33,8 +33,11 @@ class Plot(object):
             if any(x in label for x in ['t_eff', 'argument_of_periastron']):
                 title = r'{0}=${1:.0f}^{{{2:+.0f}}}_{{{3:+.0f}}}$ {4}'.format(kwargs['labels'][i], value, top, bottom,
                                                                               unit)
+            elif any(x in label for x in ['eccentricity']):
+                title = r'{0}=${1:.3f}^{{{2:+.3f}}}_{{{3:+.3f}}}$ {4}'.format(kwargs['labels'][i], value, top, bottom,
+                                                                              unit)
             else:
-                title = r'{0}=${1:.2f}^{{{2:+.2f}}}_{{{3:+.2f}}}$ {4}'.format(kwargs['labels'][i], value, top, bottom,
+                title = r'{0}=${1:.3f}^{{{2:+.3f}}}_{{{3:+.3f}}}$ {4}'.format(kwargs['labels'][i], value, top, bottom,
                                                                               unit)
             ax.set_title(title)
 
