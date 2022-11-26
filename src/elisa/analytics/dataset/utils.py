@@ -27,31 +27,35 @@ def convert_flux(data, unit, zero_point=None):
     :param zero_point: float; reference magnitude of the dataset, in case, the flux was provided in magnitudes
     :return: numpy.array; converted normalized flux
     """
+    if unit in [u.mag, u.mmag] and zero_point is None:
+        raise ValueError('You supplied your data in magnitudes. Please also specify '
+                         'a zero point using keyword argument `reference_magnitude`.')
+
     if unit == u.mag:
-        if zero_point is None:
-            raise ValueError('You supplied your data in magnitudes. Please also specify '
-                             'a zero point using keyword argument `reference_magnitude`.')
-        else:
-            data = utils.magnitude_to_flux(data, zero_point)
+        data = utils.magnitude_to_flux(data, zero_point)
+    elif unit == u.mmag:
+        data = utils.magnitude_to_flux(data/1000.0, zero_point)
 
     return data
 
 
 def convert_flux_error(error, unit, zero_point=None):
     """
-    If data an its errors are in magnitudes, they are converted to normalized flux.
+    If data and its errors are in magnitudes, they are converted to normalized flux.
 
     :param error: numpy.array; flux error array
     :param unit: astropy.unit.Unit; flux unit of `error` (dimensionless or magnitudes)
     :param zero_point: float; float; reference magnitude of the dataset, in case, the flux was provided in magnitudes
     :return: numpy.array; converted error in normalized flux
     """
+    if unit in [u.mag, u.mmag] and zero_point is None:
+        raise ValueError('You supplied your data in magnitudes. Please also specify '
+                         'a zero point using keyword argument `reference_magnitude`.')
+
     if unit == u.mag:
-        if zero_point is None:
-            raise ValueError('You supplied your data in magnitudes. Please also specify '
-                             'a zero point using keyword argument `reference_magnitude`.')
-        else:
-            error = utils.magnitude_error_to_flux_error(error)
+        error = utils.magnitude_error_to_flux_error(error)
+    elif unit == u.mmag:
+        error = utils.magnitude_error_to_flux_error(error/1000.0)
     return error
 
 

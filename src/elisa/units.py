@@ -44,6 +44,7 @@ dimensionless_unscaled = u.dimensionless_unscaled
 kg = u.kg
 dex = u.dex
 mag = u.mag
+mmag = u.mmag
 pc = u.pc
 au = u.au
 
