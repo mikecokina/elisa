@@ -69,7 +69,7 @@ class AnalyticsTask(metaclass=ABCMeta):
         if method not in cls.ALLOWED_METHODS:
             raise ValueError(f'Invalid fitting method. Use one of: {", ".join(cls.ALLOWED_METHODS)}')
 
-    def load_result(self, filename, autofill_sma):
+    def load_result(self, filename, autofill_sma=False):
         """
         Function loads a JSON file containing model parameters and stores it as an attribute of AnalyticsTask fitting
         instance. This is useful if you want to examine already calculated results using functionality provided by the
