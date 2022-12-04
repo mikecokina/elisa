@@ -87,7 +87,7 @@ class SettingsManager(object):
               "If you are power user and you would like to configure it manually, \n"
               "than abort this wizzard and put your configuration in following posible locations: \n"
               "\t- set the environment variable ELISA_CONFIG with absolute path to you config file, or \n "
-              "\t- add conf/elisa_conf.ini under your virtualenv root, or "
+              "\t- add conf/elisa_conf.ini under your virtualenv root, or \n"
               "\t- add ~/.elisa/config.ini file.\n"
               "For more cofigurable options take a look at: \n"
               "\t\thttps://github.com/mikecokina/elisa/blob/dev/src/elisa/conf/elisa_conf_docs.ini")
