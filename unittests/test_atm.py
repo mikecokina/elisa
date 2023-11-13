@@ -333,6 +333,5 @@ class TestNaiveInterpolation(ElisaTestCase):
         weights = np.array([0.2, 1.0])
 
         obtained = atm.NaiveInterpolatedAtm.compute_unknown_intensity_from_surounded_flux_matrices(weights, top, bottom)
-        expected = [[10., 11.2, 12.4, 13.6],
-                    [110., 150., 180., 120.]]
+        expected = np.array([[10., 11.2, 12.4, 13.6], [110., 150., 180., 120.]], dtype=np.float32)
         assert_array_equal(expected, obtained)
