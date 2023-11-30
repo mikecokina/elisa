@@ -264,6 +264,7 @@ class Settings(_Const, DefaultSettings):
 
     @classmethod
     def update_config(cls):
+        cls.CUDA = False
         # **************************************************************************************************************
         if c_parse.has_section('general'):
             cls.SUPPRESS_WARNINGS = c_parse.getboolean('general', 'suppress_warnings', fallback=cls.SUPPRESS_WARNINGS)
@@ -335,11 +336,12 @@ class Settings(_Const, DefaultSettings):
                                                       fallback=cls.MCMC_SAVE_INTERVAL)
 
             cls.CUDA = c_parse.getboolean('computational', 'cuda', fallback=cls.CUDA)
+
             if cls.CUDA:
                 try:
                     # noinspection PyUnresolvedReferences
-                    import torch
-                    if not torch.cuda.is_available():
+                    import cumpy
+                    if not cumpy.cuda.is_available():
                         cls.CUDA = False
                         warnings.warn("You have no CUDA enabled/available on your device. "
                                       "Runtime continue with CPU.", UserWarning)

@@ -10,6 +10,7 @@ from ... base.surface.faces import correct_face_orientation
 from .. import utils as sutils
 from .. curves import utils as crv_utils
 from ... observer.observer import Observer
+from ... import umpy as up
 
 
 class Plot(object):
@@ -65,10 +66,10 @@ class Plot(object):
 
         inclination = transform.deg_transform(inclination, u.deg, transform.WHEN_FLOAT64,
                                               u.DefaultSingleSystemInputUnits.system.inclination) \
-            if inclination is not None else np.degrees(self.single.inclination)
+            if inclination is not None else up.degrees(self.single.inclination)
         azim = self.single.orbit.rotational_motion(phase=phase)[0][0]
         azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \
-            if azimuth is not None else np.degrees(azim) - 90
+            if azimuth is not None else up.degrees(azim) - 90
 
         position_container = SinglePositionContainer.from_single_system(self.single, self.defpos)
         position_container.build_mesh()
@@ -110,10 +111,10 @@ class Plot(object):
 
         inclination = transform.deg_transform(inclination, u.deg, transform.WHEN_FLOAT64,
                                               u.DefaultSingleSystemInputUnits.system.inclination) \
-            if inclination is not None else np.degrees(self.single.inclination)
+            if inclination is not None else up.degrees(self.single.inclination)
         azim = self.single.orbit.rotational_motion(phase=phase)[0][0]
         azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \
-            if azimuth is not None else np.degrees(azim) - 90
+            if azimuth is not None else up.degrees(azim) - 90
 
         position_container = SinglePositionContainer.from_single_system(self.single, self.defpos)
         position_container.build_mesh()
