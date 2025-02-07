@@ -1,4 +1,4 @@
-__version__ = '0.6.dev0'
+__version__ = '0.6.0.rc1'
 
 import json
 import os.path as op
