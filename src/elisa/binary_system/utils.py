@@ -7,6 +7,7 @@ from jsonschema import (
 )
 from copy import copy
 
+from .. pypex.poly2d.polygon import Polygon
 from .. import units, const
 from .. units import DefaultBinarySystemUnits
 from .. import settings
