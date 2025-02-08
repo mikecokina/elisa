@@ -260,8 +260,10 @@ v0.5.1_
 
         ERROR: packaging 21.2 has requirement pyparsing<3,>=2.0.2, but you'll have pyparsing 3.0.4 which is incompatible.
 
-v0.6
-----
+v0.6.0.rc1_
+-----------
+
+.. v0.6.0.rc1_: https://github.com/mikecokina/elisa/commits/release/0.6.0.rc1
 
 **Release date:** ****-**-**
 
@@ -292,6 +294,7 @@ v0.6
       or by keyword argument `flux_unit` in Observer.observe.lc() function.
     - New configuration parameter `MAGNITUDE_SYSTEM` was introduced to define sets of zero points used to
       calculate magnitudes. Available magnitude system are `vega`(default), `ab`, `st`.
+    - Updated package dependecies and basecode to run ELISa on Python versions from 3.6 up to 3.12.
 
 **Fixes**
 
