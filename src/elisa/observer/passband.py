@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 
 from scipy import interpolate
+
+from . plot import PassbandPlot
 from .. import settings
 from ..base.types import FLOAT
 
@@ -85,6 +87,7 @@ class PassbandContainer(object):
         self.passband = passband
         # in case this np.pi will stay here, there will be rendundant multiplication in intensity integration
         self.wave_to_si_mult = 1e-10
+        self.plot = PassbandPlot(self)
 
         setattr(self, 'table', table)
 
@@ -138,6 +141,3 @@ class PassbandContainer(object):
     def from_name(cls, passband: str):
         df = cls.get_passband_df(passband)
         return cls(table=df, passband=passband)
-
-    def plot(self):
-        pass

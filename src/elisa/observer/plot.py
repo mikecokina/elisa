@@ -1,5 +1,28 @@
+import numpy as np
+
 from elisa.graphic import graphics
 from .. import units as u
+from ..base.types import FLOAT
+
+
+class PassbandPlot(object):
+    def __init__(self, container):
+        self.container = container
+
+    def passband(self):
+        xs = np.array(self.container.table.wavelength, dtype=FLOAT)
+        ys = np.array(self.container.table.throughput, dtype=FLOAT)
+        x_unit = r"$\dot{\AA}$"
+        y_unit = '% / 100'
+
+        kwargs = dict(
+            xs=xs,
+            ys=ys,
+            x_unit=x_unit,
+            y_unit=y_unit,
+            passband=self.container.passband,
+        )
+        return graphics.passband_plot(**kwargs)
 
 
 class Plot(object):

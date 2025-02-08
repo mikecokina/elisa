@@ -937,3 +937,21 @@ def binary_lc_fit_plot(**kwargs):
     plt.subplots_adjust(hspace=0.0, top=0.98, right=0.97)
     return fig if kwargs['return_figure_instance'] else plt.show()
 
+
+def passband_plot(**kwargs):
+    # Extract values
+    xs = kwargs["xs"]
+    ys = kwargs["ys"]
+    x_unit = kwargs["x_unit"]
+    y_unit = kwargs["y_unit"]
+    passband = kwargs["passband"]
+
+    # Create plot
+    plt.figure(figsize=(8, 6))
+    plt.plot(xs, ys, marker="o", linestyle="-", label=passband, lw=0.5, markersize=2)
+    plt.xlabel(x_unit)
+    plt.ylabel(y_unit)
+    plt.legend()
+    plt.grid(True)
+
+    plt.show()
