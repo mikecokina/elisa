@@ -102,7 +102,7 @@ setup(
         'Topic :: Scientific/Engineering :: Astronomy',
 
         # Pick your license as you wish (should match "license" above)
-        'License :: OSI Approved :: GNU General Public License v2 (GPLv2)',
+        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
 
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.
@@ -111,6 +111,9 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
     ],
 
     # What does your project relate to?
@@ -130,20 +133,22 @@ setup(
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        'astropy>=4.0.1,<4.4',
+        'astropy>=4.0.1,<=5.3.4',
         'corner>=2.2.1',
-        'emcee==3.0.1',
+        'emcee>=3.0.1,<=3.1.6',
         'jsonschema>=3.2.0',
-        'matplotlib>=3.3.2,<3.5',
-        'numpy>=1.16.2,<=1.20.3',
-        'pandas>=0.24.0,<1.4',
-        'pypex>=0.2.0',
+        'matplotlib>=3.3.2,<=3.7.5',
+        'numpy>=1.16.2,<=1.26.4',
+        'packaging<=24.2',
+        'pandas>=0.24.0,<=1.5.3',
         'python-dateutil>=2.6.1,<=2.8.1',
-        'scipy>=1.0.0,<1.8',
+        'scipy>=1.0.0,<=1.10.1',
         'tqdm==4.43.0',
         'parameterized>=0.7.4',
         'numba>=0.51.2',
-        'requests>=2.26.0'
+        'requests>=2.26.0',
+        'setuptools<=75.8.0',
+        'wheel<=0.45.1',
     ],
 
     # List additional groups of dependencies here (e.g. development
@@ -152,7 +157,7 @@ setup(
     # $ pip install -e .[dev,test]
     extras_require={
         'dev': [],
-        'test': ['coverage', 'parameterized>=0.7.4', 'pytest==3.2.3'],
+        'test': ['coverage', 'parameterized>=0.7.4', 'pytest>=3.2.3,<=8.3.4'],
     },
 
     # If there are data files included in your packages that need to be
