@@ -57,18 +57,18 @@ class DownloadManager(object):
         cls.extract(temp_path, destination_path, truncate_tarfile_path=truncate_tarfile_path)
 
     def download_ck04(self):
-        url = "http://astronomy.science.upjs.sk/elisa/assets/ck04.tar.gz"
+        url = "https://github.com/mikecokina/elisa-assets/raw/refs/heads/main/atmosphere/ck04.tar.gz"
         logger.info("downloading castelli-kurucz 2004 atmosphere files")
         self._download_and_process(url, self.settings.CK04_ATM_TABLES, truncate_tarfile_path="ck04/")
 
     def download_k93(self):
-        url = "http://astronomy.science.upjs.sk/elisa/assets/k93.tar.gz"
+        url = "https://github.com/mikecokina/elisa-assets/raw/refs/heads/main/atmosphere/k93.tar.gz"
         logger.info("downloading kurucz 1993 atmosphere files")
         self._download_and_process(url, self.settings.K93_ATM_TABLES, truncate_tarfile_path="k93/")
 
     def download_van_hamme(self):
-        url = "http://astronomy.science.upjs.sk/elisa/assets/ld.tar.gz"
-        logger.info("downloading van hamme 2016 limb darkening files")
+        url = "https://github.com/mikecokina/elisa-assets/raw/refs/heads/main/limbdarkening/ld_vh19.tar.gz"
+        logger.info("downloading van hamme 2019 limb darkening files")
         self._download_and_process(url, self.settings.LD_TABLES, truncate_tarfile_path="ld/")
 
     def download_all(self):
