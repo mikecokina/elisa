@@ -44,7 +44,7 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         self.flat_chain_path = ''
         self.eval_counter = 0
         self._last_known_lhood = -np.finfo(float).max * np.finfo(float).eps
-        self.sigmas = list()
+        self.sigmas = None
 
     @staticmethod
     def ln_prior(xn, x0, sigmas):

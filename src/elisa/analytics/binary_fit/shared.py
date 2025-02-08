@@ -138,6 +138,7 @@ class AbstractFit(metaclass=ABCMeta):
     def fit(self, *args, **kwargs):
         pass
 
+    # noinspection PyUnresolvedReferences
     @staticmethod
     def eval_constrained_results(result_dict: Dict[str, Dict], constraints: Dict[str, 'InitialParameter']):
         """
@@ -190,6 +191,7 @@ class AbstractRVFit(AbstractFit):
         """
         super().set_up(x0, data, passband=None, **kwargs)
 
+    # noinspection PyUnusedLocal
     def coefficient_of_determination(self, model_parameters, data, discretization, interp_treshold):
         """
         Function returns R^2 for given model parameters and observed data.
@@ -260,6 +262,7 @@ class AbstractLCFit(AbstractFit):
         :param top_fraction_to_average: float; top portion of the dataset (in y-axis direction) used in the
                                                normalization process, from (0, 1) interval
         """
+        # noinspection PyUnresolvedReferences
         y_data, y_err = normalize_light_curve(self.y_data, self.y_err, kind, top_fraction_to_average)
         setattr(self, 'y_data', y_data)
         setattr(self, 'y_err', y_err)
@@ -320,7 +323,7 @@ class AbstractLCFit(AbstractFit):
         try:
             synthetic = lc_model.synthetic_binary(x, self.discretization, observer, **kwargs)
             synthetic, _ = normalize_light_curve(synthetic, kind='average')
-        except Exception as e:
+        except Exception:
             raise RuntimeError('Your initial parameters are invalid and phase sampling could not be generated.')
 
         curve = np.column_stack((x, synthetic['bolometric']))
@@ -554,4 +557,3 @@ def eval_constraint_in_dict(input_dict):
 
     result_dict = parameters.serialize_result(result_dict)
     return result_dict
-

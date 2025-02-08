@@ -400,7 +400,7 @@ def evaluate_binary_params(*args):
                     full_chain[ii, ref_idx + 7*pulse_idx + 5] = star_instance.pulsations[pulse_idx].mode_axis_phi
                     full_chain[ii, ref_idx + 7*pulse_idx + 6] = star_instance.pulsations[pulse_idx].mode_axis_theta
 
-        except (MaxIterationError, MorphologyError) as e:
+        except (MaxIterationError, MorphologyError):
             continue
 
     return full_chain
@@ -670,7 +670,6 @@ def fit_rv_summary_with_error_propagation(fit_instance, path, percentiles):
     :param path: str; results will be written here
     :param percentiles: List; [bottom, middle, top] percentiles used for the creation of confidence intervals
     """
-    f = None
     if path is not None:
         f = open(path, 'w')
         write_fn = f.write

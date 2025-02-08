@@ -61,6 +61,7 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
             fit_xs = np.linspace(np.min(phases) - diff, np.max(phases) + diff, num=self.interp_treshold + 2) \
                 if np.shape(phases)[0] > self.interp_treshold else phases
         else:
+            # noinspection PyUnresolvedReferences
             fit_xs = self.fit_xs
         args = fit_xs, self.discretization, self.observer
 

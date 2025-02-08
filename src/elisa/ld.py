@@ -66,7 +66,7 @@ def get_ld_table_by_name(fname):
     :return: pandas.DataFrame;
     """
     logger.debug(f"accessing limb darkening file {fname}")
-    path = os.path.join(settings.LD_TABLES, fname)
+    path = str(os.path.join(settings.LD_TABLES, fname))
     if not os.path.isfile(path):
         raise FileNotFoundError(f"There is no file like {path}.")
     return pd.read_csv(path)
@@ -122,7 +122,9 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
             else:
                 _df = get_ld_table_by_name(table)[csv_columns]
                 buffer.LD_CFS_TABLES[table] = _df
-            df = df.append(_df)
+
+            apppend = getattr(df, '_append') if hasattr(df, '_append') else getattr(df, 'append')
+            df = apppend(_df)
         buffer.reduce_buffer(buffer.LD_CFS_TABLES)
 
         df = df.drop_duplicates()

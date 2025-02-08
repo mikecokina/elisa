@@ -153,6 +153,7 @@ def calculate_surface_centres(points, faces):
     return np.average(points[faces], axis=1)
 
 
+# noinspection PyUnreachableCode
 def calculate_normals(points, faces, centres, com):
     """
     Returns outward facing normal unit vector for each face of stellar surface.
@@ -190,10 +191,12 @@ def correct_face_orientation(star_container, com=0):
     :param com: float; centre of mass x-position
     :return:
     """
-    def correct_orientation(object):
-        points = getattr(object, 'points')
-        faces = getattr(object, 'faces')
-        centres = getattr(object, 'face_centres')
+
+    # noinspection PyUnreachableCode,PyUnusedLocal
+    def correct_orientation(obj):
+        points = getattr(obj, 'points')
+        faces = getattr(obj, 'faces')
+        centres = getattr(obj, 'face_centres')
 
         a = points[faces[:, 1]] - points[faces[:, 0]]
         b = points[faces[:, 2]] - points[faces[:, 0]]

@@ -1,3 +1,4 @@
+import os.path as op
 import numpy as np
 from numpy.testing import assert_array_equal
 
@@ -44,8 +45,10 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
     def test_custom_lds_sqrt():
         settings.configure(**{"LIMB_DARKENING_LAW": 'square_root'})
         definition = get_default_binary_definition()
-        definition["primary"].update({**definition["primary"],
-                                      "limb_darkening_coefficients": {'bolometric': [0.5, 0.4]}})
+        definition["primary"].update(
+            {**definition["primary"],
+             "limb_darkening_coefficients": {'bolometric': [0.5, 0.4]}}
+        )
         binary = BinarySystem.from_json(definition)
         assert_array_equal(binary.primary.limb_darkening_coefficients['bolometric'], [0.5, 0.4])
 
@@ -61,6 +64,13 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
         self.assertTrue(f"however, you provided a vector with {length}" in str(context.exception))
 
     def test_raise_missing_passband_lds(self):
+        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
+        settings.configure(**{
+            "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
+            "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
+        })
+        self.write_default_support(ld_tables=settings.LD_TABLES, atm_tables=settings.CK04_ATM_TABLES)
+
         definition = get_default_binary_definition()
         definition["primary"].update({**definition["primary"],
                                       "limb_darkening_coefficients": {'bolometric': 0.5}})
@@ -68,7 +78,7 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
         bs = BinarySystem.from_json(definition)
         o = Observer(passband=["TESS"], system=bs)
         with self.assertRaises(Exception) as context:
-            o.lc(phases=[0.0,])
+            o.lc(phases=[0.0, ])
 
         self.assertTrue('Please supply limb-darkening factors for [\'TESS\'] '
                         'pasband(s) as well.' in str(context.exception))
@@ -86,13 +96,23 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
         self.assertTrue('Please ad `bolometric` limb-darkening coefficients to '
                         'your custom set of limb-darkening coefficients.' in str(context.exception))
 
+    # noinspection PyMethodMayBeStatic
     def test_custom_ld_coeff_distribution(self):
+        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
+        settings.configure(**{
+            "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
+            "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
+        })
+        self.write_default_support(ld_tables=settings.LD_TABLES, atm_tables=settings.CK04_ATM_TABLES)
+
         expected_ldc = [0.5, 0.4]
         passband = 'bolometric'
         settings.configure(**{"LIMB_DARKENING_LAW": 'square_root'})
         definition = get_default_binary_definition()
-        definition["primary"].update({**definition["primary"],
-                                      "limb_darkening_coefficients": {passband: expected_ldc}})
+        definition["primary"].update(
+            {**definition["primary"],
+             "limb_darkening_coefficients": {passband: expected_ldc}}
+        )
 
         bs = BinarySystem.from_json(definition)
         container = bs.build_container(phase=0.0)

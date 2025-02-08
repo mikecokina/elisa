@@ -94,6 +94,7 @@ class DownloadManager(object):
 
     @classmethod
     def download_file(cls, url, path):
+        # noinspection PyTypeChecker
         r = requests.head(url, headers={'Accept-Encoding': None})
         file_size = int(r.headers['content-length'])
         cls.handler(file_size, url, path)

@@ -22,7 +22,8 @@ class TestConfig(ElisaTestCase):
         laws = "linear", "cosine", "logarithmic", "square_root"
         expected = [["xlin"], ["xlin"], ["xlog", "ylog"], ["xsqrt", "ysqrt"]]
         obtained = [settings.LD_LAW_CFS_COLUMNS[law] for law in laws]
-        assert_array_equal(expected, obtained)
+        for expected_, obtained_ in zip(expected, obtained):
+            assert_array_equal(expected_, obtained_)
 
     def test_LD_DOMAIN_COLS(self):
         expected = ["temperature", "gravity"]

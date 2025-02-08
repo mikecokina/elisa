@@ -5,7 +5,12 @@ from copy import deepcopy
 
 import numpy as np
 
-from collections import Iterable
+try:
+    # noinspection PyProtectedMember
+    from collections import Iterable
+except ImportError:
+    from typing import Iterable
+
 from typing import Dict
 from jsonschema import ValidationError
 
@@ -643,6 +648,12 @@ class InitialParameters(object, metaclass=abc.ABCMeta):
     TRANSFORM_PROPERTIES_CLS = None
     DEFAULT_NORMALIZATION = None
 
+    @property
+    def slots_(self):
+        if hasattr(self, '__slots__'):
+            return getattr(self, '__slots__')
+        return []
+
     def validity_check(self):
         """
         Function examines whether inputted definitions of initial fit parameters make sense.
@@ -654,7 +665,7 @@ class InitialParameters(object, metaclass=abc.ABCMeta):
             * constrained: `InitialParameter.fixed` = None, `constraint` = `InitialParameter.valid expresion`
 
         """
-        for slot in self.__slots__:
+        for slot in self.slots_:
             if not hasattr(self, str(slot)):
                 continue
             prop = getattr(self, str(slot))
@@ -734,8 +745,9 @@ class StarInitialParameters(InitialParameters):
 
     def __init__(self, **kwargs):
         self.label = None
-        spots = kwargs.pop('spots', None)
-        pulsations = kwargs.pop('pulsations', None)
+
+        spots = kwargs.pop('spots', [])
+        pulsations = kwargs.pop('pulsations', [])
 
         for parameter, items in kwargs.items():
             value = self.init_parameter(parameter, items)

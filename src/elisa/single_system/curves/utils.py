@@ -1,4 +1,4 @@
-from ... import atm, ld
+from ... import atm
 from ... import settings
 from ... observer.passband import init_bolometric_passband
 from ... base.curves.utils import get_component_limbdarkening_cfs

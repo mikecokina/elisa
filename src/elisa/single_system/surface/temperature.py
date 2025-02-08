@@ -1,7 +1,5 @@
 from ... logger import getLogger
 from ... base.surface import temperature as btemperature
-from ... pulse import pulsations
-from elisa.base.surface.temperature import renormalize_temperatures
 
 logger = getLogger("single_system.surface.temperature")
 
@@ -28,21 +26,4 @@ def build_temperature_distribution(system_container):
                 spot.temperature_factor * btemperature.calculate_effective_temperatures(star_container, pgms)
 
     # renormalize_temperatures(star_container)
-    return system_container
-
-
-def build_temperature_perturbations(system_container):
-    """
-    adds position perturbations to container mesh
-
-    :param system_container: elisa.single_system.container.SinglePositionContainer;
-    :return: elisa.single_system.container.SinglePositionContainer;
-    """
-    if system_container.has_pulsations():
-        star = getattr(system_container, 'star')
-        star = pulsations.incorporate_temperature_perturbations(
-            star, com_x=0.0,
-            phase=system_container.position.phase,
-            time=system_container.time
-        )
     return system_container

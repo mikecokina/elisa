@@ -11,7 +11,6 @@ from .. utils import is_empty
 from .. base.spot import Spot
 from .. logger import getLogger
 from .. import (
-    units as u,
     umpy as up
 )
 from .. import settings

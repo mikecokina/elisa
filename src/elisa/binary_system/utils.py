@@ -1,6 +1,5 @@
 import numpy as np
 
-from pypex.poly2d.polygon import Polygon
 from jsonschema import (
     validate,
     ValidationError

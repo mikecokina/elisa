@@ -155,6 +155,7 @@ def write_propagated_ln(values, fit_params, param_id, designation, write_fn, lin
     Auxiliary function to the fit_summary functions, produces one
     line in output for given parameter that is present in `fit_params`.
 
+    :param unit:
     :param values:
     :param fit_params: Dict;
     :param param_id: str; name os the parameter in `fit_params`
@@ -163,7 +164,7 @@ def write_propagated_ln(values, fit_params, param_id, designation, write_fn, lin
     :param line_sep: str; symbols to finish the line
     :return:
     """
-    # if parameter does not exists in given fitting mode, the line in summary is omitted
+    # if parameter does not exist in given fitting mode, the line in summary is omitted
     if np.isnan(values).any():
         return
 

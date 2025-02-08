@@ -8,6 +8,7 @@ def calculate_horizontal_displacements(mode, thetas, harmonics_derivatives, radi
     """
     Calculate angular horizontal components of displacement.
 
+    :param scale:
     :param mode: PulsationMode;
     :param thetas: numpy.array; 1D
     :param harmonics_derivatives: numpy.array; column-wise - dY/dphi, dY/dtheta
@@ -118,6 +119,3 @@ def calculate_temperature_pert_factor(mode, scale):
         generate_phase_shift(mode.temperature_perturbation_phase_shift) * mode.complex_displacement[:, 0]
     )
     return mode.temperature_amplitude_factor * hrm_shift * scale / mode.radial_amplitude
-
-
-
