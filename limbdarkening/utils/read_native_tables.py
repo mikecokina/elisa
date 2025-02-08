@@ -257,26 +257,30 @@ def get_bessell(data):
 
 
 def get_gaia(data):
+    gaia = list()
+
     for row in data:
-        if str(row).lower().startswith('gaia (2010)    g'):
+        if str(''.join(row.split(' '))).lower().startswith('gaia(2010)g'):
             row = str(row).split(" ")
             row = parse_row(row)
-            return [back_parser('Gaia.2010.G', row)]
+            gaia.append(back_parser('Gaia.2010.G', row))
 
-        elif str(row).lower().startswith('gaia (2010)    bp'):
+        elif str(''.join(row.split(' '))).lower().startswith('gaia(2010)bp'):
             row = str(row).split(" ")
             row = parse_row(row)
-            return [back_parser('Gaia.2010.BP', row)]
+            gaia.append(back_parser('Gaia.2010.BP', row))
 
-        elif str(row).lower().startswith('gaia (2010)    rp'):
+        elif str(''.join(row.split(' '))).lower().startswith('gaia(2010)rp'):
             row = str(row).split(" ")
             row = parse_row(row)
-            return [back_parser('Gaia.2010.RP', row)]
+            gaia.append(back_parser('Gaia.2010.RP', row))
 
-        elif str(row).lower().startswith('gaia (2010)  g_rv'):
+        elif str(''.join(row.split(' '))).lower().startswith('gaia(2010)g_rv'):
             row = str(row).split(" ")
             row = parse_row(row)
-            return [back_parser('Gaia.2010.G_RV', row)]
+            gaia.append(back_parser('Gaia.2010.G_RV', row))
+
+    return gaia
 
 
 def get_kepler(data):
