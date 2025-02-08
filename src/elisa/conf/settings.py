@@ -51,8 +51,11 @@ class _Const(object):
         'Generic.Stromgren.b',
         'Generic.Stromgren.y',
         'Kepler',
-        'GaiaDR2',
+        # 'GaiaDR2',
         'TESS',
+        'Gaia.2010.G',
+        'Gaia.2010.BP',
+        'Gaia.2010.RP',
     ]
 
     PASSBAND_DATAFRAME_THROUGHPUT = "throughput"
