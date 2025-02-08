@@ -109,7 +109,7 @@ class TestObserver(ElisaTestCase):
         self.assertEqual(o._system_cls, BinarySystemMock)
 
     def test_get_passband_df(self):
-        obtained = Observer.get_passband_df(self._passband)
+        obtained = PassbandContainer.get_passband_df(self._passband)
         obtained[settings.PASSBAND_DATAFRAME_WAVE] = obtained[settings.PASSBAND_DATAFRAME_WAVE] / 10.0
         assert_frame_equal(obtained, self._bessel_v_df)
 
