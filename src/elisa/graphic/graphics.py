@@ -469,11 +469,11 @@ def set_colorbar_label(colorbar, colorbar_name, unit, scale, extra=''):
     }
     def_unit = {
         'temperature': 'K',
-        'gravity_acceleration': '$m\,s^{-2}$',
-        'velocity': '$m\,s^{-1}$',
-        'radial_velocity': '$m\,s^{-1}$',
-        'v_r_perturbed': '$m\,s^{-1}$',
-        'v_horizontal_perturbed': '$m\,s^{-1}$',
+        'gravity_acceleration': r'$m\,s^{-2}$',
+        'velocity': r'$m\,s^{-1}$',
+        'radial_velocity': r'$m\,s^{-1}$',
+        'v_r_perturbed': r'$m\,s^{-1}$',
+        'v_horizontal_perturbed': r'$m\,s^{-1}$',
         'normal_radiance': '$W.sr^{-1}.m^{-2}$',
         'radiance': '$W.sr^{-1}.m^{-2}$',
         'radius': '$m$',
