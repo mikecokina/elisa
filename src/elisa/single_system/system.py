@@ -13,6 +13,7 @@ from . import (
     utils as sys_utils
 )
 from . container import SinglePositionContainer
+from .. base.types import INT
 from .. logger import getLogger
 from .. import const
 from .. import (
@@ -533,7 +534,7 @@ class SingleSystem(System):
         input_argument = np.array([input_argument]) if np.isscalar(input_argument) else input_argument
         rotational_motion = self.orbit.rotational_motion(phase=input_argument) if calculate_from == 'phase' \
             else self.orbit.rotational_motion_from_azimuths(azimuth=input_argument)
-        idx = np.arange(np.shape(input_argument)[0], dtype=np.int)[:, np.newaxis]
+        idx = np.arange(np.shape(input_argument)[0], dtype=INT)[:, np.newaxis]
         positions = np.hstack((idx, np.full(idx.shape, np.nan), rotational_motion))
 
         return positions if return_nparray else [const.Position(*p) for p in positions]

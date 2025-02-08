@@ -6,6 +6,7 @@ from ... base.transform import (
     quantity_transform,
     WHEN_FLOAT64
 )
+from ... base.types import FLOAT, INT
 
 
 class OrbitProperties(TransformProperties):
@@ -17,7 +18,7 @@ class OrbitProperties(TransformProperties):
         :param value: Union[(numpy.)int, (numpy.)float]
         :return: float
         """
-        if not isinstance(value, (int, np.int, float, np.float)):
+        if not isinstance(value, (int, INT, float, FLOAT)):
             raise TypeError('Input of variable `eccentricity` is not (numpy.)int or (numpy.)float.')
         if value < 0 or value >= 1:
             raise ValueError('Input of variable `eccentricity` is  or it is out of boundaries.')

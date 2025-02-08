@@ -1,9 +1,11 @@
 import pandas as pd
 import numpy as np
+from packaging import version
 
 from ... import units as u
 from ... import utils
 from ... import settings
+from ... base.types import FLOAT, INT
 
 
 def convert_data(data, unit, to_unit):
@@ -80,16 +82,22 @@ def read_data_file(filename, data_columns, delimiter=settings.DELIM_WHITESPACE):
     :param data_columns: Tuple; (time column, observable column, observable error column)
     :return: numpy.array; (N x 3) matrix containing loaded data in columns
     """
-    data = pd.read_csv(filename, header=None, comment='#', delimiter=delimiter,
-                       error_bad_lines=False, engine='python')[list(data_columns)]
+    reader_kwargs = dict(on_bad_lines='skip')
+    if version.parse(pd.__version__) < version.parse('1.3.0'):
+        reader_kwargs = dict(error_bad_lines=False)
+
+    data = pd.read_csv(
+        filename, header=None, comment='#', delimiter=delimiter,
+        engine='python', **reader_kwargs
+    )[list(data_columns)]
     data = data.apply(lambda s: pd.to_numeric(s, errors='coerce')).dropna()
-    return data.to_numpy(dtype=float)
+    return data.to_numpy(dtype=FLOAT)
 
 
 def central_moving_average(dt_set, n_bins=100, radius=2, cyclic_boundaries=True):
     """
     Function performs central moving averages in order to smooth observations in given
-    dataset. The method divides the phase curve into `n_bins`. Afterwards, for each bin, the average flux is
+    dataset. The method divides the phase curve into `n_bins`. Afterward, for each bin, the average flux is
     calculated for points within `radius` number of bins. Use this function only on phased data.
 
     :param dt_set: numpy.array; phase curve to be smoothed
@@ -102,13 +110,13 @@ def central_moving_average(dt_set, n_bins=100, radius=2, cyclic_boundaries=True)
     bin_idxs = np.digitize(dt_set.x_data, bin_boundaries[1:], right=True)
 
     if cyclic_boundaries:
-        bins = [(np.arange(start=ii-radius, stop=ii+radius+1, step=1.0, dtype=np.int) % n_bins)
+        bins = [(np.arange(start=ii-radius, stop=ii+radius+1, step=1.0, dtype=INT) % n_bins)
                 for ii in range(n_bins)]
     else:
-        bins = [np.arange(start=0, stop=ii+radius+1, step=1.0, dtype=np.int) for ii in range(radius)]
-        bins += [np.arange(start=ii-radius, stop=ii+radius+1, step=1.0, dtype=np.int)
+        bins = [np.arange(start=0, stop=ii+radius+1, step=1.0, dtype=INT) for ii in range(radius)]
+        bins += [np.arange(start=ii-radius, stop=ii+radius+1, step=1.0, dtype=INT)
                  for ii in range(radius, n_bins-radius)]
-        bins += [np.arange(start=ii-radius, stop=n_bins, step=1.0, dtype=np.int)
+        bins += [np.arange(start=ii-radius, stop=n_bins, step=1.0, dtype=INT)
                  for ii in range(n_bins-radius, n_bins)]
 
     bin_masks = [np.isin(bin_idxs, bins[ii]) for ii in range(n_bins)]

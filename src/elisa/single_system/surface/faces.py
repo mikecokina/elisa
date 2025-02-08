@@ -3,6 +3,7 @@ from scipy.spatial.qhull import Delaunay
 
 from ... base import spot
 from ... base.surface import faces as bfaces
+from ... base.types import INT
 from ... logger import getLogger
 from ... base.surface.faces import set_all_surface_centres, mirror_triangulation
 
@@ -34,14 +35,16 @@ def build_surface_with_no_spots(system_container):
     star_container = system_container.star
     points_length = star_container.base_symmetry_points_number
     # triangulating only one eighth of the star
+    # noinspection PyTypeChecker
     points_to_triangulate = np.append(star_container.symmetry_points(), [[0, 0, 0]], axis=0)
     triangles = single_surface(star_container=star_container, points=points_to_triangulate)
     # removing faces from triangulation, where origin point is included
+    # noinspection PyUnresolvedReferences
     triangles = triangles[~(triangles >= points_length).any(1)]
     triangles = triangles[~((points_to_triangulate[triangles] == 0.).all(1)).any(1)]
     # setting number of base symmetry faces
-    star_container.base_symmetry_faces_number = np.int(np.shape(triangles)[0])
-    # lets exploit axial symmetry and fill the rest of the surface of the star
+    star_container.base_symmetry_faces_number = INT(np.shape(triangles)[0])
+    # let's exploit axial symmetry and fill the rest with the surface of the star
     star_container.faces = mirror_triangulation(triangles, star_container.inverse_point_symmetry_matrix)
 
     base_face_symmetry_vector = np.arange(star_container.base_symmetry_faces_number)
@@ -151,6 +154,7 @@ def set_all_normals(star_container, com):
     return star_container
 
 
+# noinspection PyUnreachableCode
 def build_velocities(system):
     """
     Function calculates velocity vector for each face relative to the observer.

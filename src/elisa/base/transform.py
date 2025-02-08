@@ -1,5 +1,7 @@
 import numpy as np
+from packaging import version
 
+from . types import INT, FLOAT
 from .. import (
     units as u,
     const,
@@ -12,7 +14,12 @@ from .. units import (
     DefaultSystemUnits
 )
 
-WHEN_FLOAT64 = (int, np.int, np.int32, np.int64, float, np.float, np.float32, np.float64)
+
+WHEN_FLOAT64 = (int, np.int32, np.int64, float, np.float32, np.float64)
+if version.parse(np.__version__) < version.parse("1.20.0"):
+    # noinspection PyUnresolvedReferences
+    WHEN_FLOAT64 += (np.int, np.float)
+
 WHEN_ARRAY = (list, np.ndarray, tuple)
 
 
@@ -90,7 +97,7 @@ class SystemProperties(TransformProperties):
         if isinstance(value, (u.Quantity, str)):
             value = u.Quantity(value) if isinstance(value, str) else value
             value = np.float64(value.to(u.DefaultSystemUnits.inclination))
-        elif isinstance(value, (int, np.int, float, np.float)):
+        elif isinstance(value, (int, INT, float, FLOAT)):
             value = np.float64((value * DefaultSystemInputUnits.inclination).to(DefaultSystemUnits.inclination))
         else:
             raise TypeError('Input of variable `inclination` is not (numpy.)int or (numpy.)float '
@@ -393,7 +400,7 @@ class SpotProperties(BodyProperties):
         :param value: flaot
         :return: float
         """
-        if not isinstance(value, (int, np.int, float, np.float)):
+        if not isinstance(value, (int, INT, float, FLOAT)):
             raise TypeError('Input of variable `temperature_factor` is not (numpy.)int or (numpy.)float.')
         return np.float64(value)
 

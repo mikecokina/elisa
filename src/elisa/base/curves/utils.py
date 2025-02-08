@@ -1,6 +1,8 @@
 import numpy as np
+
+from .. types import INT
 from ... import settings, ld, umpy as up
-from ...observer.passband import init_rv_passband
+from ... observer.passband import init_rv_passband
 
 
 def include_passband_data_to_kwargs(**kwargs):
@@ -102,7 +104,7 @@ def get_component_limbdarkening_cfs(component_instance, symmetry_test, passbands
 
         if symmetry_test:
             if settings.USE_SINGLE_LD_COEFFICIENTS:
-                ld_cfs = {fltr: vals[np.zeros(component_instance.temperatures.shape, dtype=np.int)]
+                ld_cfs = {fltr: vals[np.zeros(component_instance.temperatures.shape, dtype=INT)]
                           for fltr, vals in ld_cfs.items()}
             else:
                 ld_cfs = {fltr: component_instance.mirror_face_values(vals)

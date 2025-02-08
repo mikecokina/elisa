@@ -7,6 +7,7 @@ from ... import (
     utils
 )
 from ... base.orbit.orbit import AbstractOrbit
+from ... base.types import INT, FLOAT
 from ... logger import getLogger
 
 logger = getLogger('single_system.orbit.orbit')
@@ -89,8 +90,8 @@ class Orbit(AbstractOrbit):
                         (azN, np.nan, np.nan, phsN))
         """
         # ability to accept scalar as input
-        if isinstance(phase, (int, np.int, float, np.float)):
-            phase = np.array([np.float(phase)])
+        if isinstance(phase, (int, INT, float, FLOAT)):
+            phase = np.array([FLOAT(phase)])
 
         azimuth_angle = true_phase_to_azimuth(phase=phase)
 

@@ -6,7 +6,8 @@ from ... base.transform import (
     WHEN_FLOAT64,
     WHEN_ARRAY
 )
-from elisa.utils import is_empty
+from ... utils import is_empty
+from ... base.types import FLOAT
 
 
 def array_transform(value, when_array):
@@ -18,7 +19,7 @@ def array_transform(value, when_array):
     :return: numpy.array;
     """
     if isinstance(value, when_array):
-        return np.array(value, dtype=np.float)
+        return np.array(value, dtype=FLOAT)
     elif not is_empty(value):
         raise TypeError('Input of variable is not array-like.')
 

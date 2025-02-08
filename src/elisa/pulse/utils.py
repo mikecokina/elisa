@@ -1,11 +1,13 @@
 import numpy as np
 from .. import const, utils
+from .. base.types import INT
 
 
 def phase_correction(phase, synchronicity):
     """
     Calculate phase correction for mode axis drift.
 
+    :param synchronicity:
     :param phase: float; rotation phase of the star
     :return: float;
     """
@@ -149,7 +151,6 @@ def horizontal_component(displacement, points, treat_poles=False):
 
     :param displacement: numpy.array; dr, dphi, dtheta
     :param points: numpy.array; r, phi, theta
-    :param thetas: numpy.array:
     :param treat_poles: bool; remove invalid values for faces in contact with pole
     :return:
     """
@@ -173,8 +174,8 @@ def pole_neighbours(star):
     :param star: StarContainer
     :return:
     """
-    poles = np.array([star.points_spherical[:, 2].argmax(), star.points_spherical[:, 2].argmin()], dtype=np.int)
-    neighbour_idx = np.empty(2, dtype=np.int)
+    poles = np.array([star.points_spherical[:, 2].argmax(), star.points_spherical[:, 2].argmin()], dtype=INT)
+    neighbour_idx = np.empty(2, dtype=INT)
     for ii, pole in enumerate(poles):
         in_face = (pole == star.faces).any(axis=1)
         polar_face = (star.faces[in_face])[0]

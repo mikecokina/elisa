@@ -2,6 +2,8 @@ import gc
 import numpy as np
 
 from copy import copy
+
+from . types import INT
 from .. base.transform import SpotProperties
 from .. import units as u, settings
 from .. utils import is_empty
@@ -262,7 +264,7 @@ def incorporate_spots_mesh(to_container, component_com):
         neck_cond = np.abs(np.abs(com_pts[:, 0]) - neck) < 1e-9
         in_condition = np.logical_or(angular_dist_cond, neck_cond)
 
-        vertices_to_keep = np.arange(com_pts.shape[0], dtype=np.int)[in_condition]
+        vertices_to_keep = np.arange(com_pts.shape[0], dtype=INT)[in_condition]
 
         # simplices of target object for testing whether point lying inside or not of spot boundary, removing
         # duplicate points on the spot border
@@ -298,7 +300,7 @@ def remap_surface_elements(on_container, mapper, points_to_remap):
     logger.debug(f"changing value of parameter faces of component {on_container.name}")
 
     points_length = np.shape(points_to_remap)[0]
-    remap_list = np.empty(points_length, dtype=int)
+    remap_list = np.empty(points_length, dtype=INT)
     remap_list[indices] = up.arange(np.shape(indices)[0])
     on_container.faces = remap_list[mapper["object"]]
 
@@ -311,7 +313,7 @@ def remap_surface_elements(on_container, mapper, points_to_remap):
 
         logger.debug(f"changing value of parameter faces of spot {spot_index} / component {on_container.name}")
 
-        remap_list = np.empty(points_length, dtype=int)
+        remap_list = np.empty(points_length, dtype=INT)
         remap_list[indices] = up.arange(np.shape(indices)[0])
         on_container.spots[spot_index].faces = remap_list[mapper["spots"][spot_index]]
     gc.collect()

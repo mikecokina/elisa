@@ -1,6 +1,7 @@
 import numpy as np
 
 from .. import units, const
+from .. base.types import INT, FLOAT
 from .. units import DefaultBinarySystemInputUnits
 from .. base.transform import SystemProperties, WHEN_FLOAT64, quantity_transform
 
@@ -14,7 +15,7 @@ class BinarySystemProperties(SystemProperties):
         :param value: Union[(numpy.)int, (numpy.)float]
         :return: float;
         """
-        if not isinstance(value, (int, np.int, float, np.float)):
+        if not isinstance(value, (int, INT, float, FLOAT)):
             raise TypeError('Input of variable `eccentricity` is not (numpy.)int or (numpy.)float.')
         if value < 0 or value >= 1:
             raise ValueError('Input of variable `eccentricity` is out of boundaries [0, 1)')
@@ -85,7 +86,7 @@ class RadialVelocityObserverProperties(SystemProperties):
         """
         if not value > 0:
             raise ValueError(f"Invalid value of property `mass_ratio`. Expected > 0, given {value}")
-        return np.float(value)
+        return FLOAT(value)
 
     @staticmethod
     def asini(value):

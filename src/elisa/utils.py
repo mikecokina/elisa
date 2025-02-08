@@ -6,13 +6,13 @@ import scipy as sp
 from typing import Sized
 from queue import Empty
 from numpy.linalg import norm
-from scipy.spatial import distance_matrix as dstm
 from matplotlib.cbook import flatten
 
 from copy import copy, deepcopy
 from . import const, umpy as up
 
-from elisa.numba_functions import operations
+from . numba_functions import operations
+from . base.types import FLOAT, INT
 
 
 def polar_to_cartesian(radius, phi):
@@ -85,9 +85,13 @@ def find_nearest_dist_3d(data):
     for i in range(0, len(test_points) - 1):
         points.remove(test_points[i])
         tree = KDTree(points)
-        distance, ndx = tree.query([test_points[i]], k=1)
-        distances.append(distance[0])
-    return min(distances)
+
+        if np.isnan(test_points[i]).any():
+            distances.append(np.inf)
+        else:
+            distance, ndx = tree.query([test_points[i]], k=1)
+            distances.append(distance[0])
+    return np.min(distances)
 
 
 def cartesian_to_spherical(points, degrees=False):
@@ -225,7 +229,7 @@ def arbitrary_rotation(theta, omega, vector, degrees=False, omega_normalized=Fal
 
     theta = theta if not degrees else up.radians(theta)
 
-    matrix = up.arange(9, dtype=np.float).reshape((3, 3))
+    matrix = up.arange(9, dtype=FLOAT).reshape((3, 3))
 
     matrix[0, 0] = (up.cos(theta)) + (omega[0] ** 2 * (1. - up.cos(theta)))
     matrix[1, 0] = (omega[0] * omega[1] * (1. - up.cos(theta))) - (omega[2] * up.sin(theta))
@@ -253,7 +257,7 @@ def around_axis_rotation(theta, vector, axis, inverse=False, degrees=False):
     :param degrees: bool; if True value theta is assumed to be in degrees
     :return: numpy.array; rotated vector(s)
     """
-    matrix = up.arange(9, dtype=np.float).reshape((3, 3))
+    matrix = up.arange(9, dtype=FLOAT).reshape((3, 3))
     theta = theta if not degrees else up.radians(theta)
     vector = np.array(vector)
 
@@ -310,6 +314,7 @@ def average_spacing_cgal(data, neighbours=6):
     if not isinstance(data, type(np.array)):
         data = np.array(data)
 
+    # noinspection PyUnresolvedReferences
     dist = sp.spatial.distance.cdist(data, data, 'euclidean')
     total = 0
     for line in dist:
@@ -560,7 +565,7 @@ def find_surrounded_as_matrix(look_in, look_for):
     positive_mask[all_positive_inline, -1] = False
     # find signs switching columns
     sign_swith_mask = up.logical_xor(positive_mask[:, :-1], positive_mask[:, 1:])
-    idx_array = np.ones(np.shape(dif), dtype=np.int) * up.arange(np.shape(look_in)[0])
+    idx_array = np.ones(np.shape(dif), dtype=INT) * up.arange(np.shape(look_in)[0])
     idx_array = idx_array[:, :-1][sign_swith_mask]
     ret_matrix = np.column_stack((look_in[idx_array], look_in[idx_array + 1]))
     # consider on place value as not surounded (surounded by itself)
@@ -651,7 +656,7 @@ def get_line_of_sight_single_system(phase, inclination):
     :param inclination: float;
     :return: numpy.array;
     """
-    line_of_sight_spherical = np.empty((len(phase), 3), dtype=np.float)
+    line_of_sight_spherical = np.empty((len(phase), 3), dtype=FLOAT)
     line_of_sight_spherical[:, 0] = 1
     line_of_sight_spherical[:, 1] = const.FULL_ARC * phase
     line_of_sight_spherical[:, 2] = inclination
@@ -889,7 +894,7 @@ def split_to_batches(array, n_proc):
     :param array: Union[List, numpy.array];
     :return: List;
     """
-    indices = np.linspace(0, len(array), num=n_proc+1, endpoint=True, dtype=np.int)
+    indices = np.linspace(0, len(array), num=n_proc+1, endpoint=True, dtype=INT)
     indices = [(indices[ii-1], indices[ii]) for ii in range(1, n_proc+1)]
     return [array[idx[0]: idx[1]] for idx in indices]
 

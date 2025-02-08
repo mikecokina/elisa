@@ -5,6 +5,7 @@ from scipy.spatial.qhull import Delaunay
 from .. import utils as bsutils
 from .. orbit import orbit
 from ... base import spot
+from ... base.types import INT
 from ... utils import is_empty
 from ... logger import getLogger
 from ... import (
@@ -161,7 +162,7 @@ def build_surface_with_no_spots(system, components_distance, component="all"):
         z0_test = np.bitwise_not(np.isclose(triangulated_pts[triangles][:, :, 2], 0).all(1))
         triangles = triangles[up.logical_and(y0_test, z0_test)]
 
-        setattr(star, "base_symmetry_faces_number", np.int(np.shape(triangles)[0]))
+        setattr(star, "base_symmetry_faces_number", INT(np.shape(triangles)[0]))
         # lets exploit axial symmetry and fill the rest of the surface of the star
         star.base_symmetry_faces = triangles
         star.faces = mirror_triangulation(triangles, star.inverse_point_symmetry_matrix)
