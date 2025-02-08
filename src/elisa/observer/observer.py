@@ -1,7 +1,5 @@
-import os
 import sys
 import numpy as np
-import pandas as pd
 
 from . import utils as outils
 from . plot import Plot
@@ -121,10 +119,8 @@ class Observer(object):
             if band in ['bolometric']:
                 psbnd, right_bandwidth, left_bandwidth = init_bolometric_passband()
             else:
-                df = self.get_passband_df(band)
-                left_bandwidth = df[settings.PASSBAND_DATAFRAME_WAVE].min()
-                right_bandwidth = df[settings.PASSBAND_DATAFRAME_WAVE].max()
-                psbnd = PassbandContainer(table=df, passband=band)
+                psbnd = PassbandContainer.from_name(passband=band)
+                left_bandwidth, right_bandwidth = psbnd.get_bandwidth()
 
             self.setup_bandwidth(left_bandwidth=left_bandwidth, right_bandwidth=right_bandwidth)
             self.passband[band] = psbnd
@@ -141,21 +137,6 @@ class Observer(object):
             self.left_bandwidth = left_bandwidth
         if right_bandwidth > self.right_bandwidth:
             self.right_bandwidth = right_bandwidth
-
-    @staticmethod
-    def get_passband_df(passband):
-        """
-        Read content of passband table (csv file) based on passband name.
-
-        :param passband: str;
-        :return: pandas.DataFrame;
-        """
-        if passband not in settings.PASSBANDS:
-            raise ValueError('Invalid or unsupported passband function.')
-        file_path = os.path.join(settings.PASSBAND_TABLES, str(passband) + '.csv')
-        df = pd.read_csv(file_path)
-        df[settings.PASSBAND_DATAFRAME_WAVE] *= 10.0
-        return df
 
     def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False,
            from_time=None, to_time=None, time_step=None, times=None, flux_unit=None):
