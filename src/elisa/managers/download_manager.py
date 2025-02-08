@@ -80,21 +80,39 @@ class DownloadManager(object):
 
     @staticmethod
     def handler(file_size, url, path):
-        # specify the starting and ending of the file
-        headers = {'Range': 'bytes=%d-%d' % (0, file_size)}
+        headers = {'Range': f'bytes=0-{file_size}'}
 
-        # request the specified part and get into variable
-        r = requests.get(url, headers=headers, stream=True)
+        # Make GET request and allow redirects
+        r = requests.get(url, headers=headers, stream=True, allow_redirects=True)
 
-        # open the file and write the content of the requested content into file
-        r.raw.read = functools.partial(r.raw.read, decode_content=True)  # decompress if needed
-        with tqdm.wrapattr(r.raw, "read", total=file_size, desc="") as r_raw:
+        # Ensure response is successful
+        if r.status_code >= 400:
+            raise Exception(f"Failed to download file: {url} (Status Code: {r.status_code})")
+
+        # Handle decompression if needed
+        r.raw.read = functools.partial(r.raw.read, decode_content=True)
+
+        # Download with tqdm progress bar
+        with tqdm.wrapattr(r.raw, "read", total=file_size, desc="Downloading") as r_raw:
             with open(path, "wb") as f:
                 shutil.copyfileobj(r_raw, f)
 
     @classmethod
     def download_file(cls, url, path):
-        # noinspection PyTypeChecker
-        r = requests.head(url, headers={'Accept-Encoding': None})
-        file_size = int(r.headers['content-length'])
-        cls.handler(file_size, url, path)
+        # Allow redirects in HEAD request to get the final URL
+        r = requests.head(url, headers={'Accept-Encoding': None}, allow_redirects=True)
+
+        # Ensure response is successful
+        if r.status_code >= 400:
+            raise Exception(f"Failed to access URL: {url} (Status Code: {r.status_code})")
+
+        # Get the final URL after redirections
+        final_url = r.url
+
+        # Get the file size
+        file_size = int(r.headers.get('content-length', 0))  # Use .get() to avoid KeyError if missing
+
+        if file_size == 0:
+            raise Exception("Failed to determine file size. Content-Length missing.")
+
+        cls.handler(file_size, final_url, path)
