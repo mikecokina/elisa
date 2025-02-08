@@ -290,7 +290,9 @@ ELISa is currently capable of modelling light curves in the following photometri
     Generic.Stromgren.b
     Generic.Stromgren.y
     Kepler
-    GaiaDR2
+    Gaia.2010.G
+    Gaia.2010.BP
+    Gaia.2010.RP
     TESS
 
 
