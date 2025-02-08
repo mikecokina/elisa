@@ -7,7 +7,7 @@ import numpy as np
 
 from unittest import skip
 from numpy.testing import assert_array_equal, assert_allclose
-from pypex.poly2d import polygon
+from elisa.pypex.poly2d import polygon
 from copy import deepcopy
 
 from elisa.binary_system.container import OrbitalPositionContainer
