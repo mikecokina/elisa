@@ -12,8 +12,8 @@ class PassbandPlot(object):
     def passband(self):
         xs = np.array(self.container.table.wavelength, dtype=FLOAT)
         ys = np.array(self.container.table.throughput, dtype=FLOAT)
-        x_unit = r"$\dot{\AA}$"
-        y_unit = '% / 100'
+        x_unit = r"Wavelength [$\dot{\AA}$]"
+        y_unit = 'Transmissivity [%/100]'
 
         kwargs = dict(
             xs=xs,
