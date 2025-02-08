@@ -1,10 +1,15 @@
+import os
 from os.path import join as pjoin, abspath, dirname
 
 import pandas as pd
+from tqdm import tqdm
 
 from elisa import const, utils
 
-__BASE_PATH__ = pjoin(dirname(dirname(abspath(__file__))), "vh16.orig")
+# __BASE_PATH__ = pjoin(dirname(dirname(abspath(__file__))), "vh16.orig")
+
+
+__BASE_PATH__ = "/home/mike/Data/limcoffiles2019"
 __MH__ = const.METALLICITY_LIST_LD
 __HEADER__ = ['xlin', 'qlin', 'xlog', 'ylog', 'qlog', 'xsqrt', 'ysqrt', 'qsqrt']
 
@@ -17,7 +22,10 @@ __TABLE_HEADERS__ = {
 VH_TO_ELISA = {
     'bolometric': 'bolometric',
     'GAIA (2010)': {
-        'G': 'GaiaDR2'
+        'G': 'Gaia.2010.G',
+        'BP': 'Gaia.2010.BP',
+        'RP': 'Gaia.2010.RP',
+        'G_RV': 'Gaia.2010.G_RV',
     },
     "Bessell": {
         'UX': 'Generic.Bessell.U',
@@ -53,28 +61,32 @@ VH_TO_ELISA = {
 
 __PASSBANDS_MAP__ = {
     'bolometric': 'bolometric',
-    'GaiaDR2': "gaia", 'Kepler': 'kepler',
-    'Generic.Bessell.U': 'bessell', 'Generic.Bessell.B': 'bessell',
-    'Generic.Bessell.V': 'bessell', 'Generic.Bessell.R': 'bessell',
+    'Gaia.2010.G': "gaia",
+    'Gaia.2010.BP': "gaia",
+    'Gaia.2010.RP': "gaia",
+    'Gaia.2010.G_RV': "gaia",
+    'Kepler': 'kepler',
+    'Generic.Bessell.U': 'bessell',
+    'Generic.Bessell.B': 'bessell',
+    'Generic.Bessell.V': 'bessell',
+    'Generic.Bessell.R': 'bessell',
     'Generic.Bessell.I': 'bessell',
-    'Generic.Stromgren.b': 'stromgren', 'Generic.Stromgren.u': 'stromgren',
-    'Generic.Stromgren.v': 'stromgren', 'Generic.Stromgren.y': 'stromgren',
-    'SLOAN.SDSS.g': 'sdss', 'SLOAN.SDSS.i': 'sdss', 'SLOAN.SDSS.r': 'sdss', 'SLOAN.SDSS.u': 'sdss',
+    'Generic.Stromgren.b': 'stromgren',
+    'Generic.Stromgren.u': 'stromgren',
+    'Generic.Stromgren.v': 'stromgren',
+    'Generic.Stromgren.y': 'stromgren',
+    'SLOAN.SDSS.g': 'sdss',
+    'SLOAN.SDSS.i': 'sdss',
+    'SLOAN.SDSS.r': 'sdss',
+    'SLOAN.SDSS.u': 'sdss',
     'SLOAN.SDSS.z': 'sdss'
 }
 
 
-__PASSBANDS_MAP__ = {
-    'bolometric': 'bolometric',
-    # 'GaiaDR2': "gaia", 'Kepler': 'kepler',
-    # 'Generic.Bessell.U': 'bessell', 'Generic.Bessell.B': 'bessell',
-    # 'Generic.Bessell.V': 'bessell', 'Generic.Bessell.R': 'bessell',
-    # 'Generic.Bessell.I': 'bessell',
-    # 'Generic.Stromgren.b': 'stromgren', 'Generic.Stromgren.u': 'stromgren',
-    # 'Generic.Stromgren.v': 'stromgren', 'Generic.Stromgren.y': 'stromgren',
-    # 'SLOAN.SDSS.g': 'sdss', 'SLOAN.SDSS.i': 'sdss', 'SLOAN.SDSS.r': 'sdss', 'SLOAN.SDSS.u': 'sdss',
-    # 'SLOAN.SDSS.z': 'sdss'
-}
+def numeric_metallicity_to_string(metallicity):
+    sign = "p" if metallicity >= 0 else "m"
+    leadzeronum = "%02d" % (metallicity * 10) if metallicity >= 0 else "%02d" % (metallicity * -10)
+    return "{sign}{leadzeronum}".format(sign=sign, leadzeronum=leadzeronum)
 
 
 def get_vh_filename(metallicity):
@@ -106,30 +118,41 @@ def remove_parenthesis(record):
 
 
 def export_all_to_elisa_format(path):
-    for law in ["lin", "log", "sqrt"]:
-        for passband, band in __PASSBANDS_MAP__.items():
-            for mh in const.METALLICITY_LIST_LD:
-                pd_records = pd.DataFrame(columns=__TABLE_HEADERS__[law])
-                for t in const.CK_TEMPERATURE_LIST_ATM:
-                    for g in const.GRAVITY_LIST_LD:
-                        obtained_record = get_record(t, g, mh, band)
-                        if utils.is_empty(obtained_record):
-                            continue
-                        for rec in obtained_record:
-                            if passband in rec:
-                                rec = rec[passband]
-                                try:
-                                    df = pd.DataFrame(columns=__TABLE_HEADERS__[law])
-                                    df[__TABLE_HEADERS__[law][2:]] = rec[__TABLE_HEADERS__[law][2:]]
-                                    df[__TABLE_HEADERS__[law][0:2]] = [t, g]
+    total = (len(const.METALLICITY_LIST_LD) *
+             len(const.CK_TEMPERATURE_LIST_ATM) *
+             len(__PASSBANDS_MAP__) *
+             len(const.GRAVITY_LIST_LD)) * 3
 
-                                    pd_records = pd.concat((pd_records, df))
-                                except KeyError:
-                                    pass
+    os.makedirs(path, exist_ok=True)
+    with tqdm(total=total, desc="Extracting Frames", unit="frames") as pbar:
 
-                tablename = get_elisa_filename(mh, law, passband)
-                print(f"saving table {tablename}")
-                pd_records.to_csv(pjoin(path, tablename), index=False)
+        for law in ["lin", "log", "sqrt"]:
+            for passband, band in __PASSBANDS_MAP__.items():
+                for mh in const.METALLICITY_LIST_LD:
+                    pd_records = pd.DataFrame(columns=__TABLE_HEADERS__[law])
+                    for t in const.CK_TEMPERATURE_LIST_ATM:
+                        for g in const.GRAVITY_LIST_LD:
+                            obtained_record = get_record(t, g, mh, band)
+                            if utils.is_empty(obtained_record):
+                                pbar.update(1)
+                                continue
+                            for rec in obtained_record:
+                                if passband in rec:
+                                    rec = rec[passband]
+                                    try:
+                                        df = pd.DataFrame(columns=__TABLE_HEADERS__[law])
+                                        df[__TABLE_HEADERS__[law][2:]] = rec[__TABLE_HEADERS__[law][2:]]
+                                        df[__TABLE_HEADERS__[law][0:2]] = [t, g]
+
+                                        pd_records = pd.concat((pd_records, df))
+                                    except KeyError:
+                                        pass
+
+                            pbar.update(1)
+
+                    tablename = get_elisa_filename(mh, law, passband)
+                    print(f"saving table {tablename}")
+                    pd_records.to_csv(pjoin(path, tablename), index=False)
 
 
 def get_section(data, header):
@@ -238,7 +261,22 @@ def get_gaia(data):
         if str(row).lower().startswith('gaia (2010)    g'):
             row = str(row).split(" ")
             row = parse_row(row)
-            return [back_parser('GaiaDR2', row)]
+            return [back_parser('Gaia.2010.G', row)]
+
+        elif str(row).lower().startswith('gaia (2010)    bp'):
+            row = str(row).split(" ")
+            row = parse_row(row)
+            return [back_parser('Gaia.2010.BP', row)]
+
+        elif str(row).lower().startswith('gaia (2010)    rp'):
+            row = str(row).split(" ")
+            row = parse_row(row)
+            return [back_parser('Gaia.2010.RP', row)]
+
+        elif str(row).lower().startswith('gaia (2010)  g_rv'):
+            row = str(row).split(" ")
+            row = parse_row(row)
+            return [back_parser('Gaia.2010.G_RV', row)]
 
 
 def get_kepler(data):
@@ -266,7 +304,7 @@ def get_stromgren(data):
 
 
 def main():
-    export_all_to_elisa_format(pjoin(dirname(dirname(abspath(__file__))), "vh16"))
+    export_all_to_elisa_format(pjoin(dirname(dirname(abspath(__file__))), "vh19"))
 
 
 if __name__ == "__main__":
