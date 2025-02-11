@@ -1,10 +1,11 @@
+import datetime
+
 import numpy as np
-from astropy.time import Time
 
 from ... import units as u
 from ... atm import atm_file_prefix_to_quantity_list
 from ... import settings
-
+from ... utils import jd_from_datetime
 
 PARAM_PARSER = '@'
 NUISANCE_PARSER = 'nuisance'
@@ -49,6 +50,8 @@ DEFAULT_NORMALIZATION_STAR = {
     "synchronicity": (0.01, 10),
 }
 
+CURRENT_TIME_JD = jd_from_datetime(datetime.datetime.now())
+
 DEFAULT_NORMALIZATION_SYSTEM = {
     "inclination": (0, 180),
     "eccentricity": (0, 0.9999),
@@ -60,7 +63,7 @@ DEFAULT_NORMALIZATION_SYSTEM = {
     "period": (0.001, 100),
     "additional_light": (0, 1.0),
     "phase_shift": (-0.8, 0.8),
-    "primary_minimum_time": (Time.now().jd - 365.0, Time.now().jd),
+    "primary_minimum_time": (CURRENT_TIME_JD - 365.0, CURRENT_TIME_JD),
 }
 
 SPOTS_PARAMETERS = ['longitude', 'latitude', 'angular_radius', 'temperature_factor', 'angular_radius']
