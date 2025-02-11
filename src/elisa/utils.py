@@ -1,4 +1,6 @@
+import datetime
 import re
+
 import numpy as np
 import pandas as pd
 import scipy as sp
@@ -1008,3 +1010,46 @@ def jd_to_phase(times, period, t0, centre=0.5):
     start_phase = centre - 0.5
     t0 += start_phase * period
     return ((times - t0) / period) % 1.0 + start_phase
+
+
+def jd_from_datetime(dt: datetime.datetime):
+    """
+    Convert a Python datetime object to the Julian Date.
+
+    Parameters:
+      dt (datetime): The datetime object to convert. Assumes the Gregorian calendar.
+
+    Returns:
+      float: The Julian Date.
+    """
+
+    dt_utc = dt.astimezone(datetime.timezone.utc)
+
+    # Extract year, month, and day with the fractional part of the day.
+    year = dt_utc.year
+    month = dt_utc.month
+    # Compute the fractional day: hours, minutes, seconds, and microseconds
+    day_fraction = dt_utc.day + (
+            dt_utc.hour / 24.0 +
+            dt_utc.minute / 1440.0 +
+            dt_utc.second / 86400.0 +
+            dt_utc.microsecond / 86400.0 / 1e6
+    )
+
+    # For January and February, treat them as months 13 and 14 of the previous year
+    if month <= 2:
+        year -= 1
+        month += 12
+
+    # Compute the Gregorian calendar correction:
+    a_ = np.floor(year / 100)
+    b_ = 2 - a_ + np.floor(a_ / 4)
+
+    # Now, apply the formula.
+    jd = (
+            np.floor(365.25 * (year + 4716)) +
+            np.floor(30.6001 * (month + 1)) +
+            day_fraction + b_ - 1524.5
+    )
+
+    return jd
