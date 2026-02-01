@@ -22,6 +22,7 @@ class DefaultSettings(object):
     SURFACE_DISPLACEMENT_TOL = 1e-2
     RV_METHOD = 'kinematic'
     RV_LAMBDA_INTERVAL = (5500, 5600)
+    LSF_METHOD = 'radiometric'
 
     # computational
     MAX_DISCRETIZATION_FACTOR = 8
