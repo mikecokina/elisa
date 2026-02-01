@@ -264,6 +264,64 @@ class Observer(object):
 
         return self.phases, self.radial_velocities
 
+    def lsf(self, velocity_grid, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False, method=None,
+           from_time=None, to_time=None, time_step=None, times=None):
+        """
+        Method for simulated line spread function (LSF) observation. Computes the line spread function based on input
+        parameters and the System supplied during initialization of the Observer instance. Times of observations
+        can be supplied in either time or phase domain.
+
+        :param velocity_grid: Iterable float; grid of velocities at which to compute the line spread function
+            Caution: velocity_grid should has units. You can use astropy.units to set the units, e.g.:
+            velocity_grid = np.arange(-200, 200, 1) * u.km / u.s
+
+        :param from_time: float; starting time of the observation
+        :param to_time: float; end time of the observation
+        :param time_step: float; time increment of the observations
+        :param times: Iterable float; array of times at which to perform observations; if this parameter is provided,
+                          the supplied 'from_time`, `to_time`, `time_step` become irrelevant
+
+        :param from_phase: float; starting phase of the observation
+        :param to_phase: float; end phase of the observation
+        :param phase_step: float; phase increment of the observations
+        :param phases: Iterable float; array of phases at which to perform observations; if this parameter is
+                           provided, the supplied 'from_phase`, `to_phase`, `phase_step` become irrelevant
+
+        :param normalize: bool; if True, the output LSF will be normalized
+        :param method: str; method for calculation of the line spread function
+        :return: Tuple[numpy.array, dict['primary':numpy.array[numpy.array], 'secondary':numpy.array[numpy.array]]]; phases, dict of primary and secondary line spread functions
+        """
+        method = settings.RV_METHOD if method is None else method
+
+        phases = self.manage_time_series(from_phase, to_phase, phase_step, phases, from_time, to_time, time_step, times)
+
+        # reduce phases to only unique ones from interval (0, 1) in general case without pulsations
+        base_phases, base_phases_to_origin = self.phase_interval_reduce(phases)
+
+        velocity_grid = velocity_grid.to(self.rv_unit).value
+
+        self.line_spread_functions = self._system.compute_lsf(
+            **dict(
+                velocity_grid=velocity_grid,
+                phases=base_phases,
+                position_method=self._system.get_positions_method(),
+                method=method
+            )
+        )
+
+        # remap unique phases back to original phase interval
+        for items in self.line_spread_functions:
+            self.line_spread_functions[items] = np.array(self.line_spread_functions[items])[base_phases_to_origin]
+
+        self.phases = phases + self._system.phase_shift
+        self.rv_unit = u.m / u.s
+        if normalize:
+            self.rv_unit = u.dimensionless_unscaled
+            _max = np.max([np.max(item) for item in self.line_spread_functions.values()])
+            self.line_spread_functions = {key: value / _max for key, value in self.line_spread_functions.items()}
+
+        return self.phases, self.line_spread_functions
+
     def phase_interval_reduce(self, phases):
         """
         Function reduces original phase interval to base interval (0, 1) in case of LC without pulsations.
