@@ -49,13 +49,18 @@ def produce_circ_sync_curves_mp(*args):
 
     curves = {key: np.zeros(phase_batch.shape) for key in crv_labels}
 
+    velocity_grid = kwargs.get("velocity_grid", None)
+
     for pos_idx, position in enumerate(orbital_motion):
         on_pos = bsutils.move_sys_onpos(initial_system, position, on_copy=True)
 
         compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=in_eclipse[pos_idx],
                                  return_values=False, write_to_containers=True)
 
-        curves = curves_fn(curves, pos_idx, crv_labels, on_pos)
+        if velocity_grid is not None:
+            curves = curves_fn(curves, pos_idx, crv_labels, on_pos, velocity_grid)
+        else:
+            curves = curves_fn(curves, pos_idx, crv_labels, on_pos)
 
     return curves
 
@@ -95,6 +100,9 @@ def produce_circ_spotty_async_curves_mp(*args):
     # calculating lc with spots gradually shifting their positions in each phase
     curves = {key: np.empty(len(motion_batch)) for key in crv_labels}
     normal_radiance, ld_cfs = None, None
+
+    velocity_grid = kwargs.get("velocity_grid", None)
+
     for pos_idx, orbital_position in enumerate(motion_batch):
         initial_system.set_on_position_params(position=orbital_position)
         initial_system.time = initial_system.set_time()
@@ -142,7 +150,10 @@ def produce_circ_spotty_async_curves_mp(*args):
         _kwargs = dict(in_eclipse=in_eclipse[pos_idx], return_values=False, write_to_containers=True)
         compute_surface_coverage(on_pos, binary.semi_major_axis, **_kwargs)
 
-        curves = curve_fn(curves, pos_idx, crv_labels, on_pos)
+        if velocity_grid is not None:
+            curves = curve_fn(curves, pos_idx, crv_labels, on_pos, velocity_grid)
+        else:
+            curves = curve_fn(curves, pos_idx, crv_labels, on_pos)
 
     return curves
 
@@ -178,6 +189,8 @@ def produce_circ_pulsating_curves_mp(*args):
 
     curves = {key: np.zeros(phase_batch.shape) for key in crv_labels}
 
+    velocity_grid = kwargs.get("velocity_grid", None)
+
     for pos_idx, position in enumerate(orbital_motion):
         on_pos = initial_system.copy()
         on_pos.set_on_position_params(position)
@@ -190,7 +203,10 @@ def produce_circ_pulsating_curves_mp(*args):
         compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=in_eclipse[pos_idx],
                                  return_values=False, write_to_containers=True)
 
-        curves = curves_fn(curves, pos_idx, crv_labels, on_pos)
+        if velocity_grid is not None:
+            curves = curves_fn(curves, pos_idx, crv_labels, on_pos, velocity_grid)
+        else:
+            curves = curves_fn(curves, pos_idx, crv_labels, on_pos)
 
     return curves
 
@@ -215,6 +231,7 @@ def integrate_eccentric_curve_exactly(*args):
     :return: Dict;
     """
     binary, potentials, motion_batch, spots_longitudes, crv_labels, curve_fn, kwargs = args
+    velocity_grid = kwargs.get("velocity_grid", None)
     curves = {key: np.empty(len(motion_batch)) for key in crv_labels}
     for run_idx, position in enumerate(motion_batch):
         pos_idx = int(position.idx)
@@ -230,7 +247,10 @@ def integrate_eccentric_curve_exactly(*args):
         _kwargs = dict(in_eclipse=True, return_values=False, write_to_containers=True)
         compute_surface_coverage(on_pos, binary.semi_major_axis, **_kwargs)
 
-        curves = curve_fn(curves, run_idx, crv_labels, on_pos)
+        if velocity_grid is not None:
+            curves = curve_fn(curves, run_idx, crv_labels, on_pos, velocity_grid)
+        else:
+            curves = curve_fn(curves, run_idx, crv_labels, on_pos)
     return curves
 
 
@@ -346,6 +366,8 @@ def integrate_eccentric_curve_w_orbital_symmetry(*args):
     from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
     initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
 
+    velocity_grid = kwargs.get("velocity_grid", None)
+
     ld_cfs, normal_radiance = None, None
     for idx in range(orbital_positions.shape[0]):
         body, mirror = orbital_positions[idx, 0, :], orbital_positions[idx, 1, :]
@@ -373,9 +395,14 @@ def integrate_eccentric_curve_w_orbital_symmetry(*args):
         args = (new_build_mask[idx], on_pos_base, on_pos_mirror, normal_radiance, ld_cfs)
         normal_radiance, ld_cfs = _update_ldc_and_radiance_on_orb_pair(*args, **kwargs)
 
-        curves_body = curve_fn(curves_body, idx, crv_labels, on_pos_base)
-        curves_mirror = curves_mirror if on_pos_mirror is None else \
-            curve_fn(curves_mirror, idx, crv_labels, on_pos_mirror)
+        if velocity_grid is not None:
+            curves_body = curve_fn(curves_body, idx, crv_labels, on_pos_base, velocity_grid)
+            curves_mirror = curves_mirror if on_pos_mirror is None else \
+                curve_fn(curves_mirror, idx, crv_labels, on_pos_mirror, velocity_grid)
+        else:
+            curves_body = curve_fn(curves_body, idx, crv_labels, on_pos_base)
+            curves_mirror = curves_mirror if on_pos_mirror is None else \
+                curve_fn(curves_mirror, idx, crv_labels, on_pos_mirror)
 
     return {key: np.stack((curves_body[key], curves_mirror[key]), axis=1) for key in crv_labels}
 
@@ -410,6 +437,8 @@ def similar_neighbour_approximation_ecc_curve_integration(*args):
     from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
     initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
 
+    velocity_grid = kwargs.get("velocity_grid", None)
+
     normal_radiance, ld_cfs = None, None
     for run_idx, position in enumerate(positions):
         pos_idx = int(position.idx)
@@ -425,5 +454,8 @@ def similar_neighbour_approximation_ecc_curve_integration(*args):
         # TODO: properly calculate in_eclipse parameter
         compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=True, return_values=False,
                                  write_to_containers=True)
-        curves = curve_fn(curves, run_idx, crv_labels, on_pos)
+        if velocity_grid is not None:
+            curves = curve_fn(curves, run_idx, crv_labels, on_pos, velocity_grid)
+        else:
+            curves = curve_fn(curves, run_idx, crv_labels, on_pos)
     return curves
