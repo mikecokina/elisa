@@ -47,9 +47,13 @@ def produce_circ_sync_curves_mp(*args):
     azimuths = [position.azimuth for position in orbital_motion]
     in_eclipse = dynamic.in_eclipse_test(azimuths, ecl_boundaries)
 
-    curves = {key: np.zeros(phase_batch.shape) for key in crv_labels}
-
     velocity_grid = kwargs.get("velocity_grid", None)
+    
+    if velocity_grid is None:
+        curves = {key: np.zeros(phase_batch.shape) for key in crv_labels}
+    else:
+        curves = {key: np.zeros((phase_batch.shape[0], velocity_grid.shape[0])) for key in crv_labels}
+
 
     for pos_idx, position in enumerate(orbital_motion):
         on_pos = bsutils.move_sys_onpos(initial_system, position, on_copy=True)
