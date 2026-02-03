@@ -93,7 +93,7 @@ def _calculate_lsf_point(star, velocity_grid):
 
     N = len(getattr(star, 'velocities')[:, 0])
     median_RV = numpy.median(getattr(star, 'velocities')[:, 0])
-    base_dispersion = 1.1*(2 * vsini_approx) / numpy.sqrt(N) 
+    base_dispersion = (2 * vsini_approx) / numpy.sqrt(N) 
     
     ratio = numpy.abs(velocities-median_RV) / vsini_approx
     ratio = numpy.clip(ratio, 0.0, 1.0)
