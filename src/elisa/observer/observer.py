@@ -290,6 +290,8 @@ class Observer(object):
                            provided, the supplied 'from_phase`, `to_phase`, `phase_step` become irrelevant
 
         :param method: str; method for calculation of the line spread function
+               Options: 'radiometric' (integrated surface brightness), 
+                        'analytic' (simplified analytical model).
         :return: Tuple[numpy.array, numpy.array, dict]
                  (phases, velocity_grid, lsf_dict)
 
