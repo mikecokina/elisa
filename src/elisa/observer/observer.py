@@ -266,7 +266,7 @@ class Observer(object):
 
     def lsf(self, v_start=-500, v_stop=500, v_step=1.0, 
             from_phase=None, to_phase=None, phase_step=None, phases=None, 
-            normalize=False, method=None,
+            method=None,
             from_time=None, to_time=None, time_step=None, times=None):
         """
         Method for simulated line spread function (LSF) observation. Computes the line spread function based on input
@@ -289,7 +289,6 @@ class Observer(object):
         :param phases: Iterable float; array of phases at which to perform observations; if this parameter is
                            provided, the supplied 'from_phase`, `to_phase`, `phase_step` become irrelevant
 
-        :param normalize: bool; if True, the output LSF will be normalized
         :param method: str; method for calculation of the line spread function
         :return: Tuple[numpy.array, numpy.array, dict]
                  (phases, velocity_grid, lsf_dict)
@@ -337,10 +336,6 @@ class Observer(object):
             self.line_spread_functions[items] = np.array(self.line_spread_functions[items])[base_phases_to_origin]
 
         self.phases = phases + self._system.phase_shift
-        if normalize:
-            self.rv_unit = u.dimensionless_unscaled
-            _max = np.max([np.max(item) for item in self.line_spread_functions.values()])
-            self.line_spread_functions = {key: value / _max for key, value in self.line_spread_functions.items()}
 
         return self.phases, self.lsf_velocity_grid, self.line_spread_functions
 
