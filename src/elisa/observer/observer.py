@@ -296,7 +296,7 @@ class Observer(object):
         warning: **NO Normalization is applied.** The values in `lsf_dict` represent 
                  the integrated surface brightness (flux) projected onto the line of sight.
         """
-        method = settings.RV_METHOD if method is None else method
+        method = settings.LSF_METHOD if method is None else method
 
         phases = self.manage_time_series(from_phase, to_phase, phase_step, phases, from_time, to_time, time_step, times)
 
