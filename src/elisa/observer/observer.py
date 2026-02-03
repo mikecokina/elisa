@@ -264,16 +264,18 @@ class Observer(object):
 
         return self.phases, self.radial_velocities
 
-    def lsf(self, velocity_grid, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False, method=None,
-           from_time=None, to_time=None, time_step=None, times=None):
+    def lsf(self, v_start=-500, v_stop=500, v_step=1.0, 
+            from_phase=None, to_phase=None, phase_step=None, phases=None, 
+            normalize=False, method=None,
+            from_time=None, to_time=None, time_step=None, times=None):
         """
         Method for simulated line spread function (LSF) observation. Computes the line spread function based on input
         parameters and the System supplied during initialization of the Observer instance. Times of observations
         can be supplied in either time or phase domain.
 
-        :param velocity_grid: Iterable float; grid of velocities at which to compute the line spread function
-            Caution: velocity_grid should has units. You can use astropy.units to set the units, e.g.:
-            velocity_grid = np.arange(-200, 200, 1) * u.km / u.s
+        :param v_start: float or Quantity; Start velocity (default km/s).
+        :param v_stop:  float or Quantity; Stop velocity (default km/s).
+        :param v_step:  float or Quantity; Velocity step/resolution (default km/s).
 
         :param from_time: float; starting time of the observation
         :param to_time: float; end time of the observation
@@ -289,7 +291,11 @@ class Observer(object):
 
         :param normalize: bool; if True, the output LSF will be normalized
         :param method: str; method for calculation of the line spread function
-        :return: Tuple[numpy.array, dict['primary':numpy.array[numpy.array], 'secondary':numpy.array[numpy.array]]]; phases, dict of primary and secondary line spread functions
+        :return: Tuple[numpy.array, numpy.array, dict]
+                 (phases, velocity_grid, lsf_dict)
+
+        warning: **NO Normalization is applied.** The values in `lsf_dict` represent 
+                 the integrated surface brightness (flux) projected onto the line of sight.
         """
         method = settings.RV_METHOD if method is None else method
 
@@ -298,7 +304,24 @@ class Observer(object):
         # reduce phases to only unique ones from interval (0, 1) in general case without pulsations
         base_phases, base_phases_to_origin = self.phase_interval_reduce(phases)
 
-        velocity_grid = velocity_grid.to(self.rv_unit).value
+        if self.rv_unit is None:
+            self.rv_unit = u.m / u.s
+
+        def _parse_val(val, name):
+            if hasattr(val, 'unit'):
+                try:
+                    return val.to_value(self.rv_unit)
+                except u.UnitConversionError:
+                    raise ValueError(f"Param '{name}' must have velocity units compatible with km/s.")
+            return (float(val) * u.km/u.s).to_value(self.rv_unit)
+        
+        v0 = _parse_val(v_start, 'v_start')
+        v1 = _parse_val(v_stop, 'v_stop')
+        dv = _parse_val(v_step, 'v_step')
+
+        velocity_grid = np.arange(v0, v1, dv)
+
+        self.lsf_velocity_grid = velocity_grid * self.rv_unit
 
         self.line_spread_functions = self._system.compute_lsf(
             **dict(
@@ -314,13 +337,12 @@ class Observer(object):
             self.line_spread_functions[items] = np.array(self.line_spread_functions[items])[base_phases_to_origin]
 
         self.phases = phases + self._system.phase_shift
-        self.rv_unit = u.m / u.s
         if normalize:
             self.rv_unit = u.dimensionless_unscaled
             _max = np.max([np.max(item) for item in self.line_spread_functions.values()])
             self.line_spread_functions = {key: value / _max for key, value in self.line_spread_functions.items()}
 
-        return self.phases, self.line_spread_functions
+        return self.phases, self.lsf_velocity_grid, self.line_spread_functions
 
     def phase_interval_reduce(self, phases):
         """
