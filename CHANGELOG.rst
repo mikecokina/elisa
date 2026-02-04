@@ -2,6 +2,23 @@ Change Log
 ==========
 |
 
+v0.6.1
+------
+
+**Release date:** 2026-02-04
+
+**Fixes**
+
+    - corrected INI configuration parsing to align ConfigParser getters with documented setting types
+    - fixed multiple settings previously read via incorrect getters (getfloat/getint/getboolean)
+    - added strict and safe tuple parser for ``rv_lambda_interval`` with type preservation (int/float)
+    - improved robustness of settings loading against valid configurations that previously failed to load
+
+**Tests**
+
+    - added tests enforcing correct INI typing and value integrity during settings import
+
+
 v0.6.0
 ------
 

@@ -113,7 +113,7 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
         :return: Dict; optimized model parameters in standard JSON format
         """
         self.set_up(x0, data, passband=data.keys(), discretization=discretization, morphology=self.MORPHOLOGY,
-                    interp_treshold=settings.MAX_CURVE_DATA_POINTS if interp_treshold is None else interp_treshold,
+                    interp_treshold=settings.MAX_CURVE_DATAPOINTS if interp_treshold is None else interp_treshold,
                     observer_system_cls=BinarySystem, samples=samples)
         initial_vector = parameters.vector_normalizer(self.initial_vector, self.fitable.keys(), self.normalization)
 
