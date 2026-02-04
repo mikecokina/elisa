@@ -1,7 +1,7 @@
 |GitHub version|  |Licence GPLv3| |Python version| |OS|
 
-.. |GitHub version| image:: https://img.shields.io/badge/version-0.6.0.rc1-yellow.svg
-   :target: https://github.com/mikecokina/elisa/commits/release/0.6.0.rc1
+.. |GitHub version| image:: https://img.shields.io/badge/version-0.6.0-yellow.svg
+   :target: https://github.com/mikecokina/elisa/commits/release/0.6.0
 
 .. |Python version| image:: https://img.shields.io/badge/python-3.6|3.7|3.8|3.9|3.10|3.11|3.12-orange.svg
    :target: https://www.python.org/
@@ -32,7 +32,7 @@ ELISa has been updated to work with the latest Python versions up to v3.12. Howe
 released on PyPI is only compatible with Python versions up to v3.8. If you want to install ELISa with a
 newer Python version, please install it from GitHub:
 
-    pip install git+https://github.com/mikecokina/elisa.git@release/0.6.0.rc1
+    pip install git+https://github.com/mikecokina/elisa.git@release/0.6.0
 
 In case of any installation issues, please do not hesitate to create an issue on GitHub.
 
