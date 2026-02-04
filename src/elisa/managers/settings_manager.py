@@ -35,7 +35,7 @@ class DefaultSettings(object):
     MAX_SPOT_D_LONGITUDE = np.pi / 180.0  # in radians
     MIN_POINTS_IN_ECLIPSE = 35
     MAX_SOLVER_ITERS = 100
-    MAX_CURVE_DATA_POINTS = 300
+    MAX_CURVE_DATAPOINTS = 300
     MESH_GENERATOR = 'auto'
     DEFORMATION_TOL = 0.05
     MCMC_SAVE_INTERVAL = 1800
@@ -43,7 +43,6 @@ class DefaultSettings(object):
     USE_INTERPOLATION_APPROXIMATION = True
     USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION = True
     USE_SIMILAR_NEIGHBOURS_APPROXIMATION = True
-
 
     TIMER = 0.0
 
@@ -146,4 +145,3 @@ class SettingsManager(object):
 
         # write file
         _write_ini_file(config, default_config_path)
-

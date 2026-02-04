@@ -263,7 +263,7 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
         """
         burn_in = int(nsteps / 10) if burn_in is None else burn_in
         self.set_up(x0, data, passband=data.keys(), discretization=discretization, morphology=self.MORPHOLOGY,
-                    interp_treshold=settings.MAX_CURVE_DATA_POINTS if interp_treshold is None else interp_treshold,
+                    interp_treshold=settings.MAX_CURVE_DATAPOINTS if interp_treshold is None else interp_treshold,
                     observer_system_cls=BinarySystem, samples=samples)
 
         ndim = len(self.initial_vector)

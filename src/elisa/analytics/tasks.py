@@ -214,11 +214,11 @@ class AnalyticsTask(metaclass=ABCMeta):
 
         :param model_parameters: Dict; if None, get_result() is called
         :param discretization: float;
-        :param interpolation_treshold: int; if None settings.MAX_CURVE_DATA_POINTS is used
+        :param interpolation_treshold: int; if None settings.MAX_CURVE_DATAPOINTS is used
         :return: float;
         """
         model_parameters = self.get_result() if model_parameters is None else model_parameters
-        interpolation_treshold = settings.MAX_CURVE_DATA_POINTS \
+        interpolation_treshold = settings.MAX_CURVE_DATAPOINTS \
             if interpolation_treshold is None else interpolation_treshold
 
         r2 = self.fit_cls.coefficient_of_determination(

@@ -188,7 +188,7 @@ class Plot(object):
         :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
                                              produced figure
         """
-        binary_wireframe_kwargs = dict()
+        wireframe_kwargs = dict()
         inclination = transform.deg_transform(inclination, u.deg, transform.WHEN_FLOAT64,
                                               u.DefaultBinarySystemInputUnits.system.inclination) \
             if inclination is not None else up.degrees(self.binary.inclination)
@@ -207,17 +207,17 @@ class Plot(object):
 
         if components_to_plot in ['primary', 'both']:
             points, faces = orbital_position_container.primary.surface_serializer()
-            binary_wireframe_kwargs.update({
+            wireframe_kwargs.update({
                 "points_primary": points,
                 "primary_triangles": faces
             })
         if components_to_plot in ['secondary', 'both']:
             points, faces = orbital_position_container.secondary.surface_serializer()
-            binary_wireframe_kwargs.update({
+            wireframe_kwargs.update({
                 "points_secondary": points,
                 "secondary_triangles": faces
             })
-        binary_wireframe_kwargs.update({
+        wireframe_kwargs.update({
             "return_figure_instance": return_figure_instance,
             "phase": phase,
             "components_to_plot": components_to_plot,
@@ -225,7 +225,7 @@ class Plot(object):
             "inclination": inclination,
             "azimuth": azimuth
         })
-        return graphics.binary_wireframe(**binary_wireframe_kwargs)
+        return graphics.binary_wireframe(**wireframe_kwargs)
 
     def surface(self, phase=0.0, components_to_plot='both', normals=False, edges=False, colormap=None, plot_axis=True,
                 face_mask_primary=None, face_mask_secondary=None, elevation=None, azimuth=None, colorbar_unit='default',
@@ -276,12 +276,12 @@ class Plot(object):
 
         elevation = transform.deg_transform(elevation, u.deg, when_float64=transform.WHEN_FLOAT64) \
             if elevation is not None else 0
-        
+
         orbital_position = self.binary.orbit.orbital_motion(phase=phase)[0]
         components_distance, azim = orbital_position[:2]
         orbital_position = Position(0, orbital_position[0], orbital_position[1],
                                     orbital_position[2], orbital_position[3])
-        
+
         azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \
             if azimuth is not None else up.degrees(azim) - 90
 

@@ -305,7 +305,7 @@ class AbstractLCFit(AbstractFit):
 
         :return: numpy.array; photometric phases
         """
-        n = 3 * settings.MAX_CURVE_DATA_POINTS
+        n = 3 * settings.MAX_CURVE_DATAPOINTS
         diff = 1.0 / n
         x = np.linspace(0.0 - diff, 1.0 + diff, num=n)
 

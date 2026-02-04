@@ -1,6 +1,7 @@
 import json
 import os
 import warnings
+
 import numpy as np
 import os.path as op
 
@@ -8,9 +9,9 @@ from configparser import ConfigParser
 from logging import config as log_conf
 from os.path import dirname, isdir
 
+from . parsers import parse_tuple_interval
 from .. schema_registry import registry
 from .. managers.settings_manager import SettingsManager, DefaultSettings
-
 
 first_time_user = False
 c_parse = ConfigParser()
@@ -154,6 +155,7 @@ class Settings(_Const, DefaultSettings):
     # basic app configuration
     CONFIG_FILE = config_file
     FIRST_TIME_USER = first_time_user
+
     ####################################################################################################################
 
     def __new__(cls):
@@ -192,7 +194,7 @@ class Settings(_Const, DefaultSettings):
             "MAX_D_FLUX": cls.MAX_D_FLUX,
             "MAX_SPOT_D_LONGITUDE": cls.MAX_SPOT_D_LONGITUDE,
             "MAX_SOLVER_ITERS": cls.MAX_SOLVER_ITERS,
-            "MAX_CURVE_DATA_POINTS": cls.MAX_CURVE_DATA_POINTS,
+            "MAX_CURVE_DATAPOINTS": cls.MAX_CURVE_DATAPOINTS,
             "MIN_POINTS_IN_ECLIPSE": cls.MIN_POINTS_IN_ECLIPSE,
             "TIMER": cls.TIMER,
             "PASSBAND_TABLES": cls.PASSBAND_TABLES,
@@ -293,9 +295,15 @@ class Settings(_Const, DefaultSettings):
                                  fallback=cls.DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT)
             cls.SURFACE_DISPLACEMENT_TOL = \
                 c_parse.getfloat('physics', 'surface_displacement_tol', fallback=cls.SURFACE_DISPLACEMENT_TOL)
-            cls.RV_METHOD = c_parse.getfloat('physics', 'rv_method', fallback=cls.RV_METHOD)
-            cls.RV_LAMBDA_INTERVAL = c_parse.getfloat('physics', 'rv_lambda_interval', fallback=cls.RV_LAMBDA_INTERVAL)
-            cls.PULSATION_MODEL = c_parse.getfloat('physics', 'pulsation_model', fallback=cls.PULSATION_MODEL)
+            cls.RV_METHOD = c_parse.get('physics', 'rv_method', fallback=cls.RV_METHOD)
+
+            cls.RV_LAMBDA_INTERVAL = parse_tuple_interval(c_parse.get(
+                "physics",
+                "rv_lambda_interval",
+                fallback=f"({cls.RV_LAMBDA_INTERVAL[0]}, {cls.RV_LAMBDA_INTERVAL[1]})",
+            ), name="rv_lambda_interval")
+
+            cls.PULSATION_MODEL = c_parse.get('physics', 'pulsation_model', fallback=cls.PULSATION_MODEL)
         # **************************************************************************************************************
         if c_parse.has_section('computational'):
             cls.MAX_DISCRETIZATION_FACTOR = c_parse.getfloat('computational', 'max_discretization_factor',
@@ -328,15 +336,15 @@ class Settings(_Const, DefaultSettings):
             cls.MAX_D_FLUX = c_parse.getfloat('computational', 'max_d_flux', fallback=cls.MAX_D_FLUX)
             cls.MAX_SPOT_D_LONGITUDE = c_parse.getfloat('computational', 'max_spot_d_longitude',
                                                         fallback=cls.MAX_SPOT_D_LONGITUDE)
-            cls.MAX_SOLVER_ITERS = c_parse.getfloat('computational', 'max_solver_iters', fallback=cls.MAX_SOLVER_ITERS)
-            cls.MAX_CURVE_DATA_POINTS = c_parse.getfloat('computational', 'max_curve_datapoints',
-                                                         fallback=cls.MAX_CURVE_DATA_POINTS)
+            cls.MAX_SOLVER_ITERS = c_parse.getint('computational', 'max_solver_iters', fallback=cls.MAX_SOLVER_ITERS)
+            cls.MAX_CURVE_DATAPOINTS = c_parse.getint('computational', 'max_curve_datapoints',
+                                                      fallback=cls.MAX_CURVE_DATAPOINTS)
             cls.MIN_POINTS_IN_ECLIPSE = c_parse.getint('computational', 'min_points_in_eclipse',
                                                        fallback=cls.MIN_POINTS_IN_ECLIPSE)
-            cls.MESH_GENERATOR = c_parse.getfloat('computational', 'mesh_generator', fallback=cls.MESH_GENERATOR)
+            cls.MESH_GENERATOR = c_parse.get('computational', 'mesh_generator', fallback=cls.MESH_GENERATOR)
             cls.DEFORMATION_TOL = c_parse.getfloat('computational', 'deformation_tol', fallback=cls.DEFORMATION_TOL)
-            cls.MCMC_SAVE_INTERVAL = c_parse.getfloat('computational', 'mcmc_save_interval',
-                                                      fallback=cls.MCMC_SAVE_INTERVAL)
+            cls.MCMC_SAVE_INTERVAL = c_parse.getint('computational', 'mcmc_save_interval',
+                                                    fallback=cls.MCMC_SAVE_INTERVAL)
 
             cls.CUDA = c_parse.getboolean('computational', 'cuda', fallback=cls.CUDA)
 

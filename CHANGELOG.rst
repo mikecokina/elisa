@@ -2,6 +2,23 @@ Change Log
 ==========
 |
 
+v0.6.1
+------
+
+**Release date:** 2026-02-04
+
+**Fixes**
+
+    - corrected INI configuration parsing to align ConfigParser getters with documented setting types
+    - fixed multiple settings previously read via incorrect getters (getfloat/getint/getboolean)
+    - added strict and safe tuple parser for ``rv_lambda_interval`` with type preservation (int/float)
+    - improved robustness of settings loading against valid configurations that previously failed to load
+
+**Tests**
+
+    - added tests enforcing correct INI typing and value integrity during settings import
+
+
 v0.6.0
 ------
 
@@ -121,19 +138,6 @@ v0.5_
     - starting value for implicit solver adjusted in case of near-side parts of overcontact stars generated in
       cylindrical symmetry from polar_radius to 0.25 * polar radius. This prevents a crash of solver for points near
       the neck.
-
-v0.5.1_
--------
-
-.. v0.5.1_: https://github.com/mikecokina/elisa/commits/release/0.5.1
-
-**Release date:** 2021-11-04
-
-**Fixes**
-
-    - fixed requirements to avoid installation error::
-
-        ERROR: packaging 21.2 has requirement pyparsing<3,>=2.0.2, but you'll have pyparsing 3.0.4 which is incompatible.
 
 
 v0.4_
