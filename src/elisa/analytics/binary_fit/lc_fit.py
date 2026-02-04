@@ -21,6 +21,9 @@ class LCFit(FitResultHandler):
     """
     Class with common methods used during an LC fit.
     """
+
+    # TODO: fix interface, since atmosphere_model and limb_darkening_coefficients
+    #  are sued in implementation (make current abstract!)
     def __init__(self, morphology, atmosphere_model, limb_darkening_coefficients):
         super().__init__()
         self.morphology = morphology
