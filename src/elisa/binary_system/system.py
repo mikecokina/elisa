@@ -1295,3 +1295,43 @@ class BinarySystem(System):
 
     def _compute_eccentric_rv_curve_no_spots(self, **kwargs):
         return rv.compute_eccentric_rv_curve_no_spots(self, **kwargs)
+
+    def compute_lsf(self, **kwargs):
+        """
+        This function decides which line spread function generator function is
+        used depending on the user-defined method.
+
+        :param kwargs: Dict;
+        :**kwargs options**:
+            * :velocity_grid: Iterable float; grid of velocities at which to compute the line spread function
+            * :method: str; `radiometric` (radiance weighted contribution of each visible element) or
+                            `analytic` (analytic approximation of LSF)
+            * :position_method: callable; method for obtaining orbital positions
+            * :phases: numpy.array; photometric phases
+
+        :return: Dict; {`primary`: numpy.array[numpy.array], `secondary`: numpy.array[numpy.array]}
+        """
+        if kwargs['method'] == 'analytic':
+            raise NotImplementedError("analytic LSF computation is not implemented yet.")
+        elif kwargs['method'] == 'radiometric':
+            curve_fn = c_router.resolve_curve_method(self, curve='lsf')
+            kwargs = rv_utils.include_passband_data_to_kwargs(**kwargs)
+            return curve_fn(**kwargs)
+        else:
+            raise ValueError(f"Unknown LSF computing method `{kwargs['method']}`.\n"
+                             f"List of available methods: [`analytic`, `radiometric`].")
+
+    def _compute_circular_synchronous_lsf_curve(self, **kwargs):
+        return rv.compute_circular_synchronous_lsf_curve(self, **kwargs)
+
+    def _compute_circular_spotty_asynchronous_lsf_curve(self, **kwargs):
+        return rv.compute_circular_spotty_asynchronous_lsf_curve(self, **kwargs)
+
+    def _compute_circular_pulsating_lsf_curve(self, **kwargs):
+        return rv.compute_circular_pulsating_lsf_curve(self, **kwargs)
+
+    def _compute_eccentric_spotty_lsf_curve(self, **kwargs):
+        return rv.compute_eccentric_spotty_lsf_curve(self, **kwargs)
+
+    def _compute_eccentric_lsf_curve_no_spots(self, **kwargs):
+        return rv.compute_eccentric_lsf_curve_no_spots(self, **kwargs)

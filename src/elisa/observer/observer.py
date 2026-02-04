@@ -264,6 +264,83 @@ class Observer(object):
 
         return self.phases, self.radial_velocities
 
+    def lsf(self, v_start=-500, v_stop=500, v_step=1.0, 
+            from_phase=None, to_phase=None, phase_step=None, phases=None, 
+            method=None,
+            from_time=None, to_time=None, time_step=None, times=None):
+        """
+        Method for simulated line spread function (LSF) observation. Computes the line spread function based on input
+        parameters and the System supplied during initialization of the Observer instance. Times of observations
+        can be supplied in either time or phase domain.
+
+        :param v_start: float or Quantity; Start velocity (default km/s).
+        :param v_stop:  float or Quantity; Stop velocity (default km/s).
+        :param v_step:  float or Quantity; Velocity step/resolution (default km/s).
+
+        :param from_time: float; starting time of the observation
+        :param to_time: float; end time of the observation
+        :param time_step: float; time increment of the observations
+        :param times: Iterable float; array of times at which to perform observations; if this parameter is provided,
+                          the supplied 'from_time`, `to_time`, `time_step` become irrelevant
+
+        :param from_phase: float; starting phase of the observation
+        :param to_phase: float; end phase of the observation
+        :param phase_step: float; phase increment of the observations
+        :param phases: Iterable float; array of phases at which to perform observations; if this parameter is
+                           provided, the supplied 'from_phase`, `to_phase`, `phase_step` become irrelevant
+
+        :param method: str; method for calculation of the line spread function
+               Options: 'radiometric' (integrated surface brightness), 
+                        'analytic' (simplified analytical model).
+        :return: Tuple[numpy.array, numpy.array, dict]
+                 (phases, velocity_grid, lsf_dict)
+
+        warning: **NO Normalization is applied.** The values in `lsf_dict` represent 
+                 the integrated surface brightness (flux) projected onto the line of sight.
+        """
+        method = settings.LSF_METHOD if method is None else method
+
+        phases = self.manage_time_series(from_phase, to_phase, phase_step, phases, from_time, to_time, time_step, times)
+
+        # reduce phases to only unique ones from interval (0, 1) in general case without pulsations
+        base_phases, base_phases_to_origin = self.phase_interval_reduce(phases)
+
+        if self.rv_unit is None:
+            self.rv_unit = u.m / u.s
+
+        def _parse_val(val, name):
+            if hasattr(val, 'unit'):
+                try:
+                    return val.to_value(self.rv_unit)
+                except u.UnitConversionError:
+                    raise ValueError(f"Param '{name}' must have velocity units compatible with km/s.")
+            return (float(val) * u.km/u.s).to_value(self.rv_unit)
+        
+        v0 = _parse_val(v_start, 'v_start')
+        v1 = _parse_val(v_stop, 'v_stop')
+        dv = _parse_val(v_step, 'v_step')
+
+        velocity_grid = np.arange(v0, v1, dv)
+
+        self.lsf_velocity_grid = velocity_grid * self.rv_unit
+
+        self.line_spread_functions = self._system.compute_lsf(
+            **dict(
+                velocity_grid=velocity_grid,
+                phases=base_phases,
+                position_method=self._system.get_positions_method(),
+                method=method
+            )
+        )
+
+        # remap unique phases back to original phase interval
+        for items in self.line_spread_functions:
+            self.line_spread_functions[items] = np.array(self.line_spread_functions[items])[base_phases_to_origin]
+
+        self.phases = phases + self._system.phase_shift
+
+        return self.phases, self.lsf_velocity_grid, self.line_spread_functions
+
     def phase_interval_reduce(self, phases):
         """
         Function reduces original phase interval to base interval (0, 1) in case of LC without pulsations.

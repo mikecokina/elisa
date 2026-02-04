@@ -44,8 +44,16 @@ def resolve_curve_method(system, curve: str):
             getattr(system, '_compute_eccentric_spotty_rv_curve'),
             getattr(system, '_compute_eccentric_rv_curve_no_spots')
         )
+    elif curve == 'lsf':
+        fn_array = (
+            getattr(system, '_compute_circular_synchronous_lsf_curve'),
+            getattr(system, '_compute_circular_spotty_asynchronous_lsf_curve'),
+            getattr(system, '_compute_circular_pulsating_lsf_curve'),
+            getattr(system, '_compute_eccentric_spotty_lsf_curve'),
+            getattr(system, '_compute_eccentric_lsf_curve_no_spots')
+        )
     else:
-        raise ValueError('Invalid value of argument `curve`. Only `lc` and `rv` are allowed')
+        raise ValueError('Invalid value of argument `curve`. Only `lc`, `rv`, and `lsf` are allowed')
 
     is_circular = system.eccentricity == 0
     is_eccentric = 1 > system.eccentricity > 0

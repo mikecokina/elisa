@@ -295,6 +295,7 @@ class Settings(_Const, DefaultSettings):
                 c_parse.getfloat('physics', 'surface_displacement_tol', fallback=cls.SURFACE_DISPLACEMENT_TOL)
             cls.RV_METHOD = c_parse.getfloat('physics', 'rv_method', fallback=cls.RV_METHOD)
             cls.RV_LAMBDA_INTERVAL = c_parse.getfloat('physics', 'rv_lambda_interval', fallback=cls.RV_LAMBDA_INTERVAL)
+            cls.LSF_METHOD = c_parse.getfloat('physics', 'lsf_method', fallback=cls.LSF_METHOD)
             cls.PULSATION_MODEL = c_parse.getfloat('physics', 'pulsation_model', fallback=cls.PULSATION_MODEL)
         # **************************************************************************************************************
         if c_parse.has_section('computational'):

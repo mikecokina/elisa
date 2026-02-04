@@ -154,3 +154,137 @@ def compute_eccentric_spotty_rv_curve(binary, **kwargs):
     """
     rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
     return c_router.produce_ecc_curves_with_spots(binary, rv_point.compute_rv_at_pos, rv_labels, **kwargs)
+
+
+def compute_circular_synchronous_lsf_curve(binary, **kwargs):
+    """
+    Compute line spread function (LSF) curve for synchronous circular binary system.
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param kwargs: Dict;
+            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+            * ** left_bandwidth ** * - float
+            * ** right_bandwidth ** * - float
+            * ** position_method** * - function definition; to evaluate orbital positions
+            * ** phases ** * - numpy.array
+            * ** velocity_grid ** * - numpy.array
+
+    :return: Dict[str, numpy.array];
+    """
+    initial_system = c_router.prep_initial_system(binary)
+    rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
+    args = (
+        binary,
+        initial_system,
+        kwargs.pop("phases"),
+        rv_point.compute_lsf_at_pos,
+        rv_labels
+    )
+    return c_router.produce_circular_sync_curves(*args, **kwargs)
+
+
+def compute_circular_spotty_asynchronous_lsf_curve(binary, **kwargs):
+    """
+    Function returns line spread function curve of asynchronous systems with
+    circular orbits and spots.
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * ** passband ** - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** - float
+        * ** right_bandwidth ** - float
+        * ** atlas ** - str
+        * ** velocity_grid ** - numpy.array
+
+    :return: Dict; rv for each component
+    """
+    rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
+    return c_router.produce_circular_spotty_async_curves(
+        binary,
+        rv_point.compute_lsf_at_pos,
+        rv_labels,
+        **kwargs
+    )
+
+
+def compute_circular_pulsating_lsf_curve(binary, **kwargs):
+    """
+    Function returns line spread function curve of pulsating systems with
+    circular orbits.
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * ** passband ** - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** - float
+        * ** right_bandwidth ** - float
+        * ** atlas ** - str
+        * ** phases ** * - numpy.array
+        * ** velocity_grid ** - numpy.array
+
+    :return: Dict; rv for each component
+    """
+    initial_system = c_router.prep_initial_system(
+        binary, **dict(build_pulsations=False)
+    )
+    rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
+    args = (
+        binary,
+        initial_system,
+        kwargs.pop("phases"),
+        rv_point.compute_lsf_at_pos,
+        rv_labels
+    )
+
+    return c_router.produce_circular_pulsating_curves(*args, **kwargs)
+
+
+def compute_eccentric_lsf_curve_no_spots(binary, **kwargs):
+    """
+    General function for generating line spread function curves of binaries
+    with eccentric orbit and no spots.
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * ** passband ** - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** - float
+        * ** right_bandwidth ** - float
+        * ** atlas ** - str
+        * ** velocity_grid ** - numpy.array
+
+    :return: Dict; rv for each component
+    """
+    rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
+    return c_router.produce_ecc_curves_no_spots(
+        binary,
+        rv_point.compute_lsf_at_pos,
+        rv_labels,
+        **kwargs
+    )
+
+
+def compute_eccentric_spotty_lsf_curve(binary, **kwargs):
+    """
+    General function for generating line spread function curves of binaries
+    with eccentric orbit and spots.
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * ** passband ** - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** - float
+        * ** right_bandwidth ** - float
+        * ** atlas ** - str
+        * ** velocity_grid ** - numpy.array
+
+    :return: Dict; rv for each component
+    """
+    rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
+    return c_router.produce_ecc_curves_with_spots(
+        binary,
+        rv_point.compute_lsf_at_pos,
+        rv_labels,
+        **kwargs
+    )
