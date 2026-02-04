@@ -1,19 +1,19 @@
-import os
 import sys
 import numpy as np
-import pandas as pd
 
 from . import utils as outils
-from .plot import Plot
-from .passband import PassbandContainer, init_bolometric_passband
-from ..binary_system.curves.community import RadialVelocitySystem
+from . plot import Plot
+from . passband import PassbandContainer, init_bolometric_passband
+from .. base.types import INT
+from .. binary_system.curves.community import RadialVelocitySystem
 from .. import settings
-from ..utils import is_empty, jd_to_phase
-from ..logger import getLogger
+from .. utils import is_empty, jd_to_phase
+from .. logger import getLogger
 from .. import (
     units as u,
     umpy as up
 )
+from ..photometric_standards.standards_handlers import load_standard
 
 logger = getLogger('observer.observer')
 
@@ -22,11 +22,15 @@ class Observables(object):
     def __init__(self, observer):
         self.observer = observer
 
-    def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
-        return self.observer.lc(from_phase, to_phase, phase_step, phases, normalize)
+    def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False,
+           from_time=None, to_time=None, time_step=None, times=None, flux_unit=None):
+        return self.observer.lc(from_phase, to_phase, phase_step, phases, normalize,
+                                from_time, to_time, time_step, times, flux_unit)
 
-    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False, method=None):
-        return self.observer.rv(from_phase, to_phase, phase_step, phases, normalize, method)
+    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False, method=None,
+           from_time=None, to_time=None, time_step=None, times=None):
+        return self.observer.rv(from_phase, to_phase, phase_step, phases, normalize, method,
+                                from_time, to_time, time_step, times)
 
 
 class Observer(object):
@@ -72,9 +76,11 @@ class Observer(object):
         self.phases = None
         self.times = None
         self.fluxes = None
-        self.fluxes_unit = None
+        self.magnitudes = None
+        self._flux_unit = u.W / u.m**2
         self.radial_velocities = dict()
         self.rv_unit = None
+        self.zero_points = dict(system=None)
 
         self.plot = Plot(self)
         self.observe = Observables(self)
@@ -86,6 +92,14 @@ class Observer(object):
     @system_cls.setter
     def system_cls(self, value):
         self._system_cls = value
+
+    @property
+    def flux_unit(self):
+        return self._flux_unit
+
+    @flux_unit.setter
+    def flux_unit(self, value):
+        self._flux_unit = u.Unit(value)
 
     def init_passband(self, passband):
         """
@@ -105,10 +119,8 @@ class Observer(object):
             if band in ['bolometric']:
                 psbnd, right_bandwidth, left_bandwidth = init_bolometric_passband()
             else:
-                df = self.get_passband_df(band)
-                left_bandwidth = df[settings.PASSBAND_DATAFRAME_WAVE].min()
-                right_bandwidth = df[settings.PASSBAND_DATAFRAME_WAVE].max()
-                psbnd = PassbandContainer(table=df, passband=band)
+                psbnd = PassbandContainer.from_name(passband=band)
+                left_bandwidth, right_bandwidth = psbnd.get_bandwidth()
 
             self.setup_bandwidth(left_bandwidth=left_bandwidth, right_bandwidth=right_bandwidth)
             self.passband[band] = psbnd
@@ -126,23 +138,8 @@ class Observer(object):
         if right_bandwidth > self.right_bandwidth:
             self.right_bandwidth = right_bandwidth
 
-    @staticmethod
-    def get_passband_df(passband):
-        """
-        Read content of passband table (csv file) based on passband name.
-
-        :param passband: str;
-        :return: pandas.DataFrame;
-        """
-        if passband not in settings.PASSBANDS:
-            raise ValueError('Invalid or unsupported passband function.')
-        file_path = os.path.join(settings.PASSBAND_TABLES, str(passband) + '.csv')
-        df = pd.read_csv(file_path)
-        df[settings.PASSBAND_DATAFRAME_WAVE] = df[settings.PASSBAND_DATAFRAME_WAVE] * 10.0
-        return df
-
     def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False,
-           from_time=None, to_time=None, time_step=None, times=None):
+           from_time=None, to_time=None, time_step=None, times=None, flux_unit=None):
         """
         Method for simulated light curve observation. Computes a light curve based on input parameters and the System
         supplied during initialization of the Observer instance. Returns light curves for each passband defined in the
@@ -159,8 +156,18 @@ class Observer(object):
         :param phase_step: float; phase increment of the observations
         :param phases: Iterable float; array of phases at which to perform an observations, if this parameter is
                                        provided the supplied 'from_phase`, `to_phase` `phase_step` becomes irrelevant
+        :param flux_unit: astropy.Units; unit of flux
         :return: Dict;
         """
+        if normalize:
+            if flux_unit in [None, u.dimensionless_unscaled]:
+                self.flux_unit = u.dimensionless_unscaled
+            else:
+                raise ValueError('You can either produce normalized light curve or specify `flux_unit` other '
+                                 'than dimensionless unscaled. Change input parameters.')
+        else:
+            self.flux_unit = u.Unit(flux_unit) if flux_unit is not None else self.flux_unit
+
         phases = self.manage_time_series(from_phase, to_phase, phase_step, phases, from_time, to_time, time_step, times)
 
         # reduce phases to only unique ones from interval (0, 1) in general case without pulsations
@@ -189,12 +196,20 @@ class Observer(object):
             curves[items] += correction
 
         self.phases = phases + self._system.phase_shift
-        if normalize:
+        if normalize or self.flux_unit == u.dimensionless_unscaled:
             self.fluxes, _ = outils.normalize_light_curve(y_data=curves, kind='maximum', top_fraction_to_average=0.0)
-            self.fluxes_unit = u.dimensionless_unscaled
         else:
-            self.fluxes = curves
-            self.fluxes_unit = u.W / u.m ** 2
+            curves = outils.adjust_flux_for_distance(curves, self._system.distance)
+            if self.flux_unit in [None, u.W / u.m ** 2]:
+                self.fluxes = curves
+            elif self.flux_unit == u.mag:
+                if self.zero_points['system'] != settings.MAGNITUDE_SYSTEM.lower():
+                    self.zero_points = load_standard(settings.MAGNITUDE_SYSTEM)
+                self.fluxes = outils.convert_to_magnitudes(curves, self.zero_points)
+                self.magnitudes = self.fluxes
+            else:
+                raise ValueError(f'Unknown value for `Observer.flux_unit`: {self.flux_unit}')
+
         logger.info("observation finished")
         return self.phases, self.fluxes
 
@@ -291,10 +306,10 @@ class Observer(object):
                 return np.unique(base_interval, return_inverse=True)
             # in case of clear surface no pulsations and spots, only single observation is needed
             else:
-                return np.zeros(1), np.zeros(phases.shape[0], dtype=int)
+                return np.zeros(1), np.zeros(phases.shape[0], dtype=INT)
 
         elif self._system_cls == RadialVelocitySystem or str(self._system_cls) == str(RadialVelocitySystem):
-            return phases, up.arange(phases.shape[0], dtype=np.int)
+            return phases, up.arange(phases.shape[0], dtype=INT)
 
         else:
             raise NotImplemented("Not implemented.")

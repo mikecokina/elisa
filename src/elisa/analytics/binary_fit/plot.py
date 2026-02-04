@@ -284,6 +284,14 @@ class LCPlot(object):
         kwargs_to_replot = {key: val["value"] for key, val in kwargs_to_replot.items()}
         if 'system@primary_minimum_time' in kwargs_to_replot.keys():
             del kwargs_to_replot['system@primary_minimum_time']
+
+        # TODO: check this
+        kwargs_to_replot = parameters.extend_json_with_atm_params(
+            kwargs_to_replot,
+            atmosphere_model=self.fit.fit_method_instance.atmosphere_model,
+            limb_darkening_coefficients=self.fit.fit_method_instance.limb_darkening_coefficients
+        )
+
         synth_phases = np.linspace(start_phase, stop_phase, number_of_points)
         observer = Observer(passband=self.data.keys(), system=None)
         observer._system_cls = BinarySystem

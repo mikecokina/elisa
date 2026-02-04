@@ -25,6 +25,7 @@ from .. base.star import Star
 from .. base.curves import utils as rv_utils
 
 from .. import settings
+from .. base.types import INT, FLOAT
 from .. logger import getLogger
 from .. import (
     umpy as up,
@@ -77,7 +78,11 @@ class BinarySystem(System):
 
         :param albedo: float; surface albedo, value from <0, 1> interval, if not supplied,
                               Claret 2001 will be used for interpolation
-
+        :param limb_darkening_coefficients: Union[float, dict]; optional limb darkening coefficients
+                                            used for the whole star useful in case the modelled star is outside the
+                                            supported range of atmospheric parameters. Limb darkening coefficients can
+                                            be supplied as dict {passband: ld_coefs}. If unused, elisa will
+                                            interpolate the values from supplied limb-darkening tables.
 
     Each component instance will after initialization contain following attributes:
 
@@ -90,8 +95,8 @@ class BinarySystem(System):
                             :1 > filling factor > 0: component overflows its Roche lobe
                             :filling factor = 1: upper boundary of the filling factor, higher value would lead to
                                                  the mass loss trough Lagrange point L2
-        
-        Radii at periastron (in SMA units)  
+
+        Radii at periastron (in SMA units)
             :polar_radius: float; radius of a star towards the pole of the star
             :side_radius: float; radius of a star in the direction perpendicular to the pole
                                  and direction of a companion
@@ -101,11 +106,11 @@ class BinarySystem(System):
 
     The BinarySystem can be initialized either by using valid class arguments, e.g.:
     ::
-    
+
         >>> from elisa import BinarySystem
         >>> from elisa import Star
         >>> from astropy import units as u
-        
+
         >>> primary = Star(
         >>>     mass=2.15 * u.solMass,
         >>>     surface_potential=3.6,
@@ -116,7 +121,7 @@ class BinarySystem(System):
         >>>     albedo=0.6,
         >>>     metallicity=0.0,
         >>> )
-        
+
         >>> secondary = Star(
         >>>     mass=0.45 * u.solMass,
         >>>     surface_potential=5.39,
@@ -137,12 +142,13 @@ class BinarySystem(System):
         >>>     inclination=85 * u.deg,
         >>>     primary_minimum_time=2440000.00000 * u.d,
         >>>     phase_shift=0.0,
+        >>>     distance=162 * u.pc
         >>> )
-    
+
     or by using the BinarySystem.from_json(<dict>) function that accepts various parameter combination in form of
     dictionary such as:
     ::
-    
+
         >>> data = {
         >>>     "system": {
         >>>         "inclination": 90.0,
@@ -151,7 +157,8 @@ class BinarySystem(System):
         >>>         "gamma": "0.0 m / s",  # you can define quantity using string representation of the astropy units
         >>>         "eccentricity": 0.3,
         >>>         "primary_minimum_time": 0.0,
-        >>>         "phase_shift": 0.0
+        >>>         "phase_shift": 0.0,
+        >>>         "distance": "152 pc"
         >>>     },
         >>>     "primary": {
         >>>         "mass": 2.15,
@@ -177,9 +184,9 @@ class BinarySystem(System):
         >>> }
         >>>
         >>> binary = BinarySystem.from_json(data)
-    
+
     See documentation for `from_json` method for details.
-                                    
+
     The orbit of the binary system can be modelled using function
     `calculate_orbital_motion(phases)`. E.g.:
     ::
@@ -195,13 +202,13 @@ class BinarySystem(System):
         - wireframe(args): wire frame model of the selected system components
         - surface(args): plot models of the binary components with various surface
                          colormaps (gravity_acceleration, temperature, radiance, ...)
-          
+
     Plot function can be called as function of the plot module. E.g.:
     ::
-    
+
         >>> binary.plot.surface(phase=0.1, colormap='temperature'))
-         
-    Similarly, an animation of the orbital motion can be produced using BinarySystem.animation module and its function 
+
+    Similarly, an animation of the orbital motion can be produced using BinarySystem.animation module and its function
     `orbital_motion(*args)`.
 
 
@@ -222,10 +229,11 @@ class BinarySystem(System):
                                true_phase is used during calculations, where: true_phase = phase + phase_shift.;
     :param primary_minimum_time: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity];
     :param additional_light: float; fraction of light that does not originate from the `BinarySystem`
+    :param distance: float: distance between system and the observer
     """
 
     MANDATORY_KWARGS = ['inclination', 'period', 'eccentricity', 'argument_of_periastron']
-    OPTIONAL_KWARGS = ['gamma', 'phase_shift', 'additional_light', 'primary_minimum_time']
+    OPTIONAL_KWARGS = ['gamma', 'phase_shift', 'additional_light', 'primary_minimum_time', 'distance']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     STAR_MANDATORY_KWARGS = ['mass', 't_eff', 'surface_potential', 'synchronicity']
@@ -281,8 +289,10 @@ class BinarySystem(System):
         logger.debug("setting up morphological classification of binary system")
         self.morphology: str = self.compute_morphology()
 
-        self.setup_components_radii(components_distance=self.orbit.periastron_distance,
-                                    calculate_equivalent_radius=True)
+        self.setup_components_radii(
+            components_distance=self.orbit.periastron_distance,
+            calculate_equivalent_radius=True
+        )
         self.setup_betas()
         self.setup_albedos()
         self.assign_pulsations_amplitudes(normalisation_constant=self.semi_major_axis)
@@ -324,7 +334,8 @@ class BinarySystem(System):
                 "gamma": 0.0,
                 "eccentricity": 0.3,
                 "primary_minimum_time": 0.0,
-                "phase_shift": 0.0
+                "phase_shift": 0.0,
+                "distance": 155
               },
               "primary": {
                 "mass": 2.0,
@@ -362,7 +373,8 @@ class BinarySystem(System):
                 "primary_minimum_time": 0.0,
                 "phase_shift": 0.0,
                 "semi_major_axis": 10.5,
-                "mass_ratio": 0.5
+                "mass_ratio": 0.5,
+                "distance": "125 pc"
               },
               "primary": {
                 "surface_potential": 7.1,
@@ -396,6 +408,7 @@ class BinarySystem(System):
                 "eccentricity": [dimensionless],
                 "primary_minimum_time": [d],
                 "phase_shift": [dimensionless],
+                "distance": [pc]
                 "mass": [solMass],
                 "surface_potential": [dimensionless],
                 "synchronicity": [dimensionless],
@@ -404,9 +417,9 @@ class BinarySystem(System):
                 "discretization_factor": [degrees],
                 "albedo": [dimensionless],
                 "metallicity": [dimensionless],
-
                 "semi_major_axis": [solRad],
-                "mass_ratio": [dimensionless]
+                "mass_ratio": [dimensionless],
+                "limb_darkening_coefficients": [dimensionless]
             }
 
         :return: elisa.binary_system.system.BinarySystem;
@@ -423,13 +436,17 @@ class BinarySystem(System):
         return cls(primary=primary, secondary=secondary, **data_cp["system"])
 
     @classmethod
-    def from_fit_results(cls, results):
+    def from_fit_results(cls, results, atmosphere=None, limb_darkening_coefficients=None):
         """
         Building binary system from standard fit results format.
 
         :param results: Dict; {'component': {'param_name': {'value': value, fixed: ...}}}
+        :param atmosphere: dict; atmosphere model for each component eg. 'ck04' or 'bb'
+        :param limb_darkening_coefficients: dict; custom limb-darkening coefficents for each component and passband
         :return: elisa.binary_system.system.BinarySystem;
         """
+        extra_parameters = {'atmosphere': atmosphere, 'limb_darkening_coefficients': limb_darkening_coefficients}
+
         data = dict()
         for key, component in results.items():
             if key == 'r_squared':
@@ -448,6 +465,10 @@ class BinarySystem(System):
                     data[key][param] = features
                 else:
                     data[key][param] = content['value']
+
+            for extra_param, val in extra_parameters.items():
+                if val is not None and val.get(key) is not None:
+                    data[key][extra_param] = val[key]
 
         return BinarySystem.from_json(data=data)
 
@@ -540,7 +561,7 @@ class BinarySystem(System):
 
         :return: float;
         """
-        period = np.float64((self.period * u.PERIOD_UNIT).to(u.s))
+        period = np.float64((self.period * u.DefaultBinarySystemUnits.system.period).to(u.TIME_UNIT))
         return (const.G * (self.primary.mass + self.secondary.mass) * period ** 2 / (4 * const.PI ** 2)) ** (1.0 / 3)
 
     def compute_morphology(self):
@@ -618,8 +639,8 @@ class BinarySystem(System):
 
         adj_comp, adj, ref = None, None, None
         # if both components are not specified, alpha of smaller component is adjusted to the bigger component
-        if not self.primary.kwargs.get('discretization_factor') \
-                and not self.secondary.kwargs.get('discretization_factor'):
+        if self.primary.kwargs.get('discretization_factor') is None \
+                and self.secondary.kwargs.get('discretization_factor') is None:
             if self.secondary.equivalent_radius * self.secondary.t_eff ** 2 < \
                     self.primary.equivalent_radius * self.primary.t_eff ** 2:
                 adj, ref = self.secondary, self.primary
@@ -628,10 +649,10 @@ class BinarySystem(System):
                 adj, ref = self.primary, self.secondary
                 adj_comp = 'primary'
         # if only one alpha is supplied, the second is adjusted
-        elif not self.secondary.kwargs.get('discretization_factor'):
+        elif self.secondary.kwargs.get('discretization_factor') is None:
             adj, ref = self.secondary, self.primary
             adj_comp = 'secondary'
-        elif not self.primary.kwargs.get('discretization_factor'):
+        elif self.primary.kwargs.get('discretization_factor') is None:
             adj, ref = self.primary, self.secondary
             adj_comp = 'primary'
 
@@ -741,7 +762,7 @@ class BinarySystem(System):
         """
         def _potential(radius):
             theta, d = const.HALF_PI, periastron_distance
-            if isinstance(radius, (float, int, np.float, np.int)):
+            if isinstance(radius, (float, int, FLOAT, INT)):
                 radius = [radius]
             elif not isinstance(radius, tuple([list, np.array])):
                 raise ValueError("Incorrect value of variable `radius`.")
@@ -919,7 +940,7 @@ class BinarySystem(System):
         input_argument = np.array([input_argument]) if np.isscalar(input_argument) else input_argument
         orbital_motion = self.orbit.orbital_motion(phase=input_argument) if calculate_from == 'phase' \
             else self.orbit.orbital_motion_from_azimuths(azimuth=input_argument)
-        idx = up.arange(np.shape(input_argument)[0], dtype=np.int)
+        idx = up.arange(np.shape(input_argument)[0], dtype=INT)
         positions = np.hstack((idx[:, np.newaxis], orbital_motion))
         # return retval, positions if return_nparray else retval
         return positions if return_nparray else [const.Position(*p) for p in positions]

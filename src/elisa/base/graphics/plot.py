@@ -307,7 +307,7 @@ def t_cmap(star, *args):
     scale, unit, subtract_equilibrium, model_scale = args[:4]
     argss = (star, model_scale, False, True)
     temperatures = container_ops.temp_perturbation(*argss) if subtract_equilibrium else getattr(star, 'temperatures')
-    value = transform_values(temperatures, units.TEMPERATURE_UNIT, unit)
+    value = transform_values(temperatures, units.DefaultStarInputUnits.t_eff, unit)
     return to_log(value, scale)
 
 

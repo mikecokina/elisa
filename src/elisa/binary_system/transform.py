@@ -1,6 +1,7 @@
 import numpy as np
 
 from .. import units, const
+from .. base.types import INT, FLOAT
 from .. units import DefaultBinarySystemInputUnits
 from .. base.transform import SystemProperties, WHEN_FLOAT64, quantity_transform
 
@@ -14,7 +15,7 @@ class BinarySystemProperties(SystemProperties):
         :param value: Union[(numpy.)int, (numpy.)float]
         :return: float;
         """
-        if not isinstance(value, (int, np.int, float, np.float)):
+        if not isinstance(value, (int, INT, float, FLOAT)):
             raise TypeError('Input of variable `eccentricity` is not (numpy.)int or (numpy.)float.')
         if value < 0 or value >= 1:
             raise ValueError('Input of variable `eccentricity` is out of boundaries [0, 1)')
@@ -30,9 +31,11 @@ class BinarySystemProperties(SystemProperties):
         """
         if isinstance(value, (units.Quantity, str)):
             value = units.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(units.ARC_UNIT))
+            value = np.float64(value.to(units.DefaultBinarySystemUnits.system.argument_of_periastron))
         elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64((value * DefaultBinarySystemInputUnits.system.argument_of_periastron).to(units.ARC_UNIT))
+            value = np.float64((value * DefaultBinarySystemInputUnits.system.argument_of_periastron).to(
+                units.DefaultBinarySystemUnits.system.argument_of_periastron)
+            )
         else:
             raise TypeError('Input of variable `argument_of_periastron` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
@@ -59,7 +62,8 @@ class BinarySystemProperties(SystemProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float;
         """
-        return quantity_transform(value, units.PERIOD_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, units.DefaultBinarySystemUnits.system.primary_minimum_time, WHEN_FLOAT64,
+                                  units.DefaultBinarySystemInputUnits.system.primary_minimum_time)
 
     @classmethod
     def t0(cls, value):
@@ -82,7 +86,7 @@ class RadialVelocityObserverProperties(SystemProperties):
         """
         if not value > 0:
             raise ValueError(f"Invalid value of property `mass_ratio`. Expected > 0, given {value}")
-        return np.float(value)
+        return FLOAT(value)
 
     @staticmethod
     def asini(value):

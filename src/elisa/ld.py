@@ -66,7 +66,7 @@ def get_ld_table_by_name(fname):
     :return: pandas.DataFrame;
     """
     logger.debug(f"accessing limb darkening file {fname}")
-    path = os.path.join(settings.LD_TABLES, fname)
+    path = str(os.path.join(settings.LD_TABLES, fname))
     if not os.path.isfile(path):
         raise FileNotFoundError(f"There is no file like {path}.")
     return pd.read_csv(path)
@@ -122,7 +122,9 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
             else:
                 _df = get_ld_table_by_name(table)[csv_columns]
                 buffer.LD_CFS_TABLES[table] = _df
-            df = df.append(_df)
+
+            apppend = getattr(df, '_append') if hasattr(df, '_append') else getattr(df, 'append')
+            df = apppend(_df)
         buffer.reduce_buffer(buffer.LD_CFS_TABLES)
 
         df = df.drop_duplicates()
@@ -134,8 +136,11 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
         uvw_values = interpolate.griddata(xyz_domain, xyz_values, uvw_domain, method="linear")
 
         if np.any(up.isnan(uvw_values)):
-            raise LimbDarkeningError("Limb darkening interpolation lead to numpy.nan/None value. "
-                                         "It might be caused by definition of unphysical object on input.")
+            raise LimbDarkeningError("Limb darkening interpolation lead to numpy.nan/None value. \n"
+                                     "Some of the surface parameters (t_eff, log_g, metallicity) are \n"
+                                     "probably outside of the supported range. Change the parameters \n"
+                                     "of the stars or use your custom ld coefficients that can be passed in \n"
+                                     "Star.limb_darkening_coefficients.")
 
         results[band] = uvw_values
 
@@ -225,6 +230,23 @@ def calculate_integrated_limb_darkening_factor(limb_darkening_law=None, coeffici
         return const.PI * (1 - coefficients[0, :] / 3 - coefficients[1, :] / 5)
 
 
-def get_bolometric_ld_coefficients(temperature, log_g, metallicity):
-    coeffs = interpolate_on_ld_grid(temperature, log_g, metallicity, passband=["bolometric"])["bolometric"]
+def get_bolometric_ld_coefficients(temperature, log_g, metallicity, custom_ld_coefs=None):
+    """
+    Obtains necessary LD coefficients for each face.
+
+    :param temperature: numpy.array; triangle-wise
+    :param log_g: numpy.array; triangle-wise
+    :param metallicity: float;
+    :param custom_ld_coefs: Union[ńone, dict]; if None
+    :return:
+    """
+    if custom_ld_coefs is not None:
+        if 'bolometric' not in custom_ld_coefs:
+            raise ValueError('Please ad `bolometric` limb-darkening coefficients to your '
+                             'custom set of limb-darkening coefficients.')
+        desired_repeats = (temperature.shape[0], 1)
+        coeffs = np.tile(custom_ld_coefs['bolometric'], desired_repeats)
+    else:
+        coeffs = interpolate_on_ld_grid(temperature, log_g, metallicity, passband=["bolometric"])["bolometric"]
+
     return coeffs.T

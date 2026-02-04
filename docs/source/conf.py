@@ -20,7 +20,7 @@ from version import get_version
 # -- Project information -----------------------------------------------------
 
 project = 'elisa'
-copyright = '2020, Michal Cokina, Miroslav Fedurco'
+copyright = '2025, Michal Cokina, Miroslav Fedurco'
 author = 'Michal Cokina, Miroslav Fedurco'
 
 # The full version, including alpha/beta/rc tags
@@ -65,6 +65,10 @@ html_theme = 'nature'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+html_css_files = [
+    'custom.css',  # Reference your CSS file
+]
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'elisadocs'

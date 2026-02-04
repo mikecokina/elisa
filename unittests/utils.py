@@ -160,7 +160,8 @@ def prepare_single_system(params, spots=None, pulsations=None):
     return SingleSystem(star=star,
                         gamma=params["gamma"],
                         inclination=params["inclination"],
-                        rotation_period=params['rotation_period'])
+                        rotation_period=params['rotation_period'],
+                        distance=params.get('distance', 1 * u.m))
 
 
 def prepare_single_system_container(system):
@@ -410,6 +411,7 @@ SOLAR_MODEL = {
     # "inclination": 82.5 * u.deg,
     "inclination": 90.0 * u.deg,
     "rotation_period": 25.38 * u.d,
+    "distance": 1 * u.au
 }
 
 SPOTS_META = {

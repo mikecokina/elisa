@@ -8,6 +8,7 @@ from . transform import (
 )
 from .. dataset.graphic import plot
 from .. dataset import utils as dutils
+from ...base.types import INT
 from ... logger import getLogger
 from ... import utils, units as u
 from ... import settings
@@ -109,7 +110,7 @@ class DataSet(metaclass=ABCMeta):
         data = dutils.read_data_file(filename, data_columns, delimiter=delimiter)
 
         if downselect_ratio is not None:
-            idxs = np.arange(0, data.shape[0], step=int(1.0/downselect_ratio), dtype=np.int)
+            idxs = np.arange(0, data.shape[0], step=int(1.0/downselect_ratio), dtype=INT)
             data = data[idxs]
 
         try:
@@ -131,18 +132,18 @@ class DataSet(metaclass=ABCMeta):
         ephemeris.
 
         :param period: float; period according to which fold the data
-        :param t0: float; reference time where phase = 0
+        :param t0: float; reference time when phase = 0
         :param centre: float; phase curve will be centered around this phase
         """
         self.x_data = utils.jd_to_phase(self.x_data, period, t0, centre=centre)
         self.x_unit = u.dimensionless_unscaled
 
-    def convert_to_time(self, period, t0, to_unit=u.PERIOD_UNIT):
+    def convert_to_time(self, period, t0, to_unit=u.DEFAULT_PERIOD_UNIT):
         """
         Function converts DataSet with x_data in dimensionless phases to time according to an ephemeris.
 
         :param period: float; period according to which fold the data
-        :param t0: float; reference time where phase = 0
+        :param t0: float; reference time when phase = 0
         :param to_unit: unit to assign the transformed data
         """
         self.x_data = self.x_data * period + t0
@@ -156,7 +157,7 @@ class DataSet(metaclass=ABCMeta):
         :**method options**:
 
             * :`central_moving_average`: assign the average value to the centre of the bin defined by the
-                                         their number `n_bins` and radius `radius` in a number of bins
+                                         number `n_bins` and radius `radius` in a number of bins
 
         :param kwargs: see different smoothing methods
         """
@@ -243,8 +244,8 @@ class RVData(DataSet):
         :return: Dict; observations transformed into base units
         """
         # converting x-axis
-        kwargs['x_data'] = dutils.convert_data(kwargs['x_data'], kwargs['x_unit'], u.PERIOD_UNIT)
-        kwargs['x_unit'] = dutils.convert_unit(kwargs['x_unit'], u.PERIOD_UNIT)
+        kwargs['x_data'] = dutils.convert_data(kwargs['x_data'], kwargs['x_unit'], u.DEFAULT_PERIOD_UNIT)
+        kwargs['x_unit'] = dutils.convert_unit(kwargs['x_unit'], u.DEFAULT_PERIOD_UNIT)
 
         # converting y-axis
         kwargs['y_data'] = dutils.convert_data(kwargs['y_data'], kwargs['y_unit'], u.VELOCITY_UNIT)
@@ -335,8 +336,8 @@ class LCData(DataSet):
         :return: Dict; observations transformed into base units
         """
         # converting x-axis
-        kwargs['x_data'] = dutils.convert_data(kwargs['x_data'], kwargs['x_unit'], u.PERIOD_UNIT)
-        kwargs['x_unit'] = dutils.convert_unit(kwargs['x_unit'], u.PERIOD_UNIT)
+        kwargs['x_data'] = dutils.convert_data(kwargs['x_data'], kwargs['x_unit'], u.DEFAULT_PERIOD_UNIT)
+        kwargs['x_unit'] = dutils.convert_unit(kwargs['x_unit'], u.DEFAULT_PERIOD_UNIT)
         kwargs['reference_magnitude'] = kwargs.get('reference_magnitude', None)
 
         # convert errors

@@ -469,11 +469,11 @@ def set_colorbar_label(colorbar, colorbar_name, unit, scale, extra=''):
     }
     def_unit = {
         'temperature': 'K',
-        'gravity_acceleration': '$m\,s^{-2}$',
-        'velocity': '$m\,s^{-1}$',
-        'radial_velocity': '$m\,s^{-1}$',
-        'v_r_perturbed': '$m\,s^{-1}$',
-        'v_horizontal_perturbed': '$m\,s^{-1}$',
+        'gravity_acceleration': r'$m\,s^{-2}$',
+        'velocity': r'$m\,s^{-1}$',
+        'radial_velocity': r'$m\,s^{-1}$',
+        'v_r_perturbed': r'$m\,s^{-1}$',
+        'v_horizontal_perturbed': r'$m\,s^{-1}$',
         'normal_radiance': '$W.sr^{-1}.m^{-2}$',
         'radiance': '$W.sr^{-1}.m^{-2}$',
         'radius': '$m$',
@@ -766,6 +766,9 @@ def phase_curve(**kwargs):
     if isinstance(kwargs['unit'], type(u.W/u.m**2)):
         uu = kwargs['unit']
         plt.ylabel(f'Flux/({uu:latex})')
+    elif isinstance(kwargs['unit'], type(u.mag)):
+        plt.ylabel(f'Magnitude')
+        plt.gca().invert_yaxis()
     else:
         plt.ylabel('Flux')
     if kwargs['legend']:
@@ -871,6 +874,7 @@ def binary_lc_fit_plot(**kwargs):
         'Generic.Stromgren.y': '#00e600',
         'Kepler': '#E50000',
         'GaiaDR2': 'black',
+        'TESS': '#003849'
     }
     datapoint_clrs = {
         'bolometric': 'gray',
@@ -933,3 +937,21 @@ def binary_lc_fit_plot(**kwargs):
     plt.subplots_adjust(hspace=0.0, top=0.98, right=0.97)
     return fig if kwargs['return_figure_instance'] else plt.show()
 
+
+def passband_plot(**kwargs):
+    # Extract values
+    xs = kwargs["xs"]
+    ys = kwargs["ys"]
+    x_unit = kwargs["x_unit"]
+    y_unit = kwargs["y_unit"]
+    passband = kwargs["passband"]
+
+    # Create plot
+    plt.figure(figsize=(8, 6))
+    plt.plot(xs, ys, marker="o", linestyle="-", label=passband, lw=0.5, markersize=2)
+    plt.xlabel(x_unit)
+    plt.ylabel(y_unit)
+    plt.legend()
+    plt.grid(True)
+
+    plt.show()

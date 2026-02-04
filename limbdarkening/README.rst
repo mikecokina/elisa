@@ -1,11 +1,12 @@
 Limbdarkening models
 ====================
-
-    **url:** https://mega.nz/file/7U0h3RpC#ZxAGflTglX3JGOmTS0C9S8WF64bnibRyGTeNJG0eZyQ
+    Download `Van Hamme Transformer 2019 <https://mega.nz/file/WIdG0Qga#S3dMVROhlUSwhOj-b70vdaPFd1imWVQOaNsNrUsuD7w>`_.
 
     Contain limb darkening models for given limbdarkening models, passbands and metalicities
     Extract content of ``limbdarkening.tar`` archive to any directory and setup ``support.ld_tables``
     in ``elisa_config.ini``.
+
+    Deprecated version of LDCs `here <https://mega.nz/file/7U0h3RpC#ZxAGflTglX3JGOmTS0C9S8WF64bnibRyGTeNJG0eZyQ>`_.
 
 Metallicity sign
 ~~~~~~~~~~~~~~~~
@@ -56,7 +57,9 @@ List of passbands included
     Generic.Bessell.R
     Generic.Bessell.I
     Kepler
-    GaiaDR2
+    Gaia.2010.G
+    Gaia.2010.BP
+    Gaia.2010.RP
     SLOAN.SDSS.u
     SLOAN.SDSS.g
     SLOAN.SDSS.r

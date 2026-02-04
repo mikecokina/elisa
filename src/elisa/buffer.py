@@ -32,7 +32,8 @@ class Buffer(object):
         :return: Dict; reduced buffer
         """
         if len(storage) > cls.MAX_STORAGE:
-            for key in storage.keys()[:len(storage)-cls.MAX_STORAGE]:
+            start_idx = len(storage)-cls.MAX_STORAGE
+            for key in list(storage.keys())[:start_idx]:
                 del storage[key]
         return storage
 

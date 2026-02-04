@@ -11,7 +11,7 @@ import pandas as pd
 from os.path import dirname
 from os.path import join as pjoin
 
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_equal, assert_equal
 from pandas.testing import assert_frame_equal
 
 from elisa.binary_system.system import BinarySystem
@@ -21,6 +21,8 @@ from elisa import umpy as up
 from elisa.observer.observer import Observer
 from elisa.observer.passband import PassbandContainer
 from elisa.observer.passband import bolometric
+from elisa.observer.utils import convert_to_magnitudes
+from elisa.photometric_standards.standards_handlers import load_standard
 from unittests.utils import ElisaTestCase
 
 set_astropy_units()
@@ -107,7 +109,7 @@ class TestObserver(ElisaTestCase):
         self.assertEqual(o._system_cls, BinarySystemMock)
 
     def test_get_passband_df(self):
-        obtained = Observer.get_passband_df(self._passband)
+        obtained = PassbandContainer.get_passband_df(self._passband)
         obtained[settings.PASSBAND_DATAFRAME_WAVE] = obtained[settings.PASSBAND_DATAFRAME_WAVE] / 10.0
         assert_frame_equal(obtained, self._bessel_v_df)
 
@@ -243,6 +245,17 @@ class TestObserver(ElisaTestCase):
 
         assert_array_equal(np.round(expected_phases, 2), np.round(obtained_phases1, 2))
         assert_array_equal(np.round(expected_phases, 2), np.round(obtained_phases2, 2))
+
+    def test_convert_to_magnitudes(self):
+        for system in ['vega', 'ab', 'st']:
+            zero_points = load_standard(system)
+            input_curves = dict()
+            for passband, zp in zero_points['fluxes'].items():
+                input_curves[passband] = np.array([zp, ])
+
+            mags = convert_to_magnitudes(input_curves, zero_points)
+            for passband, zm in zero_points['reference_magnitudes'].items():
+                assert_equal(mags[passband][0], zm)
 
 
 class BinarySystemMock(object):

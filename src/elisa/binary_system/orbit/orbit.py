@@ -5,6 +5,7 @@ from ... import (
     const,
     umpy as up
 )
+from ... base.types import INT, FLOAT
 from ... logger import getLogger
 from ... binary_system.orbit.transform import OrbitProperties
 from ... base.orbit.orbit import AbstractOrbit
@@ -344,8 +345,8 @@ class Orbit(AbstractOrbit):
                         (rN, azN, nuN, phsN))
         """
         # ability to accept scalar as input
-        if isinstance(phase, (int, np.int, float, np.float)):
-            phase = np.array([np.float(phase)])
+        if isinstance(phase, (int, INT, float, FLOAT)):
+            phase = np.array([FLOAT(phase)])
         # photometric phase to phase measured from periastron
         true_phase = self.true_phase(phase=phase, phase_shift=self.conjunctions['primary_eclipse']['true_phase'])
 

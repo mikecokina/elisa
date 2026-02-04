@@ -1,9 +1,15 @@
+import os
 import sys
+from typing import Tuple
+
 import numpy as np
 import pandas as pd
 
 from scipy import interpolate
+
+from . plot import PassbandPlot
 from .. import settings
+from ..base.types import FLOAT
 
 
 def init_bolometric_passband():
@@ -81,6 +87,7 @@ class PassbandContainer(object):
         self.passband = passband
         # in case this np.pi will stay here, there will be rendundant multiplication in intensity integration
         self.wave_to_si_mult = 1e-10
+        self.plot = PassbandPlot(self)
 
         setattr(self, 'table', table)
 
@@ -97,7 +104,7 @@ class PassbandContainer(object):
     def table(self, df):
         """
         Setter for passband table.
-        It precompute left and right bandwidth for given table and also interpolation function placeholder.
+        It precomputes left and right bandwidth for given table and also interpolation function placeholder.
         Akima1DInterpolator is used. If `bolometric` passband is used then interpolation function is like::
 
             lambda x: 1.0
@@ -109,5 +116,28 @@ class PassbandContainer(object):
         self.akima = bolometric if (self.passband.lower() in ['bolometric', 'rv_band']) else \
             interpolate.Akima1DInterpolator(df[settings.PASSBAND_DATAFRAME_WAVE],
                                             df[settings.PASSBAND_DATAFRAME_THROUGHPUT])
-        self.left_bandwidth = min(df[settings.PASSBAND_DATAFRAME_WAVE])
-        self.right_bandwidth = max(df[settings.PASSBAND_DATAFRAME_WAVE])
+        self.left_bandwidth = df[settings.PASSBAND_DATAFRAME_WAVE].min()
+        self.right_bandwidth = df[settings.PASSBAND_DATAFRAME_WAVE].max()
+
+    @staticmethod
+    def get_passband_df(passband):
+        """
+        Read content of passband table (csv file) based on passband name.
+
+        :param passband: str;
+        :return: pandas.DataFrame;
+        """
+        if passband not in settings.PASSBANDS:
+            raise ValueError('Invalid or unsupported passband function.')
+        file_path = os.path.join(settings.PASSBAND_TABLES, str(passband) + '.csv')
+        df = pd.read_csv(file_path)
+        df[settings.PASSBAND_DATAFRAME_WAVE] *= 10.0
+        return df
+
+    def get_bandwidth(self) -> Tuple[FLOAT, FLOAT]:
+        return self.left_bandwidth, self.right_bandwidth
+
+    @classmethod
+    def from_name(cls, passband: str):
+        df = cls.get_passband_df(passband)
+        return cls(table=df, passband=passband)

@@ -119,6 +119,7 @@ def resolve_ecc_approximation_method(
 
 
 # *******************************************evaluate_approximations****************************************************
+# noinspection PyUnresolvedReferences
 def eval_interpolation_approximation(
         binary,
         phases_span_test,

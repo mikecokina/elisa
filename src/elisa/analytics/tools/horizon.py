@@ -11,7 +11,7 @@ from elisa.const import Position, HALF_PI, FULL_ARC
 from elisa import utils
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.surface.coverage import get_eclipse_boundary_path
-from pypex import Polygon
+from elisa.pypex import Polygon
 
 
 LINE_OF_SIGHT = np.array([1, 0, 0])

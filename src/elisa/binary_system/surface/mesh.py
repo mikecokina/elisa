@@ -4,13 +4,13 @@ from .. import (
     utils as bsutils,
     model,
 )
-from ... base.error import MaxIterationError, SpotError
-from ... base.spot import incorporate_spots_mesh
-from ... base.surface.mesh import correct_component_mesh
+from ...base.error import MaxIterationError, SpotError
+from ...base.spot import incorporate_spots_mesh
+from ...base.surface.mesh import correct_component_mesh
 from ... import settings
-from ... opt.fsolver import fsolver
-from ... utils import is_empty
-from ... logger import getLogger
+from ...opt.fsolver import fsolver
+from ...utils import is_empty
+from ...logger import getLogger
 from ... import (
     umpy as up,
     utils,
@@ -130,9 +130,9 @@ def trapezoidal_mesh(discretization):
         alpha_corrected = discretization / up.sin(tht)
         num = int(const.PI // alpha_corrected)
         alpha_corrected = const.PI / (num + 1)
-        phi_q_add = alpha_corrected * np.arange(1, num+1)
+        phi_q_add = alpha_corrected * np.arange(1, num + 1)
         phi = up.concatenate((phi, phi_q_add))
-        theta = up.concatenate((theta, tht*np.ones(phi_q_add.shape[0])))
+        theta = up.concatenate((theta, tht * np.ones(phi_q_add.shape[0])))
 
     return phi, theta, separator
 
@@ -175,7 +175,7 @@ def improved_trapezoidal_mesh(discretization, forward_radius, polar_radius, side
     phi[outer_mask] += outer_corr
 
     # azimuths for points on meridian
-    v_num = int(const.HALF_PI // (1.07*vertical_alpha))
+    v_num = int(const.HALF_PI // (1.07 * vertical_alpha))
     # v_num = int(const.HALF_PI // discretization)
     phi_meridian = np.concatenate((const.PI * np.ones(v_num - 1), np.zeros(v_num)))
     theta_meridian = up.concatenate((np.linspace(const.HALF_PI, 0, num=v_num + 1)[1:-1],
@@ -204,7 +204,7 @@ def improved_trapezoidal_mesh(discretization, forward_radius, polar_radius, side
         alpha_corrected = discretization / up.sin(tht)
         num = int(const.PI // alpha_corrected)
         alpha_corrected = const.PI / (num + 1)
-        phi_q_add = alpha_corrected * np.arange(1, num+1)
+        phi_q_add = alpha_corrected * np.arange(1, num + 1)
 
         # correction for obliqness
         inner_mask = phi_q_add < const.HALF_PI
@@ -335,7 +335,7 @@ def improved_trapezoidal_overcontact_farside_points(discretization, polar_radius
     phi_meridian1 = np.full(v_num - 1, const.PI)
     theta_meridian1 = np.linspace(0., const.HALF_PI, num=v_num - 1, endpoint=False)
     # obliqueness correction
-    est_eqt_r = (side_radius + 2*backward_radius) / 3.0
+    est_eqt_r = (side_radius + 2 * backward_radius) / 3.0
     tan_tht = np.tan(theta_meridian1)
     theta_meridian1 += up.arctan((est_eqt_r - polar_radius) * tan_tht /
                                  (polar_radius + est_eqt_r * tan_tht ** 2))
@@ -541,8 +541,8 @@ def get_surface_points(*args):
     phi, theta, x0, components_distance, precalc_fn, potential_fn, fprime, potential, q, synchronicity = args
     max_iter = settings.MAX_SOLVER_ITERS
     precalc_vals = precalc_fn(*(synchronicity, q, components_distance, phi, theta), return_as_tuple=True)
-    x0 = x0 * np.ones(phi.shape)
-    radius_kwargs = dict(fprime=fprime, maxiter=max_iter, args=((q, ) + precalc_vals, potential), rtol=1e-10)
+    x0 *= np.ones(phi.shape)
+    radius_kwargs = dict(fprime=fprime, maxiter=max_iter, args=((q,) + precalc_vals, potential), rtol=1e-10)
     radius = opt.newton.newton(potential_fn, x0, **radius_kwargs)
     if (radius < 0.0).any():
         raise ValueError('Solver found at least one point in the opposite direction. Check you points. ')
@@ -627,8 +627,8 @@ def mesh_detached(system, components_distance, component, symmetry_output=False)
     setattr(star, "azimuth_args", (phi, theta, separator))
     # calculating mesh in cartesian coordinates for quarter of the star, the forward point nearest to the L1 is ommitted
     # it was found that in rare instances, newton performs badly near L1
-    args = phi[1:], theta[1:], star.side_radius, components_distance, precalc_fn, \
-        potential_fn, fprime, potential, mass_ratio, synchronicity
+    args = (phi[1:], theta[1:], star.side_radius, components_distance, precalc_fn) + \
+           (potential_fn, fprime, potential, mass_ratio, synchronicity)
 
     logger.debug(f'calculating surface points of {component} component in mesh_detached '
                  f'function using single process method')
@@ -704,8 +704,8 @@ def rebuild_mesh_detached(system, components_distance, component):
 
     phi, theta, separator = star.azimuth_args
 
-    args = phi, theta, star.side_radius, components_distance, precalc_fn, \
-           potential_fn, fprime, potential, mass_ratio, synchronicity
+    args = (phi, theta, star.side_radius, components_distance, precalc_fn) + \
+           (potential_fn, fprime, potential, mass_ratio, synchronicity)
 
     logger.debug(f're calculating surface points of {component} component in rebuild_mesh_detached ')
     points_q = np.round(get_surface_points(*args), 15)
@@ -832,9 +832,9 @@ def mesh_over_contact(system, component="all", symmetry_output=False):
     x_q1, y_q1, z_q1 = quarter[:, 0], quarter[:, 1], quarter[:, 2]
 
     # solving points on neck
-    args = phi_neck, z_neck, components_distance, 0.25 * star.polar_radius, \
-        precal_cylindrical, fn_cylindrical, cylindrical_fprime, \
-        star.surface_potential, system.mass_ratio, synchronicity
+    args = (phi_neck, z_neck, components_distance, 0.25 * star.polar_radius) + \
+           (precal_cylindrical, fn_cylindrical, cylindrical_fprime) + \
+           (star.surface_potential, system.mass_ratio, synchronicity)
     logger.debug(f'calculating neck points of {component} component in mesh_overcontact '
                  f'function using single process method')
     points_neck = get_surface_points_cylindrical(*args)
@@ -1028,11 +1028,11 @@ def mesh_spots(system, components_distance, component="all"):
                     spot_theta.append(spherical_delta_vector[2])
 
             spot_phi, spot_theta = np.array(spot_phi), np.array(spot_theta)
-            args = spot_phi, spot_theta, spot_center_r, components_distance, precalc_fn, \
-                potential_fn, fprime, potential, mass_ratio, synchronicity
+            args = (spot_phi, spot_theta, spot_center_r, components_distance, precalc_fn) + \
+                   (potential_fn, fprime, potential, mass_ratio, synchronicity)
             try:
                 spot_points = get_surface_points(*args)
-            except (MaxIterationError, ValueError) as e:
+            except (MaxIterationError, ValueError):
                 raise SpotError(f"Solver could not find at least some surface points of spot "
                                 f"{spot_instance.kwargs_serializer()}. Probable reason is that your spot is"
                                 f"intersecting neck which is currently not supported.")

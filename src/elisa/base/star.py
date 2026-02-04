@@ -33,11 +33,16 @@ class Star(Body):
                          function assumes that supplied value is in K.
         :param polar_log_g: float; log_10 of the polar surface gravity
 
-    following mandatory arguments are also available:
+    following optional arguments are also available:
 
         :param metallicity: float; log[M/H] default value is 0.0
         :param gravity_darkening: float; gravity darkening factor, if not supplied, it is interpolated from Claret 2003
                                          based on t_eff
+        :param limb_darkening_coefficients: Union[float, dict]; optional limb darkening coefficients
+                                            used for the whole star useful in case the modelled star is outside the
+                                            supported range of atmospheric parameters. Limb darkening coefficients can
+                                            be supplied as dict {passband: ld_coefs}. If unused, elisa will
+                                            interpolate the values from supplied limb-darkening tables.
 
     After initialization of the SingleSystem, following additional attributes of the Star instance are available:
 
@@ -118,7 +123,8 @@ class Star(Body):
 
     MANDATORY_KWARGS = ['mass', 't_eff']
     OPTIONAL_KWARGS = ['surface_potential', 'synchronicity', 'albedo', 'pulsations', 'atmosphere',
-                       'spots', 'metallicity', 'polar_log_g', 'discretization_factor', 'gravity_darkening']
+                       'spots', 'metallicity', 'polar_log_g', 'discretization_factor', 'gravity_darkening',
+                       'limb_darkening_coefficients']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, name=None, **kwargs):
@@ -133,6 +139,7 @@ class Star(Body):
         self.metallicity = 0.0
         self.polar_log_g = np.nan
         self.gravity_darkening = np.nan
+        self.limb_darkening_coefficients = None
         self._pulsations = list()
 
         self.side_radius = np.nan
@@ -261,7 +268,7 @@ class Star(Body):
                            'polar_radius', 'equatorial_radius', 'gravity_darkening', 'surface_potential', 'pulsations',
                            'metallicity', 'polar_log_g', 'critical_surface_potential', 'atmosphere',
                            # todo: remove side_radius when figured out starting point for solver
-                           'side_radius']
+                           'side_radius', 'limb_darkening_coefficients']
         props = {prop: copy(getattr(self, prop)) for prop in properties_list}
         props.update({
             "name": self.name,

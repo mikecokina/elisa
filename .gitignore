@@ -31,3 +31,4 @@ elisa.egg-info
 docs/build/*
 /jupyter_tutorials/.ipynb_checkpoints/
 /env37/
+/my_scripts/

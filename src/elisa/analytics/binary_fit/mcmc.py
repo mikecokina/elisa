@@ -19,7 +19,7 @@ from .. models import lc as lc_model
 from .. models import rv as rv_model
 from .. models import cost_fns
 from .. params import parameters
-from ..params.conf import NUISANCE_PARSER, PARAM_PARSER
+from .. params.conf import NUISANCE_PARSER, PARAM_PARSER
 from .. tools.utils import time_layer_resolver
 
 from ... observer.utils import normalize_light_curve
@@ -44,7 +44,7 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         self.flat_chain_path = ''
         self.eval_counter = 0
         self._last_known_lhood = -np.finfo(float).max * np.finfo(float).eps
-        self.sigmas = list()
+        self.sigmas = None
 
     @staticmethod
     def ln_prior(xn, x0, sigmas):
@@ -63,8 +63,8 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
                                           np.less_equal(xn[nan_mask], 1.0))).astype(float)
         retval[nan_mask] = -np.inf if uni_prior == 0 else np.log(uni_prior)
 
-        retval[~nan_mask] = np.log(norm().pdf(((xn[~nan_mask]-x0[~nan_mask])/sigmas[~nan_mask]))) \
-            if 0.0 <= xn[~nan_mask].all() <= 1.0 else -np.inf
+        retval[~nan_mask] = np.log(norm().pdf(((xn[~nan_mask] - x0[~nan_mask]) / sigmas[~nan_mask]))) \
+            if np.logical_and(xn[~nan_mask] >= 0, xn[~nan_mask] <= 1.0).all() else -np.inf
         return np.sum(retval)
 
     @abstractmethod
@@ -114,12 +114,12 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         parameter, np.nan is used instead.
 
         :param vector: List; normalized starting vector
-        :return: None
+        :return: numpy.array;
         """
         sigmas = np.array([val.sigma if val.sigma is not None else np.nan for val in self.fitable.values()])
         perturbed = np.array(self.initial_vector) + sigmas
         perturbed_norm = parameters.vector_normalizer(perturbed, self.fitable.keys(), self.normalization)
-        self.sigmas = np.array(perturbed_norm) - vector
+        return np.array(perturbed_norm) - vector
 
     def _fit(self, nwalkers, ndim, nsteps, nsteps_burn_in, p0=None, progress=False, save=False, fit_id=None):
         """
@@ -139,10 +139,11 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         self.norm_init_vector = np.array(parameters.vector_normalizer(self.initial_vector, self.fitable.keys(),
                                                                       self.normalization))
 
-        sigmas = np.array([val.sigma if val.sigma is not None else np.nan for val in self.fitable.values()])
-        args = (np.array(self.initial_vector) + sigmas, self.fitable.keys(), self.normalization)
-        perturbed_norm = parameters.vector_normalizer(*args)
-        self.sigmas = np.array(perturbed_norm) - self.norm_init_vector
+        self.sigmas = self.normalized_sigma(self.norm_init_vector)
+        # sigmas = np.array([val.sigma if val.sigma is not None else np.nan for val in self.fitable.values()])
+        # args = (np.array(self.initial_vector) + sigmas, self.fitable.keys(), self.normalization)
+        # perturbed_norm = parameters.vector_normalizer(*args)
+        # self.sigmas = np.array(perturbed_norm) - self.norm_init_vector
 
         p0 = self.generate_initial_states(p0, nwalkers, ndim, x0_vector=self.norm_init_vector)
 
@@ -282,7 +283,14 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
         r_squared_args = (self.x_data_reduced, self.y_data, self.observer.passband, discretization,
                           self.x_data_reducer, 1.0 / self.interp_treshold, self.interp_treshold,
                           self.observer.system_cls)
+
         r_dict = {key: value['value'] for key, value in result_dict.items()}
+        r_dict = parameters.extend_json_with_atm_params(
+            r_dict,
+            atmosphere_model=self.atmosphere_model,
+            limb_darkening_coefficients=self.limb_darkening_coefficients
+        )
+
         r_squared_result = lc_r_squared(lc_model.synthetic_binary, *r_squared_args, **r_dict)
         result_dict["r_squared"] = {'value': r_squared_result, "unit": None}
 

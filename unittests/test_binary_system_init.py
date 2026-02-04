@@ -6,7 +6,10 @@ import numpy as np
 
 from copy import copy
 from numpy.testing import assert_array_equal
-from elisa import const as c, units as u, get_default_binary_definition
+from elisa import (
+    const as c,
+    units as u
+)
 from elisa.base.star import Star
 from elisa.binary_system.system import BinarySystem
 from unittests.utils import ElisaTestCase, prepare_binary_system
@@ -456,7 +459,8 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
                 "primary_minimum_time": "0.0 d",
                 "phase_shift": 0.0,
                 "mass_ratio": 0.75,
-                "semi_major_axis": 29.854
+                "semi_major_axis": 29.854,
+                "distance": "1 pc"
             },
             "primary": {
                 "surface_potential": 7.1,
@@ -466,6 +470,8 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
                 "discretization_factor": 5,
                 "albedo": 1.0,
                 "metallicity": 0.0,
+                "atmosphere": 'bb',
+                "limb_darkening_coefficients": {'bolometric': 0.5},
                 "spots": [
                     {
                         'longitude': 90,
@@ -523,7 +529,8 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
                 "primary_minimum_time": 0.0,
                 "phase_shift": 0.0,
                 "semi_major_axis": 29.854,
-                "additional_light": 0.0
+                "additional_light": 0.0,
+                "distance": 1.0
             },
             "primary": {
                 "mass": 2.0,
@@ -534,6 +541,8 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
                 "discretization_factor": 5,
                 "albedo": 1.0,
                 "metallicity": 0.0,
+                "atmosphere": 'bb',
+                "limb_darkening_coefficients": {'bolometric': [0.5, ]},
                 "spots": [
                     {
                         'longitude': 90,
@@ -611,12 +620,3 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
                             )
 
 
-class BinarySystemSeparatedAtmospheres(ElisaTestCase):
-    @staticmethod
-    def test_atmospheres_of_components_differs():
-        definition = get_default_binary_definition()
-        definition["primary"].update({**definition["primary"], "atmosphere": "bb"})
-        definition["secondary"].update({**definition["secondary"], "atmosphere": "ck04"})
-        binary = BinarySystem.from_json(definition)
-        assert binary.primary.atmosphere, "bb"
-        assert binary.secondary.atmosphere, "ck04"

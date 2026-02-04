@@ -8,6 +8,8 @@ from .. import utils
 from .. pulse import pulsations
 from elisa import units as u
 from elisa.base.surface.temperature import interpolate_bolometric_gravity_darkening
+from elisa import const
+
 
 logger = getLogger('base.system')
 
@@ -34,6 +36,7 @@ class System(metaclass=ABCMeta):
         self.t0: float = np.nan
         self.gamma: float = np.nan
         self.additional_light: float = 0.0
+        self.distance: float = 10 * const.PC
 
         self._components: Union[None, Dict] = None
 
@@ -102,8 +105,12 @@ class System(metaclass=ABCMeta):
         for component, instance in self.components.items():
             json_data.update({component: {
                 attr: (getattr(instance, attr) * sys_units[component][attr]).to(sys_input[component][attr]).value
-                for attr in self.STAR_ALL_KWARGS
+                for attr in self.STAR_ALL_KWARGS if getattr(instance, attr) is not None
             }})
+
+            for item in ['atmosphere', 'limb_darkening_coefficients']:
+                if getattr(instance, item, None):
+                    json_data[component].update({item: getattr(instance, item)})
 
             if instance.has_spots():
                 spot_list = list()
@@ -191,15 +198,15 @@ class System(metaclass=ABCMeta):
 
         :return: Dict;
         """
+        cls_name = type(self).__name__
         serialized_kwargs = dict()
         for kwarg in self.ALL_KWARGS:
-            if kwarg in ['argument_of_periastron', 'inclination']:
-                value = getattr(self, kwarg)
-                if not isinstance(value, u.Quantity):
-                    value = value * u.ARC_UNIT
-                serialized_kwargs[kwarg] = value
-            else:
+            value = getattr(self, kwarg)
+            if isinstance(value, u.Quantity):
                 serialized_kwargs[kwarg] = getattr(self, kwarg)
+            else:
+                def_unit = getattr(u.default_unit_map[cls_name], kwarg)
+                serialized_kwargs[kwarg] = value if def_unit == u.dimensionless_unscaled else value * def_unit
         return serialized_kwargs
 
     def setup_betas(self):

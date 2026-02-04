@@ -42,6 +42,7 @@ def fsolver(fn, condition, *args, **kwargs):
                 logger.warning(f'solution in implicit solver was not found, cause: {msg}')
     except Exception as e:
         logger.debug(f"attempt to solve function {fn.__name__} finished w/ exception: {str(e)}")
+        # noinspection PyUnusedLocal
         use = False
         raise
 

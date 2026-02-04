@@ -11,7 +11,6 @@ from . binary_fit.plot import (
 )
 from .. import utils
 from .. logger import getLogger
-from elisa.analytics.binary_fit.shared import eval_constraint_in_dict
 from elisa import settings
 
 logger = getLogger('analytics.tasks')
@@ -19,7 +18,7 @@ logger = getLogger('analytics.tasks')
 
 class AnalyticsTask(metaclass=ABCMeta):
     """
-    Abstract class defining fitting task. This structure aims to provide a framework for solving inverse problem for
+    Abstract class defining fitting task.  This structure aims to provide a framework for solving inverse problem for
     one object that embeds observed data and fitting methods and provides unified output from fitting methods along with
     capability to visualize the resulting fit.
 
@@ -31,7 +30,7 @@ class AnalyticsTask(metaclass=ABCMeta):
     MCMC_NAMES = ('mcmc', 'MCMC')
     ALLOWED_METHODS = LS_NAMES + MCMC_NAMES
     MANDATORY_KWARGS = ["data", ]
-    OPTIONAL_KWARGS = []
+    OPTIONAL_KWARGS = ["atmosphere_model", "limb_darkening_coefficients"]
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
     CONSTRAINT_OPERATORS = bonds.ALLOWED_CONSTRAINT_METHODS + bonds.ALLOWED_CONSTRAINT_CHARS
     FIT_CLS = None
@@ -70,7 +69,7 @@ class AnalyticsTask(metaclass=ABCMeta):
         if method not in cls.ALLOWED_METHODS:
             raise ValueError(f'Invalid fitting method. Use one of: {", ".join(cls.ALLOWED_METHODS)}')
 
-    def load_result(self, filename):
+    def load_result(self, filename, autofill_sma=False):
         """
         Function loads a JSON file containing model parameters and stores it as an attribute of AnalyticsTask fitting
         instance. This is useful if you want to examine already calculated results using functionality provided by the
@@ -78,9 +77,11 @@ class AnalyticsTask(metaclass=ABCMeta):
         parameters in standard dict (JSON) format.
 
         :param filename: str;
+        :param autofill_sma; bool; if True, the semi-major axis will be autofilled to fitting
+                                   parameters if absent
         :return: Dict; model parameters in a standardized format
         """
-        self.fit_cls.load_result(filename)
+        self.fit_cls.load_result(filename, autofill_sma=autofill_sma)
         return self.fit_cls.get_result()
 
     def save_result(self, filename):
@@ -91,15 +92,17 @@ class AnalyticsTask(metaclass=ABCMeta):
         """
         self.fit_cls.save_result(filename)
 
-    def set_result(self, result):
+    def set_result(self, result, autofill_sma=False):
         """
         Set model parameters in dictionary (JSON format) as an attribute of AnalyticsTask fitting instance. This is
         useful if you want to examine already calculated results using functionality provided by the AnalyticsTask
         instances (e.g: LCBinaryAnalyticsTask, RVBinaryAnalyticsTask, etc.).
 
         :param result: Dict; model parameters in JSON format
+        :param autofill_sma; bool; if True, the semi-major axis will be autofilled to fitting
+                                   parameters if absent
         """
-        self.fit_cls.set_result(result)
+        self.fit_cls.set_result(result, autofill_sma=autofill_sma)
 
     def get_result(self):
         """
@@ -196,6 +199,8 @@ class AnalyticsTask(metaclass=ABCMeta):
                                   chain. Default value is [16, 50, 84] (1-sigma confidence interval)
             * **save** * - bool - save chain
             * **fit_id** * - str - identificator or location of stored chain
+            * **samples** * - Union[str, List]; 'uniform' (equidistant sampling in phase), 'adaptive'
+                                                (equidistant sampling on curve) or list with phases in (0, 1) interval
 
         :return: Dict; resulting parameters {param_name: {`value`: value, `unit`: astropy.unit, ...}, ...}
         """
@@ -276,15 +281,28 @@ class LCBinaryAnalyticsTask(AnalyticsTask):
     }, indent=4)
     TRANSFORM_PROPERTIES_CLS = transform.LCBinaryAnalyticsProperties
 
-    def __init__(self, method, expected_morphology='detached', name=None, **kwargs):
+    def __init__(self, method, expected_morphology='detached', name=None,
+                 atmosphere_models=None, limb_darkening_coefficients=None, **kwargs):
         self.validate_method(method)
         if method in self.MCMC_NAMES:
-            self.__class__.FIT_CLS = lambda: lc_fit.LCFitMCMC(morphology=expected_morphology)
+            self.__class__.FIT_CLS = lambda: \
+                lc_fit.LCFitMCMC(morphology=expected_morphology,
+                                 atmosphere_model=atmosphere_models,
+                                 limb_darkening_coefficients=limb_darkening_coefficients)
             self.__class__.PLOT_CLS = LCPlotMCMC
         elif method in self.LS_NAMES:
-            self.__class__.FIT_CLS = lambda: lc_fit.LCFitLeastSquares(morphology=expected_morphology)
+            self.__class__.FIT_CLS = lambda: \
+                lc_fit.LCFitLeastSquares(morphology=expected_morphology,
+                                         atmosphere_model=atmosphere_models,
+                                         limb_darkening_coefficients=limb_darkening_coefficients)
             self.__class__.PLOT_CLS = LCPlotLsqr
         super().__init__(method, name, **kwargs)
+
+    def load_result(self, filename, autofill_sma=True):
+        return super().load_result(filename, autofill_sma=autofill_sma)
+
+    def set_result(self, result, autofill_sma=True):
+        return super().set_result(result, autofill_sma=autofill_sma)
 
 
 class RVBinaryAnalyticsTask(AnalyticsTask):
@@ -312,12 +330,12 @@ class RVBinaryAnalyticsTask(AnalyticsTask):
     }, indent=4)
     TRANSFORM_PROPERTIES_CLS = transform.RVBinaryAnalyticsTask
 
-    def __init__(self, method, name=None, **kwargs):
+    def __init__(self, method, name=None, atmosphere_models=None, limb_darkening_factor=None, **kwargs):
         self.validate_method(method)
         if method in self.MCMC_NAMES:
-            self.__class__.FIT_CLS = rv_fit.RVFitMCMC
+            self.__class__.FIT_CLS = lambda: rv_fit.RVFitMCMC()
             self.__class__.PLOT_CLS = RVPlotMCMC
         elif method in self.LS_NAMES:
-            self.__class__.FIT_CLS = rv_fit.RVFitLeastSquares
+            self.__class__.FIT_CLS = lambda: rv_fit.RVFitLeastSquares()
             self.__class__.PLOT_CLS = RVPlotLsqr
         super().__init__(method, name, **kwargs)

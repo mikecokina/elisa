@@ -14,6 +14,7 @@ from .. tools.utils import (
 from .. models import lc as lc_model
 from .. models import rv as rv_model
 from ... utils import is_empty
+from ... import units
 from ... import settings
 from ... observer.observer import Observer
 from ... observer.utils import normalize_light_curve
@@ -48,12 +49,15 @@ class AbstractFit(metaclass=ABCMeta):
         :x_data_reducer: Dict[str, numpy.array]; x_data[passband] = x_data_reduced[x_data_reducer[passband]]
         :y_data: Dict[str, numpy.array]; fluxes in each filter
         :y_err: Dict[str, numpy.array]; observational errors of y_data
+        :atmosphere_model: Union[dict(), None]: atmosphere models for each component {component: atm_model, ...}
+        :limb_darkening_coefficients: Union[dict(), None]: custom limb-darkening coefficients used for components
+                                      in format {component: {passband: ld_coeffs, }, }
     """
     MEAN_ERROR_FN = None
 
     __slots__ = ['fixed', 'constrained', 'fitable', 'observer', 'x_data', 'y_data', 'num_of_points'
                  'y_err', 'x_data_reduced', 'x_data_reducer', 'initial_vector', 'normalization', 'flat_result',
-                 'discretization', 'interp_treshold']
+                 'discretization', 'interp_treshold', 'atmosphere_model', 'limb_darkening_coefficients']
 
     def set_up(self, x0: BinaryInitialParameters, data: Dict, passband: Iterable = None, **kwargs):
         """
@@ -65,6 +69,7 @@ class AbstractFit(metaclass=ABCMeta):
         :param passband: List; list of used passbands, use None in case of RV fit
         :param kwargs: Dict; class dependent content (see inheritor classes)
         """
+        self._check_data_param_consistency(x0, data)
         setattr(self, 'fixed', x0.get_fixed(jsonify=False))
         setattr(self, 'constrained', x0.get_constrained(jsonify=False))
         setattr(self, 'fitable', x0.get_fitable(jsonify=False))
@@ -89,10 +94,51 @@ class AbstractFit(metaclass=ABCMeta):
         setattr(self, 'initial_vector', [val.value for val in self.fitable.values()])
         setattr(self, 'flat_result', dict())
 
+        if not isinstance(getattr(self, 'atmosphere_model', None), (dict, type(None))):
+            raise ValueError('Please provide argument `atmosphere_mode` in format '
+                             '{component (primary or secondary): atmosphere_model_name (ck04, bb, ...), }')
+
+        if not isinstance(getattr(self, 'limb_darkening_coefficients', None), (dict, type(None))):
+            raise ValueError('Please provide argument `limb_darkening_coefficients` in format '
+                             '{component (primary or secondary): {passband: ld_coeffs (float, list), }, }')
+
+    @staticmethod
+    def _check_data_param_consistency(x0: BinaryInitialParameters, data: Dict):
+        """
+        Checking whether input observations have time stamps either in JD or photometric phase.
+        Function also cheks for compatibility between input observational data and initial parameters.
+
+        :param x0: BinaryInitialParameters; initial state of model parameters
+        :param data: Dict[Union[elisa.analytics.dataset.base.LCData, elisa.analytics.dataset.base.RVData]];
+                     observational data in photometric filters:
+        :return: None
+        """
+        x_units = {key: val.x_unit for key, val in data.items()}
+        x_units_reduced = list(set(x_units.values()))
+        if len(x_units_reduced) > 1:
+            raise ValueError(f"Please make sure that all synthetic observations are supplied "
+                             f"in BJD or photometric phases. Current state: {x_units}")
+
+        try:
+            getattr(x0, 'primary_minimum_time')
+        except AttributeError:
+            if x_units_reduced[0] == units.d:
+                raise ValueError("Your initial parameters do not contain `primary_minimum_time`, yet you provided "
+                                 "your synthetic observations in JD. Either convert your observations to photometric "
+                                 "phases using `DataSet.convert_to_phases(period, t0)` or include "
+                                 "`primary_minimum_time` to your initial fit parameters.")
+        else:
+            if x_units_reduced[0] == units.dimensionless_unscaled:
+                raise ValueError("Your initial parameters contain `primary_minimum_time`, yet you provided "
+                                 "your synthetic observations in photometric phases. Either convert your observations "
+                                 "to JD using `DataSet.convert_to_time(period, t0)` or remove `primary_minimum_"
+                                 "time` from your initial fit parameters.")
+
     @abstractmethod
     def fit(self, *args, **kwargs):
         pass
 
+    # noinspection PyUnresolvedReferences
     @staticmethod
     def eval_constrained_results(result_dict: Dict[str, Dict], constraints: Dict[str, 'InitialParameter']):
         """
@@ -145,6 +191,7 @@ class AbstractRVFit(AbstractFit):
         """
         super().set_up(x0, data, passband=None, **kwargs)
 
+    # noinspection PyUnusedLocal
     def coefficient_of_determination(self, model_parameters, data, discretization, interp_treshold):
         """
         Function returns R^2 for given model parameters and observed data.
@@ -215,6 +262,7 @@ class AbstractLCFit(AbstractFit):
         :param top_fraction_to_average: float; top portion of the dataset (in y-axis direction) used in the
                                                normalization process, from (0, 1) interval
         """
+        # noinspection PyUnresolvedReferences
         y_data, y_err = normalize_light_curve(self.y_data, self.y_err, kind, top_fraction_to_average)
         setattr(self, 'y_data', y_data)
         setattr(self, 'y_err', y_err)
@@ -239,10 +287,10 @@ class AbstractLCFit(AbstractFit):
         if np.shape(phases)[0] < self.interp_treshold:
             return None
 
-        if samples is 'uniform':
+        if samples == 'uniform':
             diff = 1.0 / self.interp_treshold
             return np.linspace(0.0 - diff, 1.0 + diff, num=self.interp_treshold + 2)
-        elif samples is 'adaptive':
+        elif samples == 'adaptive':
             logger.info('Generating equidistant samples along the light curve using adaptive sampling method')
             return self.adaptive_sampling()
         elif isinstance(samples, (list, np.ndarray)):
@@ -263,12 +311,19 @@ class AbstractLCFit(AbstractFit):
 
         kwargs = parameters.prepare_properties_set(self.initial_vector, self.fitable.keys(), self.constrained,
                                                    self.fixed)
+
+        kwargs = parameters.extend_json_with_atm_params(
+            kwargs,
+            atmosphere_model=self.atmosphere_model,
+            limb_darkening_coefficients=self.limb_darkening_coefficients
+        )
+
         observer = Observer(passband='bolometric', system=None)
         setattr(observer, 'system_cls', getattr(self.observer, 'system_cls'))
         try:
             synthetic = lc_model.synthetic_binary(x, self.discretization, observer, **kwargs)
             synthetic, _ = normalize_light_curve(synthetic, kind='average')
-        except Exception as e:
+        except Exception:
             raise RuntimeError('Your initial parameters are invalid and phase sampling could not be generated.')
 
         curve = np.column_stack((x, synthetic['bolometric']))
@@ -297,7 +352,14 @@ class AbstractLCFit(AbstractFit):
                           self.x_data_reducer, 1.0 / self.interp_treshold, self.interp_treshold,
                           self.observer.system_cls)
         flat_result = parameters.deserialize_result(model_parameters)
+
         r_dict = {key: value['value'] for key, value in flat_result.items()}
+        r_dict = parameters.extend_json_with_atm_params(
+            r_dict,
+            atmosphere_model=self.atmosphere_model,
+            limb_darkening_coefficients=self.limb_darkening_coefficients
+        )
+
         logger.info("Evaluating light curve for calculation of R^2.")
         r_squared_result = lc_r_squared(lc_model.synthetic_binary, *r_squared_args, **r_dict)
         logger.info("Calculation of R^2 finished.")
@@ -424,6 +486,9 @@ def check_for_boundary_surface_potentials(result_dict, morphology=None):
     if "primary@surface_potential" not in result_dict.keys() or "secondary@surface_potential" not in result_dict.keys():
         return result_dict
 
+    if result_dict['primary@surface_potential']['value'] == result_dict['secondary@surface_potential']['value']:
+        return result_dict
+
     for component in settings.BINARY_COUNTERPARTS:
         pot = result_dict[f"{component}@surface_potential"]
         if "fixed" not in pot.keys() or "value" not in pot.keys():
@@ -492,4 +557,3 @@ def eval_constraint_in_dict(input_dict):
 
     result_dict = parameters.serialize_result(result_dict)
     return result_dict
-

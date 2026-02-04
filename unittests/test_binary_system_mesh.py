@@ -55,6 +55,7 @@ class BuildMeshSpotsFreeTestCase(ElisaTestCase):
             s.init()
             components_distance = s.orbit.orbital_motion(phase=0.0)[0][0]
 
+            # This will assing NaN to forward radii, since to_properties_container doesn't serialize radii.
             orbital_position_container = OrbitalPositionContainer(
                 primary=StarContainer.from_properties_container(s.primary.to_properties_container()),
                 secondary=StarContainer.from_properties_container(s.secondary.to_properties_container()),

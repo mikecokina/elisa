@@ -1,19 +1,21 @@
 import numpy as np
 
-from pypex.poly2d.polygon import Polygon
 from jsonschema import (
     validate,
     ValidationError
 )
 from copy import copy
 
+from .. pypex.poly2d.polygon import Polygon
 from .. import units, const
+from .. units import DefaultBinarySystemUnits
 from .. import settings
 from .. import umpy as up
 from .. base.error import YouHaveNoIdeaError
 from .. binary_system import model
 from .. utils import is_empty
 from .. base.transform import SystemProperties
+from .. binary_system.radius import calculate_side_radius
 
 
 def potential_from_radius(component, radius, phi, theta, component_distance, mass_ratio, synchronicity):
@@ -241,7 +243,8 @@ def transform_json_community_to_std(data):
     """
     q = data["system"].pop("mass_ratio")
     a = SystemProperties.semi_major_axis(data["system"].pop("semi_major_axis"))
-    period = (SystemProperties.period(copy(data["system"]["period"])) * units.PERIOD_UNIT).to(units.s).value
+    period_val = copy(data["system"]["period"])
+    period = (SystemProperties.period(period_val) * DefaultBinarySystemUnits.system.period).to(units.TIME_UNIT).value
     m1 = ((4.0 * const.PI ** 2 * a ** 3) / (const.G * (1.0 + q) * period ** 2))
     m1 = np.float64((m1 * units.kg).to(units.solMass))
     m2 = q * m1
@@ -264,3 +267,22 @@ def correction_to_com(distance, mass_ratio, scom):
     distances_to_com = distance * mass_ratio / (1 + mass_ratio)
     dir_to_secondary = scom / np.linalg.norm(scom)
     return distances_to_com * dir_to_secondary
+
+
+def calculate_sma_estimate(mass_ratio, synchronicity, potential, period, component, mid_g):
+    """
+    Estimates a value of semi major axis in a manner that puts average surface
+    gravity of the components to the value `mid_g`. Very useful in case of LC
+    fit where sma has to be fixed to some sensible value.
+
+    :param mass_ratio: float; M2/M1
+    :param synchronicity: float;
+    :param potential: float; surface potential
+    :param period: float; orbital period in days
+    :param component: str; `primary` or `secondary`
+    :param mid_g: float; desired average surface acceleration in m.s^-2
+    :return: float; sma estimate in solar radii
+    """
+    radius = calculate_side_radius(synchronicity, mass_ratio, 1.0, potential, component)
+    q_funcval = 1.0 / (1. + mass_ratio) if component == 'primary' else mass_ratio / (1. + mass_ratio)
+    return 1.4374e-9 * mid_g * (radius * 86400 * period)**2 / (4 * const.PI ** 2 * q_funcval)

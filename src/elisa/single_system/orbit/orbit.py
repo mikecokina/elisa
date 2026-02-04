@@ -6,7 +6,8 @@ from ... import (
     units as u,
     utils
 )
-from ...base.orbit.orbit import AbstractOrbit
+from ... base.orbit.orbit import AbstractOrbit
+from ... base.types import INT, FLOAT
 from ... logger import getLogger
 
 logger = getLogger('single_system.orbit.orbit')
@@ -19,7 +20,7 @@ def angular_velocity(rotation_period):
     :param rotation_period: float;
     :return: float;
     """
-    return c.FULL_ARC / (rotation_period * u.PERIOD_UNIT).to(u.s).value
+    return c.FULL_ARC / (rotation_period * u.DefaultSingleSystemUnits.system.rotation_period).to(u.TIME_UNIT).value
 
 
 def true_phase_to_azimuth(phase):
@@ -89,8 +90,8 @@ class Orbit(AbstractOrbit):
                         (azN, np.nan, np.nan, phsN))
         """
         # ability to accept scalar as input
-        if isinstance(phase, (int, np.int, float, np.float)):
-            phase = np.array([np.float(phase)])
+        if isinstance(phase, (int, INT, float, FLOAT)):
+            phase = np.array([FLOAT(phase)])
 
         azimuth_angle = true_phase_to_azimuth(phase=phase)
 

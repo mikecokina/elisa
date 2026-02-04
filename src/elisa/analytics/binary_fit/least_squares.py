@@ -24,7 +24,6 @@ from ... import settings
 from ... binary_system.system import BinarySystem
 from ... binary_system.curves.community import RadialVelocitySystem
 
-
 logger = getPersistentLogger('analytics.binary_fit.least_squares')
 
 
@@ -62,8 +61,16 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
             fit_xs = np.linspace(np.min(phases) - diff, np.max(phases) + diff, num=self.interp_treshold + 2) \
                 if np.shape(phases)[0] > self.interp_treshold else phases
         else:
+            # noinspection PyUnresolvedReferences
             fit_xs = self.fit_xs
         args = fit_xs, self.discretization, self.observer
+
+        kwargs = parameters.extend_json_with_atm_params(
+            kwargs,
+            atmosphere_model=self.atmosphere_model,
+            limb_darkening_coefficients=self.limb_darkening_coefficients
+        )
+
         fn = lc_model.synthetic_binary
 
         try:
@@ -145,6 +152,12 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
                           self.observer.system_cls)
 
         r_dict = {key: value['value'] for key, value in result_dict.items()}
+        r_dict = parameters.extend_json_with_atm_params(
+            r_dict,
+            atmosphere_model=self.atmosphere_model,
+            limb_darkening_coefficients=self.limb_darkening_coefficients
+        )
+
         r_squared_result = lc_r_squared(lc_model.synthetic_binary, *r_squared_args, **r_dict)
         result_dict["r_squared"] = {'value': r_squared_result, "unit": None}
 

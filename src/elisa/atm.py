@@ -11,6 +11,7 @@ from threading import Thread
 from typing import Iterable
 from copy import deepcopy
 
+from .base.types import FLOAT
 from .logger import getLogger
 from .base.error import (
     AtmosphereError,
@@ -29,7 +30,7 @@ from . import (
     ld,
 )
 from . buffer import buffer
-from . tensor.etensor import Tensor
+from .tensor.etensor import Tensor
 
 logger = getLogger(__name__)
 
@@ -50,8 +51,8 @@ class AtmModel(object):
 
     @classmethod
     def from_dataframe(cls, df):
-        return cls(flux=np.array(df[settings.ATM_MODEL_DATAFRAME_FLUX], dtype=float),
-                   wavelength=np.array(df[settings.ATM_MODEL_DATAFRAME_WAVE], dtype=float))
+        return cls(flux=np.array(df[settings.ATM_MODEL_DATAFRAME_FLUX], dtype=FLOAT),
+                   wavelength=np.array(df[settings.ATM_MODEL_DATAFRAME_WAVE], dtype=FLOAT))
 
     def to_dataframe(self):
         return pd.DataFrame(
@@ -332,11 +333,16 @@ class NaiveInterpolatedAtm(object):
 
     @staticmethod
     def compute_unknown_intensity_from_surounded_flux_matrices(weights, top_flux_matrix, bottom_flux_matrix):
+        import time
+        t = time.time()
+
         weights = Tensor(weights)
         top_flux_matrix = Tensor(top_flux_matrix)
         bottom_flux_matrix = Tensor(bottom_flux_matrix)
         result = (weights * (top_flux_matrix.T - bottom_flux_matrix.T) + bottom_flux_matrix.T).T
-        return result.to_ndarray()
+
+        logger.info(f"time {time.time() - t}")
+        return result.get()
 
     @staticmethod
     def interpolate_spectra(passbanded_atm_containers, flux_matrices, temperature):
@@ -904,7 +910,7 @@ def multithread_atm_tables_reader(path_queue, error_queue, result_queue):
             result_queue.put((index, None))
             continue
         try:
-            types = {'flux': np.float, 'wave': np.float}
+            types = {'flux': FLOAT, 'wave': FLOAT}
             t, l, m = parse_domain_quantities_from_atm_table_filename(os.path.basename(file_path))
             atm_container = AtmDataContainer(pd.read_csv(file_path, dtype=types), t, l, m, file_path)
             result_queue.put((index, atm_container))

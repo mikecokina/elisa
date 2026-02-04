@@ -74,6 +74,7 @@ class Animation(object):
         # in case of asynchronous component rotation and spots, the positions of spots are recalculated
         spots_longitudes = dynamic.calculate_spot_longitudes(self.binary, phases, component="all")
         potentials = self.binary.correct_potentials(phases, component="all", iterations=2)
+        distances_to_com = {'primary': np.nan, 'secondary': np.nan}
 
         logger.info('calculating surface parameters (points, faces, colormap)')
         for pos_idx, position in enumerate(orbital_motion):

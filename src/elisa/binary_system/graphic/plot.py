@@ -62,7 +62,7 @@ class Plot(object):
 
         # if axis are without unit a = 1
         if axis_units != u.dimensionless_unscaled:
-            a = self.binary.semi_major_axis * u.DISTANCE_UNIT.to(axis_units)
+            a = self.binary.semi_major_axis * u.DefaultBinarySystemUnits.system.semi_major_axis.to(axis_units)
             radius = a * ellipse[:, 0]
         else:
             radius = ellipse[:, 0]
@@ -142,7 +142,8 @@ class Plot(object):
         """
 
         binary_mesh_kwargs = dict()
-        inclination = transform.deg_transform(inclination, u.deg, when_float64=transform.WHEN_FLOAT64) \
+        inclination = transform.deg_transform(inclination, u.deg, transform.WHEN_FLOAT64,
+                                              u.DefaultBinarySystemInputUnits.system.inclination) \
             if inclination is not None else up.degrees(self.binary.inclination)
         components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
 
@@ -188,7 +189,8 @@ class Plot(object):
                                              produced figure
         """
         binary_wireframe_kwargs = dict()
-        inclination = transform.deg_transform(inclination, u.deg, when_float64=transform.WHEN_FLOAT64) \
+        inclination = transform.deg_transform(inclination, u.deg, transform.WHEN_FLOAT64,
+                                              u.DefaultBinarySystemInputUnits.system.inclination) \
             if inclination is not None else up.degrees(self.binary.inclination)
         components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
         azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \
@@ -280,7 +282,8 @@ class Plot(object):
         orbital_position = Position(0, orbital_position[0], orbital_position[1],
                                     orbital_position[2], orbital_position[3])
         
-        azimuth = azimuth if azimuth is not None else 180
+        azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \
+            if azimuth is not None else up.degrees(azim) - 90
 
         if separate_colormaps is None:
             separate_colormaps = self.binary.morphology != 'over-contact' and \
@@ -348,7 +351,8 @@ class Plot(object):
                 })
 
             if axis_unit != u.dimensionless_unscaled:
-                sma = (self.binary.semi_major_axis * u.DISTANCE_UNIT).to(axis_unit).value
+                sma = (self.binary.semi_major_axis * u.DefaultBinarySystemUnits.system.semi_major_axis).\
+                    to(axis_unit).value
                 surface_kwargs[f'points_{component}'] *= sma
 
                 if normals:

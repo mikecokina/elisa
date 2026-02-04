@@ -21,10 +21,12 @@ class LCFit(FitResultHandler):
     """
     Class with common methods used during an LC fit.
     """
-    def __init__(self, morphology):
+    def __init__(self, morphology, atmosphere_model, limb_darkening_coefficients):
         super().__init__()
         self.morphology = morphology
         self.fit_method_instance: Union[LCFitLeastSquares, LCFitMCMC, None] = None
+        self.atmosphere_model: Union[dict, None] = None
+        self.limb_darkening_coefficients: Union[dict, None] = None
 
     def coefficient_of_determination(self, model_parameters, data, discretization, interp_treshold):
         """
@@ -52,9 +54,11 @@ class LCFitMCMC(LCFit):
     """
     Class for LC fitting using the MCMC method.
     """
-    def __init__(self, morphology):
-        super().__init__(morphology)
+    def __init__(self, morphology, atmosphere_model, limb_darkening_coefficients):
+        super().__init__(morphology, atmosphere_model, limb_darkening_coefficients)
         self.fit_method_instance = self.resolve_fit_cls(morphology)()
+        self.fit_method_instance.atmosphere_model = atmosphere_model
+        self.fit_method_instance.limb_darkening_coefficients = limb_darkening_coefficients
 
         self.flat_chain = None
         self.flat_chain_path = None
@@ -142,10 +146,12 @@ class LCFitMCMC(LCFit):
         """
         Function returns MCMC fitting class suitable for the model based on its morphology.
 
-        :param morphology: str; `detached` or `overcontact`
+        :param morphology: str; `detached` or `over-contact`
         :return: Union[mcmc.DetachedLightCurveFit, mcmc.OvercontactLightCurveFit]
         """
-        _cls = {"detached": mcmc.DetachedLightCurveFit, "over-contact": mcmc.OvercontactLightCurveFit}
+        _cls = {"detached": mcmc.DetachedLightCurveFit,
+                "over-contact": mcmc.OvercontactLightCurveFit,
+                "overcontact": mcmc.OvercontactLightCurveFit}
         return _cls[morphology]
 
 
@@ -153,9 +159,11 @@ class LCFitLeastSquares(LCFit):
     """
     Class for LC fitting using the Least-Squares method.
     """
-    def __init__(self, morphology):
-        super().__init__(morphology)
+    def __init__(self, morphology, atmosphere_model, limb_darkening_coefficients):
+        super().__init__(morphology, atmosphere_model, limb_darkening_coefficients)
         self.fit_method_instance = self.resolve_fit_cls(morphology)()
+        self.fit_method_instance.atmosphere_model = atmosphere_model
+        self.fit_method_instance.limb_darkening_coefficients = limb_darkening_coefficients
 
     def fit(self, x0: BinaryInitialParameters, data, **kwargs):
         """
@@ -190,8 +198,10 @@ class LCFitLeastSquares(LCFit):
         """
         Function returns Least-Squares fitting class suitable for the model based on its morphology.
 
-        :param morphology: str; `detached` or `overcontact`
+        :param morphology: str; `detached` or `over-contact`
         :return: Union[least_squares.DetachedLightCurveFit, least_squares.OvercontactLightCurveFit]
         """
-        _cls = {"detached": least_squares.DetachedLightCurveFit, "over-contact": least_squares.OvercontactLightCurveFit}
+        _cls = {"detached": least_squares.DetachedLightCurveFit,
+                "over-contact": least_squares.OvercontactLightCurveFit,
+                "overcontact": least_squares.OvercontactLightCurveFit}
         return _cls[morphology]

@@ -182,4 +182,3 @@ class RVFitLeastSquares(RVFit):
         :return:
         """
         simple_rv_fit_summary(self, path)
-

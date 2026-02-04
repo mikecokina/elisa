@@ -12,6 +12,7 @@ from .. surface.coverage import compute_surface_coverage
 from .. orbit.container import OrbitalSupplements
 from ... import utils, const
 from ... import settings
+from ... base.types import INT
 
 
 def produce_circ_sync_curves_mp(*args):
@@ -324,11 +325,11 @@ def integrate_eccentric_curve_w_orbital_symmetry(*args):
 
     # surface potentials with constant volume of components
     potentials = {
-        component: pot[orbital_positions[:, 0, 0].astype(np.int)]
+        component: pot[orbital_positions[:, 0, 0].astype(INT)]
         for component, pot in all_potentials.items()
     }
 
-    base_radii = radii[:, orbital_positions[:, 0, 0].astype(np.int)]
+    base_radii = radii[:, orbital_positions[:, 0, 0].astype(INT)]
     rel_d_radii = crv_utils.compute_rel_d_geometry(binary, base_radii[:, 1:], base_radii[:, :-1])
     args = (binary.has_spots(), orbital_positions.shape[0], rel_d_radii)
     new_geometry_mask = dynamic.resolve_object_geometry_update(*args)

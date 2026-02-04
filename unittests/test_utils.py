@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from numpy.testing import assert_array_equal
+from elisa.base.types import FLOAT
 from elisa import utils, umpy as up
 from elisa import const
 from queue import Queue
@@ -149,7 +150,7 @@ class TestElisaEngineUtils(ElisaTestCase):
             [0.5, 0.5, 0.0],
             [0.5, 0.5, 0.5]
 
-        ], dtype=float)
+        ], dtype=FLOAT)
 
         triangles = np.array([[0, 1, 2], [2, 3, 0], [0, 4, 5]], dtype=int)
         obtained = np.round(utils.poly_areas(points[triangles]), 4)
@@ -165,7 +166,7 @@ class TestElisaEngineUtils(ElisaTestCase):
             [0.5, 0.5, 0.0],
             [0.5, 0.5, 0.5]
 
-        ], dtype=float)
+        ], dtype=FLOAT)
 
         triangles = np.array([[0, 1, 2], [2, 3, 0], [0, 4, 5]], dtype=int)
         obtained = np.round(utils.triangle_areas(triangles, points), 4)

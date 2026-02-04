@@ -6,6 +6,7 @@ from ... base.transform import (
     quantity_transform,
     WHEN_FLOAT64
 )
+from ... base.types import FLOAT, INT
 
 
 class OrbitProperties(TransformProperties):
@@ -17,7 +18,7 @@ class OrbitProperties(TransformProperties):
         :param value: Union[(numpy.)int, (numpy.)float]
         :return: float
         """
-        if not isinstance(value, (int, np.int, float, np.float)):
+        if not isinstance(value, (int, INT, float, FLOAT)):
             raise TypeError('Input of variable `eccentricity` is not (numpy.)int or (numpy.)float.')
         if value < 0 or value >= 1:
             raise ValueError('Input of variable `eccentricity` is  or it is out of boundaries.')
@@ -32,7 +33,7 @@ class OrbitProperties(TransformProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """
-        return quantity_transform(value, u.PERIOD_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, u.DefaultBinarySystemUnits.system.period, WHEN_FLOAT64)
 
     @staticmethod
     def argument_of_periastron(value):
@@ -42,7 +43,7 @@ class OrbitProperties(TransformProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """
-        return quantity_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, u.DefaultBinarySystemUnits.system.argument_of_periastron, WHEN_FLOAT64)
 
     @staticmethod
     def inclination(value):
@@ -52,4 +53,4 @@ class OrbitProperties(TransformProperties):
         :param value: Union[float, astropy.units.Quantity]
         :return: float
         """
-        return quantity_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, u.DefaultBinarySystemUnits.system.inclination, WHEN_FLOAT64)

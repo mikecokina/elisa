@@ -5,7 +5,12 @@ from copy import deepcopy
 
 import numpy as np
 
-from collections import Iterable
+try:
+    # noinspection PyProtectedMember
+    from collections import Iterable
+except ImportError:
+    from typing import Iterable
+
 from typing import Dict
 from jsonschema import ValidationError
 
@@ -22,11 +27,17 @@ from ..params.transform import (
     PulsationModeInitialProperties,
     NuisanceInitialProperties
 )
-from ... import units as u
-from ... import utils
-from ... import settings
+from ... import (
+    units as u,
+    utils,
+    settings
+)
 from ... base.error import InitialParamsError
 from ... utils import is_empty
+from ... logger import getLogger
+from ... binary_system.utils import calculate_sma_estimate
+
+logger = getLogger('analytics.params.parameters')
 
 
 def deflate_phenomena(flatten):
@@ -198,6 +209,78 @@ def serialize_result(result_dict: Dict) -> Dict:
     return ret_dict
 
 
+def extend_json_with_atm_params(params, atmosphere_model=None, limb_darkening_coefficients=None):
+    """
+    Function will extend the initialization JSON with custom atmosphere-related parameters
+    (atmosphere, limb_darkening_coefficients).
+
+    :param params: Dict; flattened json used to initialize the system eg::
+
+        >>> {
+        >>>     'system@mass_ratio': 1.0,
+        >>>         ...
+        >>>     'primary@teff': 80000,
+        >>>         ...
+        >>>     'secondary@teff': 5000,
+        >>>         ...
+        >>>     },
+        >>> }
+
+    :param atmosphere_model: dict; desired atmosphere `atmosphere` models::
+
+        >>> {
+        >>>     'primary': 'bb',
+        >>>     'secondary': 'ck04'
+        >>> }
+
+    :param limb_darkening_coefficients: dict; custom limb-darkening coefficients::
+
+        >>> {
+        >>>     'primary': {
+        >>>         'bolometric': [0.5, 0.5],  # for logarithmic and square_root law
+        >>>         'TESS': [0.68, 0.32]
+        >>>     },
+        >>>     'secondary': ...
+        >>> }
+
+    :return: dict; updated parameter json, eg::
+
+        >>> {
+        >>>     'system@mass_ratio': 1.0,
+        >>>         ...
+        >>>     'primary@teff': 80000,
+        >>>     'primary@atmosphere': 'bb',
+        >>>     'primary@limb_darkening_coefficients': {
+        >>>         'bolometric': [0.5, 0.5],
+        >>>         'TESS': [0.68, 0.32]
+        >>>      }
+        >>>         ...
+        >>>     'secondary@teff': 5000,
+        >>>     'secondary@atmosphere': 'ck04',
+        >>>         ...
+        >>>     },
+        >>> }
+
+    """
+    var_names = ['atmosphere', 'limb_darkening_coefficients']
+    for ii, atmosphere_param in enumerate([atmosphere_model, limb_darkening_coefficients]):
+        if atmosphere_param is None:
+            continue
+
+        component_list = ','.join(list(params.keys()))
+        for component, atm_param in atmosphere_param.items():
+            if not atm_param:
+                continue
+            if component in component_list:
+                params[f'{component}{conf.PARAM_PARSER}{var_names[ii]}'] = atm_param
+            else:
+                raise ValueError(f'Component {component} does not figure in your fit parameters JSON. Make sure that '
+                                 f'your `{var_names[ii]}` contain `primary` and `secondary` components in case of '
+                                 f'binary system and `star` in case of a single star.')
+
+    return params
+
+
 def check_initial_param_validity(x0: Dict[str, 'InitialParameter'], all_fit_params, mandatory_fit_params):
     """
     Checking if initial system parameters including surface features (spots and pulsations) are containing all
@@ -336,6 +419,22 @@ def prepare_nuisance_properties_set(xn, properties, fixed):
     return kwargs
 
 
+def check_for_invalid_constraint(constrained, allowed_params):
+    """
+    Making sure that constrains after substitution of valid parameters for their current values does not contain
+    any invalid model parameters.
+
+    :param constrained: dict; {parameter@name: constraint}
+    :param allowed_params: Union[list, dict_keys]; names of valid model parameters
+    :return: None
+    """
+    for c_param, constraint in constrained.items():
+        if conf.PARAM_PARSER in constraint:
+            raise InitialParamsError(f'Your constraint for parameter {c_param} is currently looks: {constraint} and '
+                                     f'contains non-variable parameter. Only following parameters can be used to '
+                                     f'define a constrained parameter: {allowed_params}')
+
+
 def constraints_evaluator(substitution: Dict, constrained: Dict) -> Dict:
     """
     Substitute variables in constraint with values and evaluate to number.
@@ -362,11 +461,49 @@ def constraints_evaluator(substitution: Dict, constrained: Dict) -> Dict:
     subst = {key: utils.str_repalce(val, substitution.keys(), substitution.values())
              for key, val in constrained.items()}
     numpy_callable = {key: utils.str_repalce(val, allowed_methods, numpy_methods) for key, val in subst.items()}
+
+    # raising error if invalid parameter is used to define a constraint
+    check_for_invalid_constraint(numpy_callable, substitution.keys())
+
     try:
         evaluated = {key:  eval(val) for key, val in numpy_callable.items()}
     except Exception as e:
         raise InitialParamsError(f'Invalid syntax or value in constraint, {str(e)}.')
     return evaluated
+
+
+def extend_result_with_sma(fit_parameters):
+    """
+    This function extends the fitting parameter dictionary for semi-major axis parameter that in case of fit,
+    based solely on LC, has to be fixed on some sensible value.
+
+    :param fit_parameters: Dict; input fitting parameters
+    :return: result dictionary (with sma autofilled)
+    """
+    if 'mass_ratio' not in fit_parameters['system'].keys():
+        logger.debug('Binary system parameters are supplied in standard format where SMA does not figure. '
+                     'Nothing to add.')
+        return fit_parameters
+
+    if 'semi_major_axis' in fit_parameters['system'].keys():
+        logger.debug('Binary system parameters already contains `semi_major_axis` parameters.')
+        return fit_parameters
+
+    sma_estimate = []
+    mid_g = 270  # m.s^-2, a reasonable estimate of surface g
+    mass_ratio = fit_parameters['system']['mass_ratio']['value']
+    period = fit_parameters['system']['period']['value']
+    for component in settings.BINARY_COUNTERPARTS.keys():
+        synchronicity = fit_parameters[component].get('synchronicity', {'value': 1.0})['value']
+        potential = fit_parameters[component]['surface_potential']['value']
+        sma_estimate.append(calculate_sma_estimate(mass_ratio, synchronicity, potential, period, component, mid_g))
+
+    fit_parameters['system']['semi_major_axis'] = {
+        'value': np.mean(sma_estimate),
+        'fixed': True,
+        'unit': u.solRad
+    }
+    return fit_parameters
 
 
 class ParameterMeta(object):
@@ -511,6 +648,12 @@ class InitialParameters(object, metaclass=abc.ABCMeta):
     TRANSFORM_PROPERTIES_CLS = None
     DEFAULT_NORMALIZATION = None
 
+    @property
+    def slots_(self):
+        if hasattr(self, '__slots__'):
+            return getattr(self, '__slots__')
+        return []
+
     def validity_check(self):
         """
         Function examines whether inputted definitions of initial fit parameters make sense.
@@ -522,7 +665,7 @@ class InitialParameters(object, metaclass=abc.ABCMeta):
             * constrained: `InitialParameter.fixed` = None, `constraint` = `InitialParameter.valid expresion`
 
         """
-        for slot in self.__slots__:
+        for slot in self.slots_:
             if not hasattr(self, str(slot)):
                 continue
             prop = getattr(self, str(slot))
@@ -602,8 +745,9 @@ class StarInitialParameters(InitialParameters):
 
     def __init__(self, **kwargs):
         self.label = None
-        spots = kwargs.pop('spots', None)
-        pulsations = kwargs.pop('pulsations', None)
+
+        spots = kwargs.pop('spots', [])
+        pulsations = kwargs.pop('pulsations', [])
 
         for parameter, items in kwargs.items():
             value = self.init_parameter(parameter, items)

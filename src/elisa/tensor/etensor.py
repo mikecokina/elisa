@@ -1,52 +1,26 @@
-import numpy as np
 from .. import settings
 
 if settings.CUDA:
-    import torch
+    import cupy as cp
 
+    class CupyTensor(cp.ndarray):
+        def __new__(cls, input_array, dtype='float32'):
+            obj = cp.asarray(input_array, dtype=dtype).view()
+            return obj
 
-class Tensor(object):
-    def __init__(self, value):
-        self.value = value
-        self._is_pytorch = False
+    Tensor = CupyTensor
 
-        if settings.CUDA:
-            self._is_pytorch = True
+else:
+    import numpy as np
 
-            if not isinstance(self.value, torch.Tensor):
-                self.value = torch.Tensor(self.value)
-                self.value = self.to_cuda()
+    class NumpyTensor(np.ndarray):
+        def __new__(cls, input_array, dtype='float32'):
+            obj = np.asarray(input_array, dtype=dtype).view(cls)
+            return obj
 
-    def __sub__(self, other):
-        return Tensor(self.value - other.value)
+        def get(self):
+            return np.asarray(self)
 
-    def __truediv__(self, other):
-        return Tensor(self.value / other.value)
+    Tensor = NumpyTensor
 
-    def __add__(self, other):
-        return Tensor(self.value + other.value)
-
-    def __mul__(self, other):
-        return Tensor(self.value * other.value)
-
-    def to_cpu(self):
-        if self._is_pytorch:
-            self.value = self.value.to("cpu")
-        return self.value
-
-    def to_cuda(self):
-        if self._is_pytorch:
-            self.value = self.value.to("cuda")
-        return self.value
-
-    def to_pytorch(self):
-        pass
-
-    def to_ndarray(self):
-        if self._is_pytorch:
-            self.to_cpu()
-        return np.array(self.value)
-
-    @property
-    def T(self):
-        return Tensor(self.value.T)
+__all__ = 'Tensor',

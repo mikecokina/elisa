@@ -1,6 +1,5 @@
 import numpy as np
 
-from ... import units as u
 from ... binary_system import t_layer
 
 

@@ -9,6 +9,7 @@ import pandas as pd
 from numpy.testing import assert_array_equal
 from pandas.testing import assert_frame_equal
 
+from elisa.base.types import FLOAT
 from elisa.atm import AtmModel
 from elisa import settings
 from elisa.observer.passband import PassbandContainer
@@ -16,7 +17,8 @@ from unittests.utils import ElisaTestCase
 from elisa import (
     umpy as up,
     atm,
-    const)
+    const
+)
 
 set_astropy_units()
 
@@ -90,8 +92,8 @@ class TestAtmModuleGeneral(ElisaTestCase):
 
     def test_strip_atm_container_by_bandwidth(self):
         c = atm.AtmDataContainer(AtmModel.from_dataframe(pd.DataFrame({
-            settings.ATM_MODEL_DATAFRAME_FLUX: up.arange(0, 100, 10, dtype=np.float),
-            settings.ATM_MODEL_DATAFRAME_WAVE: up.arange(10, dtype=np.float)
+            settings.ATM_MODEL_DATAFRAME_FLUX: up.arange(0, 100, 10, dtype=FLOAT),
+            settings.ATM_MODEL_DATAFRAME_WAVE: up.arange(10, dtype=FLOAT)
         })), 10, 10, 10)
 
         l_band, r_band = 3.1, 7.8
@@ -134,8 +136,8 @@ class TestAtmModuleGeneral(ElisaTestCase):
 
     def test_extend_atm_container_on_bandwidth_boundary(self):
         c = atm.AtmDataContainer(AtmModel.from_dataframe(pd.DataFrame({
-            settings.ATM_MODEL_DATAFRAME_FLUX: up.arange(0, 100, 10, dtype=np.float),
-            settings.ATM_MODEL_DATAFRAME_WAVE: up.arange(10, dtype=np.float)
+            settings.ATM_MODEL_DATAFRAME_FLUX: up.arange(0, 100, 10, dtype=FLOAT),
+            settings.ATM_MODEL_DATAFRAME_WAVE: up.arange(10, dtype=FLOAT)
         })), 10, 10, 10)
 
         l_band, r_band = 0.4, 8.8
@@ -274,8 +276,8 @@ class TestAtmModuleGeneral(ElisaTestCase):
 
     def test_apply_passband(self):
         atmc = atm.AtmDataContainer(AtmModel.from_dataframe(pd.DataFrame({
-            settings.ATM_MODEL_DATAFRAME_FLUX: up.arange(10, dtype=np.float),
-            settings.ATM_MODEL_DATAFRAME_WAVE: up.arange(0, 100, 10, dtype=np.float)
+            settings.ATM_MODEL_DATAFRAME_FLUX: up.arange(10, dtype=FLOAT),
+            settings.ATM_MODEL_DATAFRAME_WAVE: up.arange(0, 100, 10, dtype=FLOAT)
         })), 0, 0, 0)
 
         bandc = PassbandContainer(
@@ -333,6 +335,5 @@ class TestNaiveInterpolation(ElisaTestCase):
         weights = np.array([0.2, 1.0])
 
         obtained = atm.NaiveInterpolatedAtm.compute_unknown_intensity_from_surounded_flux_matrices(weights, top, bottom)
-        expected = [[10., 11.2, 12.4, 13.6],
-                    [110., 150., 180., 120.]]
+        expected = np.array([[10., 11.2, 12.4, 13.6], [110., 150., 180., 120.]], dtype=np.float32)
         assert_array_equal(expected, obtained)

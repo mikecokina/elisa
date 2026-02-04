@@ -1,9 +1,12 @@
-__version__ = '0.5.1'
+__version__ = '0.6.0'
 
 import json
 import os.path as op
+import sys
+
 from . conf.settings import settings
 from . binary_system.system import BinarySystem
+from . managers.download_manager import DownloadManager
 from . single_system.system import SingleSystem
 from . base.star import Star
 from . observer.observer import Observer
@@ -29,9 +32,23 @@ def _bolometric_default_observer():
     return Observer(passband=["bolometric"], system=_default_binary())
 
 
-default_binary = _default_binary
-default_observer = _default_observer
-bolometric_default_observer = _bolometric_default_observer
+get_default_binary = _default_binary
+get_default_observer = _default_observer
+get_bolometric_default_observer = _bolometric_default_observer
 
 # prepare units as u for simpler import
 u = units
+
+# donwload manager
+download_manager = DownloadManager(settings)
+
+# first time user
+if settings.FIRST_TIME_USER:
+
+    download = input("Download manager will pull atmospheres and limb darkening tables.\n"
+                     "Do you want to proceed? [y/N]: ")
+    if not download.lower() == "y":
+        print("Please use download manager to pull atmospheres \n "
+              "and limb darkening or do it manually as refered docs.")
+        sys.exit(0)
+    download_manager.download_all()

@@ -3,7 +3,6 @@ import numpy as np
 from ... import const as c
 from ... logger import getLogger
 from ... base.surface import gravity as bgravity
-from ... utils import is_empty
 
 logger = getLogger("single_system.surface.gravity")
 

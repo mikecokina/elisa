@@ -2,30 +2,34 @@ import json
 import os
 import warnings
 import numpy as np
+import os.path as op
 
 from configparser import ConfigParser
 from logging import config as log_conf
-from os.path import dirname, isdir, pardir
+from os.path import dirname, isdir
+
 from .. schema_registry import registry
+from .. managers.settings_manager import SettingsManager, DefaultSettings
 
 
+first_time_user = False
 c_parse = ConfigParser()
-
 env_variable_config = os.environ.get('ELISA_CONFIG', '')
-venv_config = os.path.join(os.environ.get('VIRTUAL_ENV', ''), 'conf', 'elisa_conf.ini')
-default_config = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.ini")
+venv_config = op.join(os.environ.get('VIRTUAL_ENV', ''), 'conf', 'elisa_conf.ini')
+default_config = op.join(DefaultSettings.HOME, "config.ini")
 
 # read configuration file
-if os.path.isfile(env_variable_config):
+if op.isfile(env_variable_config):
     config_file = env_variable_config
-elif os.path.isfile(venv_config):
+elif op.isfile(venv_config):
     config_file = venv_config
-elif os.path.isfile(default_config):
+elif op.isfile(default_config):
     config_file = default_config
 else:
-    raise LookupError("Couldn't resolve configuration file. To define it \n "
-                      "  - Set the environment variable ELISA_CONFIG, or \n "
-                      "  - Add conf/elisa_conf.ini under your virtualenv root \n ")
+    # provide a minimal configuration for first time running users
+    config_file = default_config
+    first_time_user = True
+    SettingsManager.run()
 
 
 class _Const(object):
@@ -47,8 +51,11 @@ class _Const(object):
         'Generic.Stromgren.b',
         'Generic.Stromgren.y',
         'Kepler',
-        'GaiaDR2',
+        # 'GaiaDR2',
         'TESS',
+        'Gaia.2010.G',
+        'Gaia.2010.BP',
+        'Gaia.2010.RP',
     ]
 
     PASSBAND_DATAFRAME_THROUGHPUT = "throughput"
@@ -123,19 +130,19 @@ class _Const(object):
     DATASET_OPTIONAL_KWARGS = ['y_err']
 
     DELIM_WHITESPACE = r'\s+|\t+|\s+\t+|\t+\s+'
-    DATA_PATH = os.path.join(dirname(dirname(__file__)), "data")
+    DATA_PATH = op.join(dirname(dirname(__file__)), "data")
 
     # paths to mesh correction factors
-    PATH_TO_SINGLE_CORRECTIONS = os.path.join(DATA_PATH, 'mesh_corrections', 'correction_factors_single.npy')
-    PATH_TO_DETACHED_CORRECTIONS = os.path.join(DATA_PATH, 'mesh_corrections', 'correction_factors_detached.npy')
-    PATH_TO_OVER_CONTACT_CORRECTIONS = os.path.join(
+    PATH_TO_SINGLE_CORRECTIONS = op.join(DATA_PATH, 'mesh_corrections', 'correction_factors_single.npy')
+    PATH_TO_DETACHED_CORRECTIONS = op.join(DATA_PATH, 'mesh_corrections', 'correction_factors_detached.npy')
+    PATH_TO_OVER_CONTACT_CORRECTIONS = op.join(
         DATA_PATH, 'mesh_corrections', 'correction_factors_over-contact.npy'
     )
-    PATH_TO_ALBEDOS = os.path.join(DATA_PATH, 'albedos.json')
-    PATH_TO_BETA = os.path.join(DATA_PATH, 'gravity_darkening.json')
+    PATH_TO_ALBEDOS = op.join(DATA_PATH, 'albedos.json')
+    PATH_TO_BETA = op.join(DATA_PATH, 'gravity_darkening.json')
 
 
-class Settings(_Const):
+class Settings(_Const, DefaultSettings):
     _instance = None
 
     # defaults #########################################################################################################
@@ -146,60 +153,7 @@ class Settings(_Const):
 
     # basic app configuration
     CONFIG_FILE = config_file
-    LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)), 'logging_schemas/default.json')
-    SUPPRESS_WARNINGS = False
-    SUPPRESS_LOGGER = None
-    HOME = os.path.expanduser(os.path.join("~", '.elisa'))
-
-    # physics
-    REFLECTION_EFFECT = True
-    REFLECTION_EFFECT_ITERATIONS = 2
-    LIMB_DARKENING_LAW = 'cosine'
-    PULSATION_MODEL = 'uniform'
-    DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT = np.pi / 3.0
-    SURFACE_DISPLACEMENT_TOL = 1e-2
-    RV_METHOD = 'kinematic'
-    RV_LAMBDA_INTERVAL = (5500, 5600)
-
-    # computational
-    MAX_DISCRETIZATION_FACTOR = 8
-    MIN_DISCRETIZATION_FACTOR = 3
-    NUMBER_OF_THREADS = 1
-    NUMBER_OF_PROCESSES = -1  # int(os.cpu_count())
-    NUMBER_OF_MCMC_PROCESSES = -1
-    MAX_NU_SEPARATION = 0.08
-    MAX_D_FLUX = 2e-4
-    MAX_SPOT_D_LONGITUDE = np.pi / 180.0  # in radians
-    MIN_POINTS_IN_ECLIPSE = 35
-    MAX_SOLVER_ITERS = 100
-    MAX_CURVE_DATA_POINTS = 300
-    MESH_GENERATOR = 'auto'
-    DEFORMATION_TOL = 0.05
-    MCMC_SAVE_INTERVAL = 1800
-    USE_SINGLE_LD_COEFFICIENTS = False
-    USE_INTERPOLATION_APPROXIMATION = True
-    USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION = True
-    USE_SIMILAR_NEIGHBOURS_APPROXIMATION = True
-
-    TIMER = 0.0
-
-    # support data
-    PASSBAND_TABLES = os.path.join(dirname(os.path.abspath(__file__)), pardir, "passband")
-    LD_TABLES = os.path.join(HOME, "limbdarkening", "ld")
-    CK04_ATM_TABLES = os.path.join(HOME, "atmosphere", "ck04")
-    K93_ATM_TABLES = os.path.join(HOME, "atmosphere", "k93")
-    ATM_ATLAS = "ck04"
-    ATLAS_TO_BASE_DIR = {
-        "castelli": CK04_ATM_TABLES,
-        "castelli-kurucz": CK04_ATM_TABLES,
-        "ck": CK04_ATM_TABLES,
-        "ck04": CK04_ATM_TABLES,
-        "kurucz": K93_ATM_TABLES,
-        "k": K93_ATM_TABLES,
-        "k93": K93_ATM_TABLES
-    }
-    CUDA = False
-
+    FIRST_TIME_USER = first_time_user
     ####################################################################################################################
 
     def __new__(cls):
@@ -230,6 +184,7 @@ class Settings(_Const):
             "RV_LAMBDA_INTERVAL": cls.RV_LAMBDA_INTERVAL,
             "MAX_DISCRETIZATION_FACTOR": cls.MAX_DISCRETIZATION_FACTOR,
             "MIN_DISCRETIZATION_FACTOR": cls.MIN_DISCRETIZATION_FACTOR,
+            "DEFAULT_DISCRETIZATION_FACTOR": cls.DEFAULT_DISCRETIZATION_FACTOR,
             "NUMBER_OF_THREADS": cls.NUMBER_OF_THREADS,
             "NUMBER_OF_PROCESSES": cls.NUMBER_OF_PROCESSES,
             "NUMBER_OF_MCMC_PROCESSES": cls.NUMBER_OF_MCMC_PROCESSES,
@@ -254,6 +209,7 @@ class Settings(_Const):
             "USE_INTERPOLATION_APPROXIMATION": cls.USE_INTERPOLATION_APPROXIMATION,
             "USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION": cls.USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION,
             "USE_SIMILAR_NEIGHBOURS_APPROXIMATION": cls.USE_SIMILAR_NEIGHBOURS_APPROXIMATION,
+            "MAGNITUDE_SYSTEM": cls.MAGNITUDE_SYSTEM
         }
 
     @staticmethod
@@ -264,18 +220,15 @@ class Settings(_Const):
 
     @classmethod
     def set_up_logging(cls):
-        if os.path.isfile(cls.LOG_CONFIG):
+        if op.isfile(cls.LOG_CONFIG):
             cls.load_conf(cls.LOG_CONFIG)
             return
         elif cls.LOG_CONFIG == 'default':
-            cls.LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)),
-                                          'logging_schemas/default.json')
+            cls.LOG_CONFIG = op.join(dirname(op.abspath(__file__)), 'logging_schemas/default.json')
         elif cls.LOG_CONFIG == 'fit':
-            cls.LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)),
-                                          'logging_schemas/fit.json')
+            cls.LOG_CONFIG = op.join(dirname(op.abspath(__file__)), 'logging_schemas/fit.json')
         else:
-            cls.LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)),
-                                          'logging_schemas/default.json')
+            cls.LOG_CONFIG = op.join(dirname(op.abspath(__file__)), 'logging_schemas/default.json')
 
         cls.load_conf(cls.LOG_CONFIG)
 
@@ -284,7 +237,7 @@ class Settings(_Const):
         if not conf_path:
             conf_path = cls.CONFIG_FILE
 
-        if not os.path.isfile(conf_path):
+        if not op.isfile(conf_path):
             msg = (
                 "Couldn't find configuration file. Using default settings.\n"
                 "   To customize configuration using file either\n"
@@ -314,6 +267,7 @@ class Settings(_Const):
 
     @classmethod
     def update_config(cls):
+        cls.CUDA = False
         # **************************************************************************************************************
         if c_parse.has_section('general'):
             cls.SUPPRESS_WARNINGS = c_parse.getboolean('general', 'suppress_warnings', fallback=cls.SUPPRESS_WARNINGS)
@@ -322,7 +276,7 @@ class Settings(_Const):
             cls.set_up_logging()
 
             cls.SUPPRESS_LOGGER = c_parse.getboolean('general', 'suppress_logger', fallback=cls.SUPPRESS_LOGGER)
-            cls.HOME = c_parse.getboolean('general', 'home', fallback=cls.HOME)
+            cls.HOME = c_parse.get('general', 'home', fallback=cls.HOME)
         # **************************************************************************************************************
         if c_parse.has_section('physics'):
             cls.REFLECTION_EFFECT = c_parse.getboolean('physics', 'reflection_effect', fallback=cls.REFLECTION_EFFECT)
@@ -348,6 +302,9 @@ class Settings(_Const):
                                                              fallback=cls.MAX_DISCRETIZATION_FACTOR)
             cls.MIN_DISCRETIZATION_FACTOR = c_parse.getfloat('computational', 'min_discretization_factor',
                                                              fallback=cls.MIN_DISCRETIZATION_FACTOR)
+            cls.DEFAULT_DISCRETIZATION_FACTOR = c_parse.getint(
+                'computational', 'default_discretization_factor', fallback=cls.DEFAULT_DISCRETIZATION_FACTOR
+            )
             cls.NUMBER_OF_THREADS = c_parse.getint('computational', 'number_of_threads', fallback=cls.NUMBER_OF_THREADS)
             if cls.NUMBER_OF_THREADS <= 0:
                 raise ValueError("Invalid value for `number_of_threads`, allowed >= 1")
@@ -382,10 +339,12 @@ class Settings(_Const):
                                                       fallback=cls.MCMC_SAVE_INTERVAL)
 
             cls.CUDA = c_parse.getboolean('computational', 'cuda', fallback=cls.CUDA)
+
             if cls.CUDA:
                 try:
-                    import torch
-                    if not torch.cuda.is_available():
+                    # noinspection PyUnresolvedReferences
+                    import cumpy
+                    if not cumpy.cuda.is_available():
                         cls.CUDA = False
                         warnings.warn("You have no CUDA enabled/available on your device. "
                                       "Runtime continue with CPU.", UserWarning)
@@ -422,14 +381,14 @@ class Settings(_Const):
 
             cls.CK04_ATM_TABLES = c_parse.get('support', 'castelli_kurucz_04_atm_tables', fallback=cls.CK04_ATM_TABLES)
 
-            if not os.path.isdir(cls.CK04_ATM_TABLES) and not cls.SUPPRESS_WARNINGS:
+            if not op.isdir(cls.CK04_ATM_TABLES) and not cls.SUPPRESS_WARNINGS:
                 warnings.warn(f"path {cls.CK04_ATM_TABLES}\n"
                               f"to castelli-kurucz 2004 atmosphere atlas doesn't exists\n"
                               f"Specifiy it in elisa_conf.ini file")
 
             cls.K93_ATM_TABLES = c_parse.get('support', 'kurucz_93_atm_tables', fallback=cls.K93_ATM_TABLES)
 
-            if not os.path.isdir(cls.K93_ATM_TABLES) and not cls.SUPPRESS_WARNINGS:
+            if not op.isdir(cls.K93_ATM_TABLES) and not cls.SUPPRESS_WARNINGS:
                 warnings.warn(f"path {cls.K93_ATM_TABLES}\n"
                               "to kurucz 1993 atmosphere atlas doesn't exists\n"
                               "Specifiy it in elisa_conf.ini file", UserWarning)
@@ -449,6 +408,8 @@ class Settings(_Const):
             if not isdir(cls.PASSBAND_TABLES) and not cls.SUPPRESS_WARNINGS:
                 warnings.warn(f"path {cls.PASSBAND_TABLES} to passband tables doesn't exists\n"
                               f"Specifiy it in elisa_conf.ini file", UserWarning)
+
+            cls.MAGNITUDE_SYSTEM = c_parse.get('support', 'magnitude_system', fallback='vega')
         # **************************************************************************************************************
 
     @classmethod

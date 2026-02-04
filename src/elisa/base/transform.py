@@ -1,19 +1,29 @@
 import numpy as np
+from packaging import version
 
+from . types import INT, FLOAT
 from .. import (
     units as u,
-    const
+    const,
+    settings
 )
 from .. units import (
     DefaultStarInputUnits,
-    DefaultBinarySystemInputUnits
+    DefaultBinarySystemInputUnits,
+    DefaultSystemInputUnits,
+    DefaultSystemUnits
 )
 
-WHEN_FLOAT64 = (int, np.int, np.int32, np.int64, float, np.float, np.float32, np.float64)
+
+WHEN_FLOAT64 = (int, np.int32, np.int64, float, np.float32, np.float64)
+if version.parse(np.__version__) < version.parse("1.20.0"):
+    # noinspection PyUnresolvedReferences
+    WHEN_FLOAT64 += (np.int, np.float)
+
 WHEN_ARRAY = (list, np.ndarray, tuple)
 
 
-def quantity_transform(value, unit, when_float64=WHEN_FLOAT64):
+def quantity_transform(value, unit, when_float64=WHEN_FLOAT64, default_input_unit=None):
     """
     General transform function for quantities which fit such interface.
 
@@ -22,20 +32,22 @@ def quantity_transform(value, unit, when_float64=WHEN_FLOAT64):
                                                                                            units
     :param unit: astropy.units.Quantity; unit of the output
     :param when_float64: Tuple(Types)
+    :param default_input_unit: astropy.units.Unit; assumed unit of input it unit is not supplied in `value`
     :return: float
     """
     if isinstance(value, (u.Quantity, str)):
         value = u.Quantity(value) if isinstance(value, str) else value
         value = np.float64(value.to(unit))
     elif isinstance(value, when_float64):
-        value = np.float64(value)
+        value = np.float64(value) if default_input_unit is None \
+            else (value * default_input_unit).to(unit).value
     else:
         raise TypeError('Input of variable is not (numpy.)int or (numpy.)float '
                         'nor astropy.unit.quantity.Quantity instance (or its string representation).')
     return value
 
 
-def deg_transform(value, unit, when_float64):
+def deg_transform(value, unit, when_float64, default_input_unit=u.deg):
     """
     General transform function for angular quantities which fit such interface.
 
@@ -44,13 +56,14 @@ def deg_transform(value, unit, when_float64):
                                                                                            units
     :param unit: astropy.units.Quantity; unit of the output
     :param when_float64:
+    :param default_input_unit: astropy.units.Unit; assumed unit of input it unit is not supplied in `value`
     :return: float;
     """
     if isinstance(value, (u.Quantity, str)):
         value = u.Quantity(value) if isinstance(value, str) else value
         value = np.float64(value.to(unit))
     elif isinstance(value, when_float64):
-        value = np.float64(value)*u.deg.to(unit)
+        value = np.float64(value)*default_input_unit.to(unit)
     else:
         raise TypeError('Input of the angular variable is not (numpy.)int or (numpy.)float '
                         'nor astropy.unit.quantity.Quantity instance (or its string representation).')
@@ -83,9 +96,9 @@ class SystemProperties(TransformProperties):
         """
         if isinstance(value, (u.Quantity, str)):
             value = u.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(u.ARC_UNIT))
-        elif isinstance(value, (int, np.int, float, np.float)):
-            value = np.float64((value * u.DEFAULT_INCLINATION_INPUT_UNIT).to(u.ARC_UNIT))
+            value = np.float64(value.to(u.DefaultSystemUnits.inclination))
+        elif isinstance(value, (int, INT, float, FLOAT)):
+            value = np.float64((value * DefaultSystemInputUnits.inclination).to(DefaultSystemUnits.inclination))
         else:
             raise TypeError('Input of variable `inclination` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance (or its string representation).')
@@ -103,7 +116,7 @@ class SystemProperties(TransformProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """
-        return quantity_transform(value, u.PERIOD_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, DefaultSystemUnits.period, WHEN_FLOAT64, u.DefaultSystemInputUnits.period)
 
     @staticmethod
     def gamma(value):
@@ -115,7 +128,7 @@ class SystemProperties(TransformProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return:
         """
-        return quantity_transform(value, u.VELOCITY_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, u.DefaultSystemUnits.gamma, WHEN_FLOAT64, u.DefaultSystemInputUnits.gamma)
 
     @staticmethod
     def additional_light(value):
@@ -139,14 +152,30 @@ class SystemProperties(TransformProperties):
         """
         if isinstance(value, (u.Quantity, str)):
             value = u.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(u.DISTANCE_UNIT))
+            value = np.float64(value.to(u.DefaultBinarySystemUnits.system.semi_major_axis))
         elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(value * DefaultBinarySystemInputUnits.system.semi_major_axis.to(u.DISTANCE_UNIT))
+            value = np.float64(value * DefaultBinarySystemInputUnits.system.semi_major_axis.
+                               to(u.DefaultBinarySystemUnits.system.semi_major_axis))
         else:
             raise TypeError('User input is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance (or its string representation).')
         if value <= 0:
             raise ValueError("Invalid value of semi_major_axis, use value > 0!")
+        return value
+
+    @staticmethod
+    def distance(value):
+        if isinstance(value, (u.Quantity, str)):
+            value = u.Quantity(value) if isinstance(value, str) else value
+            value = np.float64(value.to(u.DefaultSystemUnits.distance))
+        elif isinstance(value, WHEN_FLOAT64):
+            value = np.float64(value * DefaultBinarySystemInputUnits.system.distance.to(u.DefaultSystemUnits.distance))
+        else:
+            raise TypeError('User input is not (numpy.)int or (numpy.)float '
+                            'nor astropy.unit.quantity.Quantity instance (or its string representation).')
+        if value <= 0:
+            raise ValueError("Invalid value of system`s distance, use value > 0!")
+
         return value
 
 
@@ -184,7 +213,8 @@ class BodyProperties(TransformProperties):
         :param value: Union[float, astropy.quantity.Quantity]
         :return: float
         """
-        value = deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
+        value = deg_transform(value, u.DefaultStarUnits.discretization_factor, WHEN_FLOAT64,
+                              u.DefaultStarInputUnits.discretization_factor)
         if value > const.HALF_PI:
             raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
         return value
@@ -198,7 +228,7 @@ class BodyProperties(TransformProperties):
         :param value: Union[int, numpy.int, float, numpy.float, astropy.unit.quantity.Quantity]
         :return: float
         """
-        return quantity_transform(value, u.TEMPERATURE_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, u.DefaultStarUnits.t_eff, WHEN_FLOAT64, u.DefaultStarInputUnits.t_eff)
 
 
 class StarProperties(BodyProperties):
@@ -213,9 +243,9 @@ class StarProperties(BodyProperties):
         """
         if isinstance(value, (u.Quantity, str)):
             value = u.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(u.DISTANCE_UNIT))
+            value = np.float64(value.to(u.DefaultStarUnits.equivalent_radius))
         elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(value * DefaultStarInputUnits.equivalent_radius.to(u.DISTANCE_UNIT))
+            value = np.float64(value * DefaultStarInputUnits.equivalent_radius.to(u.DefaultStarUnits.equivalent_radius))
         else:
             raise TypeError('User input is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance (or its string representation).')
@@ -235,9 +265,9 @@ class StarProperties(BodyProperties):
        """
         if isinstance(value, (u.Quantity, str)):
             value = u.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(u.MASS_UNIT))
+            value = np.float64(value.to(u.DefaultStarUnits.mass))
         elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(value * DefaultStarInputUnits.mass.to(u.MASS_UNIT))
+            value = np.float64(value * DefaultStarInputUnits.mass.to(u.DefaultStarUnits.mass))
         else:
             raise TypeError('User input is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance (or its string representation).')
@@ -295,6 +325,40 @@ class StarProperties(BodyProperties):
             raise ValueError(f'Parameter gravity darkening = {value} is out of range <0, 1>')
         return np.float64(value)
 
+    @staticmethod
+    def limb_darkening_coefficients(value):
+        """
+        Validates custom limb darkening coefficients.
+
+        :param value: Union[none, dict];
+        :return: Union[none, dict];
+        """
+        if value is None:
+            retval = None  # default case of interpolated LD coefficients
+        elif isinstance(value, dict):
+            retval = dict()
+            for passband, ld_coeffs in value.items():
+                if isinstance(ld_coeffs, WHEN_FLOAT64):
+                    if settings.LIMB_DARKENING_LAW in ['linear', 'cosine']:
+                        retval[passband] = [ld_coeffs, ]
+                    else:
+                        raise TypeError('Scalar limb darkening coefficient is available only for linear (cosine) law.')
+                elif isinstance(ld_coeffs, WHEN_ARRAY):
+                    desired_vector_length = len(settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW])
+                    if np.shape(ld_coeffs)[0] != desired_vector_length:
+                        raise ValueError(f'{settings.LIMB_DARKENING_LAW} limb-darkening law requires '
+                                         f'{desired_vector_length} components in a vector with shape '
+                                         f'({desired_vector_length}, ), however, you provided a vector with '
+                                         f'{len(ld_coeffs)} components with shape {np.shape(ld_coeffs)}')
+                    else:
+                        retval[passband] = ld_coeffs
+        else:
+            raise TypeError('Limb darkening coefficients needs to be supplied as dictionary in format '
+                            '{`passband`: ld_coeffs, }, where `ld_coeffs` is float (for linear law) '
+                            'and/or list (numpy.array) in other cases.')
+
+        return retval
+
 
 class SpotProperties(BodyProperties):
     @staticmethod
@@ -305,7 +369,7 @@ class SpotProperties(BodyProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """
-        return deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
+        return deg_transform(value, u.DefaultSpotUnits.latitude, WHEN_FLOAT64, u.DefaultSpotInputUnits.latitude)
 
     @staticmethod
     def longitude(value):
@@ -315,7 +379,7 @@ class SpotProperties(BodyProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """
-        return deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
+        return deg_transform(value, u.DefaultSpotUnits.longitude, WHEN_FLOAT64, u.DefaultSpotInputUnits.longitude)
 
     @staticmethod
     def angular_radius(value):
@@ -325,7 +389,8 @@ class SpotProperties(BodyProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return:
         """
-        return deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
+        return deg_transform(value, u.DefaultSpotUnits.angular_radius, WHEN_FLOAT64,
+                             u.DefaultSpotInputUnits.angular_radius)
 
     @staticmethod
     def temperature_factor(value):
@@ -335,7 +400,7 @@ class SpotProperties(BodyProperties):
         :param value: flaot
         :return: float
         """
-        if not isinstance(value, (int, np.int, float, np.float)):
+        if not isinstance(value, (int, INT, float, FLOAT)):
             raise TypeError('Input of variable `temperature_factor` is not (numpy.)int or (numpy.)float.')
         return np.float64(value)
 
@@ -347,7 +412,8 @@ class SpotProperties(BodyProperties):
         :param value: Union[float, astropy.quantity.Quantity]
         :return: float
         """
-        value = deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
+        value = deg_transform(value, u.DefaultSpotUnits.discretization_factor, WHEN_FLOAT64,
+                              u.DefaultSpotInputUnits.discretization_factor)
         if value > const.HALF_PI:
             raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
         return value

@@ -3,12 +3,13 @@ import numpy as np
 import json
 
 from copy import copy
-from ..surface import faces as bsfaces
 from .. import utils as bsutils
-from ...logger import getLogger
+from .. surface import faces as bsfaces
+from ... base.types import FLOAT
+from ... logger import getLogger
 from ... import settings
-from ...utils import is_empty
-from ...base.surface import temperature as btemperature
+from ... utils import is_empty
+from ... base.surface import temperature as btemperature
 from ... import (
     umpy as up,
     ld,
@@ -60,9 +61,8 @@ def apply_reflection_effect(system, components_distance, iterations):
 
     components = bsutils.component_to_list(component='all')
 
-    xlim = bsfaces.faces_visibility_x_limits(system.primary.polar_radius,
-                                             system.secondary.polar_radius,
-                                             components_distance)
+    _args = (system.primary.polar_radius, system.secondary.polar_radius, components_distance)
+    xlim = bsfaces.faces_visibility_x_limits(*_args)
 
     # this tests if you can use surface symmetries
     not_pulsation_test = not system.has_pulsations()
@@ -107,7 +107,9 @@ def apply_reflection_effect(system, components_distance, iterations):
 
     # limb darkening coefficients for each face of each component
     ldc = {cmp: ld.get_bolometric_ld_coefficients(temperatures[cmp], log_g[cmp],
-                                                  getattr(system, cmp).metallicity) for cmp in components}
+                                                  getattr(system, cmp).metallicity,
+                                                  getattr(system, cmp).limb_darkening_coefficients)
+           for cmp in components}
 
     # calculating C_A = (albedo_A / D_intB) - scalar
     # D_intB - bolometric limb darkening factor
@@ -119,7 +121,7 @@ def apply_reflection_effect(system, components_distance, iterations):
     }
 
     # setting reflection factor R = 1 + F_irradiated / F_original, initially equal to one everywhere - vector
-    reflection_factor = {cmp: np.ones(np.sum(vis_test[cmp]), dtype=np.float) for cmp in components}
+    reflection_factor = {cmp: np.ones(np.sum(vis_test[cmp]), dtype=FLOAT) for cmp in components}
     counterpart = settings.BINARY_COUNTERPARTS
 
     # for faster convergence, reflection effect is calculated first on cooler component
@@ -166,8 +168,8 @@ def apply_reflection_effect(system, components_distance, iterations):
                 # calculation of reflection effect correction as
                 # 1 + (c / t_effi) * sum_j(r_j * Q_ab * t_effj^4 * D(gamma_j) * areas_j)
                 # calculating vector part of reflection effect correction
-                vector_to_sum1 = reflection_factor[counterpart] * teff4[counterpart][vis_test[counterpart]] * \
-                                 areas[counterpart][vis_test[counterpart]]
+                key_ = counterpart
+                vector_to_sum1 = reflection_factor[key_] * teff4[key_][vis_test[key_]] * areas[key_][vis_test[key_]]
                 counterpart_to_sum = up.matmul(vector_to_sum1, matrix_to_sum2['secondary']) \
                     if component == 'secondary' else up.matmul(matrix_to_sum2['primary'], vector_to_sum1)
                 reflection_factor[component][:symmetry_to_use[component]] = \
@@ -231,8 +233,8 @@ def apply_reflection_effect(system, components_distance, iterations):
                 # calculation of reflection effect correction as
                 # 1 + (c / t_effi) * sum_j(r_j * Q_ab * t_effj^4 * D(gamma_j) * areas_j)
                 # calculating vector part of reflection effect correction
-                vector_to_sum1 = reflection_factor[counterpart] * teff4[counterpart][vis_test[counterpart]] * \
-                                 areas[counterpart][vis_test[counterpart]]
+                key_ = counterpart
+                vector_to_sum1 = reflection_factor[key_] * teff4[key_][vis_test[key_]] * areas[key_][vis_test[key_]]
                 counterpart_to_sum = up.matmul(vector_to_sum1, matrix_to_sum2['secondary']) \
                     if component == 'secondary' else up.matmul(matrix_to_sum2['primary'], vector_to_sum1)
                 reflection_factor[component] = \
@@ -389,8 +391,8 @@ def get_symmetrical_gammma(shape, shape_reduced, normals, join_vector, vis_test,
     :param vis_test_symmetry: Dict[str, numpy.array];
     :return: gamma: Dict[str, numpy.array]; cos(angle(normal, join_vector))
     """
-    gamma = {'primary': np.empty(shape=shape, dtype=np.float),
-             'secondary': np.empty(shape=shape, dtype=np.float)}
+    gamma = {'primary': np.empty(shape=shape, dtype=FLOAT),
+             'secondary': np.empty(shape=shape, dtype=FLOAT)}
 
     gamma['primary'][:, :shape_reduced[1]] = \
         re_numba.gamma_primary(normals['primary'][vis_test['primary']],
@@ -436,8 +438,8 @@ def get_symmetrical_d_gamma(shape, shape_reduced, ldc, gamma):
     :param gamma: Dict; cosines of angles between join vector and surface element normal vector for both components
     :return: Dict; limb darkening coefficient matrix
     """
-    d_gamma = {'primary': np.empty(shape=shape, dtype=np.float),
-               'secondary': np.empty(shape=shape, dtype=np.float)}
+    d_gamma = {'primary': np.empty(shape=shape, dtype=FLOAT),
+               'secondary': np.empty(shape=shape, dtype=FLOAT)}
 
     cos_theta = gamma['primary'][:, :shape_reduced[1]]
     d_gamma['primary'][:, :shape_reduced[1]] = ld.limb_darkening_factor(
@@ -481,7 +483,7 @@ def get_symmetrical_q_ab(shape, shape_reduced, gamma, distance):
     :param distance: numpy.array;
     :return: numpy.array;
     """
-    q_ab = np.empty(shape=shape, dtype=np.float)
+    q_ab = np.empty(shape=shape, dtype=FLOAT)
     q_ab[:, :shape_reduced[1]] = \
         up.divide(up.multiply(gamma['primary'][:, :shape_reduced[1]],
                               gamma['secondary'][:, :shape_reduced[1]]),
@@ -520,5 +522,8 @@ def interpolate_albedo(temperature):
         data = json.load(f)
     interp_temps = data['x']
     interp_a = data['y']
+
+    if temperature <= 0:
+        raise ValueError('Negative temperature of the star encountered.')
 
     return np.interp(np.log10(temperature), interp_temps, interp_a)

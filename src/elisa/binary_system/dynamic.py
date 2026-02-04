@@ -9,7 +9,8 @@ from .. import (
     const,
     umpy as up
 )
-from .curves.utils import compute_rel_d_geometry, compute_counterparts_rel_d_irrad
+from . curves.utils import compute_rel_d_geometry, compute_counterparts_rel_d_irrad
+from .. base.types import INT, BOOL
 
 
 def get_eclipse_boundaries(binary, components_distance):
@@ -65,8 +66,8 @@ def find_apsidally_corresponding_positions(binary, radii, base_arr, supplement_a
 
     mean_r = np.mean(radii, axis=1)
     bigger_comp = np.argmax(mean_r)
-    r_body = radii[:, base_arr[:, 0].astype(np.int)]
-    r_supplement = radii[:, supplement_arr[:, 0].astype(np.int)]
+    r_body = radii[:, base_arr[:, 0].astype(INT)]
+    r_supplement = radii[:, supplement_arr[:, 0].astype(INT)]
 
     # finding indices of supplements_array closest to the base_array by comparing radius of larger component
     ids_of_closest_reduced_values = utils.find_idx_of_nearest(r_body[bigger_comp], r_supplement[bigger_comp])
@@ -85,12 +86,13 @@ def find_apsidally_corresponding_positions(binary, radii, base_arr, supplement_a
     is_supplement = np.logical_and(is_supplement_geom, is_supplement_irrad)
 
     # crating array which crates valid orbital position couples
-    twin_in_reduced = np.full(ids_of_closest_reduced_values.shape, -1, dtype=np.int)
+    twin_in_reduced = np.full(ids_of_closest_reduced_values.shape, -1, dtype=INT)
     twin_in_reduced[is_supplement] = ids_of_closest_reduced_values[is_supplement]
 
     supplements = OrbitalSupplements()
 
     for id_supplement, id_reduced in enumerate(twin_in_reduced):
+        id_reduced: INT = id_reduced
         args = (supplement_arr[id_supplement], as_empty)
         if id_reduced > -1:
             args = (base_arr[id_reduced], supplement_arr[id_supplement])
@@ -142,7 +144,7 @@ def resolve_spots_geometry_update(spots_longitudes, size, pulsations_tests,
     for component in settings.BINARY_COUNTERPARTS.keys():
         if pulsations_tests[component]:
             # in case of pulsations, the geometry is recalculated always
-            reducer[component] = np.ones(size, dtype=np.bool)
+            reducer[component] = np.ones(size, dtype=BOOL)
             continue
 
         # longitude of all spots stored in array (longitudes of the first spot are enough)
@@ -179,15 +181,15 @@ def _resolve_geometry_update(has_spots, size, rel_d, max_allowed_difference, res
 
     # in case of spots, the boundary points will cause problems if you want to use the same geometry
     if has_spots and resolve == "object":
-        return np.ones(size, dtype=np.bool)
+        return np.ones(size, dtype=BOOL)
     elif utils.is_empty(rel_d) and resolve == "spot":
         # if `rel_d` is empty and resolve is equal to `spot` it means given component has no spots
         # and does require build only on first position
-        arr = up.zeros(size, dtype=np.bool)
+        arr = up.zeros(size, dtype=BOOL)
         arr[0] = True
         return arr
 
-    require_new_geo = np.ones(size, dtype=np.bool)
+    require_new_geo = np.ones(size, dtype=BOOL)
 
     cumulative_sum = np.array([0.0, 0.0])
     for i in range(1, size):
@@ -209,7 +211,7 @@ def resolve_irrad_update(rel_d_irrad, size):
     :param size: int; number of orbital positions
     :return: numpy.array[bool]; if true orbital position has to be recalculated due to change in reflected flux
     """
-    require_new_build = np.ones(size, dtype=np.bool)
+    require_new_build = np.ones(size, dtype=BOOL)
 
     cumulative_sum = np.array([0.0, 0.0])
     for i in range(1, size):
@@ -223,7 +225,7 @@ def resolve_irrad_update(rel_d_irrad, size):
     return require_new_build
 
 
-def phase_crv_symmetry(binary_system, phase):
+def phase_crv_symmetry(binary_system, phase: np.ndarray):
     """
     Utilizing symmetry of circular systems without spots and pulsations where you need to evaluate only half
     of the phases. Function finds such redundant phases and returns only unique phases.

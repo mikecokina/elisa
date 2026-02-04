@@ -10,6 +10,7 @@ from ... base.surface.faces import correct_face_orientation
 from .. import utils as sutils
 from .. curves import utils as crv_utils
 from ... observer.observer import Observer
+from ... import umpy as up
 
 
 class Plot(object):
@@ -39,7 +40,7 @@ class Plot(object):
         equipotential_kwargs = dict()
 
         points = self.single.calculate_equipotential_boundary()
-        points = (points * u.DISTANCE_UNIT).to(axis_unit)
+        points = (points * u.DefaultSingleSystemUnits.star.equivalent_radius).to(axis_unit)
 
         equipotential_kwargs.update({
             'return_figure_instance': return_figure_instance,
@@ -63,20 +64,22 @@ class Plot(object):
         """
         single_mesh_kwargs = dict()
 
-        inclination = transform.deg_transform(inclination, u.deg, when_float64=transform.WHEN_FLOAT64) \
-            if inclination is not None else np.degrees(self.single.inclination)
+        inclination = transform.deg_transform(inclination, u.deg, transform.WHEN_FLOAT64,
+                                              u.DefaultSingleSystemInputUnits.system.inclination) \
+            if inclination is not None else up.degrees(self.single.inclination)
         azim = self.single.orbit.rotational_motion(phase=phase)[0][0]
         azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \
-            if azimuth is not None else np.degrees(azim) - 90
+            if azimuth is not None else up.degrees(azim) - 90
 
         position_container = SinglePositionContainer.from_single_system(self.single, self.defpos)
         position_container.build_mesh()
         position_container.build_perturbations()
 
         mesh = position_container.star.get_flatten_parameter('points')
-        denominator = (1 * axis_unit.to(u.DISTANCE_UNIT))
+        denominator = (1 * axis_unit.to(u.DefaultSingleSystemUnits.star.equivalent_radius))
         mesh /= denominator
-        equatorial_radius = position_container.star.equatorial_radius * u.DISTANCE_UNIT.to(axis_unit)
+        equatorial_radius = \
+            position_container.star.equatorial_radius * u.DefaultSingleSystemUnits.star.equivalent_radius.to(axis_unit)
 
         single_mesh_kwargs.update({
             'return_figure_instance': return_figure_instance,
@@ -106,20 +109,22 @@ class Plot(object):
         """
         wireframe_kwargs = dict()
 
-        inclination = transform.deg_transform(inclination, u.deg, when_float64=transform.WHEN_FLOAT64) \
-            if inclination is not None else np.degrees(self.single.inclination)
+        inclination = transform.deg_transform(inclination, u.deg, transform.WHEN_FLOAT64,
+                                              u.DefaultSingleSystemInputUnits.system.inclination) \
+            if inclination is not None else up.degrees(self.single.inclination)
         azim = self.single.orbit.rotational_motion(phase=phase)[0][0]
         azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \
-            if azimuth is not None else np.degrees(azim) - 90
+            if azimuth is not None else up.degrees(azim) - 90
 
         position_container = SinglePositionContainer.from_single_system(self.single, self.defpos)
         position_container.build_mesh()
         position_container.build_faces()
 
         points, faces = position_container.star.surface_serializer()
-        denominator = (1 * axis_unit.to(u.DISTANCE_UNIT))
+        denominator = (1 * axis_unit.to(u.DefaultSingleSystemUnits.star.equivalent_radius))
         points /= denominator
-        equatorial_radius = position_container.star.equatorial_radius * u.DISTANCE_UNIT.to(axis_unit)
+        equatorial_radius = \
+            position_container.star.equatorial_radius * u.DefaultSingleSystemUnits.star.equivalent_radius.to(axis_unit)
 
         wireframe_kwargs.update({
             'return_figure_instance': return_figure_instance,
@@ -231,11 +236,14 @@ class Plot(object):
             })
 
         # normals
-        unit_mult = (1*u.DISTANCE_UNIT).to(axis_unit).value
+        unit_mult = (1*u.DefaultSingleSystemUnits.star.equivalent_radius).to(axis_unit).value
         surface_kwargs['points'] *= unit_mult
 
         if normals:
             surface_kwargs['centres'] *= unit_mult
+
+        equatorial_radius = (star_container.equatorial_radius*u.DefaultSingleSystemUnits.star.equivalent_radius).\
+            to(axis_unit).value
 
         surface_kwargs.update({
             'phase': phase,
@@ -251,7 +259,7 @@ class Plot(object):
             'colorbar_orientation': colorbar_orientation,
             'colorbar': colorbar,
             'scale': scale,
-            'equatorial_radius': (star_container.equatorial_radius*u.DISTANCE_UNIT).to(axis_unit).value,
+            'equatorial_radius': equatorial_radius,
             'surface_color': surface_color,
             'colorbar_separation': colorbar_separation,
             'colorbar_size': colorbar_size,

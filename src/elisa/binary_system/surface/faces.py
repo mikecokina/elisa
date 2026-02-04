@@ -5,6 +5,7 @@ from scipy.spatial.qhull import Delaunay
 from .. import utils as bsutils
 from .. orbit import orbit
 from ... base import spot
+from ... base.types import INT
 from ... utils import is_empty
 from ... logger import getLogger
 from ... import (
@@ -161,7 +162,7 @@ def build_surface_with_no_spots(system, components_distance, component="all"):
         z0_test = np.bitwise_not(np.isclose(triangulated_pts[triangles][:, :, 2], 0).all(1))
         triangles = triangles[up.logical_and(y0_test, z0_test)]
 
-        setattr(star, "base_symmetry_faces_number", np.int(np.shape(triangles)[0]))
+        setattr(star, "base_symmetry_faces_number", INT(np.shape(triangles)[0]))
         # lets exploit axial symmetry and fill the rest of the surface of the star
         star.base_symmetry_faces = triangles
         star.faces = mirror_triangulation(triangles, star.inverse_point_symmetry_matrix)
@@ -370,7 +371,7 @@ def build_velocities(system, components_distance, component='all'):
 
     velocities = orbit.create_orb_vel_vectors(system, components_distance)
 
-    orb_period = (system.period * u.PERIOD_UNIT).to(u.s).value
+    orb_period = (system.period * u.DefaultBinarySystemUnits.system.period).to(u.TIME_UNIT).value
     omega_orb = np.array([0, 0, const.FULL_ARC / orb_period])
 
     for _component in component:

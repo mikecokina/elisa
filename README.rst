@@ -1,19 +1,16 @@
-|Travis build|  |GitHub version|  |Licence GPLv2| |Python version| |OS|
+|GitHub version|  |Licence GPLv3| |Python version| |OS|
 
-.. |Travis build| image:: https://travis-ci.org/mikecokina/elisa.svg?branch=dev
-    :target: https://travis-ci.org/mikecokina/elisa
+.. |GitHub version| image:: https://img.shields.io/badge/version-0.6.0-yellow.svg
+   :target: https://github.com/mikecokina/elisa/commits/release/0.6.0
 
-.. |GitHub version| image:: https://img.shields.io/badge/version-0.5.1-yellow.svg
-   :target: https://github.com/Naereen/StrapDown.js
+.. |Python version| image:: https://img.shields.io/badge/python-3.6|3.7|3.8|3.9|3.10|3.11|3.12-orange.svg
+   :target: https://www.python.org/
 
-.. |Python version| image:: https://img.shields.io/badge/python-3.6|3.7|3.8-orange.svg
-   :target: https://github.com/Naereen/StrapDown.js
-
-.. |Licence GPLv2| image:: https://img.shields.io/badge/license-GNU/GPLv2-blue.svg
-   :target: https://github.com/Naereen/StrapDown.js
+.. |Licence GPLv3| image:: https://img.shields.io/badge/license-GNU/GPLv3-blue.svg
+   :target: https://www.gnu.org/licenses/gpl-3.0.html
 
 .. |OS| image:: https://img.shields.io/badge/os-Linux|Windows-magenta.svg
-   :target: https://github.com/Naereen/StrapDown.js
+   :target: https://en.wikipedia.org/wiki/Operating_system
 
 .. _example_scripts: https://github.com/mikecokina/elisa/tree/master/scripts/analytics
 
@@ -27,6 +24,18 @@ Publications
 
 ELISa
 -----
+
+Latest version
+~~~~~~~~~~~~~~
+
+ELISa has been updated to work with the latest Python versions up to v3.12. However, the latest package
+released on PyPI is only compatible with Python versions up to v3.8. If you want to install ELISa with a
+newer Python version, please install it from GitHub:
+
+    pip install git+https://github.com/mikecokina/elisa.git@release/0.6.0
+
+In case of any installation issues, please do not hesitate to create an issue on GitHub.
+
 
 **ELISa** is a cross-platform python package dedicated to light curves modelling of close eclipsing binaries including
 surface features such as spots (and pulsations which will be added soon). Current capabilities include:
@@ -56,19 +65,21 @@ Requirements
 
 **ELISa** is a python package which requires ``python v3.6+`` and has following dependencies::
 
-    astropy>=4.0.1.post1
+    astropy>=4.0.1,<=5.3.4
     corner>=2.2.1
-    emcee==3.0.1
+    emcee>=3.0.1,<=3.1.6
     jsonschema>=3.2.0
-    matplotlib==3.3.2
-    numpy>=1.16.2,<=1.19.2
-    pandas>=0.24.0,<=1.1.2
-    pypex==0.1.0
-    pytest==3.2.3
+    matplotlib>=3.3.2,<=3.7.5
+    numpy>=1.16.2,<=1.26.4
+    pandas>=0.24.0,<=1.5.3
+    packaging<=24.2
+    pytest>=3.2.3,<=8.3.4
     python-dateutil>=2.6.1,<=2.8.1
-    scipy>=1.0.0,<=1.5.2
-    tqdm==4.43.0
+    scipy>=1.0.0,<=1.10.1
+    tqdm>4.43.0
     parameterized>=0.7.4
+    numba>=0.51.2
+    requests>=2.26.0
 
 and potentially also **python-tk** package or equivalent for matplotlib package to display the figures correctly.
 
@@ -171,10 +182,19 @@ How to build API docs
 
 Read this readme_ file to see detailed instruction how to generate up to date documentation.
 
-.. _readme: https://github.com/mikecokina/elisa/docs/README.rst
+.. _readme: https://github.com/mikecokina/elisa/blob/master/docs/README.rst
 
 Minimal configuration
 ---------------------
+
+From version **0.6**, ELISa provides a feature to make configuration easier for first time running users. We implemented
+`Settings Manager` and `Download Manager`. When any ELISa script is first time executed and there is missing configuration
+file a wizzard will walk you through basic configuration (default configuration will be stored in path `~/.elisa/config.ini` file).
+It asks you to supply a directories to store atmospheres and limb darkening files and default atmosphere atlas. It also gives
+you a chance to automatically download given files without any futher needs to do it manually.
+
+Manual configuration
+~~~~~~~~~~~~~~~~~~~~
 
 ``ELISa`` requires minimal configuration before the first run provided by the config file. Initially, it is necessary to
 download Atmospheres_ models and Limb-Darkening_ tables.
@@ -188,7 +208,7 @@ Default tables location
 By default, the Elisa will search for atmosphere and limb darkening tables in:
 
  - atmospheres: $HOME/.elisa/atmosphere/
- - limb darkening: $HOME/.elisa/limb_darkening/
+ - limb darkening: $HOME/.elisa/limbdarkening/
 
 therefore, atmosphere and limb darkening tables stored at those locations will be used by elisa by default.
 
@@ -231,9 +251,12 @@ any need for setting an environmental variable.
 Now you are all setup and ready to code.
 
 
-Usage
+Tutorials
 -------
-For in depth tutorials, see directory ``elisa/jupyter_tutorials``.
+In-depth tutorials can be found here_. This directory is not a part of the elisa install 
+and it should be downloaded separately from github.
+
+.. _here: https://github.com/mikecokina/elisa/tree/dev/jupyter_tutorials
 
 
 Physics
@@ -267,7 +290,9 @@ ELISa is currently capable of modelling light curves in the following photometri
     Generic.Stromgren.b
     Generic.Stromgren.y
     Kepler
-    GaiaDR2
+    Gaia.2010.G
+    Gaia.2010.BP
+    Gaia.2010.RP
     TESS
 
 

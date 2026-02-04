@@ -1,10 +1,11 @@
+import datetime
+
 import numpy as np
-from astropy.time import Time
 
 from ... import units as u
 from ... atm import atm_file_prefix_to_quantity_list
 from ... import settings
-
+from ... utils import jd_from_datetime
 
 PARAM_PARSER = '@'
 NUISANCE_PARSER = 'nuisance'
@@ -49,6 +50,8 @@ DEFAULT_NORMALIZATION_STAR = {
     "synchronicity": (0.01, 10),
 }
 
+CURRENT_TIME_JD = jd_from_datetime(datetime.datetime.now())
+
 DEFAULT_NORMALIZATION_SYSTEM = {
     "inclination": (0, 180),
     "eccentricity": (0, 0.9999),
@@ -60,7 +63,7 @@ DEFAULT_NORMALIZATION_SYSTEM = {
     "period": (0.001, 100),
     "additional_light": (0, 1.0),
     "phase_shift": (-0.8, 0.8),
-    "primary_minimum_time": (Time.now().jd - 365.0, Time.now().jd),
+    "primary_minimum_time": (CURRENT_TIME_JD - 365.0, CURRENT_TIME_JD),
 }
 
 SPOTS_PARAMETERS = ['longitude', 'latitude', 'angular_radius', 'temperature_factor', 'angular_radius']
@@ -70,37 +73,37 @@ DEFAULT_FLOAT_ANGULAR_UNIT = u.deg
 DEFAULT_FLOAT_MASS_UNIT = u.solMass
 
 DEFAULT_FLOAT_UNITS = {
-    'inclination': u.deg,
-    'eccentricity': None,
-    'argument_of_periastron': u.deg,
-    'gamma': u.VELOCITY_UNIT,
-    'mass': u.solMass,
-    't_eff': u.TEMPERATURE_UNIT,
-    'metallicity': None,
-    'surface_potential': None,
-    'albedo': None,
-    'gravity_darkening': None,
-    'synchronicity': None,
-    'mass_ratio': None,
-    'semi_major_axis': u.solRad,
+    'inclination': u.DefaultSystemInputUnits.inclination,
+    'eccentricity': u.DefaultBinarySystemInputUnits.system.eccentricity,
+    'argument_of_periastron': u.DefaultBinarySystemInputUnits.system.argument_of_periastron,
+    'gamma': u.DefaultSystemInputUnits.gamma,
+    'mass': u.DefaultStarInputUnits.mass,
+    't_eff': u.DefaultStarInputUnits.t_eff,
+    'metallicity': u.DefaultStarInputUnits.metallicity,
+    'surface_potential': u.DefaultBinarySystemInputUnits.component.surface_potential,
+    'albedo': u.DefaultStarUnits.albedo,
+    'gravity_darkening': u.DefaultStarInputUnits.gravity_darkening,
+    'synchronicity': u.DefaultBinarySystemInputUnits.component.synchronicity,
+    'mass_ratio': u.DefaultBinarySystemInputUnits.system.mass_ratio,
+    'semi_major_axis': u.DefaultBinarySystemInputUnits.system.semi_major_axis,
     'asini': u.solRad,
-    'period': u.PERIOD_UNIT,
-    'primary_minimum_time': u.PERIOD_UNIT,
-    'additional_light': None,
-    'phase_shift': None,
+    'period': u.DefaultBinarySystemInputUnits.system.period,
+    'primary_minimum_time': u.DefaultBinarySystemInputUnits.system.primary_minimum_time,
+    'additional_light': u.DefaultSystemInputUnits.additional_light,
+    'phase_shift': u.DefaultSystemInputUnits.phase_shift,
     # SPOTS
-    'latitude': u.deg,
-    'longitude': u.deg,
-    'angular_radius': u.deg,
-    'temperature_factor': None,
+    'latitude': u.DefaultSpotInputUnits.latitude,
+    'longitude': u.DefaultSpotInputUnits.longitude,
+    'angular_radius': u.DefaultSpotInputUnits.angular_radius,
+    'temperature_factor': u.DefaultSpotInputUnits.temperature_factor,
     # PULSATIONS
-    'l': None,
-    'm': None,
-    'amplitude': u.VELOCITY_UNIT,
-    'frequency': u.FREQUENCY_UNIT,
-    'start_phase': u.deg,
-    'mode_axis_theta': u.deg,
-    'mode_axis_phi': u.deg,
+    'l': u.DefaultPulsationsInputUnits.l,
+    'm': u.DefaultPulsationsInputUnits.m,
+    'amplitude': u.DefaultPulsationsInputUnits.amplitude,
+    'frequency': u.DefaultPulsationsInputUnits.frequency,
+    'start_phase': u.DefaultPulsationsInputUnits.start_phase,
+    'mode_axis_theta': u.DefaultPulsationsInputUnits.mode_axis_theta,
+    'mode_axis_phi': u.DefaultPulsationsInputUnits.mode_axis_phi,
     # NUISANCE
     'ln_f': None
 }
