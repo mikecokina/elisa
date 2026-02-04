@@ -2,10 +2,10 @@ Change Log
 ==========
 |
 
-v0.6.0.rc1_
------------
+v0.6.0
+------
 
-.. v0.6.0.rc1_: https://github.com/mikecokina/elisa/commits/release/0.6.0.rc1
+.. v0.6.0: https://github.com/mikecokina/elisa/commits/release/0.6.0
 
 **Release date:** ****-**-**
 
