@@ -7,7 +7,7 @@ v0.6.0
 
 .. v0.6.0: https://github.com/mikecokina/elisa/commits/release/0.6.0
 
-**Release date:** ****-**-**
+**Release date:** 2026-02-04
 
 **Features**
 
