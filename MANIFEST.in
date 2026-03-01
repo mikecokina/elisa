@@ -1,12 +1,9 @@
-include data/*
-include passband/*
-include conf/*
-include conf/logging_schemas/*
+include data/**
+include passband/**
+include conf/**
 include version.py
 include setup.py
 include setup.cfg
 include LICENCE
 include README.rst
-include schema_registry/*
-include schema_registry/schema_files/*
-include data/mesh_corrections/*'
+include schema_registry/**

@@ -170,8 +170,7 @@ setup(
             'conf/logging_schemas/*',
             'schema_registry/*',
             'schema_registry/schema_files/*',
-            'data/*',
-            'data/mesh_corrections/*'
+            'data/**',
         ],
     },
 

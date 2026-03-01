@@ -2,6 +2,16 @@ Change Log
 ==========
 |
 
+v0.6.2
+------
+
+**Release date:** 2026-03-01
+
+**Fixes**
+
+- Build packs all required `data` from data directory
+
+
 v0.6.1
 ------
 
