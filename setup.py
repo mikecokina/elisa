@@ -9,13 +9,12 @@ Pre-release steps
 1.  make sure all newly added data files are listed in `setup.py` in variable
     `package_data`as well as in `MANIFEST.in` file
 
-2.  make sure version information in following destinations is up to date:
+2.  make sure version information in following destinations is up-to-date:
 
-    - `version.py` in function `get_version()`
     - `README.md` in yellow version badge https://img.shields.io/badge/version-<VERSION>-yellow.svg
     - in `src/elisa/__init__.py`, variable `__version__`
 
-3.  make sure that `CHANGELOG.md` is up to date; content as well as release date and valid version
+3.  make sure that `CHANGELOG.md` is up-to-date; content as well as release date and valid version
 
 4.  make sure all newly added dependencies are listed in `requirements.txt` as well as in
     `setup.py` in variable `install_requires`
@@ -63,10 +62,19 @@ from setuptools import setup, find_packages
 # To use a consistent encoding
 from codecs import open
 from os import path
-from version import read_version
-
 
 here = path.dirname(__file__)
+
+
+def read_version():
+    version_file = path.join(here, "src", "elisa", "__init__.py")
+    with open(version_file, encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("__version__"):
+                delim = '"' if '"' in line else "'"
+                return line.split(delim)[1]
+    raise RuntimeError("Unable to find __version__ string.")
+
 
 # Get the long description from the README file
 
@@ -149,31 +157,30 @@ setup(
     # https://packaging.python.org/en/latest/requirements.html
 
     install_requires=[
-            # Python 3.10 compatible floors
-            'astropy>=6.1.7; python_version<"3.11"',
-            'numpy>=2.2.0; python_version<"3.11"',
-            'pandas>=2.2.3; python_version<"3.11"',
-            'scipy>=1.15.0; python_version<"3.11"',
+        # Python 3.10 compatible floors
+        'astropy>=6.1.7; python_version<"3.11"',
+        'numpy>=2.2.0; python_version<"3.11"',
+        'pandas>=2.2.3; python_version<"3.11"',
+        'scipy>=1.15.0; python_version<"3.11"',
 
-            # Python 3.11+ floors (aligns with newer environments)
-            'astropy>=7.2.0; python_version>="3.11"',
-            'numpy>=2.4.2; python_version>="3.11"',
-            'pandas>=3.0.1; python_version>="3.11"',
-            'scipy>=1.17.1; python_version>="3.11"',
+        # Python 3.11+ floors (aligns with newer environments)
+        'astropy>=7.2.0; python_version>="3.11"',
+        'numpy>=2.4.2; python_version>="3.11"',
+        'pandas>=3.0.1; python_version>="3.11"',
+        'scipy>=1.17.1; python_version>="3.11"',
 
-            # Common deps
-            'corner>=2.2.1',
-            'emcee>=3.0.1',
-            'jsonschema>=3.2.0',
-            'matplotlib>=3.3.2',
-            'packaging>=20.0',
-            'python-dateutil>=2.6.1',
-            'tqdm>=4.43.0',
-            'parameterized>=0.7.4',
-            'numba>=0.51.2',
-            'requests>=2.26.0',
-        ],
-
+        # Common deps
+        'corner>=2.2.1',
+        'emcee>=3.0.1',
+        'jsonschema>=3.2.0',
+        'matplotlib>=3.3.2',
+        'packaging>=20.0',
+        'python-dateutil>=2.6.1',
+        'tqdm>=4.43.0',
+        'parameterized>=0.7.4',
+        'numba>=0.51.2',
+        'requests>=2.26.0',
+    ],
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
@@ -206,7 +213,7 @@ setup(
     },
 
     # Although 'package_data' is the preferred approach, in some case you may
-    # need to place data files outside of your packages. See:
+    # need to place data files outside your packages. See:
     # http://docs.python.org/3.4/distutils/setupscript.html#installing-additional-files # noqa
     # In this case, 'data_file' will be installed into '<sys.prefix>/my_data'
     data_files=[],
