@@ -1,7 +1,7 @@
 |GitHub version|  |Licence GPLv3| |Python version| |OS|
 
-.. |GitHub version| image:: https://img.shields.io/badge/version-0.6.2-yellow.svg
-   :target: https://github.com/mikecokina/elisa/commits/release/0.6.2
+.. |GitHub version| image:: https://img.shields.io/badge/version-0.7.0.dev0-yellow.svg
+   :target: https://github.com/mikecokina/elisa/commits/release/0.7.0.dev0
 
 .. |Python version| image:: https://img.shields.io/badge/python-3.6|3.7|3.8|3.9|3.10|3.11|3.12-orange.svg
    :target: https://www.python.org/
