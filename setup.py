@@ -12,10 +12,10 @@ Pre-release steps
 2.  make sure version information in following destinations is up to date:
 
     - `version.py` in function `get_version()`
-    - `README.rst` in yellow version badge https://img.shields.io/badge/version-<VERSION>-yellow.svg
+    - `README.md` in yellow version badge https://img.shields.io/badge/version-<VERSION>-yellow.svg
     - in `src/elisa/__init__.py`, variable `__version__`
 
-3.  make sure that `CHANGELOG.rst` is up to date; content as well as release date and valid version
+3.  make sure that `CHANGELOG.md` is up to date; content as well as release date and valid version
 
 4.  make sure all newly added dependencies are listed in `requirements.txt` as well as in
     `setup.py` in variable `install_requires`
