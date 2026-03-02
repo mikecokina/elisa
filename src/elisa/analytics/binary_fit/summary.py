@@ -10,6 +10,7 @@ from .. models import lc as lc_model
 from .. models import serializers
 from ... import units as u
 from ... import settings
+from ... import umpy as up
 from ... utils import split_to_batches
 from ... logger import getLogger
 from ... binary_system.surface.gravity import calculate_polar_gravity_acceleration
@@ -120,14 +121,14 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles, dimen
 
     # avoiding np warnings about NANs
     calculated_percentiles = np.empty((3, full_chain.shape[1]))
-    calculated_percentiles[:] = np.NaN
+    calculated_percentiles[:] = up.NaN
     full_chain_mask = (~np.isnan(full_chain)).any(axis=0)
 
     # evaluating posterior distribution of each binary parameter
     calculated_percentiles[:, full_chain_mask] = np.percentile(full_chain[:, full_chain_mask], percentiles, axis=0)
-    full_chain_results = np.row_stack((calculated_percentiles[1, :],
-                                       calculated_percentiles[1, :] - calculated_percentiles[0, :],
-                                       calculated_percentiles[2, :] - calculated_percentiles[1, :]))
+    full_chain_results = np.vstack((calculated_percentiles[1, :],
+                                    calculated_percentiles[1, :] - calculated_percentiles[0, :],
+                                    calculated_percentiles[2, :] - calculated_percentiles[1, :]))
 
     # output to screen/file
     intro = (write_fn, 'Parameter', 'value', '-1 sigma', '+1 sigma', 'unit', 'status', line_sep)
@@ -713,12 +714,12 @@ def fit_rv_summary_with_error_propagation(fit_instance, path, percentiles):
 
     # avoiding np warnings about NANs
     calculated_percentiles = np.empty((3, full_chain.shape[1]))
-    calculated_percentiles[:] = np.NaN
+    calculated_percentiles[:] = up.NaN
     full_chain_mask = (~np.isnan(full_chain)).any(axis=0)
     calculated_percentiles[:, full_chain_mask] = np.percentile(full_chain[:, full_chain_mask], percentiles, axis=0)
-    full_chain_results = np.row_stack((calculated_percentiles[1, :],
-                                       calculated_percentiles[1, :] - calculated_percentiles[0, :],
-                                       calculated_percentiles[2, :] - calculated_percentiles[1, :]))
+    full_chain_results = np.vstack((calculated_percentiles[1, :],
+                                    calculated_percentiles[1, :] - calculated_percentiles[0, :],
+                                    calculated_percentiles[2, :] - calculated_percentiles[1, :]))
 
     intro = (write_fn, 'Parameter', 'value', '-1 sigma', '+1 sigma', 'unit', 'status', line_sep)
     write_fn(f"\nBINARY SYSTEM{line_sep}")
@@ -810,7 +811,7 @@ def _manage_chain_evaluation(renormalized_chain, eval_function, *args):
         pool.close()
         pool.join()
         result = [r.get() for r in result]
-        return np.row_stack(result)
+        return np.vstack(result)
     else:
         args += (renormalized_chain,)
         return eval_function(*args)

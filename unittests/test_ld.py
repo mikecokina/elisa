@@ -57,7 +57,7 @@ class TestLimbDarkeningModule(ElisaTestCase):
         obtained = [ld.get_ld_table(**param) for param in params]
 
         for e, o in zip(expected, obtained):
-            assert_frame_equal(e, o, check_less_precise=True, check_dtype=False, check_exact=True)
+            assert_frame_equal(e, o, rtol=1e-5, check_dtype=False, check_exact=True)
 
     def test_get_ld_table_by_name(self):
         settings.configure(**{"LD_TABLES": os.path.join(self.base_path, "data", "vh93")})
@@ -67,7 +67,7 @@ class TestLimbDarkeningModule(ElisaTestCase):
         obtained = [ld.get_ld_table_by_name(file) for file in filenames]
 
         for e, o in zip(expected, obtained):
-            assert_frame_equal(e, o, check_less_precise=True, check_dtype=False, check_exact=True)
+            assert_frame_equal(e, o, rtol=1e-5, check_dtype=False, check_exact=True)
 
     def test_get_ld_table_by_name_same_as_get_ld_table(self):
         settings.configure(**{"LD_TABLES": os.path.join(self.base_path, "data", "vh93")})

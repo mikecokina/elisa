@@ -113,9 +113,9 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
         csv_columns = settings.LD_LAW_COLS_ORDER[settings.LIMB_DARKENING_LAW]
         all_columns = csv_columns
 
-        df = pd.DataFrame(columns=all_columns)
+        # Collect frames then concat once (pandas 2.x compatible and faster)
+        frames = []
 
-        # for table in relevant_tables:
         for table in relevant_tables:
             if table in buffer.LD_CFS_TABLES:
                 _df = buffer.LD_CFS_TABLES[table]
@@ -123,9 +123,15 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
                 _df = get_ld_table_by_name(table)[csv_columns]
                 buffer.LD_CFS_TABLES[table] = _df
 
-            apppend = getattr(df, '_append') if hasattr(df, '_append') else getattr(df, 'append')
-            df = apppend(_df)
+            frames.append(_df)
+
         buffer.reduce_buffer(buffer.LD_CFS_TABLES)
+
+        # If no tables matched for some reason, keep an empty df with correct columns
+        if frames:
+            df = pd.concat(frames, ignore_index=True)
+        else:
+            df = pd.DataFrame(columns=all_columns)
 
         df = df.drop_duplicates()
 

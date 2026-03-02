@@ -186,10 +186,10 @@ def eval_interpolation_approximation(
 
         if plateau_factor * points_in_ecl_suplements < settings.MIN_POINTS_IN_ECLIPSE:
             rowstack_args = (reduced_orbit_array, reduced_orbit_supplement_arr[points_ecl_mask_suplements])
-            reduced_orbit_array = np.row_stack(rowstack_args)
+            reduced_orbit_array = np.vstack(rowstack_args)
 
             rowstack_args = (counterpart_position_array, np.full((points_in_ecl_suplements, 5), np.nan))
-            counterpart_position_array = np.row_stack(rowstack_args)
+            counterpart_position_array = np.vstack(rowstack_args)
         else:
             # interpolation approximation causes artifacts in case of the very
             # flat plateaus in the bottom of the eclipse

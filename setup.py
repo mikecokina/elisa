@@ -63,19 +63,36 @@ from setuptools import setup, find_packages
 # To use a consistent encoding
 from codecs import open
 from os import path
-from version import get_version
+from version import read_version
 
 
 here = path.dirname(__file__)
 
 # Get the long description from the README file
-with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
-    long_description = "For more information visit https://github.com/mikecokina/elisa/blob/master/README.rst"
+
+long_description = (
+    "ELISA is a scientific software package for modeling eclipsing binary star systems. "
+    "It provides tools for computing light curves, radial velocity curves, and related "
+    "observables based on physically consistent stellar and orbital models. "
+    "The library is designed with numerical accuracy and extensibility in mind, "
+    "making it suitable for research, experimentation, and advanced analysis in "
+    "stellar astrophysics.\n\n"
+    "ELISA supports configurable system geometries, surface discretization, "
+    "radiative modeling, and observational simulation pipelines. "
+    "It enables detailed investigation of photometric and spectroscopic behavior "
+    "of interacting and detached binary systems.\n\n"
+    "The project is built on top of NumPy and SciPy and follows a modular architecture "
+    "that allows users to extend physical models, observational methods, and numerical "
+    "strategies. It is intended for developers and researchers working in computational "
+    "astronomy and binary star modeling."
+)
 
 setup(
     name='elisa',
     src_root='src',
-    version=get_version(),
+    version=read_version(),
+
+    python_requires='>=3.10',
 
     description='Eclipsing Binary Modeling Software',
     long_description=long_description,
@@ -88,7 +105,7 @@ setup(
     author_email='mikecokina@gmail.com, mirofedurco@gmail.com',
 
     # Choose your license
-    license='GPLv2',
+    license='GPLv3',
 
     classifiers=[
         # How mature is this project? Common values are
@@ -107,13 +124,11 @@ setup(
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.
         # 'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
         'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
+        'Programming Language :: Python :: 3.14',
     ],
 
     # What does your project relate to?
@@ -132,32 +147,50 @@ setup(
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
+
     install_requires=[
-        'astropy>=4.0.1,<=5.3.4',
-        'corner>=2.2.1',
-        'emcee>=3.0.1,<=3.1.6',
-        'jsonschema>=3.2.0',
-        'matplotlib>=3.3.2,<=3.7.5',
-        'numpy>=1.16.2,<=1.26.4',
-        'packaging<=24.2',
-        'pandas>=0.24.0,<=1.5.3',
-        'python-dateutil>=2.6.1,<=2.8.1',
-        'scipy>=1.0.0,<=1.11.4',
-        'tqdm>=4.43.0',
-        'parameterized>=0.7.4',
-        'numba>=0.51.2',
-        'requests>=2.26.0',
-        'setuptools<=75.8.0',
-        'wheel<=0.45.1',
-    ],
+            # Python 3.10 compatible floors
+            'astropy>=6.1.7; python_version<"3.11"',
+            'numpy>=2.2.0; python_version<"3.11"',
+            'pandas>=2.2.3; python_version<"3.11"',
+            'scipy>=1.15.0; python_version<"3.11"',
+
+            # Python 3.11+ floors (aligns with newer environments)
+            'astropy>=7.2.0; python_version>="3.11"',
+            'numpy>=2.4.2; python_version>="3.11"',
+            'pandas>=3.0.1; python_version>="3.11"',
+            'scipy>=1.17.1; python_version>="3.11"',
+
+            # Common deps
+            'corner>=2.2.1',
+            'emcee>=3.0.1',
+            'jsonschema>=3.2.0',
+            'matplotlib>=3.3.2',
+            'packaging>=20.0',
+            'python-dateutil>=2.6.1',
+            'tqdm>=4.43.0',
+            'parameterized>=0.7.4',
+            'numba>=0.51.2',
+            'requests>=2.26.0',
+        ],
+
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
     # for example:
     # $ pip install -e .[dev,test]
     extras_require={
-        'dev': [],
-        'test': ['coverage', 'parameterized>=0.7.4', 'pytest>=3.2.3,<=8.3.4'],
+        'dev': [
+            'setuptools>=82.0.0',
+            'wheel>=0.46.3',
+            'build',
+            'twine',
+        ],
+        'test': [
+            'coverage',
+            'pytest>=9.0.2',
+            'parameterized>=0.7.4'
+        ],
     },
 
     # If there are data files included in your packages that need to be
@@ -165,11 +198,9 @@ setup(
     # have to be included in MANIFEST.in as well.
     package_data={
         'elisa': [
-            'passband/*',
-            'conf/*',
-            'conf/logging_schemas/*',
-            'schema_registry/*',
-            'schema_registry/schema_files/*',
+            'passband/**',
+            'conf/**',
+            'schema_registry/**',
             'data/**',
         ],
     },

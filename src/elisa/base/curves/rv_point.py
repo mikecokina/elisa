@@ -1,5 +1,6 @@
 from ... import umpy as np
 from elisa.base.curves import utils as crv_utils
+from elisa import umpy as up
 
 
 def _calculate_rv_point(star):
@@ -13,7 +14,7 @@ def _calculate_rv_point(star):
     velocities = getattr(star, 'velocities')[indices]
     fluxes = crv_utils.calculate_surface_element_fluxes('rv_band', star)
     return np.sum(velocities[:, 0] * fluxes) / np.sum(fluxes) \
-        if np.sum(fluxes) != 0 else np.NaN
+        if np.sum(fluxes) != 0 else up.NaN
 
 
 def compute_rv_at_pos(velocities, pos_idx, crv_labels, system):

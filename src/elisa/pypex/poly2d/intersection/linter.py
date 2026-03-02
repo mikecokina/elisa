@@ -136,7 +136,7 @@ def intersections(poly1, poly2, in_touch=False, tol=PRECISION, round_tol=ROUND_P
     intr_ptx = np.full_like(np.empty((m1 * m2, 2), dtype=FLOAT), np.nan)
     distance = np.full_like(np.empty(m1 * m2, dtype=FLOAT), np.nan)
 
-    msg = np.chararray(m1 * m2, itemsize=9)
+    msg = np.full(m1 * m2, b"", dtype="S9")
 
     poly1_edges = polygon_hull_to_edges(poly1)
     poly2_edges = polygon_hull_to_edges(poly2)

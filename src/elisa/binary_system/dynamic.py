@@ -154,7 +154,7 @@ def resolve_spots_geometry_update(spots_longitudes, size, pulsations_tests,
         d_long = np.abs(longitude_array - np.roll(longitude_array, shift=1))[1:]
         # creating 2*n array due to compatibility with new geometry assessment based on change in spot longitude where
         # both components are evaluated at once
-        d_long = np.row_stack((d_long, d_long))
+        d_long = np.vstack((d_long, d_long))
 
         reducer[component] = _resolve_geometry_update(
             has_spots=True, size=size, rel_d=d_long, resolve="spot",

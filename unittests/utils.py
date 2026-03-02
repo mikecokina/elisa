@@ -269,9 +269,9 @@ def surface_closed(faces, points):
 
     faces = unique_face_vertices[inverse_face_indices].reshape(faces.shape)
 
-    edges = np.row_stack((np.column_stack((faces[:, 0], faces[:, 1])),
-                          np.column_stack((faces[:, 1], faces[:, 2])),
-                          np.column_stack((faces[:, 2], faces[:, 0]))))
+    edges = np.vstack((np.column_stack((faces[:, 0], faces[:, 1])),
+                       np.column_stack((faces[:, 1], faces[:, 2])),
+                       np.column_stack((faces[:, 2], faces[:, 0]))))
     for edge in edges:
         in_array = np.isin(element=faces, test_elements=edge)
         occurences = np.sum(in_array, axis=1)  # searching for particular edge

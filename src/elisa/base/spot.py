@@ -273,7 +273,7 @@ def incorporate_spots_mesh(to_container, component_com):
         all_component_points = all_component_points[vertices_to_keep]
         vertices_map = vertices_map[vertices_to_keep]
 
-        all_component_points = np.row_stack((all_component_points, spot.points))
+        all_component_points = np.vstack((all_component_points, spot.points))
         vertices_map = np.concatenate((vertices_map, np.full(spot.points.shape[0], spot_index)))
 
     separated_points = split_points_of_spots_and_component(to_container, all_component_points, vertices_map)

@@ -18,6 +18,8 @@ from unittests.utils import (
     ElisaTestCase,
 )
 
+import numpy.testing as npt
+
 set_astropy_units()
 
 PARAMS = {
@@ -103,8 +105,9 @@ class VisibilityTestCase(ElisaTestCase):
         expected_sums = {'primary': 0.0, 'secondary': 2.0890992190449648e+19}
         vis_area_p = np.sum(retval['primary'])
         vis_area_s = np.sum(retval['secondary'])
-        self.assertEqual(vis_area_p, expected_sums['primary'], 5)
-        self.assertEqual(vis_area_s, expected_sums['secondary'], 5)
+
+        npt.assert_allclose(vis_area_p, expected_sums['primary'], rtol=1e-10, atol=0.0)
+        npt.assert_allclose(vis_area_s, expected_sums['secondary'], rtol=1e-10, atol=0.0)
 
     def test_visibility_dissimilar_comp_eclipse(self):
         retval = self.eval_coverage(0.493333333)
@@ -118,5 +121,6 @@ class VisibilityTestCase(ElisaTestCase):
         expected_sums = {'primary': 3.352908353932797e+16, 'secondary': 2.0909670552161714e+19}
         vis_area_p = np.sum(retval['primary'])
         vis_area_s = np.sum(retval['secondary'])
-        self.assertEqual(vis_area_p, expected_sums['primary'], 5)
-        self.assertEqual(vis_area_s, expected_sums['secondary'], 5)
+
+        npt.assert_allclose(vis_area_p, expected_sums['primary'], rtol=1e-10, atol=0.0)
+        npt.assert_allclose(vis_area_s, expected_sums['secondary'], rtol=1e-10, atol=0.0)

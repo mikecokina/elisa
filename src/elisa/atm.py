@@ -993,7 +993,7 @@ def compute_normal_intensity(spectral_flux, wavelength, flux_mult=1.0, wave_mult
     :param wave_mult: float;
     :return: numpy.array;
     """
-    return flux_mult * wave_mult * integrate.simps(spectral_flux, wavelength, axis=1)
+    return flux_mult * wave_mult * up.simps(spectral_flux, wavelength, axis=1)
 
 
 def compute_integral_si_intensity_from_passbanded_dict(passbaned_dict):
@@ -1014,8 +1014,8 @@ def compute_integral_si_intensity_from_atm_data_containers(atm_data_containers):
     """
     return [
         IntensityContainer(
-            intensity=const.PI * integrate.simps(adc.model.flux * adc.flux_to_si_mult,
-                                                 adc.model.wavelength * adc.wave_to_si_mult),
+            intensity=const.PI * up.simps(adc.model.flux * adc.flux_to_si_mult,
+                                          adc.model.wavelength * adc.wave_to_si_mult),
             temperature=adc.temperature,
             log_g=adc.log_g,
             metallicity=adc.metallicity
