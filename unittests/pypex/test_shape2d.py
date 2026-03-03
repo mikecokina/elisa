@@ -29,8 +29,8 @@ class Shape2DTestCase(unittest.TestCase):
                  [[0.0, 0.0],
                   [1.0, 0.4],
                   [0.0, -.7]]]
-        self.assertFalse(intersects(faces[0], faces[1], in_touch=True))
-        self.assertFalse(intersects(faces[0], faces[1], in_touch=False))
+        self.assertFalse(intersects(faces[0], faces[1], touch_is_separated=False))
+        self.assertFalse(intersects(faces[0], faces[1], touch_is_separated=True))
 
         # not intersection example:
         faces = [[[0.0, 0.5],
@@ -39,8 +39,8 @@ class Shape2DTestCase(unittest.TestCase):
                  [[0.0, 0.0],
                   [1.0, 0.3],
                   [0.0, 0.3]]]
-        self.assertFalse(intersects(faces[0], faces[1], in_touch=True))
-        self.assertFalse(intersects(faces[0], faces[1], in_touch=False))
+        self.assertFalse(intersects(faces[0], faces[1], touch_is_separated=False))
+        self.assertFalse(intersects(faces[0], faces[1], touch_is_separated=True))
 
     def test_sat_intersection_positive_case(self):
         faces = [[[0.0, 0.5],
@@ -49,8 +49,8 @@ class Shape2DTestCase(unittest.TestCase):
                  [[0.0, 2.0],
                   [1.0, 0.5],
                   [0.0, 0.5]]]
-        self.assertTrue(intersects(faces[0], faces[1], in_touch=True))
-        self.assertTrue(intersects(faces[0], faces[1], in_touch=False))
+        self.assertTrue(intersects(faces[0], faces[1], touch_is_separated=False))
+        self.assertTrue(intersects(faces[0], faces[1], touch_is_separated=True))
 
         faces = [[[0.0, 0.0],
                   [2.0, 0.0],
@@ -58,8 +58,8 @@ class Shape2DTestCase(unittest.TestCase):
                  [[-.9, -.9],
                   [-3., 3.5],
                   [9.5, 1.0]]]
-        self.assertTrue(intersects(faces[0], faces[1], in_touch=True))
-        self.assertTrue(intersects(faces[0], faces[1], in_touch=False))
+        self.assertTrue(intersects(faces[0], faces[1], touch_is_separated=False))
+        self.assertTrue(intersects(faces[0], faces[1], touch_is_separated=True))
 
         faces = [[[0.0, 0.5],
                   [1.0, 0.5],
@@ -69,8 +69,8 @@ class Shape2DTestCase(unittest.TestCase):
                   [4.0, 0.5],
                   [4.0, 3.0],
                   [0.5, 3.0]]]
-        self.assertTrue(intersects(faces[0], faces[1], in_touch=True))
-        self.assertTrue(intersects(faces[0], faces[1], in_touch=False))
+        self.assertTrue(intersects(faces[0], faces[1], touch_is_separated=False))
+        self.assertTrue(intersects(faces[0], faces[1], touch_is_separated=True))
 
         faces = [[[0.0, 0.5],
                   [1.0, 0.5],
@@ -79,8 +79,8 @@ class Shape2DTestCase(unittest.TestCase):
                  [[0.5, 0.5],
                   [4.0, 0.5],
                   [4.0, 3.0]]]
-        self.assertTrue(intersects(faces[0], faces[1], in_touch=True))
-        self.assertTrue(intersects(faces[0], faces[1], in_touch=False))
+        self.assertTrue(intersects(faces[0], faces[1], touch_is_separated=False))
+        self.assertTrue(intersects(faces[0], faces[1], touch_is_separated=True))
 
     def test_sat_intersection_onedge_case(self):
         faces = [[[0.0, 0.0],
@@ -89,8 +89,8 @@ class Shape2DTestCase(unittest.TestCase):
                  [[-1., 1.0],
                   [0.0, 1.0],
                   [0.0, 0.0]]]
-        self.assertFalse(intersects(faces[0], faces[1], in_touch=False))
-        self.assertTrue(intersects(faces[0], faces[1], in_touch=True))
+        self.assertFalse(intersects(faces[0], faces[1], touch_is_separated=True))
+        self.assertTrue(intersects(faces[0], faces[1], touch_is_separated=False))
 
     def test_sat_intersection_touch_case(self):
         faces = [[[0.0, 0.0],
@@ -100,29 +100,29 @@ class Shape2DTestCase(unittest.TestCase):
                   [-.1, -.5],
                   [-.5, -.5]]]
 
-        self.assertFalse(intersects(faces[0], faces[1], in_touch=False))
-        self.assertTrue(intersects(faces[0], faces[1], in_touch=True))
+        self.assertFalse(intersects(faces[0], faces[1], touch_is_separated=True))
+        self.assertTrue(intersects(faces[0], faces[1], touch_is_separated=False))
 
     def test_line_sat_intersect(self):
         line1 = np.array([[-1., -1.], [0.3, 0.3]])
         line2 = np.array([[0.2, 0.2], [1.3, 1.3]])
-        self.assertTrue(intersects(line1, line2, in_touch=True))
-        self.assertTrue(intersects(line1, line2, in_touch=False))
+        self.assertTrue(intersects(line1, line2, touch_is_separated=False))
+        self.assertTrue(intersects(line1, line2, touch_is_separated=True))
 
         line1 = np.array([[-1., -1.], [0.3, 0.3]])
         line2 = np.array([[0.3, 0.3], [1.3, 1.3]])
-        self.assertTrue(intersects(line1, line2, in_touch=True))
-        self.assertFalse(intersects(line1, line2, in_touch=False))
+        self.assertTrue(intersects(line1, line2, touch_is_separated=False))
+        self.assertFalse(intersects(line1, line2, touch_is_separated=True))
 
         line1 = np.array([[1., 1.], [1., 2.]])
         line2 = np.array([[1., 2.], [1., 13.]])
-        self.assertTrue(intersects(line1, line2, in_touch=True))
-        self.assertFalse(intersects(line1, line2, in_touch=False))
+        self.assertTrue(intersects(line1, line2, touch_is_separated=False))
+        self.assertFalse(intersects(line1, line2, touch_is_separated=True))
 
         line1 = np.array([[1., 1.], [3.1, 1.]])
         line2 = np.array([[3.2, 1.], [5., 1.]])
-        self.assertFalse(intersects(line1, line2, in_touch=True))
-        self.assertFalse(intersects(line1, line2, in_touch=False))
+        self.assertFalse(intersects(line1, line2, touch_is_separated=False))
+        self.assertFalse(intersects(line1, line2, touch_is_separated=True))
 
 
 class Line2DTestCase(unittest.TestCase):
@@ -133,12 +133,12 @@ class Line2DTestCase(unittest.TestCase):
 
         line1 = Line(np.array([[0, 0], [1, 0]]))
         line2 = Line(np.array([[1, 0], [4, 0]]))
-        self.assertFalse(line1.intersects(line2, in_touch=True))
-        self.assertFalse(line1.intersects(line2, in_touch=False))
+        self.assertFalse(line1.intersects(line2, touch_is_separated=False))
+        self.assertFalse(line1.intersects(line2, touch_is_separated=True))
 
         line1 = Line(np.array([[0, 0], [1, 0]]))
         line2 = Line(np.array([[1, 0], [4, 1]]))
-        self.assertFalse(line1.intersects(line2, in_touch=False))
+        self.assertFalse(line1.intersects(line2, touch_is_separated=True))
 
     def test_intersects_positive(self):
         line1 = Line(np.array([[0, 0], [1, 0]]))
@@ -147,7 +147,7 @@ class Line2DTestCase(unittest.TestCase):
 
         line1 = Line(np.array([[0, 0], [1, 0]]))
         line2 = Line(np.array([[1.0, 0.0], [0.5, 1.]]))
-        self.assertTrue(line1.intersects(line2, in_touch=True))
+        self.assertTrue(line1.intersects(line2, touch_is_separated=False))
 
     def test_intersection_positive(self):
         line1 = Line(np.array([[0, 0], [1, 0]]))
@@ -158,7 +158,7 @@ class Line2DTestCase(unittest.TestCase):
 
         line1 = Line(np.array([[0, 0], [1, 0]]))
         line2 = Line(np.array([[1.0, 0.0], [0.5, 1.]]))
-        obtained = line1.intersection(line2, in_touch=True)
+        obtained = line1.intersection(line2, touch_is_separated=False)
         expected = Point(1, 0)
         self.assertTrue(expected == obtained)
 
@@ -170,14 +170,14 @@ class Line2DTestCase(unittest.TestCase):
 
         line1 = Line(np.array([[0, 0], [1, 0]]))
         line2 = Line(np.array([[1, 0], [4, 0]]))
-        obtained = line1.intersection(line2, in_touch=True)
+        obtained = line1.intersection(line2, touch_is_separated=False)
         self.assertIsNone(obtained)
-        obtained = line1.intersection(line2, in_touch=False)
+        obtained = line1.intersection(line2, touch_is_separated=True)
         self.assertIsNone(obtained)
 
         line1 = Line(np.array([[0, 0], [1, 0]]))
         line2 = Line(np.array([[1, 0], [4, 1]]))
-        obtained = line1.intersection(line2, in_touch=False)
+        obtained = line1.intersection(line2, touch_is_separated=True)
         self.assertIsNone(obtained)
 
 
