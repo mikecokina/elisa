@@ -132,4 +132,5 @@ ignore = [
     "ERA001", # Found commented-out code
     "ANN002", # Missing type annotation for `*args`
     "ANN003", # Missing type annotation for `**kwargs`
+    "ANN401", # Any type annotation
 ]
