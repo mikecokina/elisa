@@ -1,15 +1,14 @@
-import sys
+from __future__ import annotations
+
 import builtins
+import sys
 from importlib import import_module
 
 builtins._ASTROPY_SETUP_ = True
 
 # DO NOT CHANGE ANYTHING (including default units) !!!
 
-if 'astropy.units' in sys.modules:
-    u = sys.modules['astropy.units']
-else:
-    u = import_module('astropy.units')
+u = sys.modules["astropy.units"] if "astropy.units" in sys.modules else import_module("astropy.units")
 
 # DO NOT CHANGE THIS!!!
 MASS_UNIT = u.kg
@@ -31,14 +30,14 @@ deg = u.deg
 degree = u.degree
 rad = u.rad
 km = u.km
-solMass = u.solMass
-deg_C = u.deg_C
+solMass = u.solMass  # noqa: N816
+deg_C = u.deg_C  # noqa: N816
 m = u.m
 cm = u.cm
 d = u.d
 s = u.s
 W = u.W
-solRad = u.solRad
+solRad = u.solRad  # noqa: N816
 K = u.K
 dimensionless_unscaled = u.dimensionless_unscaled
 kg = u.kg
@@ -52,13 +51,14 @@ Unit = u.Unit
 Quantity = u.quantity.Quantity
 Dex = u.Dex
 
+
 # DEFAULT PARAMETER UNITS -- DO NOT CHANGE!!! --------------------------------------------------------------------------
 
 
-class BaseUnits(object):
+class BaseUnits:
     @classmethod
-    def __iter__(cls):
-        for varname in cls.__dict__.keys():
+    def __iter__(cls) -> tuple[str, Unit | BaseUnits | bool | str]:
+        for varname in cls.__dict__:
             if str(varname).startswith("_"):
                 continue
             _unit = getattr(cls, varname)
@@ -66,18 +66,24 @@ class BaseUnits(object):
                 _unit = _unit.to_string()
             yield varname, _unit
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: str) -> Unit | BaseUnits | bool | str:
         return getattr(self, item)
 
-    def as_dict(self):
-        _dict_repr = dict()
+    def as_dict(self) -> dict[str, str | dict | bool]:
+        """Return a dictionary representation of the class.
+
+        Return a dictionary representation of the class,
+        where keys are parameter names and values are their units
+        (as strings) or nested dictionaries for nested BaseUnits.
+        """
+        _dict_repr = {}
         for key, val in self:
             if isinstance(val, Unit):
                 _val_repr = val.to_string()
             elif isinstance(val, BaseUnits):
                 _val_repr = val.as_dict()
             elif isinstance(val, bool):
-                _val_repr = 'boolean'
+                _val_repr = "boolean"
             else:
                 _val_repr = str(val)
 
@@ -101,7 +107,7 @@ class _DefaultSpotUnits(BaseUnits):
 
 
 class _DefaultPulsationsUnits(BaseUnits):
-    l = dimensionless_unscaled
+    l = dimensionless_unscaled  # noqa: E741
     m = dimensionless_unscaled
     amplitude = VELOCITY_UNIT
     frequency = FREQUENCY_UNIT
@@ -204,10 +210,10 @@ DefaultBinarySystemUnits = _DefaultBinarySystemUnits()
 DefaultSingleSystemUnits = _DefaultSingleSystemUnits()
 
 default_unit_map = {
-    'SingleSystem': DefaultSingleSystemUnits.system,
-    'BinarySystem': DefaultBinarySystemUnits.system,
-    'Star': DefaultStarUnits,
-    'Spot': DefaultSpotUnits,
+    "SingleSystem": DefaultSingleSystemUnits.system,
+    "BinarySystem": DefaultBinarySystemUnits.system,
+    "Star": DefaultStarUnits,
+    "Spot": DefaultSpotUnits,
 
 }
 
@@ -215,7 +221,7 @@ default_unit_map = {
 
 DEFAULT_INCLINATION_INPUT_UNIT = deg
 DEFAULT_PERIOD_INPUT_UNIT = d
-DEFAULT_GAMMA_INPUT_UNIT = m/s
+DEFAULT_GAMMA_INPUT_UNIT = m / s
 DISTANCE_TO_OBS_INPUT_UNIT = pc
 
 
@@ -228,7 +234,7 @@ class _DefaultSpotInputUnits(BaseUnits):
 
 
 class _DefaultPulsationsInputUnits(BaseUnits):
-    l = dimensionless_unscaled
+    l = dimensionless_unscaled  # noqa: E741
     m = dimensionless_unscaled
     amplitude = VELOCITY_UNIT
     frequency = u.d ** (-1)
@@ -319,7 +325,6 @@ class _DefaultSingleSystemInputUnits(BaseUnits):
         limb_darkening_coefficients = _DefaultStarInputUnits.limb_darkening_coefficients
         spots = _DefaultSpotInputUnits()
         pulsations = _DefaultPulsationsInputUnits()
-
 
     system = __DefaultSingleSystemInputUnits()
     star = __DefaultSingleSystemStarInputUnits()
