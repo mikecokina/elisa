@@ -85,16 +85,21 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
 
     def test_raise_missing_bolometric_passband_lds(self):
         definition = get_default_binary_definition()
-        definition["primary"].update({**definition["primary"],
-                                      "limb_darkening_coefficients": {'TESS': 0.5}})
+        definition["primary"].update(
+            {**definition["primary"], "limb_darkening_coefficients": {"TESS": 0.5}}
+        )
 
         bs = BinarySystem.from_json(definition)
         o = Observer(passband=["TESS"], system=bs)
-        with self.assertRaises(Exception) as context:
-            o.lc(phases=[0.0, ])
 
-        self.assertTrue('Please ad `bolometric` limb-darkening coefficients to '
-                        'your custom set of limb-darkening coefficients.' in str(context.exception))
+        with self.assertRaises(ValueError) as context:
+            o.lc(phases=[0.0])
+
+        self.assertIn(
+            "Please add `bolometric` limb-darkening coefficients to your custom set "
+            "of limb-darkening coefficients.",
+            str(context.exception),
+        )
 
     # noinspection PyMethodMayBeStatic
     def test_custom_ld_coeff_distribution(self):
