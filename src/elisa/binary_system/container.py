@@ -24,6 +24,9 @@ class OrbitalPositionContainer(PositionContainer):
     Use functions OrbitalPositionContainer.from_binary_system or
     BinarySystem.build_container to correctly initialize this container.
     """
+
+    __slots__ = ['primary', 'secondary', 'time', 'period', 'semi_major_axis', 'mass', 'mass_ratio', 'eccentricity']
+
     def __init__(self, primary: StarContainer, secondary: StarContainer, position, **properties):
         """
         Initialization of the OrbitalPositionContainer using StarContainers

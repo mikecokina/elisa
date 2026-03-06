@@ -395,8 +395,8 @@ class StarContainer(object):
         self.azimuth_args = np.array([])
         # --------------------------------------------------------------------------------------------------------------
 
-        self.spots = dict()
-        self.pulsations = dict()
+        self.spots = {}
+        self.pulsations = {}
         self.polar_potential_gradient_magnitude = np.nan
 
         # all star radii in any position (set on fly) ------------------------------------------------------------------
@@ -412,6 +412,7 @@ class StarContainer(object):
         # some defaults ------------------------------------------------------------------------------------------------
         self.t_eff = up.NaN
         self.limb_darkening_coefficients: dict[str, ArrayLike[Float]] | None = None
+        self.mass = up.NaN
         # --------------------------------------------------------------------------------------------------------------
 
         self._flatten = False
