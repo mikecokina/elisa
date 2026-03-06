@@ -472,7 +472,7 @@ def calculate_distance_matrix(
     :return: Tuple[numpy.ndarray, Union[numpy.ndarray, None]]
     """
     # pairwise distance vector matrix
-    distance_vector_matrix = operations.create_distance_vector_matrix(points1, points2)
+    distance_vector_matrix = operations.create_distance_vector_matrix(np.array(points1), np.array(points2))
 
     distance_matrix = operations.calculate_lengths_in_3d_array(distance_vector_matrix)
 
@@ -512,15 +512,15 @@ def find_face_centres(faces: Points3DList) -> NDArray[Float]:
 
 def check_missing_kwargs(
         mandatory_kwargs: list,
-        supplied_kwargs: list,
+        supplied_kwargs: dict[str, Any],
         instance_of: type,
 ) -> None:
     """Check if all `kwargs` are all in `instance kwargs`.
 
     If missing raise ValuerError with missing `kwargs`.
 
-    :param mandatory_kwargs: List[str]
-    :param supplied_kwargs: List[str]
+    :param mandatory_kwargs: list[str]
+    :param supplied_kwargs: dict[str, Any]
     :param instance_of: class
     :return:
     """
