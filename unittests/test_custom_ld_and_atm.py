@@ -1,4 +1,6 @@
 import os.path as op
+from unittest.mock import patch
+
 import numpy as np
 from numpy.testing import assert_array_equal
 
@@ -10,6 +12,42 @@ from elisa import (
 from elisa import BinarySystem, Observer
 from unittests.utils import ElisaTestCase
 from elisa.base.curves.utils import get_component_limbdarkening_cfs
+
+from elisa.base.curves import utils as curves_utils
+
+
+class DummyComponent:
+    """Minimal stand-in for a StarContainer used in curves utils tests.
+
+    Attributes are intentionally minimal and match names accessed by the
+    functions under test.
+    """
+
+    def __init__(self, temperatures, log_g, metallicity, limb_darkening_coefficients=None):
+        self.temperatures = np.asarray(temperatures)
+        self.log_g = np.asarray(log_g)
+        self.metallicity = metallicity
+        self.limb_darkening_coefficients = limb_darkening_coefficients
+        # surfaces-related arrays: use one value per face
+        faces = self.temperatures.shape[0]
+        self.indices = np.arange(faces)
+        # Normal radiance and ld_cfs are dicts keyed by band name and have per-face arrays
+        self.normal_radiance = {"bolometric": np.ones(faces)}
+        self.ld_cfs = {"bolometric": np.ones((faces, 2))}
+        self.los_cosines = np.ones(faces)
+        self.coverage = np.ones(faces)
+        # t_eff and log_g presence for other helpers
+        self.t_eff = float(self.temperatures[0]) if self.temperatures.size else 5000.0
+
+    # noinspection PyMethodMayBeStatic
+    def symmetry_faces(self, arr):
+        # Identity for tests which don't rely on symmetry transform
+        return arr
+
+    # noinspection PyMethodMayBeStatic
+    def mirror_face_values(self, vals):
+        # For testing, return vals unchanged; real implementation mirrors values
+        return vals
 
 
 class BinarySystemSeparatedAtmospheres(ElisaTestCase):
@@ -123,8 +161,58 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
         container = bs.build_container(phase=0.0)
         ldcfs = get_component_limbdarkening_cfs(
             container.primary,
+            passbands=[passband, ],
             symmetry_test=False,
-            passbands=[passband, ]
         )[passband]
 
         assert_array_equal(np.unique(ldcfs, axis=0)[0], expected_ldc)
+
+
+class TestCurvesUtilsCachingAndBroadcast(ElisaTestCase):
+    def test_explicit_coeffs_broadcast(self):
+        """Explicit 1-D LD coefficients should be broadcast to (faces, coeffs)."""
+        comp = DummyComponent(
+            temperatures=[5000.0, 5000.0, 5000.0],
+            log_g=[4.0, 4.0, 4.0],
+            metallicity=0.0,
+            limb_darkening_coefficients={"bolometric": np.array([0.5, 0.4])}
+        )
+
+        # noinspection PyTypeChecker
+        ld_cfs = curves_utils.get_component_limbdarkening_cfs(comp, passbands=["bolometric"], symmetry_test=False)
+        arr = ld_cfs["bolometric"]
+        # Expect shape (faces, coeff_count)
+        assert arr.shape == (3, 2)
+        # Every row equals the provided coefficients
+        assert_array_equal(arr, np.tile(np.array([0.5, 0.4]), (3, 1)))
+
+    def test_interpolated_ld_cached(self):
+        """When LD interpolation is used, results must be cached so the
+        underlying interpolation function is invoked only once for identical
+        inputs.
+        """
+        # Ensure caching is cleared at test start
+        curves_utils._interpolate_on_ld_grid_cached.cache_clear()
+
+        # Create a component without explicit LD coefficients so interpolation is used
+        comp = DummyComponent(temperatures=[5500.0, 5500.0], log_g=[4.0, 4.0], metallicity=0.0,
+                              limb_darkening_coefficients=None)
+
+        # Force predictable behaviour: ensure single-coeff mode is off and restore later
+        old_single = getattr(settings, "USE_SINGLE_LD_COEFFICIENTS", False)
+        settings.USE_SINGLE_LD_COEFFICIENTS = False
+        try:
+            # Patch the underlying interpolation to a synthetic deterministic value
+            with patch.object(curves_utils.ld, "interpolate_on_ld_grid",
+                              return_value={"bolometric": np.array([[0.1, 0.2]])}) as mock_interp:
+                # First call should invoke the interpolation
+                # noinspection PyTypeChecker
+                _ = curves_utils.get_component_limbdarkening_cfs(comp, passbands=["bolometric"], symmetry_test=False)
+                # Second call with identical inputs should hit the cache and not call interpolation again
+                # noinspection PyTypeChecker
+                _ = curves_utils.get_component_limbdarkening_cfs(comp, passbands=["bolometric"], symmetry_test=False)
+
+                self.assertEqual(mock_interp.call_count, 1,
+                                 "LD interpolation should be called only once due to caching")
+        finally:
+            settings.USE_SINGLE_LD_COEFFICIENTS = old_single
