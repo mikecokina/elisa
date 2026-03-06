@@ -257,6 +257,59 @@ class TestObserver(ElisaTestCase):
             for passband, zm in zero_points['reference_magnitudes'].items():
                 assert_equal(mags[passband][0], zm)
 
+    def test_system_cls_property(self):
+        """Test Observer.system_cls property getter and setter."""
+        s = BinarySystemMock()
+        o = Observer(self._passband, s)
+        self.assertEqual(o.system_cls, BinarySystemMock)
+        o.system_cls = SingleSystemMock
+        self.assertEqual(o.system_cls, SingleSystemMock)
+
+    def test_flux_unit_property(self):
+        """Test Observer.flux_unit property getter and setter."""
+        s = BinarySystemMock()
+        o = Observer(self._passband, s)
+        self.assertEqual(o.flux_unit, o._flux_unit)
+        o.flux_unit = 'W/m2'
+        self.assertEqual(str(o.flux_unit), 'W / m2')
+
+    def test_lc_invalid_flux_unit(self):
+        """Test Observer.lc raises ValueError for invalid flux_unit."""
+        s = BinarySystemMock()
+        o = Observer(self._passband, s)
+        with self.assertRaises(ValueError):
+            o.lc(flux_unit='invalid_unit')
+
+    def test_plot_and_observe_attributes(self):
+        """Test Observer.plot and Observer.observe attributes exist and are correct type."""
+        s = BinarySystemMock()
+        o = Observer(self._passband, s)
+        self.assertIsNotNone(o.plot)
+        self.assertIsNotNone(o.observe)
+        from elisa.observer.plot import Plot
+        self.assertIsInstance(o.plot, Plot)
+        self.assertTrue(hasattr(o.observe, 'lc'))
+        self.assertTrue(hasattr(o.observe, 'rv'))
+
+    def test_manage_time_series_phase_and_time(self):
+        """Test Observer.manage_time_series for phase and time domain input and error cases."""
+        s = BinarySystemMock()
+        o = Observer(self._passband, s)
+        # Phase domain
+        phases = o.manage_time_series(from_phase=0.0, to_phase=1.0, phase_step=0.1)
+        self.assertTrue(np.allclose(phases + o._system.phase_shift, np.arange(0.0, 1.0, 0.1)))
+        # Time domain
+        times = np.arange(0.0, 1.0, 0.1)
+        phases_time = o.manage_time_series(from_time=0.0, to_time=1.0, time_step=0.1, times=times)
+        self.assertEqual(len(phases_time), len(times))
+        # Error: both phase and time domain
+        with self.assertRaises(ValueError):
+            o.manage_time_series(from_phase=0.0, to_phase=1.0, phase_step=0.1, from_time=0.0, to_time=1.0,
+                                 time_step=0.1)
+        # Error: missing arguments
+        with self.assertRaises(ValueError):
+            o.manage_time_series()
+
 
 class BinarySystemMock(object):
     class Star(object):
@@ -278,6 +331,9 @@ class BinarySystemMock(object):
     def __init__(self, pp=False, sp=False):
         self.primary = self.Star(pp)
         self.secondary = self.Star(sp)
+        self.phase_shift = 0.0
+        self.period = 1.0
+        self.t0 = 0.0
 
 
 class SingleSystemMock(object):
@@ -294,3 +350,6 @@ class SingleSystemMock(object):
 
     def __init__(self, p=False, s=False):
         self.star = self.Star(p, s)
+        self.phase_shift = 0.0
+        self.period = 1.0
+        self.t0 = 0.0
