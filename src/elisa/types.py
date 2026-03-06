@@ -9,8 +9,8 @@ Float = float | np.float32 | np.float64 | np.floating
 Int = int | np.int32 | np.int64 | np.integer
 Number = Float | Int
 
-Points3DList = NDArray[NDArray[Float, Float, Float]]
-Points2DList = NDArray[NDArray[Float, Float]]
+Points3DList = NDArray[NDArray[Float]]
+Points2DList = NDArray[NDArray[Float]]
 
 
 class HasMeshData(Protocol):
