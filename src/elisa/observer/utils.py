@@ -20,7 +20,6 @@ def normalize_light_curve(
         kind: str = "global_maximum",
         top_fraction_to_average: Float = 0.1,
 ) -> tuple[dict[str, NDArray[Float]], dict[str, NDArray[Float] | None] | None]:
-    # noinspection GrazieInspection
     """Normalize light curves using the selected normalization strategy.
 
     Supported normalization kinds are:
@@ -31,20 +30,24 @@ def normalize_light_curve(
     - ``"global_maximum"`` - all curves are normalized by the global top-fraction average
     - ``"minimum"`` - each curve is normalized by the average of its bottom fraction
 
-    :param y_data: Mapping[str, ArrayLike]
-        Dictionary of curves in the form ``{filter_name: values}``.
-    :param y_err: Mapping[str, ArrayLike | None] | None
-        Optional dictionary of curve uncertainties in the form
-        ``{filter_name: errors}``.
-    :param kind: str
-        Normalization kind.
-    :param top_fraction_to_average: Float
-        Fraction of points used when computing top-fraction or bottom-fraction
-        averages. Expected to be in the interval ``(0, 1)``.
-    :returns: tuple[dict[str, NDArray[Float]], dict[str, NDArray[Float] | None] | None]
-        Tuple containing normalized curves and normalized errors.
-    :raises ValueError:
-        If ``kind`` is not one of the supported normalization modes.
+    :param y_data: Dictionary of curves in the form ``{filter_name: values}``.
+    :type y_data: Mapping[str, ArrayLike]
+    :param y_err: Optional dictionary of curve uncertainties in the form
+        ``{filter_name: errors}``. Defaults to None.
+    :type y_err: Mapping[str, ArrayLike | None] | None
+    :param kind: Normalization kind. Must be one of the supported kinds listed above.
+        Defaults to "global_maximum".
+    :type kind: str
+    :param top_fraction_to_average: Fraction of points used when computing top-fraction
+        or bottom-fraction averages. Expected to be in the interval ``(0, 1)``.
+        Defaults to 0.1.
+    :type top_fraction_to_average: Float
+    :returns: Tuple containing normalized curves and normalized errors. The first element
+        is a dictionary of normalized flux curves (dict[str, NDArray[Float]]), and the
+        second element is a dictionary of normalized error curves or None if no errors
+        were provided (dict[str, NDArray[Float] | None] | None).
+    :rtype: tuple[dict[str, NDArray[Float]], dict[str, NDArray[Float] | None] | None]
+    :raises ValueError: If ``kind`` is not one of the supported normalization modes.
     """
     valid_arguments = ["average", "global_average", "maximum", "global_maximum", "minimum"]
 
@@ -98,12 +101,17 @@ def adjust_flux_for_distance(
 ) -> dict[str, NDArray[Float]]:
     """Scale flux curves to the specified observer distance.
 
-    :param curves: Mapping[str, ArrayLike]
-        Band-wise flux curves.
-    :param distance: Float
-        Distance to the observer.
-    :returns: dict[str, NDArray[Float]]
-        Distance-corrected band-wise flux curves.
+    Scales flux curves by the inverse square of the provided distance. This function
+    is typically used to correct for distance-dependent flux attenuation in astronomical
+    observations.
+
+    :param curves: Band-wise flux curves in the form ``{band_name: flux_values}``.
+    :type curves: Mapping[str, ArrayLike]
+    :param distance: Distance to the observer.
+    :type distance: Float
+    :returns: Distance-corrected band-wise flux curves with the same structure as input
+        (dict[str, NDArray[Float]]).
+    :rtype: dict[str, NDArray[Float]]
     """
     d_squared = np.power(distance, 2)
     return {
@@ -118,14 +126,18 @@ def convert_to_magnitudes(
 ) -> dict[str, NDArray[Float]]:
     """Convert flux curves to magnitudes.
 
-    :param curves: Mapping[str, ArrayLike]
-        Band-wise flux curves.
-    :param zero_points: Mapping[str, Mapping[str, Float | None]]
-        Calibration data containing ``reference_magnitudes`` and ``fluxes``.
-    :returns: dict[str, NDArray[Float]]
-        Band-wise magnitude curves.
-    :raises ValueError:
-        If a reference magnitude is not available for a requested band.
+    Converts flux curves to magnitude space using the provided zero-point calibration
+    data. The conversion uses the standard magnitude formula: m = m_ref - 2.5 * log10(f/f_ref).
+
+    :param curves: Band-wise flux curves in the form ``{band_name: flux_values}``.
+    :type curves: Mapping[str, ArrayLike]
+    :param zero_points: Calibration data containing ``reference_magnitudes`` and ``fluxes``
+        for each band, in the form ``{calibration_key: {band_name: value}}``.
+    :type zero_points: Mapping[str, Mapping[str, Float | None]]
+    :returns: Band-wise magnitude curves with the same structure as input
+        (dict[str, NDArray[Float]]).
+    :rtype: dict[str, NDArray[Float]]
+    :raises ValueError: If a reference magnitude is not available for a requested band.
     """
     ret_dict: dict[str, NDArray[Float]] = {}
 

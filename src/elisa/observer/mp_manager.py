@@ -1,35 +1,54 @@
-from multiprocessing.pool import Pool
+from __future__ import annotations
 
-from .. import utils
-from .. logger import getLogger
-from .. import settings
+import multiprocessing.pool
+from typing import TYPE_CHECKING
 
-logger = getLogger('observer.mp')
+from elisa import settings
+from elisa.logger import getLogger
+from elisa.utils import renormalize_async_result, split_to_batches
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from typing import Any
+
+    from numpy.typing import ArrayLike
+
+logger = getLogger("observer.mp")
 
 
-def manage_observations(fn, fn_args, position, **kwargs):
+def manage_observations(
+        fn: Callable,
+        fn_args: tuple[Any, ...],
+        position: ArrayLike,
+        **kwargs: Any,
+) -> dict[str, Any]:
+    """Decide whether curve will be calculated using single or multi-process approach.
+
+    Manages calculation of curves using either a single process or a multi-process approach
+    depending on the number of positions and the configured number of processes. Batches
+    the positions and distributes them across workers if multiprocessing is used.
+
+    :param fn: Function used for curve integration.
+    :type fn: Callable
+    :param fn_args: Tuple of arguments for `fn` (excluding position and kwargs).
+    :type fn_args: tuple[Any, ...]
+    :param position: Array of positions (phases) to process.
+    :type position: ArrayLike
+    :param kwargs: Additional keyword arguments passed to `fn`.
+    :type kwargs: dict[str, Any]
+    :returns: Calculated curves (in each passband).
+    :rtype: dict[str, Any]
     """
-    Function decides whether curve will be calculated using single or multi-process approach.
-
-    :param fn: function used for curve integration
-    :param fn_args: Tuple; some of the argument in `fn`
-    :param position: List;
-    :param kwargs: Dict;
-    :return: Dict; calculated curves (in each passbands)
-    """
-    args = fn_args + (kwargs, )
+    args = (*fn_args, kwargs)
     if len(position) >= settings.NUMBER_OF_PROCESSES > 1:
         logger.info("starting multiprocessor workers")
-        phase_batches = utils.split_to_batches(array=position, n_proc=settings.NUMBER_OF_PROCESSES)
-        pool = Pool(processes=settings.NUMBER_OF_PROCESSES)
+        phase_batches = split_to_batches(array=position, n_proc=settings.NUMBER_OF_PROCESSES)
+        pool = multiprocessing.pool.Pool(processes=settings.NUMBER_OF_PROCESSES)
 
-        result = [pool.apply_async(fn, args[:2] + (batch, ) + args[2:]) for batch in phase_batches]
+        result = [pool.apply_async(fn, (*args[:2], batch, *args[2:])) for batch in phase_batches]
         pool.close()
         pool.join()
-        # this will return output in same order as was given on apply_async init
         result = [r.get() for r in result]
-        band_curves = utils.renormalize_async_result(result)
-        return band_curves
-    else:
-        args = args[:2] + (position, ) + args[2:]
-        return fn(*args)
+        return renormalize_async_result(result)
+    args = (*args[:2], position, *args[2:])
+    return fn(*args)
