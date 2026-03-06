@@ -107,7 +107,7 @@ def get_limbdarkening_cfs(system, **kwargs):
 
     return {'star': get_component_limbdarkening_cfs(
         star_container,
-        symmetry_test,
-        kwargs['passband']
+        passbands=kwargs['passband'],
+        symmetry_test=symmetry_test,
     )}
 

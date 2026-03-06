@@ -28,8 +28,8 @@ def get_limbdarkening_cfs(system, component="all", **kwargs):
 
     return {c_name: get_component_limbdarkening_cfs(
         getattr(system, c_name),
-        symmetry_test,
-        kwargs['passband']
+        passbands=kwargs['passband'],
+        symmetry_test=symmetry_test,
     ) for c_name in components}
 
 

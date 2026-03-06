@@ -1,19 +1,22 @@
-import numpy as np
+from __future__ import annotations
 
 from abc import abstractmethod
+from copy import copy, deepcopy
+from typing import TYPE_CHECKING
 
-from .. import const
-from .. logger import getLogger
-from copy import (
-    deepcopy,
-    copy
-)
-from .. import (
-    utils,
-    umpy as up
-)
-from . surface.mesh import symmetry_point_reduction
-from . surface.faces import mirror_face_values, symmetry_face_reduction
+import numpy as np
+
+from elisa import const, utils
+from elisa import umpy as up
+from elisa.base.surface.faces import mirror_face_values, symmetry_face_reduction
+from elisa.logger import getLogger
+
+from .surface.mesh import symmetry_point_reduction
+
+if TYPE_CHECKING:
+    from numpy.typing import ArrayLike
+
+    from elisa.types import Float
 
 logger = getLogger("base.container")
 
@@ -404,6 +407,11 @@ class StarContainer(object):
         self.backward_radius = None
         self.equatorial_radius = None
         self.equivalent_radius = None
+        # --------------------------------------------------------------------------------------------------------------
+
+        # some defaults ------------------------------------------------------------------------------------------------
+        self.t_eff = up.NaN
+        self.limb_darkening_coefficients: dict[str, ArrayLike[Float]] | None = None
         # --------------------------------------------------------------------------------------------------------------
 
         self._flatten = False
