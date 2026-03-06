@@ -1,5 +1,6 @@
 import textwrap
 from pathlib import Path
+import os
 
 import pytest
 
@@ -7,6 +8,14 @@ import sys
 
 
 def import_fresh_elisa_settings():
+    # Ensure project root (and src/) is on sys.path so `import elisa` works when running tests
+    project_root = Path(__file__).resolve().parent.parent
+    src_path = project_root / "src"
+    if str(src_path) not in sys.path:
+        sys.path.insert(0, str(src_path))
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+
     # Remove ALL elisa-related modules, not just elisa + elisa.settings
     for name in list(sys.modules.keys()):
         if name == "elisa" or name.startswith("elisa."):
@@ -203,3 +212,73 @@ def test_elisa_settings_values_match_ini(elisa_ini):
             )
 
     assert not mismatches, "Loaded settings do not match INI:\n" + "\n".join(mismatches)
+
+
+def test_invalid_limb_darkening_raises(elisa_ini):
+    """Invalid limb-darkening law in INI should raise ValueError on import.
+
+    :param elisa_ini: base INI fixture
+    :type elisa_ini: tuple[pathlib.Path, dict]
+    :returns: None
+    :rtype: None
+    """
+    ini_path, _ = elisa_ini
+    text = ini_path.read_text(encoding='utf-8')
+    text = text.replace('limb_darkening_law = cosine', 'limb_darkening_law = not_a_law')
+    ini_path.write_text(text, encoding='utf-8')
+
+    with pytest.raises(ValueError, match='not valid name of limb darkening law'):
+        import_fresh_elisa_settings()
+
+
+def test_malformed_rv_lambda_interval_raises(elisa_ini):
+    """Malformed rv_lambda_interval should raise ValueError from parser.
+
+    :param elisa_ini: base INI fixture
+    :type elisa_ini: tuple[pathlib.Path, dict]
+    :returns: None
+    :rtype: None
+    """
+    ini_path, _ = elisa_ini
+    text = ini_path.read_text(encoding='utf-8')
+    text = text.replace('rv_lambda_interval = (5500, 10500)', 'rv_lambda_interval = 5500-10500')
+    ini_path.write_text(text, encoding='utf-8')
+
+    with pytest.raises(ValueError, match='invalid format'):
+        import_fresh_elisa_settings()
+
+
+def test_number_of_processes_clamped_and_warns(elisa_ini, monkeypatch):
+    """If number_of_processes > cpu_count, ensure it's clamped and a warning emitted.
+
+    We set suppress_warnings=False in the INI to allow the warning to be emitted.
+    """
+    ini_path, _ = elisa_ini
+    text = ini_path.read_text(encoding='utf-8')
+    text = text.replace('number_of_processes = -1', 'number_of_processes = 9999')
+    text = text.replace('suppress_warnings = True', 'suppress_warnings = False')
+    ini_path.write_text(text, encoding='utf-8')
+
+    # Fake a small cpu count
+    monkeypatch.setattr(os, 'cpu_count', lambda: 4)
+
+    with pytest.warns(UserWarning):
+        s = import_fresh_elisa_settings()
+
+    assert isinstance(s.NUMBER_OF_PROCESSES, int)
+    assert s.NUMBER_OF_PROCESSES == 4
+
+
+def test_missing_tables_warn(elisa_ini):
+    """Missing tables paths should emit UserWarning when warnings are not suppressed.
+
+    The fixture points to temp directories that do not exist; enable warnings in the INI
+    and ensure a UserWarning is raised during settings import.
+    """
+    ini_path, _ = elisa_ini
+    text = ini_path.read_text(encoding='utf-8')
+    text = text.replace('suppress_warnings = True', 'suppress_warnings = False')
+    ini_path.write_text(text, encoding='utf-8')
+
+    with pytest.warns(UserWarning):
+        import_fresh_elisa_settings()
