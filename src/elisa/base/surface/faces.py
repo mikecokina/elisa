@@ -300,7 +300,10 @@ def mirror_triangulation(
     return np.concatenate(all_triangles, axis=0)
 
 
-def mirror_face_values(values: NDArray[np.floating], face_symmetry_vector: NDArray[np.integer]) -> NDArray[np.floating]:
+def mirror_face_values(
+        values: NDArray[np.floating],
+        face_symmetry_vector: NDArray[np.integer],
+) -> NDArray[np.floating]:
     """Map face-local values from the base symmetry block to the full surface.
 
     :param values: Values defined on the base symmetric faces.
