@@ -44,7 +44,7 @@ class StarContainerSerDeTestCase(ElisaTestCase):
 
 
 class OrbitalPositionContainerSerDeTestCase(ElisaTestCase):
-    props = ["semi_major_axis", "morphology", "mass_ratio"] + BinarySystem.ALL_KWARGS
+    props = ["semi_major_axis", "morphology", "mass_ratio"] + list(BinarySystem.ALL_KWARGS)
 
     def setUp(self):
         self.s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS['detached-physical'])
