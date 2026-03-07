@@ -57,6 +57,23 @@ class TransformBinarySystemPropertiesTestCase(ElisaTestCase):
     def test_primary_minimum_time_raise(self):
         generate_raise_test(self, "92", BinarySystemProperties.primary_minimum_time, "not convertible")
 
+    @staticmethod
+    def test_argument_of_periastron_wrap():
+        """Ensure values larger than a full arc are wrapped into [0, FULL_ARC)."""
+        # 720 degrees should wrap to 0 radians
+        wrap_values = [720.0, 1080.0 * 1.0]  # 720 deg and 1080 deg
+        expected = [0.0, 0.0]
+        generate_test(wrap_values, BinarySystemProperties.argument_of_periastron, expected, 4)
+
+    @staticmethod
+    def test_t0_alias():
+        """Verify that t0 delegates to primary_minimum_time."""
+        values = [1.0, 180.0 * u.PERIOD_UNIT]
+        expected = [1.0, 180.0]
+        obtained_t0 = [BinarySystemProperties.t0(v) for v in values]
+        obtained_pmt = [BinarySystemProperties.primary_minimum_time(v) for v in values]
+        assert_array_equal(np.array(obtained_t0), np.array(obtained_pmt))
+
 
 class TransformSystemPropertiesTestCase(ElisaTestCase):
     @staticmethod
