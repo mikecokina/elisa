@@ -33,7 +33,7 @@ class Body(metaclass=ABCMeta):
     OPTIONAL_KWARGS = ()
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    def __init__(self, name: str | None, **kwargs) -> None:
+    def __init__(self, name: str | None, **kwargs: Any) -> None:
         """Initialise common body properties.
 
         :param name: Optional instance name; when ``None`` a numeric id is

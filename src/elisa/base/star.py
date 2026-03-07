@@ -3,8 +3,7 @@ from __future__ import annotations
 from copy import copy, deepcopy
 from typing import TYPE_CHECKING, Any
 
-import numpy as np
-
+from elisa import umpy as up
 from elisa import units as u
 from elisa import utils
 from elisa.base.body import Body
@@ -16,6 +15,7 @@ from elisa.pulse.mode import PulsationMode
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    from elisa.types import Float
     from elisa.units import _DefaultStarInputUnits, _DefaultStarUnits
 
 logger = getLogger("elisa.base.star")
@@ -61,7 +61,7 @@ class Star(Body):
 
     Optional / derived (SingleSystem)
     ---------------------------------
-    The following optional arguments influence model behaviour; when
+    The following optional arguments influence model behavior; when
     omitted, default values or interpolated tables are used:
 
     :param metallicity: Metallicity [M/H]. Default is ``0.0``.
@@ -104,7 +104,7 @@ class Star(Body):
 
     Additional derived attributes (available after system initialization)
     -------------------------------------------------------------------
-    After the containing system is initialised (single or binary), the
+    After the containing system is initialized (single or binary), the
     :class:`Star` instance will expose several derived attributes (these
     are computed by the system initialization code rather than by the
     :class:`Star` constructor):
@@ -192,27 +192,27 @@ class Star(Body):
     )
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    def __init__(self, name: str | None = None, **kwargs) -> None:
+    def __init__(self, *, name: str | None = None, **kwargs: Any) -> None:
         utils.invalid_kwarg_checker(kwargs, Star.ALL_KWARGS, Star)
         super().__init__(name, **kwargs)
         kwargs = self.transform_input(**kwargs)
 
         # default values of properties
-        self.filling_factor = np.nan
-        self.critical_surface_potential = np.nan
-        self.surface_potential = np.nan
-        self.metallicity = 0.0
-        self.polar_log_g = np.nan
-        self.gravity_darkening = np.nan
+        self.filling_factor = up.NaN
+        self.critical_surface_potential = up.NaN
+        self.surface_potential = up.NaN
+        self.metallicity: Float = 0.0
+        self.polar_log_g = up.NaN
+        self.gravity_darkening = up.NaN
         # Test against None value is provided across the codebase, so we need to
         # set it to None here instead of any other value (for example an empty dict) to avoid confusion.
         self.limb_darkening_coefficients: dict[str, list[float]] | None = None
         self._pulsations: dict[int, PulsationMode] | list[PulsationMode] = []
 
-        self.side_radius = np.nan
-        self.forward_radius = np.nan
-        self.backward_radius = np.nan
-        self.equivalent_radius = np.nan
+        self.side_radius = up.NaN
+        self.forward_radius = up.NaN
+        self.backward_radius = up.NaN
+        self.equivalent_radius = up.NaN
 
         self.init_parameters(**kwargs)
 
@@ -244,7 +244,7 @@ class Star(Body):
     def transform_input(self, **kwargs) -> dict[str, Any]:
         """Transform and validate initialization keyword arguments.
 
-        Uses :class:`elisa.base.transform.StarProperties` to normalise and
+        Uses :class:`elisa.base.transform.StarProperties` to normalize and
         validate input values provided to the constructor.
 
         :param kwargs: Keyword arguments forwarded from :meth:`__init__`.
@@ -258,7 +258,7 @@ class Star(Body):
     def init_parameters(self, **kwargs) -> None:
         """Set initial attribute values from transformed keyword args.
 
-        Iterates over all recognised keys and assigns attribute values on
+        Iterates over all recognized keys and assigns attribute values on
         the instance when present in ``kwargs``.
 
         :param kwargs: Transformed initialization parameters.
