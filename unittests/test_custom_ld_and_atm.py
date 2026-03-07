@@ -99,7 +99,7 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
             BinarySystem.from_json(definition)
 
         length = len(definition['primary']['limb_darkening_coefficients']['bolometric'])
-        self.assertTrue(f"however, you provided a vector with {length}" in str(context.exception))
+        self.assertTrue(f"You provided a vector with {length}" in str(context.exception))
 
     def test_raise_missing_passband_lds(self):
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
