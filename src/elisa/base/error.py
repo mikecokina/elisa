@@ -1,51 +1,82 @@
+"""Project-specific exceptions used across ELISa.
+
+This module defines the base and domain-specific exception types used by
+ELISa. Keep these lightweight so they can be raised and caught by the
+rest of the codebase.
+"""
+from __future__ import annotations
+
 from jsonschema import ValidationError
 
 
 class YouHaveNoIdeaError(ValidationError):
-    pass
+    """Raised when a JSON schema validation fails in an unexpected way."""
 
 
 class ElisaError(Exception):
-    pass
+    """Base class for all ELISa-specific exceptions.
+
+    Catch this when you want to handle all errors produced by ELISa.
+    """
 
 
 class MaxIterationError(ElisaError):
-    pass
+    """Raised when an iterative solver exceeds the maximum allowed iterations."""
 
 
 class InitialParamsError(ElisaError):
-    pass
+    """Raised when provided initial parameters are invalid or inconsistent."""
 
 
 class AtmosphereError(ElisaError):
-    pass
+    """Raised for errors related to atmosphere model handling."""
 
 
 class TemperatureError(ElisaError):
-    pass
+    """Raised when temperature-related validation or conversions fail."""
 
 
 class LimbDarkeningError(ElisaError):
-    pass
+    """Raised for limb-darkening related issues (parsing / validation)."""
 
 
 class MetallicityError(ElisaError):
-    pass
+    """Raised when metallicity-related validation fails."""
 
 
 class GravityError(ElisaError):
-    pass
+    """Raised when gravity-related validation fails."""
 
 
 class MorphologyError(ElisaError):
-    pass
+    """Raised when morphology computations fail or produce invalid results."""
 
 
 class SpotError(ElisaError):
-    pass
+    """Raised for spot-related errors (definition / serialization)."""
 
 
-class SolutionBubbleException(ElisaError):
-    def __init__(self, *args, **kwargs):
-        self.solution = kwargs.get('solution')
-        super().__init__(*args)
+class SolutionBubbleError(ElisaError):
+    """Exception carrying a proposed solution object.
+
+    This exception is used to signal that the solver reached a solution
+    bubble (a local solution) and carries the candidate solution via the
+    ``solution`` attribute. The exception message is accepted either as
+    the first positional argument or as the ``message`` keyword argument.
+
+    :param args: Positional arguments forwarded to :class:`Exception`.
+    :param solution: Optional solution object attached to the exception.
+    :param kwargs: Additional keyword arguments; ``message`` is treated as
+        the exception message if provided.
+    """
+
+    def __init__(self, *args, solution: object | None = None, **kwargs) -> None:
+        # Preserve backwards compatible behaviour: message comes either
+        # from args[0] or from kwargs['message'] if present.
+        message = args[0] if args else kwargs.get("message")
+
+        # Attach solution object for consumers of this exception
+        self.solution = solution if solution is not None else kwargs.get("solution")
+
+        # Always pass a single message variable to the base Exception
+        super().__init__(message)
