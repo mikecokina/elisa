@@ -42,11 +42,11 @@ def polar_to_cartesian(radius: Float, phi: Float) -> tuple[Float, Float]:
     return x, y
 
 
-def invalid_kwarg_checker(kwargs: dict, kwarglist: list, instance: type) -> None:
+def invalid_kwarg_checker(kwargs: dict, kwarglist: list | tuple, instance: type) -> None:
     """Check if `kwargs` for `instance` are in allowed kwargs presented in `kwarglist`.
 
     :param kwargs: dict; kwargs to evaluate if are in kwarg list.
-    :param kwarglist: list;
+    :param kwarglist: list | tuple; list of allowed kwargs for given instance.
     :param instance: Any; class/instance with attribute `__name__`
     """
     invalid_kwargs = [kwarg for kwarg in kwargs if kwarg not in kwarglist]
@@ -59,11 +59,11 @@ def invalid_kwarg_checker(kwargs: dict, kwarglist: list, instance: type) -> None
         raise ValueError(msg)
 
 
-def invalid_param_checker(kwargs: dict, kwarglist: list, message: str) -> None:
+def invalid_param_checker(kwargs: dict, kwarglist: list | tuple, message: str) -> None:
     """Invalid parameter checker for any class instance or function.
 
-    :param kwargs: Dict; kwargs to evaluate if are in kwarg list
-    :param kwarglist: Dict;
+    :param kwargs: dict; kwargs to evaluate if are in kwarg list.
+    :param kwarglist: list | tuple; list of allowed kwargs for given instance
     :param message: Any class
     """
     invalid_kwargs = [kwarg for kwarg in kwargs if kwarg not in kwarglist]
@@ -1032,7 +1032,7 @@ def renormalize_async_result(result: list[dict[str, ArrayLike]]) -> dict[str, Ar
     """Renormalize multiprocessing output to native form.
 
     Multiprocessing will return several dicts with same passband (due to supplied batches), but continuous
-    computaion require Dict in form like::
+    computaion require dict in form like::
 
         [{'passband': [all fluxes]}]
 
@@ -1041,7 +1041,7 @@ def renormalize_async_result(result: list[dict[str, ArrayLike]]) -> dict[str, Ar
         [[{'passband': [fluxes in batch]}], [{'passband': [fluxes in batch]}], ...]
 
     :param result: List;
-    :return: Dict[str; numpy.ndarray];
+    :return: dict[str; numpy.ndarray];
     """
     return {key: np.concatenate([record[key] for record in result], axis=0) for key in result[-1]}
 
