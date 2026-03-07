@@ -16,7 +16,6 @@ from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.curves import utils as crv_utils
 from elisa.const import Position
 from elisa.graphic import graphics
-from elisa.observer.observer import Observer
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
@@ -369,9 +368,12 @@ class Plot:
 
         com = {"primary": 0.0, "secondary": components_distance}
         for component in components:
-            correct_face_orientation(getattr(orbital_position_container, component), com=com[component])
+            correct_face_orientation(getattr(orbital_position_container, str(component)), com=com[component])
 
         # calculating radiances
+        # Local import to avoid circular import at module import time
+        from elisa.observer.observer import Observer  # noqa: PLC0415
+
         o = Observer(passband=["bolometric"], system=self.binary)
         atm_kwargs = {
             "passband": o.passband,
@@ -388,7 +390,7 @@ class Plot:
         pos_correction = butils.correction_to_com(*args)
 
         for component in components:
-            star = getattr(orbital_position_container, component)
+            star = getattr(orbital_position_container, str(component))
 
             args = (colormap, star, phase, com[component], self.binary.semi_major_axis, self.binary.inclination,
                     orbital_position_container.position)

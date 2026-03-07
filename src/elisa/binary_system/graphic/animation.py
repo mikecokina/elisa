@@ -8,7 +8,6 @@ from ... logger import getLogger
 from ... graphic import graphics
 from ... base.graphics import plot
 from .. curves import utils as crv_utils
-from ... observer.observer import Observer
 
 logger = getLogger('binary_system.graphic.animation')
 
@@ -87,6 +86,8 @@ class Animation(object):
             on_pos.build(components_distance=position.distance)
 
             # calculating radiances
+            # Local import to avoid circular import at module import time
+            from ... observer.observer import Observer  # noqa: PLC0415
             o = Observer(passband=['bolometric', ], system=self.binary)
             atm_kwargs = dict(
                 passband=o.passband,
