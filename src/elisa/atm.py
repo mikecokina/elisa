@@ -52,15 +52,24 @@ logger = getLogger(__name__)
 
 
 class AtmModel:
-    """Atmospheric model container for flux and wavelength data."""
+    """Atmospheric model container for flux and wavelength data.
+
+    Holds parallel arrays of ``flux`` and ``wavelength`` that represent a
+    single atmospheric spectrum. The arrays are stored as numpy arrays of
+    type :data:`elisa.base.types.FLOAT`.
+    """
 
     def __init__(self, flux: ArrayLike[Float] | None, wavelength: ArrayLike[Float] | None) -> None:
-        """Initialize an atmospheric model with flux and wavelength arrays.
+        """Initialize an :class:`AtmModel` instance.
 
-        :param flux: Flux array (spectral flux values in flam units).
-        :type flux: NDArray | None
-        :param wavelength: Wavelength array in Angstrom.
-        :type wavelength: NDArray | None
+        :param flux: Flux array in flam (spectral flux values). If ``None``,
+            an empty model is created.
+        :type flux: numpy.typing.ArrayLike[elisa.types.Float] | None
+        :param wavelength: Wavelength array in Angstrom. If ``None``, the
+            model is considered empty.
+        :type wavelength: numpy.typing.ArrayLike[elisa.types.Float] | None
+        :returns: None
+        :rtype: None
         """
         self.flux: NDArray | None = np.array(flux, dtype=FLOAT) if flux is not None else None
         self.wavelength: NDArray | None = np.array(wavelength, dtype=FLOAT) if wavelength is not None else None
@@ -76,14 +85,15 @@ class AtmModel:
 
     @classmethod
     def from_dataframe(cls, df: pd.DataFrame) -> AtmModel:
-        """Create an AtmModel instance from a DataFrame.
+        """Create an :class:`AtmModel` from a :class:`pandas.DataFrame`.
 
-        Expects DataFrame with columns defined by settings
-        (ATM_MODEL_DATAFRAME_FLUX and ATM_MODEL_DATAFRAME_WAVE).
+        The dataframe must contain columns named according to
+        :data:`settings.ATM_MODEL_DATAFRAME_FLUX` and
+        :data:`settings.ATM_MODEL_DATAFRAME_WAVE`.
 
-        :param df: DataFrame containing flux and wavelength columns.
-        :type df: pd.DataFrame
-        :returns: Newly constructed AtmModel instance.
+        :param df: DataFrame with flux and wavelength columns.
+        :type df: pandas.DataFrame
+        :returns: Constructed :class:`AtmModel`.
         :rtype: AtmModel
         """
         return cls(
@@ -92,10 +102,14 @@ class AtmModel:
         )
 
     def to_dataframe(self) -> pd.DataFrame:
-        """Convert the atmospheric model to a pandas DataFrame.
+        """Return the model represented as a :class:`pandas.DataFrame`.
+
+        The returned DataFrame uses the column names defined in
+        :data:`settings.ATM_MODEL_DATAFRAME_FLUX` and
+        :data:`settings.ATM_MODEL_DATAFRAME_WAVE`.
 
         :returns: DataFrame with flux and wavelength columns.
-        :rtype: pd.DataFrame
+        :rtype: pandas.DataFrame
         """
         return pd.DataFrame(
             {
@@ -105,23 +119,27 @@ class AtmModel:
         )
 
     def last_valid_index(self) -> int:
-        """Get the index past the last element in the flux array.
+        """Return the length of the flux array (index past the last element).
 
-        :returns: Length of the flux array.
+        :returns: Number of wavelength points (one past the last valid index).
         :rtype: int
         """
         return len(self.flux)
 
     def __getitem__(self, item: int | slice | NDArray[int]) -> AtmModel:
-        """Index the model to create a subset based on wavelength indices.
+        """Return a new :class:`AtmModel` selected by index or indices.
 
-        Supports integer index, slice, or a numpy integer index array selecting
-        arbitrary positions from the wavelength/flux arrays.
+        The ``item`` may be:
 
-        :param item: Index, slice or numpy integer ndarray to select wavelength
-            range/positions.
+        - an ``int`` index,
+        - a ``slice``, or
+        - a numpy integer index array (``NDArray[int]``) selecting arbitrary
+          positions.
+
+        :param item: Indexer selecting positions from ``flux`` and
+            ``wavelength``.
         :type item: int | slice | numpy.typing.NDArray[int]
-        :returns: New AtmModel with subset of flux and wavelength.
+        :returns: A new :class:`AtmModel` containing the sliced arrays.
         :rtype: AtmModel
         """
         return AtmModel(flux=self.flux[item], wavelength=self.wavelength[item])
@@ -132,79 +150,87 @@ class AtmModel:
 
 
 class AtmDataContainer:
-    """Container holding atmospheric model data with derived bandwidth parameters."""
+    """Container holding an atmospheric model and its metadata.
+
+    Stores an :class:`AtmModel` together with atmospheric parameters
+    (temperature, log_g, metallicity) and multiplicators used to convert
+    model values to SI units.
+    """
 
     def __init__(
             self,
             model: AtmModel | pd.DataFrame,
-            temperature: FLOAT,
-            log_g: FLOAT,
-            metallicity: FLOAT,
+            temperature: Float,
+            log_g: Float,
+            metallicity: Float,
             fpath: str = "",
     ) -> None:
-        """Initialize an atmospheric data container.
+        """Initialize an :class:`AtmDataContainer`.
 
-        :param model: Atmospheric model (AtmModel or DataFrame).
-        :type model: AtmModel | pd.DataFrame
-        :param temperature: Effective temperature in K.
-        :type temperature: FLOAT
-        :param log_g: Surface gravity in log10(cm/s²).
-        :type log_g: FLOAT
+        :param model: The atmospheric model, either an :class:`AtmModel` or a
+            :class:`pandas.DataFrame` with appropriate columns.
+        :type model: AtmModel | pandas.DataFrame
+        :param temperature: Effective temperature in Kelvin.
+        :type temperature: Float
+        :param log_g: Surface gravity (log10(cm/s^2)).
+        :type log_g: Float
         :param metallicity: Metallicity [Fe/H].
-        :type metallicity: FLOAT
-        :param fpath: File path to the source atmosphere table.
+        :type metallicity: Float
+        :param fpath: Optional file path to the source atmosphere table.
         :type fpath: str
+        :returns: None
+        :rtype: None
         """
         self._model = AtmModel(flux=None, wavelength=None)
-        self.temperature: FLOAT = temperature
-        self.log_g: FLOAT = log_g
-        self.metallicity: FLOAT = metallicity
+        self.temperature: Float = temperature
+        self.log_g: Float = log_g
+        self.metallicity: Float = metallicity
         self.flux_unit: str = "flam"
         self.wave_unit: str = "angstrom"
         # Note: const.PI will cause redundant multiplication in intensity
-        # integration if kept here. flam = erg·s⁻¹·cm⁻²·Å⁻¹ = (10⁻⁷ J)·s⁻¹·(10⁻² m)⁻²·(10⁻¹⁰ m)⁻¹
+        # integration if kept here. flam = erg·s⁻¹·cm⁻²·Å⁻¹ =  (10⁻⁷ J)·s⁻¹·(10⁻² m)⁻²·(10⁻¹⁰ m)⁻¹
         # = 10⁻⁷ x 10⁴ x 10¹⁰ J·s⁻¹·m⁻³
-        self.flux_to_si_mult: FLOAT = 1e7  # * (1.0/const.PI)
-        self.wave_to_si_mult: FLOAT = 1e-10
-        self._left_bandwidth: FLOAT = np.nan
-        self._right_bandwidth: FLOAT = np.nan
+        self.flux_to_si_mult: Float = 1e7  # * (1.0/const.PI)
+        self.wave_to_si_mult: Float = 1e-10
+        self._left_bandwidth: Float = np.nan
+        self._right_bandwidth: Float = np.nan
         self.fpath: str = fpath
 
         self.model = model
 
     @property
-    def left_bandwidth(self) -> FLOAT:
-        """Get the left bandwidth (minimum wavelength) of the model.
+    def left_bandwidth(self) -> Float:
+        """Left bandwidth (minimum wavelength) of the contained model.
 
         :returns: Left bandwidth in Angstrom.
-        :rtype: FLOAT
+        :rtype: Float
         """
         return self._left_bandwidth
 
     @property
-    def right_bandwidth(self) -> FLOAT:
-        """Get the right bandwidth (maximum wavelength) of the model.
+    def right_bandwidth(self) -> Float:
+        """Right bandwidth (maximum wavelength) of the contained model.
 
         :returns: Right bandwidth in Angstrom.
-        :rtype: FLOAT
+        :rtype: Float
         """
         return self._right_bandwidth
 
     @left_bandwidth.setter
-    def left_bandwidth(self, value: FLOAT) -> None:
+    def left_bandwidth(self, value: Float) -> None:
         """Set the left bandwidth (minimum wavelength) of the model.
 
         :param value: Left bandwidth in Angstrom.
-        :type value: FLOAT
+        :type value: Float
         """
         self._left_bandwidth = value
 
     @right_bandwidth.setter
-    def right_bandwidth(self, value: FLOAT) -> None:
+    def right_bandwidth(self, value: Float) -> None:
         """Set the right bandwidth (maximum wavelength) of the model.
 
         :param value: Right bandwidth in Angstrom.
-        :type value: FLOAT
+        :type value: Float
         """
         self._right_bandwidth = value
 
@@ -227,14 +253,15 @@ class AtmDataContainer:
 
     @model.setter
     def model(self, data: AtmModel | pd.DataFrame) -> None:
-        """Set the atmospheric model and update bandwidth parameters.
+        """Assign the contained atmospheric model and update bandwidth info.
 
-        Accepts either an AtmModel instance or a DataFrame (which will be
-        converted to AtmModel). Updates left_bandwidth and right_bandwidth
-        to the minimum and maximum wavelengths in the model.
+        If ``data`` is a :class:`pandas.DataFrame`, it is converted to
+        :class:`AtmModel` via :meth:`AtmModel.from_dataframe`.
 
-        :param data: Atmospheric model (AtmModel or DataFrame).
-        :type data: AtmModel | pd.DataFrame
+        :param data: Atmospheric model or DataFrame with model columns.
+        :type data: AtmModel | pandas.DataFrame
+        :returns: None
+        :rtype: None
         """
         self._model = (AtmModel.from_dataframe(data) if isinstance(data, pd.DataFrame) else data)
 
@@ -247,26 +274,26 @@ class IntensityContainer:
 
     def __init__(
             self,
-            intensity: FLOAT,
-            temperature: FLOAT,
-            log_g: FLOAT,
-            metallicity: FLOAT,
+            intensity: Float,
+            temperature: Float,
+            log_g: Float,
+            metallicity: Float,
     ) -> None:
         """Initialize an intensity container with integrated radiance values.
 
         :param intensity: Integrated radiance value.
-        :type intensity: FLOAT
+        :type intensity: Float
         :param temperature: Effective temperature in K.
-        :type temperature: FLOAT
+        :type temperature: Float
         :param log_g: Surface gravity in log10(cm/s²).
-        :type log_g: FLOAT
+        :type log_g: Float
         :param metallicity: Metallicity [Fe/H].
-        :type metallicity: FLOAT
+        :type metallicity: Float
         """
-        self.intensity: FLOAT = intensity
-        self.temperature: FLOAT = temperature
-        self.log_g: FLOAT = log_g
-        self.metallicity: FLOAT = metallicity
+        self.intensity: Float = intensity
+        self.temperature: Float = temperature
+        self.log_g: Float = log_g
+        self.metallicity: Float = metallicity
 
 
 class NaiveInterpolatedAtm:
@@ -276,7 +303,7 @@ class NaiveInterpolatedAtm:
     def radiance(
             temperature: NDArray,
             log_g: NDArray,
-            metallicity: FLOAT,
+            metallicity: Float,
             atlas: str,
             **kwargs,
     ) -> dict:
@@ -300,14 +327,19 @@ class NaiveInterpolatedAtm:
         )
 
     @staticmethod
-    def black_body_radiance(temperature: NDArray, **kwargs) -> dict[str, FLOAT]:
-        """Compute integrated flux based on values obtained from Planck Function (for purpose of black_body atmosphere).
+    def black_body_radiance(temperature: NDArray, **kwargs) -> dict[str, NDArray[Float]]:
+        """Compute integrated flux per face for each passband using the Planck function.
 
-        :param temperature: numpy.ndarray;
-        :param kwargs: dict;
-        :**kwargs options**:
-            * **passband** * -- dict[str, elisa.observer.observer.PassbandContainer]
-        :return: dict[str, Float]; integrated flux for each passband;
+        For a set of temperatures and passbands, this returns a mapping
+        from passband name to a 1D numpy array (type FLOAT) containing the
+        integrated flux for each input face.
+
+        :param temperature: Array of temperatures (K).
+        :type temperature: NDArray
+        :param kwargs: Additional keyword arguments; expects ``passband``.
+        :returns: Mapping passband → 1D numpy array of integrated flux
+            values (one per face).
+        :rtype: dict[str, numpy.typing.NDArray[elisa.types.Float]]
         """
         # setup multiplicators to convert quantities to SI
         flux_mult, wave_mult = const.PI, 1e-10
@@ -442,15 +474,24 @@ class NaiveInterpolatedAtm:
             metallicity: Float,
             atlas: str,
             **kwargs,
-    ) -> dict[str, Float]:
-        """Return normal radiance for given surface parameters.
+    ) -> dict[str, NDArray[Float]]:
+        """Compute integrated normal radiance per face for each passband from atlas models.
 
-        :param temperature: Iterable[float];
-        :param log_g: Iterable[float];
-        :param metallicity: float;
-        :param atlas: str; atmosphere model identificator (see settings.ATLAS_TO_ATM_FILE_PREFIX.keys())
-        :param kwargs:
-        :return: dict;
+        :param temperature: Iterable of temperatures (K).
+        :type temperature: ArrayLike[Float]
+        :param log_g: Iterable of surface gravities (log10(cm/s^2)).
+        :type log_g: ArrayLike[Float]
+        :param metallicity: Metallicity [Fe/H].
+        :type metallicity: Float
+        :param atlas: Atlas identifier (see
+            :data:`settings.ATLAS_TO_ATM_FILE_PREFIX`).
+        :type atlas: str
+        :param kwargs: Additional parameters forwarded to
+            :meth:`NaiveInterpolatedAtm.get_atm_profiles` (e.g. passband,
+            left_bandwidth, right_bandwidth).
+        :returns: Mapping passband → 1D numpy array of integrated normal
+            radiances (one value per face).
+        :rtype: dict[str, numpy.typing.NDArray[elisa.types.Float]]
         """
         args = temperature, log_g, metallicity, atlas
         localized_atms, flux_mult, wave_mult = NaiveInterpolatedAtm.get_atm_profiles(*args, **kwargs)
@@ -627,17 +668,19 @@ class NaiveInterpolatedAtm:
 def arange_atm_to_same_wavelength(
         atm_containers: list[AtmDataContainer],
 ) -> list[AtmDataContainer]:
-    """Align all atmosphere profiles to a common wavelength grid.
+    """Align a list of atmosphere containers to a common wavelength grid.
 
-    Creates a union of all wavelengths from supplied containers and
-    interpolates each model to this common grid using Akima spline
-    interpolation. If all containers already share wavelengths, returns
-    containers unchanged.
+    The function computes the sorted union of all wavelengths present in
+    ``atm_containers`` and interpolates each container's spectrum to that
+    grid using an Akima interpolator. If all containers already share the
+    same wavelength length, the original list is returned unchanged.
 
-    :param atm_containers: Atmosphere containers to align.
-    :type atm_containers: Iterable[AtmDataContainer]
-    :returns: List of atmosphere containers with aligned wavelengths.
-    :rtype: Iterable[AtmDataContainer]
+    :param atm_containers: Iterable of :class:`AtmDataContainer` objects
+        to align.
+    :type atm_containers: list[AtmDataContainer]
+    :returns: A new list of :class:`AtmDataContainer` objects with aligned
+        ``wavelength`` and ``flux`` arrays.
+    :rtype: list[AtmDataContainer]
     """
     wavelengths = np.unique(
         np.array([atm.model.wavelength for atm in atm_containers]).flatten(),
@@ -666,8 +709,8 @@ def arange_atm_to_same_wavelength(
 
 def strip_atm_containers_by_bandwidth(
         atm_containers: list[AtmDataContainer],
-        left_bandwidth: FLOAT,
-        right_bandwidth: FLOAT,
+        left_bandwidth: Float,
+        right_bandwidth: Float,
         **kwargs,
 ) -> list[AtmDataContainer]:
     """Strip all loaded atmosphere models to a common wavelength coverage.
@@ -679,9 +722,9 @@ def strip_atm_containers_by_bandwidth(
     :param atm_containers: List of atmosphere containers to strip.
     :type atm_containers: list[AtmDataContainer]
     :param left_bandwidth: Left (minimum) wavelength boundary in Angstrom.
-    :type left_bandwidth: FLOAT
+    :type left_bandwidth: Float
     :param right_bandwidth: Right (maximum) wavelength boundary in Angstrom.
-    :type right_bandwidth: FLOAT
+    :type right_bandwidth: Float
     :param kwargs: Additional keyword arguments for bandwidth stripping.
     :returns: List of bandwidth-stripped atmosphere containers.
     :rtype: list[AtmDataContainer]
@@ -696,8 +739,8 @@ def strip_atm_containers_by_bandwidth(
 
 def strip_atm_container_by_bandwidth(
         atm_container: AtmDataContainer,
-        left_bandwidth: FLOAT,
-        right_bandwidth: FLOAT,
+        left_bandwidth: Float,
+        right_bandwidth: Float,
         **kwargs,
 ) -> AtmDataContainer:
     """Strip an atmosphere container model to a specified wavelength bandwidth.
@@ -709,9 +752,9 @@ def strip_atm_container_by_bandwidth(
     :param atm_container: Atmosphere container to strip.
     :type atm_container: AtmDataContainer
     :param left_bandwidth: Left (minimum) wavelength boundary in Angstrom.
-    :type left_bandwidth: FLOAT
+    :type left_bandwidth: Float
     :param right_bandwidth: Right (maximum) wavelength boundary in Angstrom.
-    :type right_bandwidth: FLOAT
+    :type right_bandwidth: Float
     :param kwargs: Optional bandwidth parameters (global_left, global_right,
         inplace). See Notes.
     :returns: Bandwidth-stripped atmosphere container.
@@ -767,22 +810,27 @@ def strip_to_bandwidth(
         *,
         inplace: bool = False,
 ) -> AtmDataContainer:
-    """Strip an atmosphere container to a precise wavelength bandwidth.
+    """Select wavelength points from ``atm_container`` inside a bandwidth.
 
-    Selects wavelength points within the bandwidth, then extends selection
-    to include boundary points just outside the bandwidth for interpolation
-    accuracy. Applies interpolation at the exact bandwidth boundaries.
+    The function selects indices with wavelengths strictly between
+    ``left_bandwidth`` and ``right_bandwidth``, extends the selection to
+    include neighbouring boundary points (to support accurate
+    interpolation), and then calls
+    :func:`extend_atm_container_on_bandwidth_boundary` to ensure the
+    returned model has exact boundary values.
 
     :param atm_container: Atmosphere container to strip.
     :type atm_container: AtmDataContainer
-    :param left_bandwidth: Left (minimum) wavelength boundary in Angstrom.
-    :type left_bandwidth: FLOAT
-    :param right_bandwidth: Right (maximum) wavelength boundary in Angstrom.
-    :type right_bandwidth: FLOAT
-    :param inplace: If True, modify the input container in place;
-        otherwise return a copy.
+    :param left_bandwidth: Left (minimum) wavelength boundary in
+        Angstrom.
+    :type left_bandwidth: Float
+    :param right_bandwidth: Right (maximum) wavelength boundary in
+        Angstrom.
+    :type right_bandwidth: Float
+    :param inplace: If ``True``, modify and return the original container;
+        otherwise work on a deep copy and return it.
     :type inplace: bool
-    :returns: Bandwidth-stripped atmosphere container.
+    :returns: The bandwidth-stripped :class:`AtmDataContainer`.
     :rtype: AtmDataContainer
     """
     # Select indices within bandwidth
@@ -817,7 +865,7 @@ def strip_to_bandwidth(
 
 def find_global_atm_bandwidth(
         atm_containers: list[AtmDataContainer],
-) -> tuple[FLOAT, FLOAT]:
+) -> tuple[Float, Float]:
     """Find common wavelength coverage of atmosphere models.
 
     Computes the intersection of wavelength ranges from all supplied
@@ -827,7 +875,7 @@ def find_global_atm_bandwidth(
     :param atm_containers: List of atmosphere containers.
     :type atm_containers: list[AtmDataContainer]
     :returns: Tuple of (min_wavelength, max_wavelength) for common coverage.
-    :rtype: tuple[FLOAT, FLOAT]
+    :rtype: tuple[Float, Float]
     """
     bounds = np.array(
         [
@@ -840,24 +888,29 @@ def find_global_atm_bandwidth(
 
 def extend_atm_container_on_bandwidth_boundary(
         atm_container: AtmDataContainer,
-        left_bandwidth: FLOAT,
-        right_bandwidth: FLOAT,
+        left_bandwidth: Float,
+        right_bandwidth: Float,
 ) -> AtmDataContainer:
-    """Interpolate atmosphere model to precise bandwidth boundaries.
+    """Ensure the container's first and last wavelength points match the requested bandwidth boundaries.
 
-    Adjusts the wavelength and flux values at the boundaries of the model
-    to match exactly the requested left and right bandwidth values through
-    Akima spline interpolation.
+    The function interpolates the model using an Akima1D interpolator and
+    then replaces the first and last samples with exact values at
+    ``left_bandwidth`` and ``right_bandwidth``. If interpolation yields
+    NaN for either boundary, :class:`AtmosphereError` is raised.
 
-    :param atm_container: Atmosphere container to extend.
+    :param atm_container: Atmosphere container to modify.
     :type atm_container: AtmDataContainer
-    :param left_bandwidth: Left (minimum) wavelength boundary in Angstrom.
-    :type left_bandwidth: FLOAT
-    :param right_bandwidth: Right (maximum) wavelength boundary in Angstrom.
-    :type right_bandwidth: FLOAT
-    :returns: Modified atmosphere container with adjusted boundaries.
+    :param left_bandwidth: Left (minimum) wavelength boundary in
+        Angstrom.
+    :type left_bandwidth: Float
+    :param right_bandwidth: Right (maximum) wavelength boundary in
+        Angstrom.
+    :type right_bandwidth: Float
+    :returns: The modified :class:`AtmDataContainer` with exact boundary
+        wavelength/flux values.
     :rtype: AtmDataContainer
-    :raises AtmosphereError: If interpolation at boundaries results in NaN.
+    :raises AtmosphereError: If interpolation produces NaN values at the
+        boundaries.
     """
     interpolator = interpolate.Akima1DInterpolator(
         atm_container.model.wavelength, atm_container.model.flux,
@@ -883,21 +936,20 @@ def apply_passband(
         passband: dict,
         **kwargs,
 ) -> dict[str, list[AtmDataContainer]]:
-    """Apply passband response functions to stripped atmosphere models.
+    """Apply passband throughput to atmosphere containers.
 
-    Multiplies the flux of each atmosphere model by the passband transmission
-    response at the model's wavelengths, creating passband-specific versions
-    of the atmospheric spectra.
+    For each passband, the function strips each container to the passband's
+    wavelength coverage and multiplies the spectrum by the passband
+    transmission (provided by a :class:`PassbandContainer.akima` callable).
 
-    :param atm_containers: List of atmosphere containers to filter.
+    :param atm_containers: List of atmosphere containers to process.
     :type atm_containers: list[AtmDataContainer]
-    :param passband: Dictionary mapping passband names to PassbandContainer
-        objects (with akima interpolator and bandwidth properties).
-    :type passband: dict
-    :param kwargs: Optional global bandwidth parameters (global_left,
-        global_right) passed to strip_to_bandwidth.
-    :returns: Dictionary mapping passband names to lists of passband-filtered
-        atmosphere containers.
+    :param passband: Mapping of passband name to
+        :class:`elisa.observer.passband.PassbandContainer`.
+    :type passband: dict[str, PassbandContainer]
+    :param kwargs: Optional arguments forwarded to :func:`strip_to_bandwidth`.
+    :returns: Mapping from passband name to a list of processed
+        :class:`AtmDataContainer` objects.
     :rtype: dict[str, list[AtmDataContainer]]
     """
     passbanded_atm_containers = {}
@@ -965,17 +1017,17 @@ def build_atm_validation_hypertable(atlas: str) -> dict:
 
 def is_out_of_bound(
         in_arr: NDArray | ArrayLike,
-        values: FLOAT | Iterable,
-        tolerance: FLOAT,
+        values: Float | Iterable,
+        tolerance: Float,
 ) -> list[bool]:
     """Check if values are outside the bounds of an array with tolerance.
 
     :param in_arr: Reference array defining valid range.
     :type in_arr: NDArray
     :param values: Value(s) to check.
-    :type values: FLOAT | Iterable
+    :type values: Float | Iterable
     :param tolerance: Tolerance for out-of-bounds check.
-    :type tolerance: FLOAT
+    :type tolerance: Float
     :returns: List of booleans; True where value is out of bounds.
     :rtype: list[bool]
     """
@@ -1025,7 +1077,7 @@ def validate_temperature(
 
 
 def validate_metallicity(
-        metallicity: FLOAT | Iterable,
+        metallicity: Float | Iterable,
         atlas: str,
         *,
         _raise: bool = True,
@@ -1033,7 +1085,7 @@ def validate_metallicity(
     """Validate that metallicity is within atlas bounds.
 
     :param metallicity: Metallicity value(s) [Fe/H] to validate.
-    :type metallicity: FLOAT | Iterable
+    :type metallicity: Float | Iterable
     :param atlas: Atmosphere atlas name (e.g., 'ck04', 'k93').
     :type atlas: str
     :param _raise: If True, raise MetallicityError on invalid values;
@@ -1113,7 +1165,7 @@ def validate_logg_temperature_constraint(
 def validate_atm(
         temperature: NDArray,
         log_g: NDArray,
-        metallicity: FLOAT | Iterable,
+        metallicity: Float | Iterable,
         atlas: str,
         *,
         _raise: bool = True,
@@ -1128,7 +1180,7 @@ def validate_atm(
     :param log_g: Surface gravity in log10(cm/s²).
     :type log_g: NDArray
     :param metallicity: Metallicity value(s) [Fe/H].
-    :type metallicity: FLOAT | Iterable
+    :type metallicity: Float | Iterable
     :param atlas: Atmosphere atlas name (e.g., 'ck04', 'k93').
     :type atlas: str
     :param _raise: If True, raise error on invalid values;
@@ -1196,7 +1248,7 @@ def validated_atlas(atlas: str) -> str:
         raise KeyError(msg) from exc
 
 
-def parse_domain_quantities_from_atm_table_filename(filename: str) -> tuple[FLOAT, FLOAT, FLOAT]:
+def parse_domain_quantities_from_atm_table_filename(filename: str) -> tuple[Float, Float, Float]:
     """Parse atmosphere table filename to extract domain quantities.
 
     Extracts temperature, log_g, and metallicity from a filename following
@@ -1205,7 +1257,7 @@ def parse_domain_quantities_from_atm_table_filename(filename: str) -> tuple[FLOA
     :param filename: Atmosphere table filename or path.
     :type filename: str
     :returns: Tuple of (temperature, log_g, metallicity) extracted from filename.
-    :rtype: tuple[FLOAT, FLOAT, FLOAT]
+    :rtype: tuple[Float, Float, Float]
     """
     return (
         get_temperature_from_atm_table_filename(filename),
@@ -1214,7 +1266,7 @@ def parse_domain_quantities_from_atm_table_filename(filename: str) -> tuple[FLOA
     )
 
 
-def get_metallicity_from_atm_table_filename(filename: str) -> FLOAT:
+def get_metallicity_from_atm_table_filename(filename: str) -> Float:
     """Extract metallicity value from atmosphere table filename.
 
     Parses the metallicity component from the filename prefix
@@ -1223,7 +1275,7 @@ def get_metallicity_from_atm_table_filename(filename: str) -> FLOAT:
     :param filename: Atmosphere table filename or path.
     :type filename: str
     :returns: Metallicity [Fe/H] value.
-    :rtype: FLOAT
+    :rtype: Float
     """
     m = str(filename).split("_")[0][-3:]
     sign = 1 if str(m).startswith("p") else -1
@@ -1231,7 +1283,7 @@ def get_metallicity_from_atm_table_filename(filename: str) -> FLOAT:
     return value * sign
 
 
-def get_temperature_from_atm_table_filename(filename: str) -> FLOAT:
+def get_temperature_from_atm_table_filename(filename: str) -> Float:
     """Extract temperature value from atmosphere table filename.
 
     Parses the temperature component from the filename
@@ -1240,12 +1292,12 @@ def get_temperature_from_atm_table_filename(filename: str) -> FLOAT:
     :param filename: Atmosphere table filename or path.
     :type filename: str
     :returns: Effective temperature in K.
-    :rtype: FLOAT
+    :rtype: Float
     """
     return float(str(filename).split("_")[1])
 
 
-def get_logg_from_atm_table_filename(filename: str) -> FLOAT:
+def get_logg_from_atm_table_filename(filename: str) -> Float:
     """Extract surface gravity value from atmosphere table filename.
 
     Parses the log_g component from the filename
@@ -1254,7 +1306,7 @@ def get_logg_from_atm_table_filename(filename: str) -> FLOAT:
     :param filename: Atmosphere table filename or path.
     :type filename: str
     :returns: Surface gravity in log10(cm/s²).
-    :rtype: FLOAT
+    :rtype: Float
     """
     filename = (
         filename
@@ -1266,9 +1318,9 @@ def get_logg_from_atm_table_filename(filename: str) -> FLOAT:
 
 
 def get_atm_table_filename(
-        temperature: FLOAT,
-        log_g: FLOAT,
-        metallicity: FLOAT,
+        temperature: Float,
+        log_g: Float,
+        metallicity: Float,
         atlas: str,
 ) -> str:
     """Construct atmosphere table filename from parameters.
@@ -1277,11 +1329,11 @@ def get_atm_table_filename(
     based on the supplied atmospheric parameters.
 
     :param temperature: Effective temperature in K.
-    :type temperature: FLOAT
+    :type temperature: Float
     :param log_g: Surface gravity in log10(cm/s²).
-    :type log_g: FLOAT
+    :type log_g: Float
     :param metallicity: Metallicity [Fe/H].
-    :type metallicity: FLOAT
+    :type metallicity: Float
     :param atlas: Atmosphere atlas name (e.g., 'castelli', 'ck04').
     :type atlas: str
     :returns: Filename for the atmosphere table.
@@ -1301,7 +1353,7 @@ def get_atm_directory(metallicity: Float, atlas: str) -> str:
     based on metallicity.
 
     :param metallicity: Metallicity [Fe/H].
-    :type metallicity: FLOAT
+    :type metallicity: Float
     :param atlas: Atmosphere atlas name (e.g., 'castelli', 'ck04').
     :type atlas: str
     :returns: Directory name for the atmosphere table.
@@ -1312,9 +1364,9 @@ def get_atm_directory(metallicity: Float, atlas: str) -> str:
 
 
 def get_atm_table(
-        temperature: FLOAT,
-        log_g: FLOAT,
-        metallicity: FLOAT,
+        temperature: Float,
+        log_g: Float,
+        metallicity: Float,
         atlas: str,
 ) -> pd.DataFrame:
     """Load atmosphere table for given parameters from CSV file.
@@ -1323,11 +1375,11 @@ def get_atm_table(
     for the specified atmospheric parameters.
 
     :param temperature: Effective temperature in K.
-    :type temperature: FLOAT
+    :type temperature: Float
     :param log_g: Surface gravity in log10(cm/s²).
-    :type log_g: FLOAT
+    :type log_g: Float
     :param metallicity: Metallicity [Fe/H].
-    :type metallicity: FLOAT
+    :type metallicity: Float
     :param atlas: Atmosphere atlas name (e.g., 'castelli', 'ck04').
     :type atlas: str
     :returns: DataFrame with flux and wavelength columns.
@@ -1382,11 +1434,11 @@ def multithread_atm_tables_reader(
     or if an error occurs.
 
     :param path_queue: Queue supplying (index, file_path) tuples to read.
-    :type path_queue: Queue
+    :type path_queue: Queue;
     :param error_queue: Queue for error reporting from worker threads.
-    :type error_queue: Queue
+    :type error_queue: Queue;
     :param result_queue: Queue for (index, AtmDataContainer) results.
-    :type result_queue: Queue
+    :type result_queue: Queue;
     """
     while True:
         args = path_queue.get(timeout=1)
@@ -1471,21 +1523,24 @@ def compute_normal_radiances(
         *,
         flux_mult: Float = 1.0,
         wave_mult: Float = 1.0,
-) -> dict[str, Float]:
-    """Compute normal radiance for each passband from flux matrices.
+) -> dict[str, NDArray[Float]]:
+    """Compute integrated normal radiance for each passband.
 
-    Applies compute_normal_intensity to each passband's flux matrix
-    and wavelength array.
+    The input mapping should provide, for every passband, a dictionary
+    with keys given by :data:`settings.ATM_MODEL_DATAFRAME_FLUX` and
+    :data:`settings.ATM_MODEL_DATAFRAME_WAVE`.
 
-    :param matrices_dict: Dictionary mapping passband names to flux and
-        wavelength data dictionaries.
-    :type matrices_dict: dict
-    :param flux_mult: Flux multiplicative conversion factor.
-    :type flux_mult: FLOAT
-    :param wave_mult: Wavelength multiplicative conversion factor.
-    :type wave_mult: FLOAT
-    :returns: Dictionary mapping passband names to normal radiance values.
-    :rtype: dict[str, FLOAT]
+    :param matrices_dict: Mapping passband → {'flux': NDArray, 'wave': NDArray}.
+    :type matrices_dict: dict[str, dict[str, NDArray]]
+    :param flux_mult: Multiplicative factor to convert flux to desired
+        units (typically to SI).
+    :type flux_mult: Float
+    :param wave_mult: Multiplicative factor to convert wavelength to
+        desired units (typically meters).
+    :type wave_mult: Float
+    :returns: Mapping passband → integrated normal radiance arrays (one
+        value per model/face) as numpy arrays of type FLOAT.
+    :rtype: dict[str, numpy.typing.NDArray[elisa.types.Float]]
     """
     return {
         band: compute_normal_intensity(
@@ -1502,24 +1557,24 @@ def compute_normal_intensity(
         spectral_flux: NDArray,
         wavelength: NDArray,
         *,
-        flux_mult: FLOAT = 1.0,
-        wave_mult: FLOAT = 1.0,
+        flux_mult: Float = 1.0,
+        wave_mult: Float = 1.0,
 ) -> NDArray:
-    """Calculate normal flux integrated over wavelength for surface faces.
+    """Integrate spectral flux over wavelength using Simpson's rule.
 
-    Integrates spectral flux over wavelength using Simpson's rule
-    for each surface face. Applies multiplicative factors to convert
-    flux and wavelength to SI units if needed.
+    The function integrates each row of ``spectral_flux`` over
+    ``wavelength`` and applies ``flux_mult`` and ``wave_mult`` to convert
+    to final units (for example to SI units). The returned array contains
+    one integrated intensity per input row.
 
-    :param spectral_flux: Interpolated atmosphere models; shape (N_faces,
-        N_wavelengths).
+    :param spectral_flux: Array with shape (N_faces, N_wavelengths).
     :type spectral_flux: NDArray
-    :param wavelength: Wavelength grid for integration.
+    :param wavelength: Wavelength grid (1D array) used for integration.
     :type wavelength: NDArray
-    :param flux_mult: Flux multiplicative conversion factor.
-    :type flux_mult: FLOAT
-    :param wave_mult: Wavelength multiplicative conversion factor.
-    :type wave_mult: FLOAT
+    :param flux_mult: Multiplicative factor applied to flux values.
+    :type flux_mult: Float
+    :param wave_mult: Multiplicative factor applied to wavelength.
+    :type wave_mult: Float
     :returns: Integrated normal flux for each face.
     :rtype: NDArray
     """
@@ -1686,7 +1741,7 @@ def read_unique_atm_tables(
 
 def find_atm_si_multiplicators(
         atm_containers: Iterable[AtmDataContainer],
-) -> tuple[FLOAT, FLOAT]:
+) -> tuple[Float, Float]:
     """Extract flux and wavelength multiplicators from atmosphere containers.
 
     Assumes all containers have identical multiplicators and returns values
@@ -1695,7 +1750,7 @@ def find_atm_si_multiplicators(
     :param atm_containers: List of atmosphere containers.
     :type atm_containers: Iterable[AtmDataContainer]
     :returns: Tuple of (flux_multiplicator, wavelength_multiplicator).
-    :rtype: tuple[FLOAT, FLOAT]
+    :rtype: tuple[Float, Float]
     :raises ValueError: If no valid container is supplied.
     """
     for atm_container in atm_containers:
@@ -1800,21 +1855,22 @@ def correct_normal_radiance_to_optical_depth(
 
 
 def planck_function(
-        wavelength: NDArray | FLOAT,
-        temperature: NDArray | FLOAT,
-) -> NDArray | FLOAT:
-    """Compute spectral radiance using the Planck function.
+        wavelength: NDArray | Float,
+        temperature: NDArray | Float,
+) -> NDArray | Float:
+    """Evaluate the Planck function for given wavelength(s) and temperature.
 
-    Calculates monochromatic spectral radiance (spectral flux) for a given
-    wavelength or array of wavelengths and temperature. This is the standard
-    Planck function from quantum mechanics.
+    Computes monochromatic spectral radiance (spectral flux) using the
+    standard Planck formula. Input ``wavelength`` must be in meters and
+    ``temperature`` in Kelvin. The function accepts scalars or numpy
+    arrays and returns a scalar or array accordingly.
 
     :param wavelength: Wavelength(s) in meters.
-    :type wavelength: NDArray | FLOAT
-    :param temperature: Effective temperature in K.
-    :type temperature: NDArray | FLOAT
-    :returns: Spectral radiance at the given wavelength(s) and temperature.
-    :rtype: NDArray | FLOAT
+    :type wavelength: NDArray | Float
+    :param temperature: Temperature value(s) in Kelvin.
+    :type temperature: NDArray | Float
+    :returns: Spectral radiance corresponding to the inputs.
+    :rtype: NDArray | Float
     """
     h = (2.0 * const.PLANCK_CONST * const.C ** 2) / np.power(wavelength, 5)
     e = (const.PLANCK_CONST * const.C) / (
@@ -1824,12 +1880,12 @@ def planck_function(
 
 
 def get_standard_wavelengths() -> NDArray:
-    """Load standard wavelengths used in Castelli-Kurucz atmosphere tables.
+    """Load the standard wavelength grid used by atmosphere tables.
 
-    Reads wavelength data from a JSON file in the data path configured
-    in settings.
+    Reads the JSON file located at ``settings.DATA_PATH / 'wavelength.json'``
+    and returns a numpy array of wavelengths (in Angstrom).
 
-    :returns: Array of wavelengths in Angstrom.
+    :returns: 1D array of wavelengths in Angstrom.
     :rtype: NDArray
     """
     data_file = Path(settings.DATA_PATH) / "wavelength.json"
