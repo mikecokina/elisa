@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
-    from elisa.types import Float
+    from elisa.types import Float, ZeroPointType
 
 
 def normalize_light_curve(
@@ -122,7 +122,7 @@ def adjust_flux_for_distance(
 
 def convert_to_magnitudes(
         curves: Mapping[str, NDArray],
-        zero_points: Mapping[str, Mapping[str, Float | None]] | dict[str, dict[str, Float | None]],
+        zero_points: ZeroPointType,
 ) -> dict[str, NDArray[Float]]:
     """Convert flux curves to magnitudes.
 
@@ -133,7 +133,7 @@ def convert_to_magnitudes(
     :type curves: Mapping[str, NDArray]
     :param zero_points: Calibration data containing ``reference_magnitudes`` and ``fluxes``
         for each band, in the form ``{calibration_key: {band_name: value}}``.
-    :type zero_points: Mapping[str, Mapping[str, Float | None]]
+    :type zero_points: ZeroPointType
     :returns: Band-wise magnitude curves with the same structure as input
         (dict[str, NDArray[Float]]).
     :rtype: dict[str, NDArray[Float]]

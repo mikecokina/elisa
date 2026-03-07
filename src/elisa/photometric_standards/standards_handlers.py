@@ -9,10 +9,10 @@ from elisa import settings
 if TYPE_CHECKING:
     from typing import Literal
 
-    from elisa.types import Float
+    from elisa.types import ZeroPointType
 
 
-def load_standard(system: Literal["vega", "ab", "st"]) -> dict[str, Float]:
+def load_standard(system: Literal["vega", "ab", "st"]) -> ZeroPointType:
     """Load zero points for magnitude calculations.
 
     Load photometric zero-point fluxes for the requested ``system`` from the

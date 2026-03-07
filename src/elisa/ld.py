@@ -15,7 +15,7 @@ from elisa.buffer import buffer
 from elisa.logger import getLogger
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike, NDArray
+    from numpy.typing import NDArray
 
     from elisa.types import Float
 
@@ -72,6 +72,7 @@ def get_ld_table(passband: str, metallicity: float, law: str | None = None) -> p
     if not path.is_file():
         msg = f"There is no file like {path}."
         raise FileNotFoundError(msg)
+    # noinspection PyArgumentList
     return pd.read_csv(path)
 
 
@@ -87,6 +88,7 @@ def get_ld_table_by_name(fname: str) -> pd.DataFrame:
     if not path.is_file():
         msg = f"There is no file like {path}."
         raise FileNotFoundError(msg)
+    # noinspection PyArgumentList
     return pd.read_csv(path)
 
 
@@ -107,11 +109,11 @@ def get_relevant_ld_tables(passband: str, metallicity: float, law: str | None = 
 
 # noinspection PyUnusedLocal
 def interpolate_on_ld_grid(
-        temperature: ArrayLike,
-        log_g: ArrayLike,
-        metallicity: float,
-        passband: Iterable[str] | Mapping[str, str],
-        author: str | None = None,
+    temperature: NDArray,
+    log_g: NDArray,
+    metallicity: float,
+    passband: Iterable[str] | Mapping[str, str],
+    author: str | None = None,
 ) -> dict[str, NDArray[Float]]:
     """Interpolate limb darkening coefficients on the Van Hamme grid.
 
@@ -188,11 +190,11 @@ def interpolate_on_ld_grid(
 
 
 def limb_darkening_factor(
-        normal_vector: ArrayLike | None = None,
-        line_of_sight: ArrayLike | None = None,
-        coefficients: ArrayLike | None = None,
-        limb_darkening_law: str | None = None,
-        cos_theta: ArrayLike | None = None,
+    normal_vector: NDArray | None = None,
+    line_of_sight: NDArray | None = None,
+    coefficients: NDArray | None = None,
+    limb_darkening_law: str | None = None,
+    cos_theta: NDArray | None = None,
 ) -> NDArray[Float]:
     """Compute limb darkening factor for given surface elements.
 
@@ -224,10 +226,7 @@ def limb_darkening_factor(
         msg = "Limb darkening coefficients were not supplied."
         raise LimbDarkeningError(msg)
     if limb_darkening_law is None:
-        msg = (
-            "Limb darkening rule was not supplied choose from: "
-            "`linear` or `cosine`, `logarithmic`, `square_root`."
-        )
+        msg = "Limb darkening rule was not supplied choose from: `linear` or `cosine`, `logarithmic`, `square_root`."
         raise LimbDarkeningError(msg)
 
     coeffs = np.asarray(coefficients, dtype=float)
@@ -267,8 +266,8 @@ def limb_darkening_factor(
 
 
 def calculate_integrated_limb_darkening_factor(
-        limb_darkening_law: str | None = None,
-        coefficients: ArrayLike | None = None,
+    limb_darkening_law: str | None = None,
+    coefficients: NDArray | None = None,
 ) -> NDArray[Float]:
     """Compute the integrated limb darkening factor for hemisphere integration.
 
@@ -283,10 +282,7 @@ def calculate_integrated_limb_darkening_factor(
         msg = "Limb darkening coefficients were not supplied."
         raise LimbDarkeningError(msg)
     if limb_darkening_law is None:
-        msg = (
-            "Limb darkening rule was not supplied choose from: "
-            "`linear` or `cosine`, `logarithmic`, `square_root`."
-        )
+        msg = "Limb darkening rule was not supplied choose from: `linear` or `cosine`, `logarithmic`, `square_root`."
         raise LimbDarkeningError(msg)
 
     coeffs = np.asarray(coefficients, dtype=float)
@@ -303,10 +299,10 @@ def calculate_integrated_limb_darkening_factor(
 
 
 def get_bolometric_ld_coefficients(
-        temperature: ArrayLike,
-        log_g: ArrayLike,
-        metallicity: float,
-        custom_ld_coefs: Mapping[str, ArrayLike] | None = None,
+    temperature: NDArray,
+    log_g: NDArray,
+    metallicity: float,
+    custom_ld_coefs: Mapping[str, NDArray] | None = None,
 ) -> NDArray[Float]:
     """Obtain bolometric limb darkening coefficients for each face.
 
@@ -325,8 +321,7 @@ def get_bolometric_ld_coefficients(
     if custom_ld_coefs is not None:
         if "bolometric" not in custom_ld_coefs:
             msg = (
-                "Please add `bolometric` limb-darkening coefficients to your custom set "
-                "of limb-darkening coefficients."
+                "Please add `bolometric` limb-darkening coefficients to your custom set of limb-darkening coefficients."
             )
             raise ValueError(msg)
         bol = np.asarray(custom_ld_coefs["bolometric"], dtype=float)

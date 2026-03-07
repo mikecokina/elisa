@@ -17,11 +17,10 @@ from elisa.photometric_standards.standards_handlers import load_standard
 from elisa.utils import is_empty, jd_to_phase
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike, NDArray
+    from numpy.typing import NDArray
 
     from elisa import BinarySystem, SingleSystem
-    from elisa.types import Float
-    from elisa.units import Unit
+    from elisa.types import Float, UnitType, ZeroPointType
 
 logger = getLogger("observer.observer")
 
@@ -46,12 +45,12 @@ class Observables:
             from_phase: Float | None = None,
             to_phase: Float | None = None,
             phase_step: Float | None = None,
-            phases: ArrayLike | None = None,
+            phases: NDArray | None = None,
             from_time: Float | None = None,
             to_time: Float | None = None,
             time_step: Float | None = None,
-            times: ArrayLike | None = None,
-            flux_unit: Unit | None = None,
+            times: NDArray | None = None,
+            flux_unit: UnitType | None = None,
             *,
             normalize: bool = False,
     ) -> tuple[NDArray, dict[str, NDArray]]:
@@ -80,14 +79,14 @@ class Observables:
             from_phase: Float | None = None,
             to_phase: Float | None = None,
             phase_step: Float | None = None,
-            phases: ArrayLike | None = None,
+            phases: NDArray | None = None,
             *,
             normalize: bool = False,
             method: str | None = None,
             from_time: Float | None = None,
             to_time: Float | None = None,
             time_step: Float | None = None,
-            times: ArrayLike | None = None,
+            times: NDArray | None = None,
     ) -> tuple[NDArray, dict[str, NDArray]]:
         """Calculate radial velocity curves by delegating to the Observer instance.
 
@@ -170,7 +169,7 @@ class Observer:
         self._flux_unit = u.W / u.m ** 2
         self.radial_velocities: dict[str, NDArray] = {}
         self.rv_unit: object | None = None
-        self.zero_points: dict[str, object] = {"system": None}
+        self.zero_points: ZeroPointType = {}
 
         self.plot = Plot(self)
         self.observe = Observables(self)
@@ -256,14 +255,14 @@ class Observer:
             from_phase: Float | None = None,
             to_phase: Float | None = None,
             phase_step: Float | None = None,
-            phases: ArrayLike | None = None,
+            phases: NDArray | None = None,
             *,
             normalize: bool = False,
             from_time: Float | None = None,
             to_time: Float | None = None,
             time_step: Float | None = None,
-            times: ArrayLike | None = None,
-            flux_unit: Unit | None = None,
+            times: NDArray | None = None,
+            flux_unit: UnitType | None = None,
     ) -> tuple[NDArray, dict[str, NDArray]]:
         """Calculate synthetic light curves.
 
@@ -284,7 +283,7 @@ class Observer:
         :type phase_step: float | None
         :param phases: Array of phases at which to perform observations. If provided,
             from_phase, to_phase, and phase_step are ignored. Defaults to None.
-        :type phases: ArrayLike | None
+        :type phases: NDArray | None
         :param normalize: If True, output is normalized to maximum=1. Defaults to False.
         :type normalize: bool
         :param from_time: Starting time of the observation. Defaults to None.
@@ -295,8 +294,8 @@ class Observer:
         :type time_step: float | None
         :param times: Array of times at which to perform observations. If provided,
             from_time, to_time, and time_step are ignored. Defaults to None.
-        :type times: ArrayLike | None
-        :param flux_unit: Unit of flux (astropy Unit). If None, uses observer's flux_unit.
+        :type times: NDArray | None
+        :param flux_unit: UnitType of flux (astropy Unit). If None, uses observer's flux_unit.
             Defaults to None.
         :type flux_unit: object | None
         :returns: Tuple containing phases and flux curves for each passband.
@@ -383,14 +382,14 @@ class Observer:
             from_phase: Float | None = None,
             to_phase: Float | None = None,
             phase_step: Float | None = None,
-            phases: ArrayLike | None = None,
+            phases: NDArray | None = None,
             *,
             normalize: bool = False,
             method: str | None = None,
             from_time: Float | None = None,
             to_time: Float | None = None,
             time_step: Float | None = None,
-            times: ArrayLike | None = None,
+            times: NDArray | None = None,
     ) -> tuple[NDArray, dict[str, NDArray]]:
         """Calculate synthetic radial velocity curves.
 
@@ -409,7 +408,7 @@ class Observer:
         :type phase_step: float | None
         :param phases: Array of phases at which to perform observations. If provided,
             from_phase, to_phase, and phase_step are ignored. Defaults to None.
-        :type phases: ArrayLike | None
+        :type phases: NDArray | None
         :param normalize: If True, output is normalized to maximum=1 (dimensionless).
             Defaults to False.
         :type normalize: bool
@@ -424,7 +423,7 @@ class Observer:
         :type time_step: float | None
         :param times: Array of times at which to perform observations. If provided,
             from_time, to_time, and time_step are ignored. Defaults to None.
-        :type times: ArrayLike | None
+        :type times: NDArray | None
         :returns: Tuple containing phases and radial velocity curves for each system component.
         :rtype: tuple[NDArray, dict[str, NDArray]]
         """
@@ -533,11 +532,11 @@ class Observer:
             from_phase: Float | None = None,
             to_phase: Float | None = None,
             phase_step: Float | None = None,
-            phases: ArrayLike | None = None,
+            phases: NDArray | None = None,
             from_time: Float | None = None,
             to_time: Float | None = None,
             time_step: Float | None = None,
-            times: ArrayLike | None = None,
+            times: NDArray | None = None,
     ) -> NDArray:
         """Convert input time series parameters into photometric phases.
 
@@ -554,7 +553,7 @@ class Observer:
         :type phase_step: float | None
         :param phases: Array of phases at which to perform observations. If provided,
             from_phase, to_phase, and phase_step are ignored. Defaults to None.
-        :type phases: ArrayLike | None
+        :type phases: NDArray | None
         :param from_time: Starting time of the observation. Defaults to None.
         :type from_time: float | None
         :param to_time: End time of the observation. Defaults to None.
@@ -563,7 +562,7 @@ class Observer:
         :type time_step: float | None
         :param times: Array of times at which to perform observations. If provided,
             from_time, to_time, and time_step are ignored. Defaults to None.
-        :type times: ArrayLike | None
+        :type times: NDArray | None
         :returns: Array of phases for observations.
         :rtype: NDArray
         :raises ValueError: If time series parameters are invalid or inconsistently provided.

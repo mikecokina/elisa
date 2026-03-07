@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Protocol, TypeAlias
+from typing import Protocol, TypeAlias, TypedDict
 
 import numpy as np
 from astropy.units import Unit
@@ -19,3 +19,10 @@ class HasMeshData(Protocol):
     points: NDArray[Float]
     faces: NDArray[np.integer]
     indices: NDArray[np.integer]
+
+
+class ZeroPointType(TypedDict):
+    system: str
+    unit: UnitType
+    fluxes: dict[str, Float]
+    reference_magnitudes: dict[str, Float]
