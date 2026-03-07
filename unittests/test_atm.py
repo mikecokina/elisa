@@ -6,7 +6,7 @@ import os
 
 import numpy as np
 import pandas as pd
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_equal, assert_allclose
 from pandas.testing import assert_frame_equal
 
 from elisa.base.types import FLOAT
@@ -141,7 +141,7 @@ class TestAtmModuleGeneral(ElisaTestCase):
         })), 10, 10, 10)
 
         l_band, r_band = 0.4, 8.8
-        result = atm.extend_atm_container_on_bandwidth_boundary(c, l_band, r_band).\
+        result = atm.extend_atm_container_on_bandwidth_boundary(c, l_band, r_band). \
             model.to_dataframe().sort_index(axis=1)
         expected = pd.DataFrame({
             settings.ATM_MODEL_DATAFRAME_WAVE: [0.4] + list(range(1, 9, 1)) + [8.8],
@@ -263,7 +263,9 @@ class TestAtmModuleGeneral(ElisaTestCase):
     def test_find_atm_si_multiplicators(self):
         expected = (1e-7 * 1e4 * 1e10, 1e-10)
         cs = [atm.AtmDataContainer(AtmModel.from_dataframe(pd.DataFrame({settings.ATM_MODEL_DATAFRAME_WAVE: [1, 2, 3],
-                                                           settings.ATM_MODEL_DATAFRAME_FLUX: [1, 2, 3]})), 0, 0, 0)] * 10
+                                                                         settings.ATM_MODEL_DATAFRAME_FLUX: [1, 2,
+                                                                                                             3]})), 0,
+                                   0, 0)] * 10
         mults = atm.find_atm_si_multiplicators(cs)
         self.assertTupleEqual(mults, expected)
 
@@ -337,3 +339,27 @@ class TestNaiveInterpolation(ElisaTestCase):
         obtained = atm.NaiveInterpolatedAtm.compute_unknown_intensity_from_surounded_flux_matrices(weights, top, bottom)
         expected = np.array([[10., 11.2, 12.4, 13.6], [110., 150., 180., 120.]], dtype=np.float32)
         assert_array_equal(expected, obtained)
+
+    def test_compute_unknown_intensity_from_surounded_containers_basic(self):
+        # Prepare simple top and bottom atmosphere DataFrames
+        flux_col = settings.ATM_MODEL_DATAFRAME_FLUX
+        wave_col = settings.ATM_MODEL_DATAFRAME_WAVE
+
+        top_df = pd.DataFrame({flux_col: np.array([10.0, 20.0]), wave_col: np.array([1.0, 2.0])})
+        bottom_df = pd.DataFrame({flux_col: np.array([0.0, 5.0]), wave_col: np.array([1.0, 2.0])})
+
+        # Create containers by passing DataFrame models directly (public API)
+        top_container = atm.AtmDataContainer(top_df, 10.0, 4.0, 0.0)
+        bottom_container = atm.AtmDataContainer(bottom_df, 5.0, 4.0, 0.0)
+
+        # Weight array (per-wavelength interpolation weights)
+        weights = np.array([0.5, 0.2])
+
+        intensity, wavelengths = atm.NaiveInterpolatedAtm.compute_unknown_intensity_from_surounded_containers(
+            weights, top_container, bottom_container
+        )
+
+        expected = weights * (top_df[flux_col].values - bottom_df[flux_col].values) + bottom_df[flux_col].values
+
+        assert_allclose(intensity, expected)
+        assert_allclose(wavelengths, top_df[wave_col].values)
