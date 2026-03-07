@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.path as mpltpath
 
-from scipy.spatial.qhull import ConvexHull
+from scipy.spatial import ConvexHull
 from copy import copy
 
 from .. import utils as bsutils

@@ -1,7 +1,7 @@
 import numpy as np
 
 from copy import copy
-from scipy.spatial.qhull import Delaunay
+from scipy.spatial import Delaunay
 from .. import utils as bsutils
 from .. orbit import orbit
 from ... base import spot

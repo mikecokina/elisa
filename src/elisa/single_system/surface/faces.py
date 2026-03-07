@@ -1,5 +1,6 @@
 import numpy as np
-from scipy.spatial.qhull import Delaunay
+
+from scipy.spatial import Delaunay
 
 from ... base import spot
 from ... base.surface import faces as bfaces
