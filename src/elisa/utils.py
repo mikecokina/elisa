@@ -22,7 +22,7 @@ from elisa.numba_functions import operations
 if TYPE_CHECKING:
     from _typeshed import SupportsDunderGT, SupportsDunderLT
     from astropy.units import Unit
-    from numpy.typing import ArrayLike, NDArray
+    from numpy.typing import NDArray
 
     from elisa.const import Position
     from elisa.types import Float, HasMeshData, Int, Number, Points2DList, Points3DList
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 FEBRUARY_MONTH_NUMBER = 2
 
 
-def polar_to_cartesian(radius: Float, phi: Float) -> tuple[Float, Float]:
+def polar_to_cartesian(radius: Float | NDArray, phi: Float | NDArray) -> tuple[Float, Float] | tuple[NDArray, NDArray]:
     """Transform polar coordinates to cartesian.
 
     :param radius: (numpy.)float, (numpy.)int;
@@ -52,9 +52,9 @@ def invalid_kwarg_checker(kwargs: dict, kwarglist: list | tuple, instance: type)
     invalid_kwargs = [kwarg for kwarg in kwargs if kwarg not in kwarglist]
     if len(invalid_kwargs) > 0:
         msg = (
-            f'Invalid keyword argument(s): {", ".join(invalid_kwargs)} '
-            f'in class instance {instance.__name__}.\n '
-            f'List of available parameters: {", ".join(kwarglist)}'
+            f"Invalid keyword argument(s): {', '.join(invalid_kwargs)} "
+            f"in class instance {instance.__name__}.\n "
+            f"List of available parameters: {', '.join(kwarglist)}"
         )
         raise ValueError(msg)
 
@@ -69,9 +69,9 @@ def invalid_param_checker(kwargs: dict, kwarglist: list | tuple, message: str) -
     invalid_kwargs = [kwarg for kwarg in kwargs if kwarg not in kwarglist]
     if len(invalid_kwargs) > 0:
         msg = (
-            f'Invalid keyword argument(s): {", ".join(invalid_kwargs)} '
-            f'in {message}.\n '
-            f'List of available parameters: {", ".join(kwarglist)}'
+            f"Invalid keyword argument(s): {', '.join(invalid_kwargs)} "
+            f"in {message}.\n "
+            f"List of available parameters: {', '.join(kwarglist)}"
         )
         raise ValueError(msg)
 
@@ -117,9 +117,9 @@ def find_nearest_dist_3d(data: Iterable) -> Float:
 
 
 def cartesian_to_spherical(
-        points: Points3DList,
-        *,
-        degrees: bool = False,
+    points: Points3DList,
+    *,
+    degrees: bool = False,
 ) -> Points3DList | NDArray:
     """Convert cartesian to spherical coordinates.
 
@@ -157,17 +157,18 @@ def cartesian_to_spherical(
     np.seterr(**old_settings)
 
     signtest = points[:, 0] < 0
-    phi[signtest] = (const.PI - phi[signtest])
+    phi[signtest] = const.PI - phi[signtest]
 
-    return_val = np.column_stack((r, phi, theta)) if not degrees else np.column_stack((r, up.degrees(phi),
-                                                                                       up.degrees(theta)))
+    return_val = (
+        np.column_stack((r, phi, theta)) if not degrees else np.column_stack((r, up.degrees(phi), up.degrees(theta)))
+    )
     return np.squeeze(return_val, axis=0) if np.shape(return_val)[0] == 1 else return_val
 
 
 def cartesian_to_polar(
-        points: Points3DList,
-        *,
-        degrees: bool = False,
+    points: Points3DList,
+    *,
+    degrees: bool = False,
 ) -> Points3DList:
     """Convert cartesian to polar coordinates."""
     points = np.insert(points, 2, np.zeros(len(points)), axis=1)
@@ -200,8 +201,9 @@ def spherical_to_cartesian(spherical_points: Points3DList) -> Points3DList:
           [xn, yn, zn]])
     """
     spherical_points = np.array(spherical_points)
-    spherical_points = np.expand_dims(spherical_points, axis=0) if len(np.shape(spherical_points)) == 1 \
-        else spherical_points
+    spherical_points = (
+        np.expand_dims(spherical_points, axis=0) if len(np.shape(spherical_points)) == 1 else spherical_points
+    )
     x = spherical_points[:, 0] * up.cos(spherical_points[:, 1]) * up.sin(spherical_points[:, 2])
     y = spherical_points[:, 0] * up.sin(spherical_points[:, 1]) * up.sin(spherical_points[:, 2])
     z = spherical_points[:, 0] * up.cos(spherical_points[:, 2])
@@ -234,8 +236,9 @@ def cylindrical_to_cartesian(cylindrical_points: Points3DList) -> Points3DList:
           [xn, yn, zn]])
     """
     cylindrical_points = np.array(cylindrical_points)
-    cylindrical_points = np.expand_dims(cylindrical_points, axis=0) if len(np.shape(cylindrical_points)) == 1 \
-        else cylindrical_points
+    cylindrical_points = (
+        np.expand_dims(cylindrical_points, axis=0) if len(np.shape(cylindrical_points)) == 1 else cylindrical_points
+    )
     x = cylindrical_points[:, 0] * up.cos(cylindrical_points[:, 1])
     y = cylindrical_points[:, 0] * up.sin(cylindrical_points[:, 1])
     points = np.column_stack((x, y, cylindrical_points[:, 2]))
@@ -243,12 +246,12 @@ def cylindrical_to_cartesian(cylindrical_points: Points3DList) -> Points3DList:
 
 
 def arbitrary_rotation(
-        theta: Float,
-        omega: ArrayLike,
-        vector: ArrayLike,
-        *,
-        degrees: bool = False,
-        omega_normalized: bool = False,
+    theta: Float,
+    omega: NDArray,
+    vector: NDArray,
+    *,
+    degrees: bool = False,
+    omega_normalized: bool = False,
 ) -> NDArray:
     """Rodrigues's Rotation Formula.
 
@@ -269,28 +272,28 @@ def arbitrary_rotation(
 
     matrix = up.arange(9, dtype=FLOAT).reshape((3, 3))
 
-    matrix[0, 0] = (up.cos(theta)) + (omega[0] ** 2 * (1. - up.cos(theta)))
-    matrix[1, 0] = (omega[0] * omega[1] * (1. - up.cos(theta))) - (omega[2] * up.sin(theta))
-    matrix[2, 0] = (omega[1] * up.sin(theta)) + (omega[0] * omega[2] * (1. - up.cos(theta)))
+    matrix[0, 0] = (up.cos(theta)) + (omega[0] ** 2 * (1.0 - up.cos(theta)))
+    matrix[1, 0] = (omega[0] * omega[1] * (1.0 - up.cos(theta))) - (omega[2] * up.sin(theta))
+    matrix[2, 0] = (omega[1] * up.sin(theta)) + (omega[0] * omega[2] * (1.0 - up.cos(theta)))
 
-    matrix[0, 1] = (omega[2] * up.sin(theta)) + (omega[0] * omega[1] * (1. - up.cos(theta)))
-    matrix[1, 1] = (up.cos(theta)) + (omega[1] ** 2 * (1. - up.cos(theta)))
-    matrix[2, 1] = (- omega[0] * up.sin(theta)) + (omega[1] * omega[2] * (1. - up.cos(theta)))
+    matrix[0, 1] = (omega[2] * up.sin(theta)) + (omega[0] * omega[1] * (1.0 - up.cos(theta)))
+    matrix[1, 1] = (up.cos(theta)) + (omega[1] ** 2 * (1.0 - up.cos(theta)))
+    matrix[2, 1] = (-omega[0] * up.sin(theta)) + (omega[1] * omega[2] * (1.0 - up.cos(theta)))
 
-    matrix[0, 2] = (- omega[1] * up.sin(theta)) + (omega[0] * omega[2] * (1. - up.cos(theta)))
-    matrix[1, 2] = (omega[0] * up.sin(theta)) + (omega[1] * omega[2] * (1. - up.cos(theta)))
-    matrix[2, 2] = (up.cos(theta)) + (omega[2] ** 2 * (1. - up.cos(theta)))
+    matrix[0, 2] = (-omega[1] * up.sin(theta)) + (omega[0] * omega[2] * (1.0 - up.cos(theta)))
+    matrix[1, 2] = (omega[0] * up.sin(theta)) + (omega[1] * omega[2] * (1.0 - up.cos(theta)))
+    matrix[2, 2] = (up.cos(theta)) + (omega[2] ** 2 * (1.0 - up.cos(theta)))
 
     return up.matmul(vector, matrix)
 
 
 def around_axis_rotation(
-        theta: Float,
-        vector: list | ArrayLike,
-        axis: str,
-        *,
-        inverse: bool = False,
-        degrees: bool = False,
+    theta: Float,
+    vector: list | NDArray,
+    axis: str,
+    *,
+    inverse: bool = False,
+    degrees: bool = False,
 ) -> NDArray:
     """Rotation of `vector` around `axis` by an amount `theta`.
 
@@ -307,29 +310,29 @@ def around_axis_rotation(
 
     if axis == "x":
         matrix[0][0], matrix[1][0], matrix[2][0] = 1, 0, 0
-        matrix[0][1], matrix[1][1], matrix[2][1] = 0, up.cos(theta), - up.sin(theta)
+        matrix[0][1], matrix[1][1], matrix[2][1] = 0, up.cos(theta), -up.sin(theta)
         matrix[0][2], matrix[1][2], matrix[2][2] = 0, up.sin(theta), up.cos(theta)
         if inverse:
-            matrix[2][1], matrix[1][2] = up.sin(theta), - up.sin(theta)
+            matrix[2][1], matrix[1][2] = up.sin(theta), -up.sin(theta)
     if axis == "y":
         matrix[0][0], matrix[1][0], matrix[2][0] = up.cos(theta), 0, up.sin(theta)
         matrix[0][1], matrix[1][1], matrix[2][1] = 0, 1, 0
-        matrix[0][2], matrix[1][2], matrix[2][2] = - up.sin(theta), 0, up.cos(theta)
+        matrix[0][2], matrix[1][2], matrix[2][2] = -up.sin(theta), 0, up.cos(theta)
         if inverse:
-            matrix[0][2], matrix[2][0] = + up.sin(theta), - up.sin(theta)
+            matrix[0][2], matrix[2][0] = +up.sin(theta), -up.sin(theta)
     if axis == "z":
-        matrix[0][0], matrix[1][0], matrix[2][0] = up.cos(theta), - up.sin(theta), 0
+        matrix[0][0], matrix[1][0], matrix[2][0] = up.cos(theta), -up.sin(theta), 0
         matrix[0][1], matrix[1][1], matrix[2][1] = up.sin(theta), up.cos(theta), 0
         matrix[0][2], matrix[1][2], matrix[2][2] = 0, 0, 1
         if inverse:
-            matrix[1][0], matrix[0][1] = + up.sin(theta), - up.sin(theta)
+            matrix[1][0], matrix[0][1] = +up.sin(theta), -up.sin(theta)
     return up.matmul(vector, matrix)
 
 
 def rotate_item(
-        vector: ArrayLike,
-        position: Position,
-        inclination: Float,
+    vector: NDArray,
+    position: Position,
+    inclination: Float,
 ) -> NDArray:
     """Transfer vector(s) from corotating reference frame to observers frame.
 
@@ -350,8 +353,8 @@ def rotate_item(
 
 
 def average_spacing_cgal(
-        data: ArrayLike,
-        neighbours: int = 6,
+    data: NDArray,
+    neighbours: int = 6,
 ) -> Float:
     """Average Spacing.
 
@@ -371,13 +374,13 @@ def average_spacing_cgal(
     dist = sp.spatial.distance.cdist(data, data, "euclidean")
     total = 0
     for line in dist:
-        total += np.sort(line)[1:1 + neighbours].sum() / (neighbours + 1)
+        total += np.sort(line)[1 : 1 + neighbours].sum() / (neighbours + 1)
     return total / dist.shape[0]
 
 
 def average_spacing(
-        data: Points3DList,
-        mean_angular_distance: Float,
+    data: Points3DList,
+    mean_angular_distance: Float,
 ) -> Float:
     """Calculate mean distance between points.
 
@@ -399,8 +402,8 @@ def average_spacing(
 
 
 def remap(
-        x: list[[int, int, int]],
-        mapper: list[int],
+    x: list[list[int]],
+    mapper: list[int],
 ) -> list[list[int | list[int]]]:
     """Rearrange list of points indices according to indices in mapper.
 
@@ -421,7 +424,7 @@ def remap(
 
 
 def poly_areas(
-        polygons: ArrayLike,
+    polygons: NDArray,
 ) -> NDArray[Float]:
     """Calculate surface areas of triangles, where `triangles` coordinates of points are in `polygons` variable.
 
@@ -429,13 +432,12 @@ def poly_areas(
     :return: numpy.ndarray;
     """
     polygons = np.array(polygons)
-    return 0.5 * np.linalg.norm(np.cross(polygons[:, 1] - polygons[:, 0],
-                                         polygons[:, 2] - polygons[:, 0]), axis=1)
+    return 0.5 * np.linalg.norm(np.cross(polygons[:, 1] - polygons[:, 0], polygons[:, 2] - polygons[:, 0]), axis=1)
 
 
 def triangle_areas(
-        triangles: ArrayLike[Int],
-        points: ArrayLike,
+    triangles: NDArray[Int],
+    points: NDArray,
 ) -> NDArray[Float]:
     """Calculate areas of triangles, where `triangles` indexes of vertices which coordinates are stored in `points`.
 
@@ -443,16 +445,18 @@ def triangle_areas(
     :param points: numpy.array; 3d points
     :return: numpy.array;
     """
-    return 0.5 * np.linalg.norm(np.cross(points[triangles[:, 1]] - points[triangles[:, 0]],
-                                         points[triangles[:, 2]] - points[triangles[:, 0]]), axis=1)
+    return 0.5 * np.linalg.norm(
+        np.cross(points[triangles[:, 1]] - points[triangles[:, 0]], points[triangles[:, 2]] - points[triangles[:, 0]]),
+        axis=1,
+    )
 
 
 def calculate_distance_matrix(
-        points1: ArrayLike,
-        points2: ArrayLike,
-        *,
-        return_join_vector_matrix: bool = False,
-) -> tuple[ArrayLike[Float], ArrayLike[Float] | None]:
+    points1: NDArray,
+    points2: NDArray,
+    *,
+    return_join_vector_matrix: bool = False,
+) -> tuple[NDArray[Float], NDArray[Float] | None]:
     """Return distance matrix between two sets of points.
 
     Return matrix consist of distances in order like foloowing:
@@ -477,8 +481,10 @@ def calculate_distance_matrix(
     distance_matrix = operations.calculate_lengths_in_3d_array(distance_vector_matrix)
 
     if return_join_vector_matrix:
-        normalized_distance_vectors = \
-            operations.divide_points_in_array_by_constants(distance_vector_matrix, distance_matrix)
+        normalized_distance_vectors = operations.divide_points_in_array_by_constants(
+            distance_vector_matrix,
+            distance_matrix,
+        )
         return distance_matrix, normalized_distance_vectors
     return distance_matrix, None
 
@@ -511,29 +517,29 @@ def find_face_centres(faces: Points3DList) -> NDArray[Float]:
 
 
 def check_missing_kwargs(
-        mandatory_kwargs: list,
-        supplied_kwargs: dict[str, Any],
-        instance_of: type,
+    mandatory_kwargs: list | tuple,
+    supplied_kwargs: dict[str, Any],
+    instance_of: type,
 ) -> None:
     """Check if all `kwargs` are all in `instance kwargs`.
 
     If missing raise ValuerError with missing `kwargs`.
 
-    :param mandatory_kwargs: list[str]
+    :param mandatory_kwargs: list[str] | tuple[str]
     :param supplied_kwargs: dict[str, Any]
     :param instance_of: class
     :return:
     """
     missing_kwargs = [f"`{kwarg}`" for kwarg in mandatory_kwargs if kwarg not in supplied_kwargs]
     if len(missing_kwargs) > 0:
-        msg = f'Missing argument(s): {", ".join(missing_kwargs)} in class instance {instance_of.__name__}'
+        msg = f"Missing argument(s): {', '.join(missing_kwargs)} in class instance {instance_of.__name__}"
         raise ValueError(msg)
 
 
 def check_missing_params(
-        mandatory_kwargs: list,
-        supplied_kwargs: list,
-        instance: object,
+    mandatory_kwargs: list,
+    supplied_kwargs: list,
+    instance: object,
 ) -> None:
     """Check if all `kwargs` are all in parameter `obj`.
 
@@ -546,7 +552,7 @@ def check_missing_params(
     """
     missing_kwargs = [f"`{kwarg}`" for kwarg in mandatory_kwargs if kwarg not in supplied_kwargs]
     if len(missing_kwargs) > 0:
-        msg = f'Missing argument(s): {", ".join(missing_kwargs)} in object {instance}'
+        msg = f"Missing argument(s): {', '.join(missing_kwargs)} in object {instance}"
         raise ValueError(msg)
 
 
@@ -589,9 +595,9 @@ def numeric_metallicity_from_string(n_metallicity: str) -> Float:
 
 
 def find_nearest_value_as_matrix(
-        look_in: ArrayLike[Float],
-        look_for: Float | ArrayLike[Float],
-) -> tuple[NDArray[Float], ArrayLike[Int]]:
+    look_in: NDArray[Float],
+    look_for: Float | NDArray[Float],
+) -> tuple[NDArray[Float], NDArray[Int]]:
     """Find values and indices of elements in `look_in` that are the closest to the value in `values`.
 
     :param look_in: numpy.array; elemnts we are looking the closest point in
@@ -606,8 +612,8 @@ def find_nearest_value_as_matrix(
 
 
 def find_nearest_value(
-        look_in: ArrayLike[Float],
-        look_for: Float,
+    look_in: NDArray[Float] | list[Float],
+    look_for: Float,
 ) -> tuple[NDArray[Float], Int]:
     """Find nearest value in `look_in` array to value `look_for`.
 
@@ -622,8 +628,8 @@ def find_nearest_value(
 
 
 def find_surrounded_as_matrix(
-        look_in: ArrayLike[Float],
-        look_for: ArrayLike[Float],
+    look_in: NDArray[Float],
+    look_for: NDArray[Float],
 ) -> NDArray[Float]:
     """Find values from `look_in` which souround values from `look_for`.
 
@@ -658,8 +664,8 @@ def find_surrounded_as_matrix(
 
 
 def find_surrounded(
-        look_in: ArrayLike[Float],
-        look_for: Float,
+    look_in: NDArray[Float],
+    look_for: Float,
 ) -> list[Any] | list[SupportsDunderLT[Any] | SupportsDunderGT[Any] | Any]:
     """Find values from `look_in` which surround `look_for` value.
 
@@ -697,16 +703,16 @@ def find_surrounded(
     del new_arr
 
     # arr = np.delete(arr, f_nst[1], 0)
-    ret.append(float(find_nearest_value(arr, look_for)[0]))
+    ret.append(float(find_nearest_value(np.asarray(arr), look_for)[0]))
     ret = sorted(ret)
     # test
     return ret if ret[0] < look_for < ret[1] else [look_for, look_for]
 
 
 def calculate_cos_theta(
-        normals: ArrayLike,
-        line_of_sight_vector: ArrayLike[Float, Float, Float],
-) -> ArrayLike[Float]:
+    normals: NDArray,
+    line_of_sight_vector: NDArray[Float],
+) -> NDArray[Float]:
     """Calculate cosine between two set of normalized vectors.
 
     Depending on the shape of `line_of_sight_vector` function returns:
@@ -721,13 +727,15 @@ def calculate_cos_theta(
     :return: numpy.ndarray;
     """
     line_of_sight_vector = np.array(line_of_sight_vector)
-    return np.sum(up.multiply(normals, line_of_sight_vector[None, :]), axis=1) \
-        if np.ndim(line_of_sight_vector) == 1 \
+    return (
+        np.sum(up.multiply(normals, line_of_sight_vector[None, :]), axis=1)
+        if np.ndim(line_of_sight_vector) == 1
         else np.sum(up.multiply(normals[:, None, :], line_of_sight_vector[None, :, :]), axis=2)
+    )
 
 
 def calculate_cos_theta_los_x(
-        normals: NDArray,
+    normals: NDArray,
 ) -> NDArray:
     """Calculate cosine of an angle between normalized vectors and line of sight vector [1, 0, 0].
 
@@ -738,8 +746,8 @@ def calculate_cos_theta_los_x(
 
 
 def get_line_of_sight_single_system(
-        phase: NDArray,
-        inclination: Float,
+    phase: NDArray,
+    inclination: Float,
 ) -> Points3DList:
     """Line of sight vector for given phase, inclination of the system and period of the rotation of given system.
 
@@ -755,8 +763,8 @@ def get_line_of_sight_single_system(
 
 
 def convert_gravity_acceleration_array(
-        colormap: NDArray,
-        units: str,
+    colormap: NDArray,
+    units: str,
 ) -> NDArray:
     """Convert gravity acceleration array from log_g(SI) units to other units such as `log_cgs`, `SI`, `cgs`.
 
@@ -809,6 +817,7 @@ def is_empty(value: Any) -> bool:  # noqa: PLR0911
 
     # Put DataFrame before Sized, otherwise this branch is unreachable
     if isinstance(value, pd.DataFrame):
+        # noinspection PyUnresolvedReferences
         return value.empty
 
     if isinstance(value, type(pd.NaT)):
@@ -841,10 +850,10 @@ def find_idx_of_nearest(array: NDArray[Float], values: NDArray[Float]) -> Int:
 
 
 def rotation_in_spherical(
-        phi: NDArray,
-        theta: NDArray,
-        phi_rotation: Float,
-        theta_rotation: Float,
+    phi: NDArray,
+    theta: NDArray,
+    phi_rotation: Float,
+    theta_rotation: Float,
 ) -> tuple[NDArray, NDArray]:
     """Rotation of spherical coordinates.
 
@@ -868,16 +877,15 @@ def rotation_in_spherical(
     cos_theta = up.cos(theta)
     cos_axis_theta = up.cos(theta_rotation)
     theta_new = up.arccos(cos_phi * sin_theta * sin_axis_theta + cos_theta * cos_axis_theta)
-    phi_new = up.arctan2(up.sin(phi_rot) * sin_theta, cos_phi * sin_theta * cos_axis_theta -
-                         cos_theta * sin_axis_theta)
+    phi_new = up.arctan2(up.sin(phi_rot) * sin_theta, cos_phi * sin_theta * cos_axis_theta - cos_theta * sin_axis_theta)
     return phi_new, theta_new
 
 
 def derotation_in_spherical(
-        phi: NDArray,
-        theta: NDArray,
-        phi_rotation: Float,
-        theta_rotation: Float,
+    phi: NDArray,
+    theta: NDArray,
+    phi_rotation: Float,
+    theta_rotation: Float,
 ) -> tuple[NDArray, NDArray]:
     """Backward transformation of spherical coordinates.
 
@@ -900,8 +908,7 @@ def derotation_in_spherical(
     cos_axis_theta = up.cos(theta_rotation)
 
     theta_new = up.arccos(np.round(cos_theta * cos_axis_theta - cos_phi * sin_theta * sin_axis_theta, 10))
-    phi_new = up.arctan2(sin_phi * sin_theta, cos_phi * sin_theta * cos_axis_theta +
-                         cos_theta * sin_axis_theta)
+    phi_new = up.arctan2(sin_phi * sin_theta, cos_phi * sin_theta * cos_axis_theta + cos_theta * sin_axis_theta)
     return (phi_new + phi_rotation) % const.FULL_ARC, theta_new
 
 
@@ -911,9 +918,9 @@ def calculate_equiv_radius(volume: NDArray | Number) -> NDArray | Number:
 
 
 def calculate_ellipsoid_volume(
-        _a: NDArray | Number,
-        _b: NDArray | Number,
-        _c: NDArray | Number,
+    _a: NDArray | Number,
+    _b: NDArray | Number,
+    _c: NDArray | Number,
 ) -> NDArray | Number:
     """Calculate volume of ellipsoid with semi-axis _a, _b and _c.
 
@@ -964,8 +971,8 @@ def nested_dict_values(dictionary: dict) -> Iterable:
 
 
 def calculate_volume_ellipse_approx(
-        equator_points: Points3DList = None,
-        meridian_points: Points3DList = None,
+    equator_points: Points3DList | NDArray | None = None,
+    meridian_points: Points3DList | NDArray | None = None,
 ) -> Float:
     """Calculate volume of the object.
 
@@ -981,10 +988,10 @@ def calculate_volume_ellipse_approx(
 
 
 def plane_projection(
-        points: Points3DList,
-        plane: str,
-        *,
-        keep_3d: bool = False,
+    points: Points3DList,
+    plane: str,
+    *,
+    keep_3d: bool = False,
 ) -> Points2DList:
     """Projects 3D points into given plane.
 
@@ -1010,9 +1017,8 @@ def get_visible_projection(obj: HasMeshData) -> NDArray[Float]:
     :return: numpy.ndarray
     """
     return plane_projection(
-        obj.points[
-            np.unique(obj.faces[obj.indices])
-        ], "yz",
+        obj.points[np.unique(obj.faces[obj.indices])],
+        "yz",
     )
 
 
@@ -1025,7 +1031,7 @@ def split_to_batches(array: NDArray, n_proc: Int) -> list[NDArray]:
     """
     indices = np.linspace(0, len(array), num=n_proc + 1, endpoint=True, dtype=INT)
     indices = [(indices[ii - 1], indices[ii]) for ii in range(1, n_proc + 1)]
-    return [array[idx[0]: idx[1]] for idx in indices]
+    return [array[idx[0] : idx[1]] for idx in indices]
 
 
 def renormalize_async_result(result: list[dict[str, NDArray]]) -> dict[str, NDArray]:
@@ -1089,8 +1095,8 @@ def flux_error_to_magnitude_error(data: NDArray | Float, error: NDArray | Float)
 
 
 def discretization_correction_factor(
-        discretization_factor: Float,
-        correction_factors: NDArray[[Float, Float]],
+    discretization_factor: Float,
+    correction_factors: NDArray[Float],
 ) -> Float:
     """Correction factor for the surface due to underestimation of the surface by the triangles.
 
@@ -1105,9 +1111,7 @@ def discretization_correction_factor(
     elif discretization_factor >= correction_factors[0, -1]:
         correction_factor = correction_factors[1, -1]
     else:
-        correction_factor = np.interp(discretization_factor,
-                                      correction_factors[0],
-                                      correction_factors[1])
+        correction_factor = np.interp(discretization_factor, correction_factors[0], correction_factors[1])
     # correction for non-equilateral triangles
     alpha = correction_factor * discretization_factor
     # correction for surface underestimation
@@ -1126,10 +1130,10 @@ def transform_values(value: Float | NDArray, default_unit: Unit, unit: Unit) -> 
 
 
 def jd_to_phase(
-        times: NDArray[Float],
-        period: Float,
-        t0: Float,
-        centre: Float = 0.5,
+    times: NDArray[Float] | Float,
+    period: Float,
+    t0: Float,
+    centre: Float = 0.5,
 ) -> NDArray[Float]:
     """Convert JD to phase according to supplied ephemeris.
 

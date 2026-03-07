@@ -38,12 +38,7 @@ def static_potential_primary_fn(radius: NumericLike, *args: Float) -> NumericLik
     """
     mass_ratio, surface_potential, b, c, d, e = args
     radius2 = up.power(radius, 2)
-    potential = (
-            1 / radius
-            + mass_ratio / up.sqrt(b + radius2 - c * radius)
-            - d * radius
-            + e * radius2
-    )
+    potential = 1 / radius + mass_ratio / up.sqrt(b + radius2 - c * radius) - d * radius + e * radius2
     return potential - surface_potential
 
 
@@ -72,19 +67,13 @@ def static_potential_secondary_fn(radius: NumericLike, *args: Float) -> NumericL
     """
     mass_ratio, surface_potential, b, c, d, e, f = args
     radius2 = up.power(radius, 2)
-    potential = (
-            mass_ratio / radius
-            + 1.0 / up.sqrt(b + radius2 - c * radius)
-            - d * radius
-            + e * radius2
-            + f
-    )
+    potential = mass_ratio / radius + 1.0 / up.sqrt(b + radius2 - c * radius) - d * radius + e * radius2 + f
     return potential - surface_potential
 
 
 def static_potential_primary_cylindrical_fn(
-        radius: NumericLike,
-        *args: Float,
+    radius: NumericLike,
+    *args: Float,
 ) -> NumericLike:
     """Evaluate the implicit primary surface potential in cylindrical coordinates.
 
@@ -113,18 +102,12 @@ def static_potential_primary_cylindrical_fn(
     """
     mass_ratio, surface_potential, a, b, c, d, e, f = args
     radius2 = up.power(radius, 2)
-    return (
-            1 / up.sqrt(a + radius2)
-            + mass_ratio / up.sqrt(b + radius2)
-            - c
-            + d * (e + f * radius2)
-            - surface_potential
-    )
+    return 1 / up.sqrt(a + radius2) + mass_ratio / up.sqrt(b + radius2) - c + d * (e + f * radius2) - surface_potential
 
 
 def static_potential_secondary_cylindrical_fn(
-        radius: NumericLike,
-        *args: Float,
+    radius: NumericLike,
+    *args: Float,
 ) -> NumericLike:
     """Evaluate the implicit secondary surface potential in cylindrical coordinates.
 
@@ -150,11 +133,7 @@ def static_potential_secondary_cylindrical_fn(
     mass_ratio, surface_potential, a, b, c, d, e, f = args
     radius2 = up.power(radius, 2)
     return (
-            mass_ratio / up.sqrt(a + radius2)
-            + 1.0 / up.sqrt(b + radius2)
-            + c * (d + e * radius2)
-            + f
-            - surface_potential
+        mass_ratio / up.sqrt(a + radius2) + 1.0 / up.sqrt(b + radius2) + c * (d + e * radius2) + f - surface_potential
     )
 
 
@@ -179,12 +158,7 @@ def potential_value_primary(radius: NumericLike, *args: Float) -> NumericLike:
     """
     mass_ratio, b, c, d, e = args
     radius2 = up.power(radius, 2)
-    return (
-            1 / radius
-            + mass_ratio / up.sqrt(b + radius2 - c * radius)
-            - d * radius
-            + e * radius2
-    )
+    return 1 / radius + mass_ratio / up.sqrt(b + radius2 - c * radius) - d * radius + e * radius2
 
 
 def potential_value_secondary(radius: NumericLike, *args: Float) -> NumericLike:
@@ -208,19 +182,13 @@ def potential_value_secondary(radius: NumericLike, *args: Float) -> NumericLike:
     """
     mass_ratio, b, c, d, e, f = args
     radius2 = up.power(radius, 2)
-    return (
-            mass_ratio / radius
-            + 1.0 / up.sqrt(b + radius2 - c * radius)
-            - d * radius
-            + e * radius2
-            + f
-    )
+    return mass_ratio / radius + 1.0 / up.sqrt(b + radius2 - c * radius) - d * radius + e * radius2 + f
 
 
 def potential_primary_fn(
-        radius: NumericLike,
-        coefficients: tuple[Float, Float, Float, Float, Float],
-        surface_potential: Float,
+    radius: NumericLike,
+    coefficients: tuple[Float, Float, Float, Float, Float],
+    surface_potential: Float,
 ) -> NumericLike:
     """Evaluate the implicit primary potential equation.
 
@@ -239,9 +207,9 @@ def potential_primary_fn(
 
 
 def potential_secondary_fn(
-        radius: NumericLike,
-        coefficients: tuple[Float, Float, Float, Float, Float, Float],
-        surface_potential: Float,
+    radius: NumericLike,
+    coefficients: tuple[Float, Float, Float, Float, Float, Float],
+    surface_potential: Float,
 ) -> NumericLike:
     """Evaluate the implicit secondary potential equation.
 
@@ -260,8 +228,8 @@ def potential_secondary_fn(
 
 
 def potential_value_primary_cylindrical(
-        radius: NumericLike,
-        *args: Float,
+    radius: NumericLike,
+    *args: Float,
 ) -> NumericLike:
     """Calculate the primary potential in cylindrical coordinates.
 
@@ -290,17 +258,12 @@ def potential_value_primary_cylindrical(
     """
     mass_ratio, a, b, c, d, e = args
     radius2 = up.power(radius, 2)
-    return (
-            1 / up.sqrt(a + radius2)
-            + mass_ratio / up.sqrt(b + radius2)
-            - c
-            + d * (a + e * radius2)
-    )
+    return 1 / up.sqrt(a + radius2) + mass_ratio / up.sqrt(b + radius2) - c + d * (a + e * radius2)
 
 
 def potential_value_secondary_cylindrical(
-        radius: NumericLike,
-        *args: Float,
+    radius: NumericLike,
+    *args: Float,
 ) -> NumericLike:
     """Calculate the secondary potential in cylindrical coordinates.
 
@@ -325,19 +288,13 @@ def potential_value_secondary_cylindrical(
     """
     mass_ratio, a, b, c, d, e, f = args
     radius2 = up.power(radius, 2)
-    return (
-            mass_ratio / up.sqrt(a + radius2)
-            + 1.0 / up.sqrt(b + radius2)
-            - c
-            + d * (e * radius2 + a)
-            + f
-    )
+    return mass_ratio / up.sqrt(a + radius2) + 1.0 / up.sqrt(b + radius2) - c + d * (e * radius2 + a) + f
 
 
 def potential_primary_cylindrical_fn(
-        radius: NumericLike,
-        coefficients: tuple[Float, Float, Float, Float, Float, Float],
-        surface_potential: Float,
+    radius: NumericLike,
+    coefficients: tuple[Float, Float, Float, Float, Float, Float],
+    surface_potential: Float,
 ) -> NumericLike:
     """Evaluate the implicit primary cylindrical potential equation.
 
@@ -352,16 +309,13 @@ def potential_primary_cylindrical_fn(
         surface potential.
     :rtype: Float | NDArray[Float]
     """
-    return (
-            potential_value_primary_cylindrical(radius, *coefficients)
-            - surface_potential
-    )
+    return potential_value_primary_cylindrical(radius, *coefficients) - surface_potential
 
 
 def potential_secondary_cylindrical_fn(
-        radius: NumericLike,
-        coefficients: tuple[Float, Float, Float, Float, Float, Float, Float],
-        surface_potential: Float,
+    radius: NumericLike,
+    coefficients: tuple[Float, Float, Float, Float, Float, Float, Float],
+    surface_potential: Float,
 ) -> NumericLike:
     """Evaluate the implicit secondary cylindrical potential equation.
 
@@ -376,15 +330,12 @@ def potential_secondary_cylindrical_fn(
         surface potential.
     :rtype: Float | NDArray[Float]
     """
-    return (
-            potential_value_secondary_cylindrical(radius, *coefficients)
-            - surface_potential
-    )
+    return potential_value_secondary_cylindrical(radius, *coefficients) - surface_potential
 
 
 def radial_primary_potential_derivative(
-        radius: NumericLike,
-        *args: Float,
+    radius: NumericLike,
+    *args: Float,
 ) -> NumericLike:
     """Calculate the radial derivative of the primary potential.
 
@@ -409,16 +360,16 @@ def radial_primary_potential_derivative(
     radius2 = up.power(radius, 2)
 
     return (
-            -1 / radius2
-            + 0.5 * mass_ratio * (c - 2 * radius) / up.power(b - c * radius + radius2, 1.5)
-            - d
-            + 2 * e * radius
+        -1 / radius2
+        + 0.5 * mass_ratio * (c - 2 * radius) / up.power(b - c * radius + radius2, 1.5)
+        - d
+        + 2 * e * radius
     )
 
 
 def radial_secondary_potential_derivative(
-        radius: NumericLike,
-        *args: Float,
+    radius: NumericLike,
+    *args: Float,
 ) -> NumericLike:
     """Calculate the radial derivative of the secondary potential.
 
@@ -442,47 +393,42 @@ def radial_secondary_potential_derivative(
     mass_ratio, b, c, d, e, _f = args
     radius2 = up.power(radius, 2)
 
-    return (
-            -mass_ratio / radius2
-            + (0.5 * c - radius) / up.power(b - c * radius + radius2, 1.5)
-            - d
-            + 2 * e * radius
-    )
+    return -mass_ratio / radius2 + (0.5 * c - radius) / up.power(b - c * radius + radius2, 1.5) - d + 2 * e * radius
 
 
 @overload
 def pre_calculate_for_potential_value_primary(
-        synchronicity: Float,
-        mass_ratio: Float,
-        distance: Float,
-        phi: Float,
-        theta: Float,
-        *,
-        return_as_tuple: Literal[False] = False,
+    synchronicity: Float,
+    mass_ratio: Float,
+    distance: Float,
+    phi: Float,
+    theta: Float,
+    *,
+    return_as_tuple: Literal[False] = False,
 ) -> tuple[Float, Float, Float, Float]: ...
 
 
 @overload
 def pre_calculate_for_potential_value_primary(
-        synchronicity: Float,
-        mass_ratio: Float,
-        distance: Float,
-        phi: NDArray[Float],
-        theta: NDArray[Float],
-        *,
-        return_as_tuple: Literal[False] = False,
+    synchronicity: Float,
+    mass_ratio: Float,
+    distance: Float,
+    phi: NDArray[Float],
+    theta: NDArray[Float],
+    *,
+    return_as_tuple: Literal[False] = False,
 ) -> NDArray[Float]: ...
 
 
 @overload
 def pre_calculate_for_potential_value_primary(
-        synchronicity: Float,
-        mass_ratio: Float,
-        distance: Float,
-        phi: NDArray[Float],
-        theta: NDArray[Float],
-        *,
-        return_as_tuple: Literal[True],
+    synchronicity: Float,
+    mass_ratio: Float,
+    distance: Float,
+    phi: NDArray[Float],
+    theta: NDArray[Float],
+    *,
+    return_as_tuple: Literal[True],
 ) -> tuple[
     NDArray[Float],
     NDArray[Float],
@@ -492,19 +438,23 @@ def pre_calculate_for_potential_value_primary(
 
 
 def pre_calculate_for_potential_value_primary(
-        synchronicity: Float,
-        mass_ratio: Float,
-        distance: Float,
-        phi: Float | NDArray[Float],
-        theta: Float | NDArray[Float],
-        *,
-        return_as_tuple: bool = False,
-) -> tuple[Float, Float, Float, Float] | NDArray[Float] | tuple[
-    NDArray[Float],
-    NDArray[Float],
-    NDArray[Float],
-    NDArray[Float],
-]:
+    synchronicity: Float,
+    mass_ratio: Float,
+    distance: Float,
+    phi: Float | NDArray[Float],
+    theta: Float | NDArray[Float],
+    *,
+    return_as_tuple: bool = False,
+) -> (
+    tuple[Float, Float, Float, Float]
+    | NDArray[Float]
+    | tuple[
+        NDArray[Float],
+        NDArray[Float],
+        NDArray[Float],
+        NDArray[Float],
+    ]
+):
     """Precompute auxiliary values for the primary spherical potential.
 
     The coefficients are used to avoid repeated work during iterative solving.
@@ -557,37 +507,37 @@ def pre_calculate_for_potential_value_primary(
 
 @overload
 def pre_calculate_for_potential_value_secondary(
-        synchronicity: Float,
-        mass_ratio: Float,
-        distance: Float,
-        phi: Float,
-        theta: Float,
-        *,
-        return_as_tuple: Literal[False] = False,
+    synchronicity: Float,
+    mass_ratio: Float,
+    distance: Float,
+    phi: Float,
+    theta: Float,
+    *,
+    return_as_tuple: Literal[False] = False,
 ) -> tuple[Float, Float, Float, Float, Float]: ...
 
 
 @overload
 def pre_calculate_for_potential_value_secondary(
-        synchronicity: Float,
-        mass_ratio: Float,
-        distance: Float,
-        phi: NDArray[Float],
-        theta: NDArray[Float],
-        *,
-        return_as_tuple: Literal[False] = False,
+    synchronicity: Float,
+    mass_ratio: Float,
+    distance: Float,
+    phi: NDArray[Float],
+    theta: NDArray[Float],
+    *,
+    return_as_tuple: Literal[False] = False,
 ) -> NDArray[Float]: ...
 
 
 @overload
 def pre_calculate_for_potential_value_secondary(
-        synchronicity: Float,
-        mass_ratio: Float,
-        distance: Float,
-        phi: NDArray[Float],
-        theta: NDArray[Float],
-        *,
-        return_as_tuple: Literal[True],
+    synchronicity: Float,
+    mass_ratio: Float,
+    distance: Float,
+    phi: NDArray[Float],
+    theta: NDArray[Float],
+    *,
+    return_as_tuple: Literal[True],
 ) -> tuple[
     NDArray[Float],
     NDArray[Float],
@@ -598,20 +548,24 @@ def pre_calculate_for_potential_value_secondary(
 
 
 def pre_calculate_for_potential_value_secondary(
-        synchronicity: Float,
-        mass_ratio: Float,
-        distance: Float,
-        phi: Float | NDArray[Float],
-        theta: Float | NDArray[Float],
-        *,
-        return_as_tuple: bool = False,
-) -> tuple[Float, Float, Float, Float, Float] | NDArray[Float] | tuple[
-    NDArray[Float],
-    NDArray[Float],
-    NDArray[Float],
-    NDArray[Float],
-    NDArray[Float],
-]:
+    synchronicity: Float,
+    mass_ratio: Float,
+    distance: Float,
+    phi: Float | NDArray[Float],
+    theta: Float | NDArray[Float],
+    *,
+    return_as_tuple: bool = False,
+) -> (
+    tuple[Float, Float, Float, Float, Float]
+    | NDArray[Float]
+    | tuple[
+        NDArray[Float],
+        NDArray[Float],
+        NDArray[Float],
+        NDArray[Float],
+        NDArray[Float],
+    ]
+):
     """Precompute auxiliary values for the secondary spherical potential.
 
     The coefficients are used to avoid repeated work during iterative solving.
@@ -669,8 +623,8 @@ def pre_calculate_for_potential_value_secondary(
 
 
 def radial_primary_potential_derivative_cylindrical(
-        radius: NumericLike,
-        *args: Float,
+    radius: NumericLike,
+    *args: Float,
 ) -> NumericLike:
     """Calculate the radial derivative of the primary cylindrical potential.
 
@@ -693,16 +647,12 @@ def radial_primary_potential_derivative_cylindrical(
     mass_ratio, a, b, _c, d, e = args
     radius2 = up.power(radius, 2)
 
-    return (
-            -radius / up.power(a + radius2, 1.5)
-            - radius * mass_ratio / up.power(b + radius2, 1.5)
-            + 2 * d * e * radius
-    )
+    return -radius / up.power(a + radius2, 1.5) - radius * mass_ratio / up.power(b + radius2, 1.5) + 2 * d * e * radius
 
 
 def radial_secondary_potential_derivative_cylindrical(
-        radius: NumericLike,
-        *args: Float,
+    radius: NumericLike,
+    *args: Float,
 ) -> NumericLike:
     """Calculate the radial derivative of the secondary cylindrical potential.
 
@@ -725,46 +675,42 @@ def radial_secondary_potential_derivative_cylindrical(
     mass_ratio, a, b, _c, d, e, _f = args
     radius2 = up.power(radius, 2)
 
-    return (
-            -radius * mass_ratio / up.power(a + radius2, 1.5)
-            - radius / up.power(b + radius2, 1.5)
-            + 2 * d * e * radius
-    )
+    return -radius * mass_ratio / up.power(a + radius2, 1.5) - radius / up.power(b + radius2, 1.5) + 2 * d * e * radius
 
 
 @overload
 def pre_calculate_for_potential_value_primary_cylindrical(
-        synchronicity: Float,
-        mass_ratio: Float,
-        phi: Float,
-        z: Float,
-        distance: Float,
-        *,
-        return_as_tuple: Literal[False] = False,
+    synchronicity: Float,
+    mass_ratio: Float,
+    phi: Float,
+    z: Float,
+    distance: Float,
+    *,
+    return_as_tuple: Literal[False] = False,
 ) -> tuple[Float, Float, Float, Float, Float]: ...
 
 
 @overload
 def pre_calculate_for_potential_value_primary_cylindrical(
-        synchronicity: Float,
-        mass_ratio: Float,
-        phi: NDArray[Float],
-        z: NDArray[Float],
-        distance: Float,
-        *,
-        return_as_tuple: Literal[False] = False,
+    synchronicity: Float,
+    mass_ratio: Float,
+    phi: NDArray[Float],
+    z: NDArray[Float],
+    distance: Float,
+    *,
+    return_as_tuple: Literal[False] = False,
 ) -> NDArray[Float]: ...
 
 
 @overload
 def pre_calculate_for_potential_value_primary_cylindrical(
-        synchronicity: Float,
-        mass_ratio: Float,
-        phi: NDArray[Float],
-        z: NDArray[Float],
-        distance: Float,
-        *,
-        return_as_tuple: Literal[True],
+    synchronicity: Float,
+    mass_ratio: Float,
+    phi: NDArray[Float],
+    z: NDArray[Float],
+    distance: Float,
+    *,
+    return_as_tuple: Literal[True],
 ) -> tuple[
     NDArray[Float],
     NDArray[Float],
@@ -775,20 +721,24 @@ def pre_calculate_for_potential_value_primary_cylindrical(
 
 
 def pre_calculate_for_potential_value_primary_cylindrical(
-        synchronicity: Float,
-        mass_ratio: Float,
-        phi: Float | NDArray[Float],
-        z: Float | NDArray[Float],
-        distance: Float,
-        *,
-        return_as_tuple: bool = False,
-) -> tuple[Float, Float, Float, Float, Float] | NDArray[Float] | tuple[
-    NDArray[Float],
-    NDArray[Float],
-    NDArray[Float],
-    NDArray[Float],
-    NDArray[Float],
-]:
+    synchronicity: Float,
+    mass_ratio: Float,
+    phi: Float | NDArray[Float],
+    z: Float | NDArray[Float],
+    distance: Float,
+    *,
+    return_as_tuple: bool = False,
+) -> (
+    tuple[Float, Float, Float, Float, Float]
+    | NDArray[Float]
+    | tuple[
+        NDArray[Float],
+        NDArray[Float],
+        NDArray[Float],
+        NDArray[Float],
+        NDArray[Float],
+    ]
+):
     """Precompute auxiliary values for the primary cylindrical potential.
 
     The coefficients are used to avoid repeated work during iterative solving.
@@ -844,37 +794,37 @@ def pre_calculate_for_potential_value_primary_cylindrical(
 
 @overload
 def pre_calculate_for_potential_value_secondary_cylindrical(
-        synchronicity: Float,
-        mass_ratio: Float,
-        phi: Float,
-        z: Float,
-        distance: Float,
-        *,
-        return_as_tuple: Literal[False] = False,
+    synchronicity: Float,
+    mass_ratio: Float,
+    phi: Float,
+    z: Float,
+    distance: Float,
+    *,
+    return_as_tuple: Literal[False] = False,
 ) -> tuple[Float, Float, Float, Float, Float, Float]: ...
 
 
 @overload
 def pre_calculate_for_potential_value_secondary_cylindrical(
-        synchronicity: Float,
-        mass_ratio: Float,
-        phi: NDArray[Float],
-        z: NDArray[Float],
-        distance: Float,
-        *,
-        return_as_tuple: Literal[False] = False,
+    synchronicity: Float,
+    mass_ratio: Float,
+    phi: NDArray[Float],
+    z: NDArray[Float],
+    distance: Float,
+    *,
+    return_as_tuple: Literal[False] = False,
 ) -> NDArray[Float]: ...
 
 
 @overload
 def pre_calculate_for_potential_value_secondary_cylindrical(
-        synchronicity: Float,
-        mass_ratio: Float,
-        phi: NDArray[Float],
-        z: NDArray[Float],
-        distance: Float,
-        *,
-        return_as_tuple: Literal[True],
+    synchronicity: Float,
+    mass_ratio: Float,
+    phi: NDArray[Float],
+    z: NDArray[Float],
+    distance: Float,
+    *,
+    return_as_tuple: Literal[True],
 ) -> tuple[
     NDArray[Float],
     NDArray[Float],
@@ -886,21 +836,25 @@ def pre_calculate_for_potential_value_secondary_cylindrical(
 
 
 def pre_calculate_for_potential_value_secondary_cylindrical(
-        synchronicity: Float,
-        mass_ratio: Float,
-        phi: Float | NDArray[Float],
-        z: Float | NDArray[Float],
-        distance: Float,
-        *,
-        return_as_tuple: bool = False,
-) -> tuple[Float, Float, Float, Float, Float, Float] | NDArray[Float] | tuple[
-    NDArray[Float],
-    NDArray[Float],
-    NDArray[Float],
-    NDArray[Float],
-    NDArray[Float],
-    NDArray[Float],
-]:
+    synchronicity: Float,
+    mass_ratio: Float,
+    phi: Float | NDArray[Float],
+    z: Float | NDArray[Float],
+    distance: Float,
+    *,
+    return_as_tuple: bool = False,
+) -> (
+    tuple[Float, Float, Float, Float, Float, Float]
+    | NDArray[Float]
+    | tuple[
+        NDArray[Float],
+        NDArray[Float],
+        NDArray[Float],
+        NDArray[Float],
+        NDArray[Float],
+        NDArray[Float],
+    ]
+):
     """Precompute auxiliary values for the secondary cylindrical potential.
 
     The coefficients are used to avoid repeated work during iterative solving.
@@ -973,13 +927,13 @@ def primary_potential_derivative_x(x: NumericLike, *args: Float) -> NumericLike:
     :rtype: Float | NDArray[Float]
     """
     synchronicity, mass_ratio, distance = args
-    r_sqr = x ** 2
+    r_sqr = x**2
     rw_sqr = (distance - x) ** 2
     return (
-            -(x / r_sqr ** (3.0 / 2.0))
-            + (mass_ratio * (distance - x)) / rw_sqr ** (3.0 / 2.0)
-            + synchronicity ** 2 * (mass_ratio + 1) * x
-            - mass_ratio / distance ** 2
+        -(x / r_sqr ** (3.0 / 2.0))
+        + (mass_ratio * (distance - x)) / rw_sqr ** (3.0 / 2.0)
+        + synchronicity**2 * (mass_ratio + 1) * x
+        - mass_ratio / distance**2
     )
 
 
@@ -999,11 +953,11 @@ def secondary_potential_derivative_x(x: NumericLike, *args: Float) -> NumericLik
     :rtype: Float | NDArray[Float]
     """
     synchronicity, mass_ratio, distance = args
-    r_sqr = x ** 2
+    r_sqr = x**2
     rw_sqr = (distance - x) ** 2
     return (
-            -(x / r_sqr ** (3.0 / 2.0))
-            + (mass_ratio * (distance - x)) / rw_sqr ** (3.0 / 2.0)
-            - synchronicity ** 2 * (mass_ratio + 1) * (distance - x)
-            + 1.0 / distance ** 2
+        -(x / r_sqr ** (3.0 / 2.0))
+        + (mass_ratio * (distance - x)) / rw_sqr ** (3.0 / 2.0)
+        - synchronicity**2 * (mass_ratio + 1) * (distance - x)
+        + 1.0 / distance**2
     )

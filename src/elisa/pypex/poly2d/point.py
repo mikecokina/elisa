@@ -1,32 +1,32 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from elisa.pypex.base.conf import ROUND_PRECISION
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike
+    from numpy.typing import NDArray
 
     from elisa.pypex.poly2d.polygon import Polygon
 
 MIN_POLYGON_POINTS = 3
 
 
-def _line_side(p1: ArrayLike, p2: ArrayLike, a: ArrayLike, b: ArrayLike) -> float:
+def _line_side(p1: NDArray, p2: NDArray, a: NDArray, b: NDArray) -> float:
     """Determine which side of a line two points lie on.
 
     Help determine whether both points of line p lie on the same side of line ab or not.
 
     :param p1: First point of line p
-    :type p1: ArrayLike
+    :type p1: NDArray
     :param p2: Second point of line p
-    :type p2: ArrayLike
+    :type p2: NDArray
     :param a: First point of line ab
-    :type a: ArrayLike
+    :type a: NDArray
     :param b: Second point of line ab
-    :type b: ArrayLike
+    :type b: NDArray
     :return: Cross product result indicating side orientation
     :rtype: float
     """
@@ -37,17 +37,17 @@ def _line_side(p1: ArrayLike, p2: ArrayLike, a: ArrayLike, b: ArrayLike) -> floa
 
 
 # /* Check whether p1 and p2 lie on the same side of line ab */
-def same_side(p1: ArrayLike, p2: ArrayLike, a: ArrayLike, b: ArrayLike) -> bool:
+def same_side(p1: NDArray, p2: NDArray, a: NDArray, b: NDArray) -> bool:
     """Determine whether two points lie on the same side of a line.
 
     :param p1: First point of line p
-    :type p1: ArrayLike
+    :type p1: NDArray
     :param p2: Second point of line p
-    :type p2: ArrayLike
+    :type p2: NDArray
     :param a: First point of line ab
-    :type a: ArrayLike
+    :type a: NDArray
     :param b: Second point of line ab
-    :type b: ArrayLike
+    :type b: NDArray
     :return: True if points lie on the same side, False otherwise
     :rtype: bool
     """
@@ -201,7 +201,7 @@ class Point:
         :rtype: numpy.ndarray
         """
         points_array = np.asarray(points)
-        _points = [_Point(i, round(cast("Point", point).x, round_tol), round(cast("Point", point).y, round_tol))
+        _points = [_Point(i, round(point.x, round_tol), round(point.y, round_tol))
                    for i, point in enumerate(points_array)]
         indices = [_point.i for _point in set(_points)]
         return points_array[indices]

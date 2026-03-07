@@ -67,6 +67,7 @@ class Logger:
     Used when logging suppression is enabled via getLogger(suppress=True).
     """
 
+    # noinspection PyUnusedLocal
     def __init__(self, name: str, *args: Any, **kwargs: Any) -> None:  # noqa: ARG002
         """Initialize a dummy logger instance.
 

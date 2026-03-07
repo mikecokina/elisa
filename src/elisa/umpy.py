@@ -19,7 +19,7 @@ import numpy as np
 from scipy import integrate, optimize, special
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike
+    from numpy.typing import NDArray
 
     from elisa.types import Float
 
@@ -87,10 +87,10 @@ except AttributeError:
     def sph_harm(
             m: int,
             n: int,
-            theta: float | np.ndarray,
-            phi: float | np.ndarray,
-            out: np.ndarray | None = None,
-    ) -> np.ndarray | complex:
+            theta: Float | NDArray,
+            phi: Float | NDArray,
+            out: NDArray | None = None,
+    ) -> NDArray | complex:
         """Calculate spherical harmonics using legacy API.
 
         Provides backward compatibility for the old SciPy sph_harm API.
@@ -127,8 +127,8 @@ except AttributeError:
     # newer SciPy: simpson is the replacement
     # noinspection PyUnusedLocal
     def simps(
-            y: ArrayLike,
-            x: ArrayLike | None = None,
+            y: NDArray,
+            x: NDArray | None = None,
             dx: Float = 1.0,
             axis: int = -1,
             even: str | None = None,  # noqa: ARG001

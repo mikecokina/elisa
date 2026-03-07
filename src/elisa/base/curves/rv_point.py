@@ -7,7 +7,7 @@ from elisa.base.curves import utils as crv_utils
 from elisa.base.types import FLOAT
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike, NDArray
+    from numpy.typing import NDArray
 
     from elisa.base.container import StarContainer
     from elisa.binary_system.container import OrbitalPositionContainer
@@ -28,13 +28,14 @@ def _calculate_rv_point(star: StarContainer) -> Float:
     """
     indices = star.indices
     velocities: NDArray = star.velocities[indices]
-    fluxes: ArrayLike = crv_utils.calculate_surface_element_fluxes("rv_band", star)
+    fluxes: NDArray = crv_utils.calculate_surface_element_fluxes("rv_band", star)
 
     total_flux = up.sum(fluxes)
     if total_flux == 0:
         return FLOAT(up.NaN)
 
     # velocities[:, 0] selects the line-of-sight velocity component
+    # noinspection PyUnresolvedReferences
     rv_value = up.sum(velocities[:, 0] * fluxes) / total_flux
     return FLOAT(rv_value)
 

@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from matplotlib.colorbar import Colorbar
     from matplotlib.figure import Figure
     from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-    from numpy.typing import ArrayLike
+    from numpy.typing import NDArray
 
 # noinspection PyUnresolvedReferences
 CMAPS = {
@@ -110,7 +110,7 @@ def equipotential(**kwargs) -> Figure | None:
     if kwargs["components_to_plot"] in ["secondary", "both"]:
         ax.plot(x_secondary, y_secondary, label="secondary", c=kwargs["colors"][1])
 
-    lims = ax.get_xlim() - np.mean(ax.get_xlim())
+    lims = (np.asarray(ax.get_xlim()) - np.mean(ax.get_xlim())).tolist()
     ax.set_ylim(lims)
     ax.set_aspect("equal", "box")
     ax.set_xlabel(x_label)
@@ -719,8 +719,8 @@ def binary_surface_anim(**kwargs) -> None:  # noqa: C901, PLR0915
 
     def update_plot(
             frame_number: int,
-            _points: ArrayLike,
-            _faces: ArrayLike,
+            _points: NDArray,
+            _faces: NDArray,
             _clr: list[str],
             _cmaps: list,
             _plot: list[Poly3DCollection],

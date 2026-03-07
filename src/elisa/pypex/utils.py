@@ -7,7 +7,9 @@ from elisa.base.types import FLOAT
 
 if TYPE_CHECKING:
     import numpy as np
-    from numpy.typing import ArrayLike
+    from numpy.typing import NDArray
+
+    from elisa.types import Float
 
 
 def md5_content(content: str) -> str:
@@ -38,11 +40,11 @@ def sha256_content(content: str) -> str:
     return sha256.hexdigest()
 
 
-def det_2d(matrix: ArrayLike) -> float:
+def det_2d(matrix: NDArray | list) -> Float:
     """Calculate the 2D determinant of a 2x2 matrix.
 
     :param matrix: 2x2 matrix as array-like (list, tuple, or numpy.ndarray)
-    :type matrix: ArrayLike
+    :type matrix: NDArray
     :return: Determinant value
     :rtype: float
     """

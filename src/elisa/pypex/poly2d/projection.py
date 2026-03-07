@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike
+    from numpy.typing import NDArray
 
 
-def projection(vector_a: ArrayLike, vector_d: ArrayLike) -> np.ndarray:
+def projection(vector_a: NDArray, vector_d: NDArray) -> np.ndarray:
     """Projection vector ``p`` (scalar) of vector ``A`` in direction defined by unit vector ``E``.
 
     Computed as dot product of following::
@@ -26,9 +26,9 @@ def projection(vector_a: ArrayLike, vector_d: ArrayLike) -> np.ndarray:
         p = (A . E) * E = ((A . B) / |B|) * (B / |B|) = ((A . B) / (|B|^2)) * B = ((A . B) / (B . B)) * B
 
     :param vector_a: Vector to project
-    :type vector_a: ArrayLike
+    :type vector_a: NDArray
     :param vector_d: Direction vector
-    :type vector_d: ArrayLike
+    :type vector_d: NDArray
     :return: Projected vector
     :rtype: numpy.ndarray
     """
@@ -36,7 +36,7 @@ def projection(vector_a: ArrayLike, vector_d: ArrayLike) -> np.ndarray:
     return (np.dot(vector_a, vector_d) / np.dot(vector_d, vector_d)) * vector_d
 
 
-def cartesian_to_vectors_defined(tn: ArrayLike, nn: ArrayLike, vector: ArrayLike) -> np.ndarray:
+def cartesian_to_vectors_defined(tn: NDArray, nn: NDArray, vector: NDArray) -> np.ndarray:
     """Transform coordinates from standard cartesian 2D to custom vector-defined system.
 
     Transform coordinates from standard cartesian 2D defined by unit vector e1 and e2 to coordinate system defined
@@ -48,11 +48,11 @@ def cartesian_to_vectors_defined(tn: ArrayLike, nn: ArrayLike, vector: ArrayLike
         |c2|   | e1 . n    e2 . t |   | v2 |
 
     :param tn: Tangential vector
-    :type tn: ArrayLike
+    :type tn: NDArray
     :param nn: Normal vector
-    :type nn: ArrayLike
+    :type nn: NDArray
     :param vector: Vector to transform
-    :type vector: ArrayLike
+    :type vector: NDArray
     :return: Transformed vector in new coordinate system
     :rtype: numpy.ndarray
     """

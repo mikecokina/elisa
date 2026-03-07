@@ -14,15 +14,15 @@ from elisa.logger import getLogger
 logger = getLogger("base.surface.temperature")
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike, NDArray
+    from numpy.typing import NDArray
 
     from elisa.base.container import StarContainer
     from elisa.types import Float
 
 
 def calculate_effective_temperatures(
-        star_container: StarContainer,
-        gradient_magnitudes: ArrayLike | NDArray,
+    star_container: StarContainer,
+    gradient_magnitudes: NDArray,
 ) -> NDArray[np.floating]:
     """Calculate effective temperatures from gradient magnitudes.
 
@@ -33,7 +33,7 @@ def calculate_effective_temperatures(
     :type star_container: elisa.base.container.StarContainer
     :param gradient_magnitudes: Per-face gradient magnitudes used to compute
         local effective temperatures.
-    :type gradient_magnitudes: numpy.typing.ArrayLike | numpy.typing.NDArray
+    :type gradient_magnitudes: numpy.typing.NDArray | numpy.typing.NDArray
     :returns: Per-face effective temperatures (expanded to full surface if symmetry).
     :rtype: numpy.typing.NDArray
     """
@@ -86,6 +86,7 @@ def calculate_polar_effective_temperature(star_container: StarContainer) -> Floa
         msg = "Division by zero encountered while computing polar effective temperature"
         raise ZeroDivisionError(msg)
 
+    # noinspection PyUnresolvedReferences
     return sc.t_eff * up.power(numerator / denominator, 0.25)
 
 
@@ -107,6 +108,7 @@ def renormalize_temperatures(star: StarContainer) -> None:
         for spot in sc.spots.values():
             total_surface += np.sum(spot.areas)
 
+    # noinspection PyUnresolvedReferences
     desired_flux_value = total_surface * up.power(sc.t_eff, 4)
 
     current_flux = np.sum(sc.areas * up.power(sc.temperatures, 4))

@@ -1,3 +1,7 @@
-from elisa.base.types import FLOAT, INT
+from __future__ import annotations
 
-Shape2DType = list[list[FLOAT | INT, FLOAT | INT]]
+from typing import TYPE_CHECKING, TypeAlias
+
+from numpy.typing import NDArray
+
+Shape2DType: TypeAlias = list | NDArray

@@ -14,7 +14,7 @@ from elisa.pypex.base.conf import ROUND_PRECISION
 from elisa.pypex.poly2d import projection
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike
+    from numpy.typing import NDArray
 
     from elisa.pypex.base.types import Shape2DType
 
@@ -23,8 +23,8 @@ LINE_SEGMENT_VERTICES = 2
 
 
 def separating_axis_theorem(
-        poly1: ArrayLike,
-        poly2: ArrayLike,
+        poly1: NDArray,
+        poly2: NDArray,
         *,
         touch_is_separated: bool = False,
         round_tol: int = ROUND_PRECISION,
@@ -46,9 +46,9 @@ def separating_axis_theorem(
             Only strict area overlap counts as intersection.
 
     :param poly1: First convex polygon as array of vertices
-    :type poly1: ArrayLike
+    :type poly1: NDArray
     :param poly2: Second convex polygon as array of vertices
-    :type poly2: ArrayLike
+    :type poly2: NDArray
     :param touch_is_separated:
         If True, touching polygons are treated as separated.
         If False, touching counts as intersection.
@@ -144,8 +144,8 @@ def separating_axis_theorem(
 
 
 def separating_axis_theorem_line_adapt(
-        line1: ArrayLike,
-        line2: ArrayLike,
+        line1: NDArray,
+        line2: NDArray,
         *,
         touch_is_separated: bool = False,
         round_tol: int = ROUND_PRECISION,
@@ -172,9 +172,9 @@ def separating_axis_theorem_line_adapt(
             (i.e. only strict overlap counts as intersection).
 
     :param line1: First line segment as array of two vertices
-    :type line1: ArrayLike
+    :type line1: NDArray
     :param line2: Second line segment as array of two vertices
-    :type line2: ArrayLike
+    :type line2: NDArray
     :param touch_is_separated:
         If True, touching segments are treated as separated.
         If False, touching counts as intersection.
@@ -215,8 +215,8 @@ def separating_axis_theorem_line_adapt(
 
 
 def intersects(
-        poly1: ArrayLike | Shape2DType,
-        poly2: ArrayLike | Shape2DType,
+        poly1: NDArray | Shape2DType,
+        poly2: NDArray | Shape2DType,
         *,
         touch_is_separated: bool = False,
         round_tol: int = ROUND_PRECISION,
@@ -238,9 +238,9 @@ def intersects(
         counts as intersection.
 
     :param poly1: First convex polygon or line segment as array of vertices
-    :type poly1: ArrayLike | Shape2DType
+    :type poly1: NDArray | Shape2DType
     :param poly2: Second convex polygon or line segment as array of vertices
-    :type poly2: ArrayLike | Shape2DType
+    :type poly2: NDArray | Shape2DType
     :param touch_is_separated:
         If True, touching objects are considered separated.
         If False, touching counts as intersection.

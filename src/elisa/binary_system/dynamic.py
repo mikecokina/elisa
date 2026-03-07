@@ -16,7 +16,7 @@ from elisa.binary_system.curves.utils import (
 from elisa.binary_system.orbit.container import OrbitalSupplements
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike, NDArray
+    from numpy.typing import NDArray
 
     from elisa.binary_system.container import OrbitalPositionContainer
     from elisa.binary_system.system import BinarySystem
@@ -29,8 +29,8 @@ MID_PHOTOMERIC_PHASE = 0.5
 
 
 def get_eclipse_boundaries(
-        binary: BinarySystem,
-        components_distance: Float,
+    binary: BinarySystem,
+    components_distance: Float,
 ) -> NDArray[Float]:
     """Calculate orbital azimuth ranges where eclipses occur.
 
@@ -91,23 +91,26 @@ def get_eclipse_boundaries(
     square = 1.0 if square > 1 else square
 
     azimuth = up.arcsin(up.sqrt(square))
-    return np.array(
-        [
-            const.HALF_PI - azimuth,
-            const.HALF_PI + azimuth,
-            1.5 * const.PI - azimuth,
-            1.5 * const.PI + azimuth,
-        ],
-        dtype=np.float64,
-    ) % const.FULL_ARC
+    return (
+        np.array(
+            [
+                const.HALF_PI - azimuth,
+                const.HALF_PI + azimuth,
+                1.5 * const.PI - azimuth,
+                1.5 * const.PI + azimuth,
+            ],
+            dtype=np.float64,
+        )
+        % const.FULL_ARC
+    )
 
 
 def find_apsidally_corresponding_positions(
-        binary: BinarySystem,
-        radii: ArrayLike,
-        base_arr: ArrayLike,
-        supplement_arr: ArrayLike,
-        as_empty: ArrayLike | None = None,
+    binary: BinarySystem,
+    radii: NDArray,
+    base_arr: NDArray,
+    supplement_arr: NDArray,
+    as_empty: NDArray | None = None,
 ) -> OrbitalSupplements:
     """Find apsidally corresponding orbital positions with similar geometry.
 
@@ -119,15 +122,15 @@ def find_apsidally_corresponding_positions(
     :param binary: Binary system instance.
     :type binary: BinarySystem
     :param radii: Forward radii or equivalent component radii array.
-    :type radii: ArrayLike
+    :type radii: NDArray
     :param base_arr: Base orbital positions.
-    :type base_arr: ArrayLike
+    :type base_arr: NDArray
     :param supplement_arr: Orbital positions on the opposite side of the
         apsidal line.
-    :type supplement_arr: ArrayLike
+    :type supplement_arr: NDArray
     :param as_empty: Placeholder value used when no matching counterpart is
         found. If ``None``, an all-``NaN`` placeholder is used.
-    :type as_empty: ArrayLike | None
+    :type as_empty: NDArray | None
     :return: Container with paired orbital supplements.
     :rtype: OrbitalSupplements
     """
@@ -203,11 +206,11 @@ def find_apsidally_corresponding_positions(
 
 
 def resolve_object_geometry_update(
-        # function is used with dynamic feedeing of arguments, so we cannot apply FBT001 here, keep it as is so far
-        has_spots: bool,  # noqa: FBT001
-        size: int,
-        rel_d: ArrayLike,
-        max_allowed_difference: Float | None = None,
+    # function is used with dynamic feedeing of arguments, so we cannot apply FBT001 here, keep it as is so far
+    has_spots: bool,  # noqa: FBT001
+    size: int,
+    rel_d: NDArray,
+    max_allowed_difference: Float | None = None,
 ) -> NDArray[np.bool_]:
     """Evaluate where object geometry must be fully updated.
 
@@ -220,7 +223,7 @@ def resolve_object_geometry_update(
     :type size: int
     :param rel_d: Parameter characterizing flux change due to variation in
         surface geometry.
-    :type rel_d: ArrayLike
+    :type rel_d: NDArray
     :param max_allowed_difference: Maximum allowed accumulated geometry-related
         flux change between full updates. If ``None``, the configured default is
         used.
@@ -233,18 +236,16 @@ def resolve_object_geometry_update(
         has_spots=has_spots,
         size=size,
         rel_d=rel_d,
-        max_allowed_difference=(
-                max_allowed_difference or settings.MAX_D_FLUX
-        ),
+        max_allowed_difference=(max_allowed_difference or settings.MAX_D_FLUX),
         resolve="object",
     )
 
 
 def resolve_spots_geometry_update(
-        spots_longitudes: dict[str, dict[int, ArrayLike]],
-        size: int,
-        pulsations_tests: dict[str, bool],
-        max_allowed_difference: Float | None = None,
+    spots_longitudes: dict[str, dict[int, NDArray]],
+    size: int,
+    pulsations_tests: dict[str, bool],
+    max_allowed_difference: Float | None = None,
 ) -> tuple[NDArray[np.bool_], NDArray[np.bool_]]:
     """Evaluate where spot geometry must be fully updated.
 
@@ -256,7 +257,7 @@ def resolve_spots_geometry_update(
 
     :param spots_longitudes: Spot longitudes during orbital motion organized as
         ``{component: {spot_index: longitude_array}}``.
-    :type spots_longitudes: dict[str, dict[int, ArrayLike]]
+    :type spots_longitudes: dict[str, dict[int, NDArray]]
     :param size: Number of orbital positions.
     :type size: int
     :param pulsations_tests: Mapping indicating whether each component contains
@@ -290,9 +291,7 @@ def resolve_spots_geometry_update(
             has_spots=True,
             size=size,
             rel_d=d_long,
-            max_allowed_difference=(
-                    max_allowed_difference or settings.MAX_SPOT_D_LONGITUDE
-            ),
+            max_allowed_difference=(max_allowed_difference or settings.MAX_SPOT_D_LONGITUDE),
             resolve="spot",
         )
 
@@ -300,12 +299,12 @@ def resolve_spots_geometry_update(
 
 
 def _resolve_geometry_update(
-        has_spots: bool,  # noqa: FBT001
-        size: int,
-        rel_d: ArrayLike,
-        max_allowed_difference: Float,
-        *,
-        resolve: Literal["object", "spot"] = "object",
+    has_spots: bool,  # noqa: FBT001
+    size: int,
+    rel_d: NDArray,
+    max_allowed_difference: Float,
+    *,
+    resolve: Literal["object", "spot"] = "object",
 ) -> NDArray[np.bool_]:
     """Evaluate where full geometry updates are required.
 
@@ -317,7 +316,7 @@ def _resolve_geometry_update(
     :param size: Number of orbital positions.
     :type size: int
     :param rel_d: Parameter characterizing cumulative geometric change.
-    :type rel_d: ArrayLike
+    :type rel_d: NDArray
     :param max_allowed_difference: Maximum allowed accumulated change before a
         full rebuild is required.
     :type max_allowed_difference: Float
@@ -357,13 +356,13 @@ def _resolve_geometry_update(
 
 
 def resolve_irrad_update(
-        rel_d_irrad: ArrayLike,
-        size: int,
+    rel_d_irrad: NDArray,
+    size: int,
 ) -> NDArray[np.bool_]:
     """Evaluate where irradiation must be recalculated.
 
     :param rel_d_irrad: Change in flux due to variation in mutual irradiation.
-    :type rel_d_irrad: ArrayLike
+    :type rel_d_irrad: NDArray
     :param size: Number of orbital positions.
     :type size: int
     :return: Boolean mask indicating positions where reflected flux must be
@@ -386,8 +385,8 @@ def resolve_irrad_update(
 
 
 def phase_crv_symmetry(
-        binary_system: BinarySystem,
-        phase: NDArray[Float],
+    binary_system: BinarySystem,
+    phase: NDArray[Float],
 ) -> tuple[NDArray[Float], NDArray[Int]]:
     """Exploit symmetry of circular systems without spots or pulsations.
 
@@ -419,17 +418,17 @@ def phase_crv_symmetry(
 
 
 def in_eclipse_test(
-        azimuths: ArrayLike,
-        ecl_boundaries: ArrayLike,
+    azimuths: NDArray,
+    ecl_boundaries: NDArray,
 ) -> NDArray[np.bool_]:
     """Test whether eclipse occurs at the given azimuths.
 
     This function works only for circular orbits.
 
     :param azimuths: Orbital azimuths.
-    :type azimuths: ArrayLike
+    :type azimuths: NDArray
     :param ecl_boundaries: Eclipse boundary azimuths.
-    :type ecl_boundaries: ArrayLike
+    :type ecl_boundaries: NDArray
     :return: Boolean mask indicating eclipse presence.
     :rtype: NDArray[numpy.bool_]
     """
@@ -471,8 +470,8 @@ def in_eclipse_test(
 
 
 def correct_spot_positions_for_libration(
-        system: BinarySystem | OrbitalPositionContainer,
-        phases: Float | ArrayLike,
+    system: BinarySystem | OrbitalPositionContainer,
+    phases: Float | NDArray,
 ) -> Float | NDArray[Float]:
     """Correct spot positions for libration caused by eccentric orbit.
 
@@ -482,7 +481,7 @@ def correct_spot_positions_for_libration(
     :param system: Binary system or orbital position container instance.
     :type system: BinarySystem | OrbitalPositionContainer
     :param phases: Orbital phases.
-    :type phases: Float | ArrayLike
+    :type phases: Float | NDArray
     :return: Angular libration correction for each phase.
     :rtype: Float | NDArray[numpy.float64]
     """
@@ -499,11 +498,11 @@ def correct_spot_positions_for_libration(
 
 
 def calculate_spot_longitudes(
-        system: BinarySystem | OrbitalPositionContainer,
-        phases: Float | ArrayLike,
-        component: ComponentSelection | None = "all",
-        *,
-        correct_libration: bool = True,
+    system: BinarySystem | OrbitalPositionContainer,
+    phases: Float | NDArray,
+    component: ComponentSelection | None = "all",
+    *,
+    correct_libration: bool = True,
 ) -> dict[str, dict[int, Float | NDArray[Float]]]:
     """Calculate spot longitudes for the selected component or components.
 
@@ -512,7 +511,7 @@ def calculate_spot_longitudes(
     :param system: Binary system or orbital position container instance.
     :type system: BinarySystem | OrbitalPositionContainer
     :param phases: Orbital phases.
-    :type phases: Float | ArrayLike
+    :type phases: Float | NDArray
     :param component: Component selector. If ``None`` or empty, no components
         are processed. If ``"all"`` or ``"both"``, both components are used.
     :type component: Literal["primary", "secondary", "all", "both"] | None
@@ -528,18 +527,14 @@ def calculate_spot_longitudes(
     components = bsutils.component_to_list(component)
     components_map = {comp: getattr(system, str(comp)) for comp in components}
 
-    libration_correction = (
-        correct_spot_positions_for_libration(system, phases_array)
-        if correct_libration
-        else 0
-    )
+    libration_correction = correct_spot_positions_for_libration(system, phases_array) if correct_libration else 0
 
     return {
         str(comp): {
             spot_index: (
-                    (instance.synchronicity - 1.0) * phases_array * const.FULL_ARC
-                    + float(spot.longitude)
-                    + libration_correction
+                (instance.synchronicity - 1.0) * phases_array * const.FULL_ARC
+                + float(spot.longitude)
+                + libration_correction
             )
             for spot_index, spot in instance.spots.items()
         }
@@ -548,10 +543,10 @@ def calculate_spot_longitudes(
 
 
 def assign_spot_longitudes(
-        system: BinarySystem | OrbitalPositionContainer,
-        spots_longitudes: dict[str, dict[int, Float | NDArray[Float]]],
-        index: int | None = None,
-        component: ComponentSelection | None = "all",
+    system: BinarySystem | OrbitalPositionContainer,
+    spots_longitudes: dict[str, dict[int, Float | NDArray[Float]]],
+    index: int | None = None,
+    component: ComponentSelection | None = "all",
 ) -> None:
     """Assign spot longitudes from precomputed longitude values.
 

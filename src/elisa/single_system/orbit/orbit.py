@@ -15,7 +15,7 @@ from elisa.single_system.orbit.transform import OrbitProperties
 logger = getLogger("single_system.orbit.orbit")
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike, NDArray
+    from numpy.typing import NDArray
 
     from elisa.types import Float
 
@@ -37,24 +37,24 @@ def angular_velocity(rotation_period: Float) -> Float:
     return c.FULL_ARC / seconds
 
 
-def true_phase_to_azimuth(phase: ArrayLike | Float) -> NDArray[np.floating] | Float:
+def true_phase_to_azimuth(phase: NDArray | Float) -> NDArray[np.floating] | Float:
     """Convert photometric phase(s) to observer azimuth(s).
 
     The mapping is a simple linear scaling by a full orbital angle.
 
     :param phase: Photometric phase scalar or array-like.
-    :type phase: numpy.typing.ArrayLike | elisa.types.Float
+    :type phase: numpy.typing.NDArray | elisa.types.Float
     :returns: Azimuth(s) in radians or array of radians.
     :rtype: numpy.ndarray | elisa.types.Float
     """
     return c.FULL_ARC * phase
 
 
-def azimuth_to_true_phase(azimuth: ArrayLike | Float) -> NDArray[np.floating] | Float:
+def azimuth_to_true_phase(azimuth: NDArray | Float) -> NDArray[np.floating] | Float:
     """Convert observer azimuth(s) to photometric phase(s).
 
     :param azimuth: Azimuth scalar or array-like in radians.
-    :type azimuth: numpy.typing.ArrayLike | elisa.types.Float
+    :type azimuth: numpy.typing.NDArray | elisa.types.Float
     :returns: Photometric phase(s).
     :rtype: numpy.ndarray | elisa.types.Float
     """
@@ -102,25 +102,25 @@ class Orbit(AbstractOrbit):
         # keep period consistent with rotational_period
         self.period = self.rotational_period
 
-    def orbital_motion(self, phase: ArrayLike | Float) -> NDArray[np.floating]:
+    def orbital_motion(self, phase: NDArray | Float) -> NDArray[np.floating]:
         """Alias to :meth:`rotational_motion`.
 
         :param phase: Photometric phase(s).
-        :type phase: numpy.typing.ArrayLike | elisa.types.Float
+        :type phase: numpy.typing.NDArray | elisa.types.Float
         :returns: 2-D array with columns (azimuth, placeholder, phase).
         :rtype: numpy.ndarray
         """
         return self.rotational_motion(phase)
 
     @staticmethod
-    def rotational_motion(phase: ArrayLike | Float) -> NDArray[np.floating]:
+    def rotational_motion(phase: NDArray | Float) -> NDArray[np.floating]:
         """Compute rotational motion (azimuths) for given photometric phase(s).
 
         The function accepts a phase scalar or array-like and returns an
         ``(N, 3)`` array with columns: ``(azimuth, nan, phase)``.
 
         :param phase: Photometric phase(s) as scalar or array-like.
-        :type phase: numpy.typing.ArrayLike | elisa.types.Float
+        :type phase: numpy.typing.NDArray | elisa.types.Float
         :returns: 2-D array where each row is (azimuth, nan, phase).
         :rtype: numpy.ndarray
         """
@@ -133,14 +133,14 @@ class Orbit(AbstractOrbit):
         return np.column_stack((azimuth_angle, np.full(np.shape(phase), np.nan), phase))
 
     @staticmethod
-    def rotational_motion_from_azimuths(azimuth: ArrayLike | Float) -> NDArray[np.floating]:
+    def rotational_motion_from_azimuths(azimuth: NDArray | Float) -> NDArray[np.floating]:
         """Compute rotational motion when azimuth(s) are provided.
 
         Returns an ``(N, 3)`` array with columns ``(azimuth, nan, phase)`` where
         ``phase`` is derived from the provided azimuth(s).
 
         :param azimuth: Azimuth scalar or array-like in radians.
-        :type azimuth: numpy.typing.ArrayLike | elisa.types.Float
+        :type azimuth: numpy.typing.NDArray | elisa.types.Float
         :returns: 2-D array with rows (azimuth, nan, phase).
         :rtype: numpy.ndarray
         """

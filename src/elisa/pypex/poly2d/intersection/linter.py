@@ -12,7 +12,6 @@ from elisa.pypex.utils import det_2d, multiple_determinants
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
-    from numpy.typing import ArrayLike
 
 # Return helpers:
 # - Segment intersection flag is typically bool, but some legacy paths use np.nan
@@ -23,10 +22,10 @@ IntersectionPoint = Point | float
 
 
 def intersection(
-        p1: ArrayLike,
-        p2: ArrayLike,
-        p3: ArrayLike,
-        p4: ArrayLike,
+        p1: NDArray,
+        p2: NDArray,
+        p3: NDArray,
+        p4: NDArray,
         *,
         touch_is_separated: bool = False,
         tol: float = PRECISION,

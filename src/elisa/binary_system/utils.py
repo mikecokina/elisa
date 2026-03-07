@@ -20,7 +20,7 @@ from elisa.utils import is_empty
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from numpy.typing import ArrayLike, NDArray
+    from numpy.typing import NDArray
 
     from elisa.binary_system.container import OrbitalPositionContainer
 
@@ -32,13 +32,13 @@ JSONDict: TypeAlias = dict[str, JSONValue]
 
 
 def potential_from_radius(
-        component: ComponentName,
-        radius: Float,
-        phi: Float,
-        theta: Float,
-        component_distance: Float,
-        mass_ratio: Float,
-        synchronicity: Float,
+    component: ComponentName,
+    radius: Float,
+    phi: Float,
+    theta: Float,
+    component_distance: Float,
+    mass_ratio: Float,
+    synchronicity: Float,
 ) -> Float:
     """Calculate the Roche potential for a component at spherical coordinates.
 
@@ -83,11 +83,11 @@ def potential_from_radius(
 
 
 def calculate_phase(
-        time: ArrayLike,
-        period: ArrayLike,
-        t0: Float,
-        *,
-        offset: Float = 0.5,
+    time: NDArray,
+    period: NDArray,
+    t0: Float,
+    *,
+    offset: Float = 0.5,
 ) -> NDArray[np.float64]:
     """Calculate photometric phase from observations.
 
@@ -97,9 +97,9 @@ def calculate_phase(
         mod((time - t0 + offset * period) / period, 1.0) - offset
 
     :param time: Observation times.
-    :type time: ArrayLike
+    :type time: NDArray
     :param period: Period values corresponding to the observations.
-    :type period: ArrayLike
+    :type period: NDArray
     :param t0: Reference epoch.
     :type t0: Float
     :param offset: Phase offset applied to the folded result.
@@ -113,14 +113,14 @@ def calculate_phase(
     )
 
 
-def faces_to_pypex_poly(t_hulls: Iterable[ArrayLike]) -> list[Polygon]:
+def faces_to_pypex_poly(t_hulls: NDArray) -> list[Polygon]:
     """Convert face hulls to :class:`~pypex.poly2d.polygon.Polygon` instances.
 
     Each input face is converted without validity checking, preserving the
     original behavior.
 
-    :param t_hulls: Iterable of polygon vertex arrays.
-    :type t_hulls: Iterable[ArrayLike]
+    :param t_hulls: NDArray of polygon vertex arrays.
+    :type t_hulls: NDArray
     :return: Converted polygon instances.
     :rtype: list[Polygon]
     """
@@ -128,13 +128,13 @@ def faces_to_pypex_poly(t_hulls: Iterable[ArrayLike]) -> list[Polygon]:
 
 
 def pypex_poly_hull_intersection(
-        pypex_faces_gen: Iterable[Polygon],
-        pypex_hull: Polygon,
+    pypex_faces_gen: list[Polygon],
+    pypex_hull: Polygon,
 ) -> list[Polygon | None]:
     """Resolve intersections between polygons and a hull polygon.
 
     :param pypex_faces_gen: Polygons to intersect with ``pypex_hull``.
-    :type pypex_faces_gen: Iterable[Polygon]
+    :type pypex_faces_gen: list[Polygon]
     :param pypex_hull: Hull polygon used for clipping.
     :type pypex_hull: Polygon
     :return: Intersection results for all input polygons.
@@ -144,7 +144,7 @@ def pypex_poly_hull_intersection(
 
 
 def pypex_poly_surface_area(
-        pypex_polys_gen: Iterable[Polygon | None],
+    pypex_polys_gen: Iterable[Polygon | None],
 ) -> list[Float]:
     """Compute surface areas of pypex polygons.
 
@@ -155,20 +155,17 @@ def pypex_poly_surface_area(
     :return: Surface areas of the supplied polygons.
     :rtype: list[Float]
     """
-    return [
-        poly.surface_area() if poly is not None else 0.0
-        for poly in pypex_polys_gen
-    ]
+    return [poly.surface_area() if poly is not None else 0.0 for poly in pypex_polys_gen]
 
 
-def hull_to_pypex_poly(hull: ArrayLike) -> Polygon:
+def hull_to_pypex_poly(hull: NDArray) -> Polygon:
     """Convert a convex hull to a pypex polygon.
 
     The hull can be supplied as a list-like object or a NumPy-compatible array.
     Validity checking is disabled to preserve the original behavior.
 
     :param hull: Convex polygon vertices.
-    :type hull: ArrayLike
+    :type hull: NDArray
     :return: Polygon instance created from ``hull``.
     :rtype: Polygon
     """
@@ -176,8 +173,8 @@ def hull_to_pypex_poly(hull: ArrayLike) -> Polygon:
 
 
 def component_to_list(
-        component: ComponentSelection | None,
-) -> list[Literal["primary", "secondary", "all", "both"] | None]:
+    component: ComponentSelection | None,
+) -> list[ComponentName] | []:
     """Convert a component selector into a normalized list of components.
 
     If ``component`` is ``None`` or empty, an empty list is returned. Values
@@ -199,21 +196,18 @@ def component_to_list(
     if is_empty(component):
         return []
 
-    message = (
-        "Invalid name of the component. Use `primary`, `secondary`, `all` or "
-        "`both`."
-    )
+    message = "Invalid name of the component. Use `primary`, `secondary`, `all` or `both`."
     raise ValueError(message)
 
 
 def move_sys_onpos(
-        init_system: OrbitalPositionContainer,
-        orbital_position: const.Position,
-        primary_potential: Float | None = None,
-        secondary_potential: Float | None = None,
-        *,
-        on_copy: bool = True,
-        recalculate_velocities: bool = False,
+    init_system: OrbitalPositionContainer,
+    orbital_position: const.Position,
+    primary_potential: Float | None = None,
+    secondary_potential: Float | None = None,
+    *,
+    on_copy: bool = True,
+    recalculate_velocities: bool = False,
 ) -> OrbitalPositionContainer:
     """Prepare a position container for a given orbital position.
 
@@ -270,8 +264,8 @@ def move_sys_onpos(
 
 
 def calculate_rotational_phase(
-        system: OrbitalPositionContainer,
-        component: ComponentName,
+    system: OrbitalPositionContainer,
+    component: ComponentName,
 ) -> Float:
     """Return the rotational phase in the co-rotating frame of reference.
 
@@ -343,10 +337,10 @@ def validate_binary_json(data: JSONDict) -> bool:
         raise ValidationError(message)
 
     if (
-            isinstance(primary_section, dict)
-            and isinstance(secondary_section, dict)
-            and ("mass" in primary_section or "mass" in secondary_section)
-            and community_valid
+        isinstance(primary_section, dict)
+        and isinstance(secondary_section, dict)
+        and ("mass" in primary_section or "mass" in secondary_section)
+        and community_valid
     ):
         message = (
             "You probably tried to input your parameters in `community` format "
@@ -440,12 +434,9 @@ def transform_json_community_to_std(data: JSONDict) -> JSONDict:
     q = system_section.pop("mass_ratio")
     a = SystemProperties.semi_major_axis(system_section.pop("semi_major_axis"))
     period_value = copy(system_section["period"])
-    period = (
-            SystemProperties.period(period_value)
-            * DefaultBinarySystemUnits.system.period
-    ).to(units.TIME_UNIT).value
+    period = (SystemProperties.period(period_value) * DefaultBinarySystemUnits.system.period).to(units.TIME_UNIT).value
 
-    m1 = (4.0 * const.PI ** 2 * a ** 3) / (const.G * (1.0 + q) * period ** 2)
+    m1 = (4.0 * const.PI**2 * a**3) / (const.G * (1.0 + q) * period**2)
     m1 = np.float64((m1 * units.kg).to(units.solMass))
     m2 = q * m1
 
@@ -456,10 +447,10 @@ def transform_json_community_to_std(data: JSONDict) -> JSONDict:
 
 
 def correction_to_com(
-        distance: Float,
-        mass_ratio: Float,
-        scom: ArrayLike,
-) -> NDArray[np.float64]:
+    distance: Float,
+    mass_ratio: Float,
+    scom: NDArray,
+) -> NDArray[Float]:
     """Calculate the barycentric correction from a primary-centered frame.
 
     The returned vector points from the primary-centered coordinate origin
@@ -470,7 +461,7 @@ def correction_to_com(
     :param mass_ratio: Binary mass ratio.
     :type mass_ratio: Float
     :param scom: Secondary component center-of-mass vector.
-    :type scom: ArrayLike
+    :type scom: NDArray
     :return: Correction vector to the center of mass in the primary-centered
         system.
     :rtype: NDArray[numpy.float64]
@@ -482,12 +473,12 @@ def correction_to_com(
 
 
 def calculate_sma_estimate(
-        mass_ratio: Float,
-        synchronicity: Float,
-        potential: Float,
-        period: Float,
-        component: ComponentName,
-        mid_g: Float,
+    mass_ratio: Float,
+    synchronicity: Float,
+    potential: Float,
+    period: Float,
+    component: ComponentName,
+    mid_g: Float,
 ) -> Float:
     """Estimate a semi-major axis value that yields the requested mean gravity.
 
@@ -524,9 +515,4 @@ def calculate_sma_estimate(
 
     q_funcval = 1.0 / (1.0 + mass_ratio) if component == "primary" else mass_ratio / (1.0 + mass_ratio)
 
-    return (
-            1.4374e-9
-            * mid_g
-            * (radius * 86400.0 * period) ** 2
-            / (4.0 * const.PI ** 2 * q_funcval)
-    )
+    return 1.4374e-9 * mid_g * (radius * 86400.0 * period) ** 2 / (4.0 * const.PI**2 * q_funcval)

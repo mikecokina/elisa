@@ -10,18 +10,18 @@ from elisa.base import error
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from numpy.typing import ArrayLike, NDArray
+    from numpy.typing import NDArray
 
     from elisa.types import Float
 
 
 def newton(
-        func: Callable,
-        x0: ArrayLike | Float,
-        fprime: Callable,
-        args: tuple = (),
-        maxiter: int = 50,
-        rtol: Float = 0.0,
+    func: Callable,
+    x0: NDArray | Float,
+    fprime: Callable,
+    args: tuple = (),
+    maxiter: int = 50,
+    rtol: Float = 0.0,
 ) -> NDArray[Float] | Float:
     # noinspection GrazieInspection
     r"""Solve for a root using the Newton method.
@@ -36,7 +36,7 @@ def newton(
         Function whose root is sought.
         Must accept the current iterate as the first argument,
         followed by ``args``.
-    :param x0: ArrayLike | Float
+    :param x0: NDArray | Float
         Initial estimate of the solution.
     :param fprime: callable
         Derivative of ``func``.

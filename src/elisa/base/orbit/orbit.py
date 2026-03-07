@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 import numpy as np
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike, NDArray
+    from numpy.typing import NDArray
 
     from elisa.types import Float
 
@@ -45,14 +45,14 @@ class AbstractOrbit(metaclass=ABCMeta):
         self.phase_shift: Float = 0.0
 
     @classmethod
-    def true_phase(cls, phase: ArrayLike | Float, phase_shift: Float) -> NDArray[np.floating] | Float:
+    def true_phase(cls, phase: NDArray | Float, phase_shift: Float) -> NDArray[np.floating] | Float:
         """Return the phase shifted by ``phase_shift``.
 
         If ``phase`` is array-like an :class:`numpy.ndarray` is returned.
         Otherwise, a scalar :class:`elisa.types.Float` is returned.
 
         :param phase: Phase or array of phases to shift.
-        :type phase: ArrayLike | elisa.types.Float
+        :type phase: NDArray | elisa.types.Float
         :param phase_shift: Amount to shift the phase by.
         :type phase_shift: elisa.types.Float
         :returns: Shifted phase(s).
@@ -64,11 +64,11 @@ class AbstractOrbit(metaclass=ABCMeta):
         return np.asarray(phase) + phase_shift
 
     @staticmethod
-    def phase(true_phase: ArrayLike | Float, phase_shift: Float) -> NDArray[np.floating] | Float:
+    def phase(true_phase: NDArray | Float, phase_shift: Float) -> NDArray[np.floating] | Float:
         """Revert a previously applied phase shift.
 
         :param true_phase: Shifted phase(s).
-        :type true_phase: ArrayLike | elisa.types.Float
+        :type true_phase: NDArray | elisa.types.Float
         :param phase_shift: Applied phase shift to revert.
         :type phase_shift: elisa.types.Float
         :returns: Original phase(s) before the shift.
@@ -80,14 +80,14 @@ class AbstractOrbit(metaclass=ABCMeta):
         return np.asarray(true_phase) - phase_shift
 
     @abstractmethod
-    def orbital_motion(self, phase: ArrayLike | Float) -> NDArray[np.floating] | Float:
+    def orbital_motion(self, phase: NDArray | Float) -> NDArray[np.floating] | Float:
         """Compute orbital motion for the provided phase(s).
 
         Concrete implementations should compute positions, velocities or other
         motion-related quantities for the provided phase array or scalar.
 
         :param phase: Phase(s) at which to compute the orbital motion.
-        :type phase: ArrayLike | elisa.types.Float
+        :type phase: NDArray | elisa.types.Float
         :returns: Result of the orbital motion computation.
         :rtype: numpy.ndarray | elisa.types.Float
         """

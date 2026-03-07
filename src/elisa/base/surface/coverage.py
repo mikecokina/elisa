@@ -5,16 +5,16 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike, NDArray
+    from numpy.typing import NDArray
 
     from elisa.types import Float
 
 
-def _selector_to_mask(sel: ArrayLike[bool], size: int, name: str) -> tuple[np.ndarray, int]:
+def _selector_to_mask(sel: NDArray[np.bool_], size: int, name: str) -> tuple[np.ndarray, int]:
     """Convert a selector (mask or indices) into a boolean mask of length ``size``.
 
     :param sel: Boolean mask or index array selecting elements.
-    :type sel: numpy.typing.ArrayLike
+    :type sel: numpy.typing.NDArray
     :param size: Expected length of resulting mask.
     :type size: int
     :param name: Name of the selector (used in error messages).
@@ -57,7 +57,7 @@ def _selector_to_mask(sel: ArrayLike[bool], size: int, name: str) -> tuple[np.nd
 def _assign_coverage(
         coverage: NDArray[np.floating],
         mask: np.ndarray,
-        cov: ArrayLike | Float,
+        cov: NDArray | Float,
         expected_count: int, name: str,
 ) -> None:
     """Validate and assign coverage values to positions indicated by mask.
@@ -81,10 +81,10 @@ def _assign_coverage(
 
 def surface_area_coverage(
         size: int,
-        visible: ArrayLike,
-        visible_coverage: ArrayLike | Float,
-        partial: ArrayLike | None = None,
-        partial_coverage: ArrayLike | Float | None = None,
+        visible: NDArray,
+        visible_coverage: NDArray | Float,
+        partial: NDArray | None = None,
+        partial_coverage: NDArray | Float | None = None,
 ) -> NDArray[np.floating]:
     """Prepare an array with coverage values for surface areas.
 
@@ -102,18 +102,18 @@ def surface_area_coverage(
     :type size: int
     :param visible: Boolean mask or index array selecting fully visible
         surface elements.
-    :type visible: numpy.typing.ArrayLike
+    :type visible: numpy.typing.NDArray
     :param visible_coverage: Coverage value(s) for positions selected by
         ``visible``. It may be a scalar or array-like matching the number of
         selected elements.
-    :type visible_coverage: numpy.typing.ArrayLike | elisa.types.Float
+    :type visible_coverage: numpy.typing.NDArray | elisa.types.Float
     :param partial: Optional boolean mask or index array selecting
         partially visible elements.
-    :type partial: numpy.typing.ArrayLike | None
+    :type partial: numpy.typing.NDArray | None
     :param partial_coverage: Coverage value(s) for positions selected by
         ``partial``. It may be a scalar or array-like matching the number of
         selected elements.
-    :type partial_coverage: numpy.typing.ArrayLike | elisa.types.Float | None
+    :type partial_coverage: numpy.typing.NDArray | elisa.types.Float | None
     :returns: Coverage array with dtype float and length ``size``.
     :rtype: numpy.ndarray
     :raises TypeError: If ``size`` is not an int.

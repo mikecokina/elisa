@@ -45,11 +45,11 @@ class OrbitalPositionContainer(PositionContainer):
     ]
 
     def __init__(
-            self,
-            primary: StarContainer,
-            secondary: StarContainer,
-            position: Position,
-            **properties: Float,
+        self,
+        primary: StarContainer,
+        secondary: StarContainer,
+        position: Position,
+        **properties: Float,
     ) -> None:
         """Initialize the orbital position container from star containers.
 
@@ -79,10 +79,10 @@ class OrbitalPositionContainer(PositionContainer):
         self.set_com(self.position)
 
     def set_on_position_params(
-            self,
-            position: Position,
-            primary_potential: Float | None = None,
-            secondary_potential: Float | None = None,
+        self,
+        position: Position,
+        primary_potential: Float | None = None,
+        secondary_potential: Float | None = None,
     ) -> OrbitalPositionContainer:
         """Set orbital position and optional component surface potentials.
 
@@ -145,9 +145,9 @@ class OrbitalPositionContainer(PositionContainer):
 
     @classmethod
     def from_binary_system(
-            cls,
-            binary_system: BinarySystem,
-            position: Position,
+        cls,
+        binary_system: BinarySystem,
+        position: Position,
     ) -> OrbitalPositionContainer:
         """Construct a container from a binary system and orbital position.
 
@@ -197,12 +197,12 @@ class OrbitalPositionContainer(PositionContainer):
         return self.primary.has_pulsations() or self.secondary.has_pulsations()
 
     def build(
-            self,
-            components_distance: Float | None = None,
-            component: ComponentSelection = "all",
-            *,
-            build_pulsations: bool = True,
-            **kwargs: object,
+        self,
+        components_distance: Float | None = None,
+        component: ComponentSelection = "all",
+        *,
+        build_pulsations: bool = True,
+        **kwargs: object,
     ) -> OrbitalPositionContainer:
         """Build the binary model for the current orbital position.
 
@@ -255,9 +255,9 @@ class OrbitalPositionContainer(PositionContainer):
         return self
 
     def build_pulsations(
-            self,
-            components_distance: Float | None = None,
-            component: ComponentSelection = "all",
+        self,
+        components_distance: Float | None = None,
+        component: ComponentSelection = "all",
     ) -> OrbitalPositionContainer:
         """Incorporate user-defined pulsation modes into the model.
 
@@ -281,9 +281,9 @@ class OrbitalPositionContainer(PositionContainer):
         return self
 
     def build_from_points(
-            self,
-            components_distance: Float | None = None,
-            component: ComponentSelection = "all",
+        self,
+        components_distance: Float | None = None,
+        component: ComponentSelection = "all",
     ) -> OrbitalPositionContainer:
         """Build all remaining geometry from an existing surface point mesh.
 
@@ -318,9 +318,9 @@ class OrbitalPositionContainer(PositionContainer):
         return self
 
     def build_faces_and_kinematic_quantities(
-            self,
-            components_distance: Float | None = None,
-            component: ComponentSelection = "all",
+        self,
+        components_distance: Float | None = None,
+        component: ComponentSelection = "all",
     ) -> OrbitalPositionContainer:
         """Build geometry and kinematic quantities except temperature.
 
@@ -368,9 +368,9 @@ class OrbitalPositionContainer(PositionContainer):
         return self
 
     def build_mesh(
-            self,
-            components_distance: Float | None = None,
-            component: ComponentSelection = "all",
+        self,
+        components_distance: Float | None = None,
+        component: ComponentSelection = "all",
     ) -> OrbitalPositionContainer:
         """Build surface point meshes for selected components.
 
@@ -389,9 +389,9 @@ class OrbitalPositionContainer(PositionContainer):
         return mesh.build_mesh(self, resolved_distance, component)
 
     def correct_mesh(
-            self,
-            components_distance: Float | None = None,
-            component: ComponentSelection = "all",
+        self,
+        components_distance: Float | None = None,
+        component: ComponentSelection = "all",
     ) -> OrbitalPositionContainer:
         """Correct surface underestimation caused by discretization.
 
@@ -410,9 +410,9 @@ class OrbitalPositionContainer(PositionContainer):
         )
 
     def rebuild_symmetric_detached_mesh(
-            self,
-            components_distance: Float | None = None,
-            component: ComponentSelection = "all",
+        self,
+        components_distance: Float | None = None,
+        component: ComponentSelection = "all",
     ) -> OrbitalPositionContainer:
         """Rebuild a symmetric detached mesh using the existing mesh.
 
@@ -436,9 +436,9 @@ class OrbitalPositionContainer(PositionContainer):
         )
 
     def build_faces(
-            self,
-            components_distance: Float | None = None,
-            component: ComponentSelection = "all",
+        self,
+        components_distance: Float | None = None,
+        component: ComponentSelection = "all",
     ) -> OrbitalPositionContainer:
         """Build surface faces for selected components.
 
@@ -456,9 +456,9 @@ class OrbitalPositionContainer(PositionContainer):
         return faces.build_faces(self, resolved_distance, component)
 
     def build_velocities(
-            self,
-            components_distance: Float | None = None,
-            component: ComponentSelection = "all",
+        self,
+        components_distance: Float | None = None,
+        component: ComponentSelection = "all",
     ) -> OrbitalPositionContainer:
         """Build face velocity vectors relative to the system center of mass.
 
@@ -474,8 +474,8 @@ class OrbitalPositionContainer(PositionContainer):
         return faces.build_velocities(self, resolved_distance, component)
 
     def build_surface_areas(
-            self,
-            component: ComponentSelection = "all",
+        self,
+        component: ComponentSelection = "all",
     ) -> OrbitalPositionContainer:
         """Compute areas of all faces, including spot faces.
 
@@ -487,9 +487,9 @@ class OrbitalPositionContainer(PositionContainer):
         return faces.compute_all_surface_areas(self, component)
 
     def build_faces_orientation(
-            self,
-            components_distance: Float | None = None,
-            component: ComponentSelection = "all",
+        self,
+        components_distance: Float | None = None,
+        component: ComponentSelection = "all",
     ) -> OrbitalPositionContainer:
         """Compute correctly oriented face normals for each face.
 
@@ -505,9 +505,9 @@ class OrbitalPositionContainer(PositionContainer):
         return faces.build_faces_orientation(self, resolved_distance, component)
 
     def build_surface_gravity(
-            self,
-            components_distance: Float | None = None,
-            component: ComponentSelection = "all",
+        self,
+        components_distance: Float | None = None,
+        component: ComponentSelection = "all",
     ) -> OrbitalPositionContainer:
         """Build surface gravity distribution over all faces.
 
@@ -526,11 +526,11 @@ class OrbitalPositionContainer(PositionContainer):
         return gravity.build_surface_gravity(self, resolved_distance, component)
 
     def build_temperature_distribution(
-            self,
-            components_distance: Float | None = None,
-            component: ComponentSelection = "all",
-            *,
-            do_pulsations: bool = False,
+        self,
+        components_distance: Float | None = None,
+        component: ComponentSelection = "all",
+        *,
+        do_pulsations: bool = False,
     ) -> OrbitalPositionContainer:
         """Build surface temperature distribution across all faces.
 
@@ -555,9 +555,9 @@ class OrbitalPositionContainer(PositionContainer):
         )
 
     def build_harmonics(
-            self,
-            components_distance: Float | None = None,
-            component: ComponentSelection = "all",
+        self,
+        components_distance: Float | None = None,
+        component: ComponentSelection = "all",
     ) -> OrbitalPositionContainer:
         """Add precomputed spherical harmonics for pulsation modes.
 
@@ -573,9 +573,9 @@ class OrbitalPositionContainer(PositionContainer):
         return pulsations.build_harmonics(self, component, resolved_distance)
 
     def build_perturbations(
-            self,
-            components_distance: Float | None = None,
-            component: ComponentSelection = "all",
+        self,
+        components_distance: Float | None = None,
+        component: ComponentSelection = "all",
     ) -> OrbitalPositionContainer:
         """Incorporate pulsation perturbations into the container.
 
@@ -601,8 +601,4 @@ class OrbitalPositionContainer(PositionContainer):
         :return: Resolved component distance.
         :rtype: Float
         """
-        return (
-            components_distance
-            if components_distance is not None
-            else self.position.distance
-        )
+        return components_distance if components_distance is not None else self.position.distance

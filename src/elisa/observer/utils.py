@@ -9,14 +9,14 @@ from elisa.utils import is_empty
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from numpy.typing import ArrayLike, NDArray
+    from numpy.typing import NDArray
 
     from elisa.types import Float
 
 
 def normalize_light_curve(
-        y_data: Mapping[str, ArrayLike],
-        y_err: Mapping[str, ArrayLike | None] | None = None,
+        y_data: Mapping[str, NDArray],
+        y_err: Mapping[str, NDArray | None] | None = None,
         kind: str = "global_maximum",
         top_fraction_to_average: Float = 0.1,
 ) -> tuple[dict[str, NDArray[Float]], dict[str, NDArray[Float] | None] | None]:
@@ -31,10 +31,10 @@ def normalize_light_curve(
     - ``"minimum"`` - each curve is normalized by the average of its bottom fraction
 
     :param y_data: Dictionary of curves in the form ``{filter_name: values}``.
-    :type y_data: Mapping[str, ArrayLike]
+    :type y_data: Mapping[str, NDArray]
     :param y_err: Optional dictionary of curve uncertainties in the form
         ``{filter_name: errors}``. Defaults to None.
-    :type y_err: Mapping[str, ArrayLike | None] | None
+    :type y_err: Mapping[str, NDArray | None] | None
     :param kind: Normalization kind. Must be one of the supported kinds listed above.
         Defaults to "global_maximum".
     :type kind: str
@@ -96,7 +96,7 @@ def normalize_light_curve(
 
 
 def adjust_flux_for_distance(
-        curves: Mapping[str, ArrayLike],
+        curves: Mapping[str, NDArray],
         distance: Float,
 ) -> dict[str, NDArray[Float]]:
     """Scale flux curves to the specified observer distance.
@@ -106,7 +106,7 @@ def adjust_flux_for_distance(
     observations.
 
     :param curves: Band-wise flux curves in the form ``{band_name: flux_values}``.
-    :type curves: Mapping[str, ArrayLike]
+    :type curves: Mapping[str, NDArray]
     :param distance: Distance to the observer.
     :type distance: Float
     :returns: Distance-corrected band-wise flux curves with the same structure as input
@@ -121,8 +121,8 @@ def adjust_flux_for_distance(
 
 
 def convert_to_magnitudes(
-        curves: Mapping[str, ArrayLike],
-        zero_points: Mapping[str, Mapping[str, Float | None]],
+        curves: Mapping[str, NDArray],
+        zero_points: Mapping[str, Mapping[str, Float | None]] | dict[str, dict[str, Float | None]],
 ) -> dict[str, NDArray[Float]]:
     """Convert flux curves to magnitudes.
 
@@ -130,7 +130,7 @@ def convert_to_magnitudes(
     data. The conversion uses the standard magnitude formula: m = m_ref - 2.5 * log10(f/f_ref).
 
     :param curves: Band-wise flux curves in the form ``{band_name: flux_values}``.
-    :type curves: Mapping[str, ArrayLike]
+    :type curves: Mapping[str, NDArray]
     :param zero_points: Calibration data containing ``reference_magnitudes`` and ``fluxes``
         for each band, in the form ``{calibration_key: {band_name: value}}``.
     :type zero_points: Mapping[str, Mapping[str, Float | None]]

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from elisa import settings
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike, NDArray
+    from numpy.typing import NDArray
 
     from elisa.types import Float
 
@@ -23,7 +23,7 @@ if settings.CUDA:
 
         def __new__(
                 cls,
-                input_array: ArrayLike,
+                input_array: NDArray,
                 dtype: str = "float32",
         ) -> cp.ndarray:
             """Create a new GPU tensor from input data.
@@ -50,7 +50,7 @@ else:
 
         def __new__(
                 cls,
-                input_array: ArrayLike,
+                input_array: NDArray,
                 dtype: str = "float32",
         ) -> NDArray:
             """Create a new CPU tensor from input data.

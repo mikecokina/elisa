@@ -16,7 +16,7 @@ from elisa.pulse.mode import PulsationMode
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from elisa.units import DefaultStarInputUnits, DefaultStarUnits
+    from elisa.units import _DefaultStarInputUnits, _DefaultStarUnits
 
 logger = getLogger("elisa.base.star")
 
@@ -217,7 +217,7 @@ class Star(Body):
         self.init_parameters(**kwargs)
 
     @property
-    def default_input_units(self) -> DefaultStarInputUnits:
+    def default_input_units(self) -> _DefaultStarInputUnits:
         """Return the default units used for input parameters.
 
         Returned object defines the units that are assumed when numerical
@@ -230,7 +230,7 @@ class Star(Body):
         return u.DefaultStarInputUnits
 
     @property
-    def default_internal_units(self) -> DefaultStarUnits:
+    def default_internal_units(self) -> _DefaultStarUnits:
         """Return the internal units used within the Star instance.
 
         These units are used to store and compute internal physical
@@ -377,10 +377,12 @@ class Star(Body):
             "limb_darkening_coefficients",
         ]
         props: dict[str, Any] = {prop: copy(getattr(self, prop)) for prop in properties_list}
-        props.update({
-            "name": self.name,
-            "spots": deepcopy(self.spots),
-        })
+        props.update(
+            {
+                "name": self.name,
+                "spots": deepcopy(self.spots),
+            },
+        )
         return props
 
     def to_properties_container(self) -> StarPropertiesContainer:

@@ -11,7 +11,7 @@ from elisa.logger import getLogger
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from numpy.typing import ArrayLike, NDArray
+    from numpy.typing import NDArray
 
     from elisa.types import Float
 
@@ -30,7 +30,7 @@ def fsolve(
         band: tuple[int, int] | None = None,
         epsfcn: Float | None = None,
         factor: Float = 100,
-        diag: ArrayLike | None = None,
+        diag: NDArray | None = None,
         *,
         full_output: bool = False,
         col_deriv: bool = False,

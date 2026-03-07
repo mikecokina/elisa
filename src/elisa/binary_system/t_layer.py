@@ -7,7 +7,7 @@ import numpy as np
 from elisa.base import error
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike, NDArray
+    from numpy.typing import NDArray
 
     from elisa.types import Float
 
@@ -41,8 +41,8 @@ def validate_primary_minimum_time(t0: Float) -> None:
 
 
 def adjust_phases(
-        phases: Float | ArrayLike,
-        centre: Float = 0.5,
+    phases: Float | NDArray,
+    centre: Float = 0.5,
 ) -> Float | NDArray[np.float64]:
     """Shift phases to center them on the given value.
 
@@ -50,7 +50,7 @@ def adjust_phases(
     ``centre - 0.5`` to ``centre + 0.5``.
 
     :param phases: Input phase value or phase array.
-    :type phases: Float | ArrayLike
+    :type phases: Float | NDarray
     :param centre: Center around which phases will be calculated.
     :type centre: Float
     :return: Shifted phase value or shifted phase array.
@@ -66,10 +66,10 @@ def adjust_phases(
 
 
 def jd_to_phase(
-        t0: Float,
-        period: Float,
-        jd: Float | ArrayLike,
-        centre: Float = 0.5,
+    t0: Float,
+    period: Float,
+    jd: Float | NDArray,
+    centre: Float = 0.5,
 ) -> Float | NDArray[np.float64]:
     """Convert Julian Date time to orbital phase.
 
@@ -80,7 +80,7 @@ def jd_to_phase(
     :param period: Period of the binary system.
     :type period: Float
     :param jd: Measurement Julian Date values.
-    :type jd: Float | ArrayLike
+    :type jd: Float | NDarray
     :param centre: Center around which phases will be calculated.
     :type centre: Float
     :return: Converted phase value or phase array.
@@ -103,9 +103,9 @@ def jd_to_phase(
 
 
 def phase_to_jd(
-        t0: Float,
-        period: Float,
-        phases: Float | ArrayLike,
+    t0: Float,
+    period: Float,
+    phases: Float | NDArray,
 ) -> Float | NDArray[np.float64]:
     """Convert orbital phase to Julian Date time.
 
@@ -114,7 +114,7 @@ def phase_to_jd(
     :param period: Period of the binary system.
     :type period: Float
     :param phases: Phase value or phase array.
-    :type phases: Float | ArrayLike
+    :type phases: Float | NDarray
     :return: Converted Julian Date value or array.
     :rtype: Float | NDArray[numpy.float64]
     :raises error.ValidationError: If ``period`` or ``t0`` is invalid.

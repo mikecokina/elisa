@@ -7,14 +7,14 @@ import numpy as np
 from elisa import utils
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike, NDArray
+    from numpy.typing import NDArray
 
     from elisa.base.container import StarContainer
     from elisa.base.spot import Spot
     from elisa.types import Float
 
 
-def correct_component_mesh(star: StarContainer, com: Float, correction_factors: ArrayLike | NDArray) -> StarContainer:
+def correct_component_mesh(star: StarContainer, com: Float, correction_factors: NDArray) -> StarContainer:
     """Correct underestimation of surface due to discretization.
 
     Apply discretization correction factors to the positions of the
@@ -27,7 +27,7 @@ def correct_component_mesh(star: StarContainer, com: Float, correction_factors: 
     :type com: elisa.types.Float
     :param correction_factors: Array-like of correction factors used by
         :func:`elisa.utils.discretization_correction_factor`.
-    :type correction_factors: numpy.typing.ArrayLike | numpy.typing.NDArray
+    :type correction_factors: numpy.typing.NDArray | numpy.typing.NDArray
     :returns: The same ``star`` instance with updated ``points``.
     :rtype: elisa.base.container.StarContainer
     :raises TypeError: If required attributes are missing on ``star``.
@@ -60,7 +60,7 @@ def correct_component_mesh(star: StarContainer, com: Float, correction_factors: 
     return star
 
 
-def symmetry_point_reduction(array: ArrayLike | NDArray, base_symmetry_points_number: int) -> NDArray:
+def symmetry_point_reduction(array: NDArray, base_symmetry_points_number: int) -> NDArray:
     """Return the part of an array corresponding to the base symmetry block.
 
     This utility extracts the first ``base_symmetry_points_number`` entries
@@ -68,7 +68,7 @@ def symmetry_point_reduction(array: ArrayLike | NDArray, base_symmetry_points_nu
     reduce computational work to the fundamental block.
 
     :param array: Array-like distribution defined on surface points.
-    :type array: numpy.typing.ArrayLike | numpy.typing.NDArray
+    :type array: numpy.typing.NDArray | numpy.typing.NDArray
     :param base_symmetry_points_number: Number of points contained in the
         base symmetry block (must be non-negative).
     :type base_symmetry_points_number: int

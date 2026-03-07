@@ -93,44 +93,48 @@ exclude = ["unittests"]
 line-length = 120
 target-version = "py310"
 
+[tool.ruff.lint]
 select = [
     "ALL",
-    "A",       # flake8-builtins
-    "ARG",     # flake8-unused-arguments
-    "B",       # flake8-bugbear
-    "C",       # mccabe
-    "DTZ",     # flake8-datetimez
-    "E",       # pycodestyle errors
-    "EM",      # flake8-errmsg
-    "F",       # pyflakes
-    "FBT",     # flake8-boolean-trap
-    "I",       # isort
-    "ICN",     # flake8-import-conventions
-    "ISC",     # flake8-implicit-str-concat
-    "N",       # pep8-naming
-    "PLC",     # pylint convention
-    "PLE",     # pylint errors
-    "PLR",     # pylint refactor
-    "PLW",     # pylint warnings
-    "Q",       # flake8-quotes
-    "RUF",     # ruff-specific rules
-    "S",       # flake8-bandit (security)
-    "T",       # flake8-debugger
-    "TID",     # tidy imports
-    "UP",      # pyupgrade
-    "W",       # pycodestyle warnings
-    "YTT",     # flake8-2020
+    "A", # flake8-builtins
+    "ARG", # flake8-unused-arguments
+    "B", # flake8-bugbear
+    "C", # mccabe
+    "DTZ", # flake8-datetimez
+    "E", # pycodestyle errors
+    "EM", # flake8-errmsg
+    "F", # pyflakes
+    "FBT", # flake8-boolean-trap
+    "I", # isort
+    "ICN", # flake8-import-conventions
+    "ISC", # flake8-implicit-str-concat
+    "N", # pep8-naming
+    "PLC", # pylint convention
+    "PLE", # pylint errors
+    "PLR", # pylint refactor
+    "PLW", # pylint warnings
+    "Q", # flake8-quotes
+    "RUF", # ruff-specific rules
+    "S", # flake8-bandit (security)
+    "T", # flake8-debugger
+    "TID", # tidy imports
+    "UP", # pyupgrade
+    "W", # pycodestyle warnings
+    "YTT", # flake8-2020
 ]
 ignore = [
     "PLR0913", # to many arguments
     "F405", # os import
+    "D100", # Missing docstring in public module
     "D101", # missing docstring
     "D107", # missing docstring in `__init__`
     "D102", # Missing docstring in public method
     "D103", # Missing docstring in public function
+    "D104", # Missing docstring in public package
     "D105", # Missing docstring in magic method
     "ERA001", # Found commented-out code
     "ANN002", # Missing type annotation for `*args`
     "ANN003", # Missing type annotation for `**kwargs`
     "ANN401", # Any type annotation
+    "EXE002"# Shebang is missing executable file
 ]

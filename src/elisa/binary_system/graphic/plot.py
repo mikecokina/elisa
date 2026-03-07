@@ -19,10 +19,10 @@ from elisa.graphic import graphics
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
-    from numpy.typing import ArrayLike
+    from numpy.typing import NDArray
 
     from elisa import BinarySystem
-    from elisa.types import Float, Int
+    from elisa.types import Float, Int, NumpyBool
     from elisa.units import Unit
 
 
@@ -275,8 +275,8 @@ class Plot:
             phase: Float = 0.0,
             components_to_plot: Literal["both", "primary", "secondary"] = "both",
             colormap: str | None = None,
-            face_mask_primary: ArrayLike[bool] | None = None,
-            face_mask_secondary: ArrayLike[bool] | None = None,
+            face_mask_primary: NDArray[NumpyBool] | None = None,
+            face_mask_secondary: NDArray[NumpyBool] | None = None,
             elevation: Float | None = None,
             azimuth: Float | None = None,
             colorbar_unit: str = "default",

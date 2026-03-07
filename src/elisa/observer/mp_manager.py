@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Any
 
-    from numpy.typing import ArrayLike
+    from numpy.typing import NDArray
 
 logger = getLogger("observer.mp")
 
@@ -19,7 +19,7 @@ logger = getLogger("observer.mp")
 def manage_observations(
         fn: Callable,
         fn_args: tuple[Any, ...],
-        position: ArrayLike,
+        position: NDArray,
         **kwargs: Any,
 ) -> dict[str, Any]:
     """Decide whether curve will be calculated using single or multi-process approach.
@@ -33,7 +33,7 @@ def manage_observations(
     :param fn_args: Tuple of arguments for `fn` (excluding position and kwargs).
     :type fn_args: tuple[Any, ...]
     :param position: Array of positions (phases) to process.
-    :type position: ArrayLike
+    :type position: NDArray
     :param kwargs: Additional keyword arguments passed to `fn`.
     :type kwargs: dict[str, Any]
     :returns: Calculated curves (in each passband).

@@ -11,7 +11,7 @@ from elisa.binary_system import model
 from elisa.opt.fsolver import fsolve
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike
+    from numpy.typing import NDArray
 
     from elisa.types import Float
 
@@ -21,13 +21,13 @@ MAXIMAL_RADIUS_BOUNDARY = 30.0
 
 
 def calculate_radius(
-        synchronicity: Float,
-        mass_ratio: Float,
-        surface_potential: Float,
-        component: ComponentName,
-        components_distance: Float,
-        phi: Float,
-        theta: Float,
+    synchronicity: Float,
+    mass_ratio: Float,
+    surface_potential: Float,
+    component: ComponentName,
+    components_distance: Float,
+    phi: Float,
+    theta: Float,
 ) -> Float:
     """Calculate the stellar radius in an arbitrary direction.
 
@@ -71,10 +71,7 @@ def calculate_radius(
         potential_fn = model.potential_secondary_fn
         precalculate_fn = model.pre_calculate_for_potential_value_secondary
     else:
-        message = (
-            f"Invalid value of `component` argument {component}. "
-            "Expecting `primary` or `secondary`."
-        )
+        message = f"Invalid value of `component` argument {component}. Expecting `primary` or `secondary`."
         raise ValueError(message)
 
     precalc_args = (
@@ -111,11 +108,11 @@ def calculate_radius(
 
 
 def calculate_polar_radius(
-        synchronicity: Float,
-        mass_ratio: Float,
-        components_distance: Float,
-        surface_potential: Float,
-        component: ComponentName,
+    synchronicity: Float,
+    mass_ratio: Float,
+    components_distance: Float,
+    surface_potential: Float,
+    component: ComponentName,
 ) -> Float:
     """Calculate the stellar radius in the direction of the pole.
 
@@ -145,11 +142,11 @@ def calculate_polar_radius(
 
 
 def calculate_side_radius(
-        synchronicity: Float,
-        mass_ratio: Float,
-        components_distance: Float,
-        surface_potential: Float,
-        component: ComponentName,
+    synchronicity: Float,
+    mass_ratio: Float,
+    components_distance: Float,
+    surface_potential: Float,
+    component: ComponentName,
 ) -> Float:
     """Calculate the stellar radius perpendicular to pole and join vector.
 
@@ -182,11 +179,11 @@ def calculate_side_radius(
 
 
 def calculate_backward_radius(
-        synchronicity: Float,
-        mass_ratio: Float,
-        components_distance: Float,
-        surface_potential: Float,
-        component: ComponentName,
+    synchronicity: Float,
+    mass_ratio: Float,
+    components_distance: Float,
+    surface_potential: Float,
+    component: ComponentName,
 ) -> Float:
     """Calculate the stellar radius in the direction away from the companion.
 
@@ -216,11 +213,11 @@ def calculate_backward_radius(
 
 
 def calculate_forward_radius(
-        synchronicity: Float,
-        mass_ratio: Float,
-        components_distance: Float,
-        surface_potential: Float,
-        component: ComponentName,
+    synchronicity: Float,
+    mass_ratio: Float,
+    components_distance: Float,
+    surface_potential: Float,
+    component: ComponentName,
 ) -> Float:
     """Calculate the stellar radius in the direction toward the companion.
 
@@ -250,11 +247,11 @@ def calculate_forward_radius(
 
 
 def calculate_forward_radii(
-        distances: ArrayLike[Float],
-        surface_potential: ArrayLike[Float],
-        mass_ratio: Float,
-        synchronicity: Float,
-        component: ComponentName,
+    distances: NDArray[Float],
+    surface_potential: NDArray[Float],
+    mass_ratio: Float,
+    synchronicity: Float,
+    component: ComponentName,
 ) -> list[Float]:
     """Calculate forward radii for an array of component distances.
 
@@ -262,10 +259,10 @@ def calculate_forward_radii(
     supplied component distance and matching surface potential entry.
 
     :param distances: Component distances at which to calculate forward radii.
-    :type distances: ArrayLike
+    :type distances: NDArray
     :param surface_potential: Surface potential values corresponding to each
         distance.
-    :type surface_potential: ArrayLike
+    :type surface_potential: NDArray
     :param mass_ratio: Binary mass ratio.
     :type mass_ratio: Float
     :param synchronicity: Rotational synchronicity factor of the component.

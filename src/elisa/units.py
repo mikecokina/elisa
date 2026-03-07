@@ -3,6 +3,12 @@ from __future__ import annotations
 import builtins
 import sys
 from importlib import import_module
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
+    from astropy.units import UnitBase
 
 builtins._ASTROPY_SETUP_ = True
 
@@ -18,12 +24,12 @@ TIME_UNIT = u.s
 ARC_UNIT = u.rad
 PERIOD_UNIT = u.d
 VELOCITY_UNIT = DISTANCE_UNIT / TIME_UNIT
-ACCELERATION_UNIT = DISTANCE_UNIT / TIME_UNIT ** 2
+ACCELERATION_UNIT = DISTANCE_UNIT / TIME_UNIT**2
 LOG_ACCELERATION_UNIT = u.dex(ACCELERATION_UNIT)
 FREQUENCY_UNIT = u.Hz
 ANGULAR_FREQUENCY_UNIT = u.rad / u.s
 LUMINOSITY_UNIT = u.W
-RADIANCE_UNIT = u.W / (u.m ** 2 * u.sr)
+RADIANCE_UNIT = u.W / (u.m**2 * u.sr)
 
 # astropy units to avoid annoying undefined warning across the code
 deg = u.deg
@@ -57,7 +63,7 @@ Dex = u.Dex
 
 class BaseUnits:
     @classmethod
-    def __iter__(cls) -> tuple[str, Unit | BaseUnits | bool | str]:
+    def __iter__(cls) -> Generator[tuple[str, UnitBase | BaseUnits | bool | str], None, None]:
         for varname in cls.__dict__:
             if str(varname).startswith("_"):
                 continue
@@ -66,7 +72,7 @@ class BaseUnits:
                 _unit = _unit.to_string()
             yield varname, _unit
 
-    def __getitem__(self, item: str) -> Unit | BaseUnits | bool | str:
+    def __getitem__(self, item: str) -> UnitBase | BaseUnits | bool | str:
         return getattr(self, item)
 
     def as_dict(self) -> dict[str, str | dict | bool]:
@@ -214,7 +220,6 @@ default_unit_map = {
     "BinarySystem": DefaultBinarySystemUnits.system,
     "Star": DefaultStarUnits,
     "Spot": DefaultSpotUnits,
-
 }
 
 # DEFAULT ELISa OUTTER/USER INPUT UNITS (MORE CONVENIENT FOR USER BUT NOT SO MUCH FOR PROGRAMMER) ----------------------
@@ -254,7 +259,7 @@ class _DefaultStarInputUnits(BaseUnits):
     gravity_darkening = dimensionless_unscaled
     albedo = dimensionless_unscaled
     discretization_factor = deg
-    polar_log_g = u.dex(cm / s ** 2)
+    polar_log_g = u.dex(cm / s**2)
     equivalent_radius = solRad
     limb_darkening_coefficients = dimensionless_unscaled
     spots = _DefaultSpotInputUnits()
