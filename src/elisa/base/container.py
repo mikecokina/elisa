@@ -413,6 +413,8 @@ class StarContainer(object):
         self.t_eff = up.NaN
         self.limb_darkening_coefficients: dict[str, ArrayLike[Float]] | None = None
         self.mass = up.NaN
+        self.discretization_factor = up.NaN
+        self.gravity_darkening = up.NaN
         # --------------------------------------------------------------------------------------------------------------
 
         self._flatten = False
