@@ -1,130 +1,288 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal, TypeAlias
+
 import numpy as np
 
-from . import model
-from .. import (
-    const,
-    umpy as up
-)
-from .. opt.fsolver import fsolve
+from elisa import const
+from elisa import umpy as up
+from elisa.base.types import FLOAT
+from elisa.binary_system import model
+from elisa.opt.fsolver import fsolve
+
+if TYPE_CHECKING:
+    from numpy.typing import ArrayLike
+
+    from elisa.types import Float
+
+ComponentName: TypeAlias = Literal["primary", "secondary"]
+
+MAXIMAL_RADIUS_BOUNDARY = 30.0
 
 
-def calculate_radius(synchronicity, mass_ratio, surface_potential, component, *args):
+def calculate_radius(
+        synchronicity: Float,
+        mass_ratio: Float,
+        surface_potential: Float,
+        component: ComponentName,
+        components_distance: Float,
+        phi: Float,
+        theta: Float,
+) -> Float:
+    """Calculate the stellar radius in an arbitrary direction.
+
+    The radius is measured from the center of the selected component in the
+    direction defined by spherical coordinates ``phi`` and ``theta``. The
+    direction is evaluated in the Roche geometry by numerically solving for the
+    radius at which the potential equals ``surface_potential``.
+
+    The spherical coordinates are interpreted as follows:
+
+    - ``phi`` is the longitudinal angle of the direction vector measured from
+      the point under :math:`L_1` in the positive direction, in radians.
+    - ``theta`` is the latitudinal angle of the direction vector measured from
+      the North Pole, in radians.
+
+    :param synchronicity: Rotational synchronicity factor of the component.
+    :type synchronicity: Float
+    :param mass_ratio: Binary mass ratio.
+    :type mass_ratio: Float
+    :param surface_potential: Surface potential of the component.
+    :type surface_potential: Float
+    :param component: Component identifier, either ``"primary"`` or
+        ``"secondary"``.
+    :type component: Literal["primary", "secondary"]
+    :param components_distance: Distance between components in semi-major-axis
+        units.
+    :type components_distance: Float
+    :param phi: Longitudinal angle of the direction vector in radians.
+    :type phi: Float
+    :param theta: Latitudinal angle of the direction vector in radians.
+    :type theta: Float
+    :return: Radius in the requested direction.
+    :rtype: Float
+    :raises ValueError: If ``component`` is invalid or if the computed radius
+        is outside the accepted range.
     """
-    Function calculates radius of the star in given direction of arbitrary direction vector (in spherical
-    coordinates) starting from the centre of the star.
-
-    :param component: str; `primary` or `secondary`,
-    :param synchronicity: float;
-    :param mass_ratio: float;
-    :param surface_potential: float; if None compoent surface potential is assumed
-    :param args: Tuple;
-
-    ::
-
-        (
-            components_distance: float - distance between components in SMA units,
-            phi: float - longitudonal angle of direction vector measured from point under L_1 in
-                         positive direction (in radians)
-            theta: float - latitudonal angle of direction vector measured from north pole (in radians)
-         )
-
-    :return: float; radius
-    """
-    if component == 'primary':
-        fn = model.potential_primary_fn
-        precalc = model.pre_calculate_for_potential_value_primary
-    elif component == 'secondary':
-        fn = model.potential_secondary_fn
-        precalc = model.pre_calculate_for_potential_value_secondary
+    if component == "primary":
+        potential_fn = model.potential_primary_fn
+        precalculate_fn = model.pre_calculate_for_potential_value_primary
+    elif component == "secondary":
+        potential_fn = model.potential_secondary_fn
+        precalculate_fn = model.pre_calculate_for_potential_value_secondary
     else:
-        raise ValueError(f'Invalid value of `component` argument {component}. \n'
-                         f'Expecting `primary` or `secondary`.')
+        message = (
+            f"Invalid value of `component` argument {component}. "
+            "Expecting `primary` or `secondary`."
+        )
+        raise ValueError(message)
 
-    precalc_args = (synchronicity, mass_ratio) + args
-    scipy_solver_init_value = np.array([1e-4])
-    argss = ((mass_ratio,) + precalc(*precalc_args), surface_potential)
-    solution, _, ier, _ = fsolve(fn, scipy_solver_init_value, full_output=True, args=argss, xtol=1e-10)
+    precalc_args = (
+        synchronicity,
+        mass_ratio,
+        components_distance,
+        phi,
+        theta,
+    )
+    solver_init_value = np.array([1e-4], dtype=np.float64)
+    solver_args = (
+        (mass_ratio, *precalculate_fn(*precalc_args)),
+        surface_potential,
+    )
 
-    # check for regular solution
-    if ier == 1 and not up.isnan(solution[0]) and 30 >= solution[0] >= 0:
-        return solution[0]
-    else:
-        if not (0 < solution[0] < 1.0):
-            raise ValueError(f'Invalid value of radius {solution} was calculated.')
-        return solution[0]
+    solution, _, ier, _ = fsolve(
+        potential_fn,
+        solver_init_value,
+        full_output=True,
+        args=solver_args,
+        xtol=1e-10,
+    )
+
+    radius = solution[0]
+
+    if ier == 1 and not up.isnan(radius) and MAXIMAL_RADIUS_BOUNDARY >= radius >= 0.0:
+        return radius
+
+    if not (0.0 < radius < 1.0):
+        message = f"Invalid value of radius {solution} was calculated."
+        raise ValueError(message)
+
+    return radius
 
 
-def calculate_polar_radius(synchronicity, mass_ratio, components_distance, surface_potential, component):
+def calculate_polar_radius(
+        synchronicity: Float,
+        mass_ratio: Float,
+        components_distance: Float,
+        surface_potential: Float,
+        component: ComponentName,
+) -> Float:
+    """Calculate the stellar radius in the direction of the pole.
+
+    :param synchronicity: Rotational synchronicity factor of the component.
+    :type synchronicity: Float
+    :param mass_ratio: Binary mass ratio.
+    :type mass_ratio: Float
+    :param components_distance: Distance between components.
+    :type components_distance: Float
+    :param surface_potential: Surface potential of the component.
+    :type surface_potential: Float
+    :param component: Component identifier, either ``"primary"`` or
+        ``"secondary"``.
+    :type component: Literal["primary", "secondary"]
+    :return: Polar radius.
+    :rtype: Float
     """
-    Radius of the star in the direction of the pole.
+    return calculate_radius(
+        synchronicity=synchronicity,
+        mass_ratio=mass_ratio,
+        surface_potential=surface_potential,
+        component=component,
+        components_distance=components_distance,
+        phi=0.0,
+        theta=0.0,
+    )
 
-    :param synchronicity: float;
-    :param mass_ratio: float;
-    :param components_distance: float;
-    :param surface_potential: float;
-    :param component: str; `primary` a `secondary`
-    :return: float;
+
+def calculate_side_radius(
+        synchronicity: Float,
+        mass_ratio: Float,
+        components_distance: Float,
+        surface_potential: Float,
+        component: ComponentName,
+) -> Float:
+    """Calculate the stellar radius perpendicular to pole and join vector.
+
+    This radius is evaluated in the direction perpendicular to both the pole
+    direction and the component-joining vector.
+
+    :param synchronicity: Rotational synchronicity factor of the component.
+    :type synchronicity: Float
+    :param mass_ratio: Binary mass ratio.
+    :type mass_ratio: Float
+    :param components_distance: Distance between components.
+    :type components_distance: Float
+    :param surface_potential: Surface potential of the component.
+    :type surface_potential: Float
+    :param component: Component identifier, either ``"primary"`` or
+        ``"secondary"``.
+    :type component: Literal["primary", "secondary"]
+    :return: Side radius.
+    :rtype: Float
     """
-    args = (components_distance, 0.0, 0.0)
-    return calculate_radius(synchronicity, mass_ratio, surface_potential, component, *args)
+    return calculate_radius(
+        synchronicity=synchronicity,
+        mass_ratio=mass_ratio,
+        surface_potential=surface_potential,
+        component=component,
+        components_distance=components_distance,
+        phi=const.HALF_PI,
+        theta=const.HALF_PI,
+    )
 
 
-def calculate_side_radius(synchronicity, mass_ratio, components_distance, surface_potential, component):
+def calculate_backward_radius(
+        synchronicity: Float,
+        mass_ratio: Float,
+        components_distance: Float,
+        surface_potential: Float,
+        component: ComponentName,
+) -> Float:
+    """Calculate the stellar radius in the direction away from the companion.
+
+    :param synchronicity: Rotational synchronicity factor of the component.
+    :type synchronicity: Float
+    :param mass_ratio: Binary mass ratio.
+    :type mass_ratio: Float
+    :param components_distance: Distance between components.
+    :type components_distance: Float
+    :param surface_potential: Surface potential of the component.
+    :type surface_potential: Float
+    :param component: Component identifier, either ``"primary"`` or
+        ``"secondary"``.
+    :type component: Literal["primary", "secondary"]
+    :return: Backward radius.
+    :rtype: Float
     """
-    Radius of the star in the direction perpendicular to the pole and component join vector.
+    return calculate_radius(
+        synchronicity=synchronicity,
+        mass_ratio=mass_ratio,
+        surface_potential=surface_potential,
+        component=component,
+        components_distance=components_distance,
+        phi=const.PI,
+        theta=const.HALF_PI,
+    )
 
-    :param synchronicity: float;
-    :param mass_ratio: float;
-    :param components_distance: float;
-    :param surface_potential: float;
-    :param component: str; `primary` a `secondary`
-    :return: float;
+
+def calculate_forward_radius(
+        synchronicity: Float,
+        mass_ratio: Float,
+        components_distance: Float,
+        surface_potential: Float,
+        component: ComponentName,
+) -> Float:
+    """Calculate the stellar radius in the direction toward the companion.
+
+    :param synchronicity: Rotational synchronicity factor of the component.
+    :type synchronicity: Float
+    :param mass_ratio: Binary mass ratio.
+    :type mass_ratio: Float
+    :param components_distance: Distance between components.
+    :type components_distance: Float
+    :param surface_potential: Surface potential of the component.
+    :type surface_potential: Float
+    :param component: Component identifier, either ``"primary"`` or
+        ``"secondary"``.
+    :type component: Literal["primary", "secondary"]
+    :return: Forward radius.
+    :rtype: Float
     """
-    args = (components_distance, const.HALF_PI, const.HALF_PI)
-    return calculate_radius(synchronicity, mass_ratio, surface_potential, component, *args)
+    return calculate_radius(
+        synchronicity=synchronicity,
+        mass_ratio=mass_ratio,
+        surface_potential=surface_potential,
+        component=component,
+        components_distance=components_distance,
+        phi=0.0,
+        theta=const.HALF_PI,
+    )
 
 
-def calculate_backward_radius(synchronicity, mass_ratio, components_distance, surface_potential, component):
+def calculate_forward_radii(
+        distances: ArrayLike[Float],
+        surface_potential: ArrayLike[Float],
+        mass_ratio: Float,
+        synchronicity: Float,
+        component: ComponentName,
+) -> list[Float]:
+    """Calculate forward radii for an array of component distances.
+
+    The function evaluates forward radii of the selected component for each
+    supplied component distance and matching surface potential entry.
+
+    :param distances: Component distances at which to calculate forward radii.
+    :type distances: ArrayLike
+    :param surface_potential: Surface potential values corresponding to each
+        distance.
+    :type surface_potential: ArrayLike
+    :param mass_ratio: Binary mass ratio.
+    :type mass_ratio: Float
+    :param synchronicity: Rotational synchronicity factor of the component.
+    :type synchronicity: Float
+    :param component: Component identifier, either ``"primary"`` or
+        ``"secondary"``.
+    :type component: Literal["primary", "secondary"]
+    :return: Forward radii for all supplied distances.
+    :rtype: list[Float]
     """
-    Radius of the star in the direction away from the companion.
-
-    :param synchronicity: float;
-    :param mass_ratio: float;
-    :param components_distance: float;
-    :param surface_potential: float;
-    :param component: str; `primary` a `secondary`
-    :return: float;
-    """
-    args = (components_distance, const.PI, const.HALF_PI)
-    return calculate_radius(synchronicity, mass_ratio, surface_potential, component, *args)
-
-
-def calculate_forward_radius(synchronicity, mass_ratio, components_distance, surface_potential, component):
-    """
-    Radius of the star in the direction towards the companion.
-
-    :param synchronicity: float;
-    :param mass_ratio: float;
-    :param components_distance: float;
-    :param surface_potential: float;
-    :param component: str; `primary` a `secondary`
-    :return: float;
-    """
-    args = (components_distance, 0.0, const.HALF_PI)
-    return calculate_radius(synchronicity, mass_ratio, surface_potential, component, *args)
-
-
-def calculate_forward_radii(distances, surface_potential, mass_ratio, synchronicity, component):
-    """
-    Calculates forward radii for given object for given array of distances.
-
-    :param distances: Union[numpy.array, List]: array of component distances at which to calculate
-                      the forward radii of given component(s)
-    :param surface_potential: float;
-    :param mass_ratio: float;
-    :param synchronicity: float;
-    :param component: str;
-    :return: Dict; Dict[str, numpy.array];
-    """
-    return [calculate_forward_radius(synchronicity, mass_ratio, d, surface_potential[ii], component)
-            for ii, d in enumerate(distances)]
+    return [
+        calculate_forward_radius(
+            synchronicity=synchronicity,
+            mass_ratio=mass_ratio,
+            components_distance=FLOAT(distance),
+            surface_potential=FLOAT(surface_potential[index]),
+            component=component,
+        )
+        for index, distance in enumerate(distances)
+    ]
