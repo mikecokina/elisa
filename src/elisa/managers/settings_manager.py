@@ -18,51 +18,51 @@ class DefaultSettings:
     """
 
     BASE_DIR: Final[Path] = Path(__file__).resolve().parent
-    LOG_CONFIG: Final[str] = str(BASE_DIR / "logging_schemas" / "default.json")
-    SUPPRESS_WARNINGS: Final[bool] = False
-    SUPPRESS_LOGGER: Final = None
-    HOME: Final[str] = str(Path.home() / ".elisa")
+    LOG_CONFIG: str = str(BASE_DIR / "logging_schemas" / "default.json")
+    SUPPRESS_WARNINGS: bool = False
+    SUPPRESS_LOGGER = None
+    HOME: str = str(Path.home() / ".elisa")
 
     # physics
-    REFLECTION_EFFECT = True
-    REFLECTION_EFFECT_ITERATIONS = 2
-    LIMB_DARKENING_LAW = "cosine"
-    PULSATION_MODEL = "uniform"
-    DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT = np.pi / 3.0
-    SURFACE_DISPLACEMENT_TOL = 1e-2
-    RV_METHOD = "kinematic"
-    RV_LAMBDA_INTERVAL = (5500, 5600)
+    REFLECTION_EFFECT: bool = True
+    REFLECTION_EFFECT_ITERATIONS: int = 2
+    LIMB_DARKENING_LAW: str = "cosine"
+    PULSATION_MODEL: str = "uniform"
+    DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT: float = np.pi / 3.0
+    SURFACE_DISPLACEMENT_TOL: float = 1e-2
+    RV_METHOD: str = "kinematic"
+    RV_LAMBDA_INTERVAL: tuple = (5500, 5600)
 
     # computational
-    MAX_DISCRETIZATION_FACTOR = 8
-    MIN_DISCRETIZATION_FACTOR = 3
-    DEFAULT_DISCRETIZATION_FACTOR = 5
-    NUMBER_OF_THREADS = 1
-    NUMBER_OF_PROCESSES = -1  # int(os.cpu_count())
-    NUMBER_OF_MCMC_PROCESSES = -1
-    MAX_NU_SEPARATION = 0.08
-    MAX_D_FLUX = 2e-4
-    MAX_SPOT_D_LONGITUDE = np.pi / 180.0  # in radians
-    MIN_POINTS_IN_ECLIPSE = 35
-    MAX_SOLVER_ITERS = 100
-    MAX_CURVE_DATAPOINTS = 300
-    MESH_GENERATOR = "auto"
-    DEFORMATION_TOL = 0.05
-    MCMC_SAVE_INTERVAL = 1800
-    USE_SINGLE_LD_COEFFICIENTS = False
-    USE_INTERPOLATION_APPROXIMATION = True
-    USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION = True
-    USE_SIMILAR_NEIGHBOURS_APPROXIMATION = True
+    MAX_DISCRETIZATION_FACTOR: int = 8
+    MIN_DISCRETIZATION_FACTOR: int = 3
+    DEFAULT_DISCRETIZATION_FACTOR: int = 5
+    NUMBER_OF_THREADS: int = 1
+    NUMBER_OF_PROCESSES: int = -1  # int(os.cpu_count())
+    NUMBER_OF_MCMC_PROCESSES: int = -1
+    MAX_NU_SEPARATION: float = 0.08
+    MAX_D_FLUX: float = 2e-4
+    MAX_SPOT_D_LONGITUDE: float = np.pi / 180.0  # in radians
+    MIN_POINTS_IN_ECLIPSE: int = 35
+    MAX_SOLVER_ITERS: int = 100
+    MAX_CURVE_DATAPOINTS: int = 300
+    MESH_GENERATOR: str = "auto"
+    DEFORMATION_TOL: float = 0.05
+    MCMC_SAVE_INTERVAL: int = 1800
+    USE_SINGLE_LD_COEFFICIENTS: bool = False
+    USE_INTERPOLATION_APPROXIMATION: bool = True
+    USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION: bool = True
+    USE_SIMILAR_NEIGHBOURS_APPROXIMATION: bool = True
 
-    TIMER = 0.0
+    TIMER: float = 0.0
 
     # support data (store as strings for backwards compatibility)
-    PASSBAND_TABLES: Final[str] = str(BASE_DIR.parent / "passband")
-    LD_TABLES: Final[str] = str(Path(HOME) / "limbdarkening" / "ld")
-    CK04_ATM_TABLES: Final[str] = str(Path(HOME) / "atmosphere" / "ck04")
-    K93_ATM_TABLES: Final[str] = str(Path(HOME) / "atmosphere" / "k93")
+    PASSBAND_TABLES: str = str(BASE_DIR.parent / "passband")
+    LD_TABLES: str = str(Path(HOME) / "limbdarkening" / "ld")
+    CK04_ATM_TABLES: str = str(Path(HOME) / "atmosphere" / "ck04")
+    K93_ATM_TABLES: str = str(Path(HOME) / "atmosphere" / "k93")
 
-    ATM_ATLAS: Final[str] = "ck04"
+    ATM_ATLAS: str = "ck04"
     # Atlas mapping (kept mutable because other startup code updates it at runtime)
     ATLAS_TO_BASE_DIR: ClassVar[dict[str, str]] = {
         "castelli": CK04_ATM_TABLES,
@@ -74,8 +74,8 @@ class DefaultSettings:
         "k93": K93_ATM_TABLES,
     }
 
-    CUDA: Final[bool] = False
-    MAGNITUDE_SYSTEM: Final[str] = "vega"
+    CUDA: bool = False
+    MAGNITUDE_SYSTEM: str = "vega"
 
 
 class SettingsManager:
