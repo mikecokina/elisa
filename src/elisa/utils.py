@@ -727,8 +727,8 @@ def calculate_cos_theta(
 
 
 def calculate_cos_theta_los_x(
-        normals: ArrayLike,
-) -> ArrayLike:
+        normals: NDArray,
+) -> NDArray:
     """Calculate cosine of an angle between normalized vectors and line of sight vector [1, 0, 0].
 
     :param normals: numpy.ndarray
@@ -738,9 +738,9 @@ def calculate_cos_theta_los_x(
 
 
 def get_line_of_sight_single_system(
-        phase: ArrayLike,
+        phase: NDArray,
         inclination: Float,
-) -> ArrayLike:
+) -> Points3DList:
     """Line of sight vector for given phase, inclination of the system and period of the rotation of given system.
 
     :param phase: numpy.ndarray;
@@ -755,9 +755,9 @@ def get_line_of_sight_single_system(
 
 
 def convert_gravity_acceleration_array(
-        colormap: ArrayLike,
+        colormap: NDArray,
         units: str,
-) -> ArrayLike:
+) -> NDArray:
     """Convert gravity acceleration array from log_g(SI) units to other units such as `log_cgs`, `SI`, `cgs`.
 
     :param colormap: numpy.ndarray;
@@ -777,7 +777,7 @@ def convert_gravity_acceleration_array(
     return colormap
 
 
-def cosine_similarity(a: ArrayLike, b: ArrayLike) -> Float:
+def cosine_similarity(a: NDArray, b: NDArray) -> Float:
     """Calculate cosine of angle between vectors.
 
     :note: Use only in case that a and b are not normalized, otherwise
@@ -829,7 +829,7 @@ def is_empty(value: Any) -> bool:  # noqa: PLR0911
         return False
 
 
-def find_idx_of_nearest(array: ArrayLike[Float], values: ArrayLike[Float]) -> Int:
+def find_idx_of_nearest(array: NDArray[Float], values: NDArray[Float]) -> Int:
     """Find indices of elements in `array` that are closest to elements in `values`.
 
     :param array: 1D array (M) - points to be searched for the closest
@@ -841,11 +841,11 @@ def find_idx_of_nearest(array: ArrayLike[Float], values: ArrayLike[Float]) -> In
 
 
 def rotation_in_spherical(
-        phi: ArrayLike,
-        theta: ArrayLike,
+        phi: NDArray,
+        theta: NDArray,
         phi_rotation: Float,
         theta_rotation: Float,
-) -> tuple[ArrayLike, ArrayLike]:
+) -> tuple[NDArray, NDArray]:
     """Rotation of spherical coordinates.
 
     Transformation of phi, theta spherical coordinates into new spherical coordinates produced by rotation around old
@@ -874,11 +874,11 @@ def rotation_in_spherical(
 
 
 def derotation_in_spherical(
-        phi: ArrayLike,
-        theta: ArrayLike,
+        phi: NDArray,
+        theta: NDArray,
         phi_rotation: Float,
         theta_rotation: Float,
-) -> tuple[ArrayLike, ArrayLike]:
+) -> tuple[NDArray, NDArray]:
     """Backward transformation of spherical coordinates.
 
     Backward transformation of spherical coordinates  produced by rotation around old
@@ -905,22 +905,22 @@ def derotation_in_spherical(
     return (phi_new + phi_rotation) % const.FULL_ARC, theta_new
 
 
-def calculate_equiv_radius(volume: ArrayLike | Number) -> ArrayLike | Number:
+def calculate_equiv_radius(volume: NDArray | Number) -> NDArray | Number:
     """Return equivalent radius of a sphere with given volume."""
     return up.power(3.0 * volume / (4.0 * const.PI), 1.0 / 3.0)
 
 
 def calculate_ellipsoid_volume(
-        _a: ArrayLike | Number,
-        _b: ArrayLike | Number,
-        _c: ArrayLike | Number,
-) -> ArrayLike | Number:
+        _a: NDArray | Number,
+        _b: NDArray | Number,
+        _c: NDArray | Number,
+) -> NDArray | Number:
     """Calculate volume of ellipsoid with semi-axis _a, _b and _c.
 
-    :param _a: Union[float, numpy.ndarray];
-    :param _b: Union[float, numpy.ndarray];
-    :param _c: Union[float, numpy.ndarray];
-    :return: Union[float, numpy.ndarray];
+    :param _a: Float | NDarray;
+    :param _b: Float | NDarray;
+    :param _c: Float | NDarray;
+    :return: Float | NDarray;
     """
     return 4.0 * const.PI * _a * _b * _c / 3.0
 
@@ -948,7 +948,7 @@ def is_even(x: Int) -> bool:
     return x % 2 == 0
 
 
-def convert_binary_orbital_motion_arr_to_positions(arr: ArrayLike) -> list[const.Position]:
+def convert_binary_orbital_motion_arr_to_positions(arr: NDArray) -> list[const.Position]:
     """Convert array of binary orbital motion to list of `const.Position` instances."""
     # noinspection PyArgumentList
     return [const.Position(*[int(p[0]) if not np.isnan(p[0]) else p[0], *list(p[1:])]) for p in arr]
@@ -1003,7 +1003,7 @@ def plane_projection(
     return in_plane
 
 
-def get_visible_projection(obj: HasMeshData) -> ArrayLike[Float]:
+def get_visible_projection(obj: HasMeshData) -> NDArray[Float]:
     """Return yz projection of nearside points.
 
     :param obj: instance;
@@ -1016,19 +1016,19 @@ def get_visible_projection(obj: HasMeshData) -> ArrayLike[Float]:
     )
 
 
-def split_to_batches(array: ArrayLike, n_proc: Int) -> list[ArrayLike]:
+def split_to_batches(array: NDArray, n_proc: Int) -> list[NDArray]:
     """Split array to batches with size `batch_size`.
 
     :param n_proc: int; number of processes
     :param array: Union[List, numpy.ndarray];
     :return: List;
     """
-    indices = np.linspace(0, len(array), num=n_proc+1, endpoint=True, dtype=INT)
-    indices = [(indices[ii-1], indices[ii]) for ii in range(1, n_proc+1)]
+    indices = np.linspace(0, len(array), num=n_proc + 1, endpoint=True, dtype=INT)
+    indices = [(indices[ii - 1], indices[ii]) for ii in range(1, n_proc + 1)]
     return [array[idx[0]: idx[1]] for idx in indices]
 
 
-def renormalize_async_result(result: list[dict[str, ArrayLike]]) -> dict[str, ArrayLike]:
+def renormalize_async_result(result: list[dict[str, NDArray]]) -> dict[str, NDArray]:
     """Renormalize multiprocessing output to native form.
 
     Multiprocessing will return several dicts with same passband (due to supplied batches), but continuous
@@ -1069,28 +1069,28 @@ def str_repalce(x: str, old: str | Iterable[str], new: str | Iterable[str]) -> s
     return x
 
 
-def magnitude_to_flux(data: ArrayLike | Float, zero_point: ArrayLike | Float) -> ArrayLike | Float:
+def magnitude_to_flux(data: NDArray | Float, zero_point: NDArray | Float) -> NDArray | Float:
     """Calculate flux from magnitude using Pogson's formula."""
     return np.power(10, (zero_point - data) / 2.5)
 
 
-def magnitude_error_to_flux_error(error: ArrayLike | Float) -> ArrayLike | Float:
+def magnitude_error_to_flux_error(error: NDArray | Float) -> NDArray | Float:
     return np.power(10, error / 2.5) - 1.0
 
 
-def flux_to_magnitude(data: ArrayLike | Float, zero_point: ArrayLike | Float) -> ArrayLike | Float:
+def flux_to_magnitude(data: NDArray | Float, zero_point: NDArray | Float) -> NDArray | Float:
     """Calculate magnitude from flux using Pogson's formula."""
-    return -2.5*np.log10(data) + zero_point
+    return -2.5 * np.log10(data) + zero_point
 
 
-def flux_error_to_magnitude_error(data: ArrayLike | Float, error: ArrayLike | Float) -> ArrayLike | Float:
+def flux_error_to_magnitude_error(data: NDArray | Float, error: NDArray | Float) -> NDArray | Float:
     """Calculate magnitude error from flux error using error propagation formula."""
     return 2.5 * np.log10(1 + (error / data))
 
 
 def discretization_correction_factor(
         discretization_factor: Float,
-        correction_factors: ArrayLike[[Float, Float]],
+        correction_factors: NDArray[[Float, Float]],
 ) -> Float:
     """Correction factor for the surface due to underestimation of the surface by the triangles.
 
@@ -1114,23 +1114,23 @@ def discretization_correction_factor(
     return np.sqrt(alpha / np.sin(alpha))
 
 
-def transform_values(value: Float | ArrayLike, default_unit: Unit, unit: Unit) -> Float | ArrayLike[Float]:
+def transform_values(value: Float | NDArray, default_unit: Unit, unit: Unit) -> Float | NDArray[Float]:
     """Quick function for transformation to desired units.
 
-    :param value: Union[float, numpy.ndarray]; input values in default unit
+    :param value: Float | NDarray; input values in default unit
     :param default_unit: astropy.units.Unit; base unit in which `value` is stored
     :param unit: astropy.units.Unit; target unit
-    :return: Union[float, numpy.ndarray]; transformed values
+    :return: Float | NDarray; transformed values
     """
-    return value if unit == "default" else (value*default_unit).to(unit).value
+    return value if unit == "default" else (value * default_unit).to(unit).value
 
 
 def jd_to_phase(
-        times: ArrayLike[Float],
+        times: NDArray[Float],
         period: Float,
         t0: Float,
         centre: Float = 0.5,
-) -> ArrayLike[Float]:
+) -> NDArray[Float]:
     """Convert JD to phase according to supplied ephemeris.
 
     Phases will be returned in range ('centre' - 0.5, 'centre' + 0.5).
