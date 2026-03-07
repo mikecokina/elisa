@@ -120,7 +120,7 @@ def cartesian_to_spherical(
         points: Points3DList,
         *,
         degrees: bool = False,
-) -> Points3DList:
+) -> Points3DList | NDArray:
     """Convert cartesian to spherical coordinates.
 
     If only 1 point is given input an output is only 1D vector
