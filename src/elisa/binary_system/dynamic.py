@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
     from elisa.binary_system.container import OrbitalPositionContainer
     from elisa.binary_system.system import BinarySystem
-    from elisa.types import Float
+    from elisa.types import Float, Int
 
 ComponentName: TypeAlias = Literal["primary", "secondary"]
 ComponentSelection: TypeAlias = Literal["primary", "secondary", "all", "both"]
@@ -31,7 +31,7 @@ MID_PHOTOMERIC_PHASE = 0.5
 def get_eclipse_boundaries(
         binary: BinarySystem,
         components_distance: Float,
-) -> NDArray[np.float64]:
+) -> NDArray[Float]:
     """Calculate orbital azimuth ranges where eclipses occur.
 
     The returned array contains the eclipse boundary azimuths in the form::
@@ -148,8 +148,8 @@ def find_apsidally_corresponding_positions(
         r_supplement[bigger_comp],
     )
 
-    # Ensure ids_of_closest_reduced_values is explicitly cast to np.int64
-    ids_of_closest_reduced_values = ids_of_closest_reduced_values.astype(np.int64)
+    # Ensure ids_of_closest_reduced_values is explicitly cast to INT
+    ids_of_closest_reduced_values = ids_of_closest_reduced_values.astype(INT)
 
     rel_geometry = compute_rel_d_geometry(
         binary,
@@ -170,7 +170,7 @@ def find_apsidally_corresponding_positions(
     is_supplement = np.asarray(np.logical_and(is_supplement_geom, is_supplement_irrad), dtype=bool)
 
     # crating array which crates valid orbital position couples
-    twin_in_reduced = np.full(ids_of_closest_reduced_values.shape, -1, dtype=np.int64)
+    twin_in_reduced = np.full(ids_of_closest_reduced_values.shape, -1, dtype=INT)
     twin_in_reduced[is_supplement] = ids_of_closest_reduced_values[is_supplement]
 
     supplements = OrbitalSupplements()
@@ -387,8 +387,8 @@ def resolve_irrad_update(
 
 def phase_crv_symmetry(
         binary_system: BinarySystem,
-        phase: NDArray[np.float64],
-) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
+        phase: NDArray[Float],
+) -> tuple[NDArray[Float], NDArray[Int]]:
     """Exploit symmetry of circular systems without spots or pulsations.
 
     For circular systems without spots and pulsations, only one half of the
@@ -403,7 +403,7 @@ def phase_crv_symmetry(
     :type phase: NDArray[numpy.float64]
     :return: Unique phases and reverse indices reconstructing the original
         ordering.
-    :rtype: tuple[NDArray[numpy.float64], NDArray[numpy.int64]]
+    :rtype: tuple[NDArray[numpy.float64], NDArray[Int]]
     """
     phase_array = phase.copy()
     if (not binary_system.has_pulsations()) and (not binary_system.has_spots()):
@@ -473,7 +473,7 @@ def in_eclipse_test(
 def correct_spot_positions_for_libration(
         system: BinarySystem | OrbitalPositionContainer,
         phases: Float | ArrayLike,
-) -> Float | NDArray[np.float64]:
+) -> Float | NDArray[Float]:
     """Correct spot positions for libration caused by eccentric orbit.
 
     The returned angular correction is computed relative to the correction at
@@ -486,7 +486,7 @@ def correct_spot_positions_for_libration(
     :return: Angular libration correction for each phase.
     :rtype: Float | NDArray[numpy.float64]
     """
-    phases_array = np.array([phases], dtype=np.float64) if np.isscalar(phases) else copy(phases)
+    phases_array = np.array([phases], dtype=FLOAT) if np.isscalar(phases) else copy(phases)
     phases_array = np.concatenate((phases_array, [0.0]))
 
     positions = system.calculate_orbital_motion(phases_array, return_nparray=True)
@@ -523,7 +523,7 @@ def calculate_spot_longitudes(
         ``{component: {spot_index: longitudes}}``.
     :rtype: dict[str, dict[int, Float | NDArray[numpy.float64]]]
     """
-    phases_array = np.asarray(phases, dtype=np.float64) if not np.isscalar(phases) else phases
+    phases_array = np.asarray(phases, dtype=FLOAT) if not np.isscalar(phases) else phases
 
     components = bsutils.component_to_list(component)
     components_map = {comp: getattr(system, str(comp)) for comp in components}
