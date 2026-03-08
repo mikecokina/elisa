@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from elisa.const import Position
-    from elisa.types import Float, HasMeshData, Int, Number, Points2DList, Points3DList
+    from elisa.types import Float, HasMeshData, Int, Number
 
 FEBRUARY_MONTH_NUMBER = 2
 
@@ -117,10 +117,10 @@ def find_nearest_dist_3d(data: Iterable) -> Float:
 
 
 def cartesian_to_spherical(
-    points: Points3DList,
+    points: NDArray,
     *,
     degrees: bool = False,
-) -> Points3DList | NDArray:
+) -> NDArray:
     """Convert cartesian to spherical coordinates.
 
     If only 1 point is given input an output is only 1D vector
@@ -166,17 +166,17 @@ def cartesian_to_spherical(
 
 
 def cartesian_to_polar(
-    points: Points3DList,
+    points: NDArray,
     *,
     degrees: bool = False,
-) -> Points3DList:
+) -> NDArray:
     """Convert cartesian to polar coordinates."""
     points = np.insert(points, 2, np.zeros(len(points)), axis=1)
     transform = cartesian_to_spherical(points, degrees=degrees)
     return transform.T[:2].T
 
 
-def spherical_to_cartesian(spherical_points: Points3DList) -> Points3DList:
+def spherical_to_cartesian(spherical_points: NDArray) -> NDArray[Float]:
     """Convert spherical coordinates into cartesian.
 
     If input is one point, output is 1D vector.
@@ -211,7 +211,7 @@ def spherical_to_cartesian(spherical_points: Points3DList) -> Points3DList:
     return np.squeeze(points, axis=0) if np.shape(points)[0] == 1 else points
 
 
-def cylindrical_to_cartesian(cylindrical_points: Points3DList) -> Points3DList:
+def cylindrical_to_cartesian(cylindrical_points: NDArray) -> NDArray:
     """Convert cylindrical coordinates into cartesian.
 
     If input is one point, output is 1D vector.
@@ -379,7 +379,7 @@ def average_spacing_cgal(
 
 
 def average_spacing(
-    data: Points3DList,
+    data: NDArray,
     mean_angular_distance: Float,
 ) -> Float:
     """Calculate mean distance between points.
@@ -489,7 +489,7 @@ def calculate_distance_matrix(
     return distance_matrix, None
 
 
-def find_face_centres(faces: Points3DList) -> NDArray[Float]:
+def find_face_centres(faces: NDArray) -> NDArray[Float]:
     """Calculate centres (center of mass) of each supplied face.
 
     i-th coordinate of center of mas for one given triangle is computed as::
@@ -748,7 +748,7 @@ def calculate_cos_theta_los_x(
 def get_line_of_sight_single_system(
     phase: NDArray,
     inclination: Float,
-) -> Points3DList:
+) -> NDArray:
     """Line of sight vector for given phase, inclination of the system and period of the rotation of given system.
 
     :param phase: numpy.ndarray;
@@ -971,8 +971,8 @@ def nested_dict_values(dictionary: dict) -> Iterable:
 
 
 def calculate_volume_ellipse_approx(
-    equator_points: Points3DList | NDArray | None = None,
-    meridian_points: Points3DList | NDArray | None = None,
+    equator_points: NDArray | None = None,
+    meridian_points: NDArray | None = None,
 ) -> Float:
     """Calculate volume of the object.
 
@@ -988,11 +988,11 @@ def calculate_volume_ellipse_approx(
 
 
 def plane_projection(
-    points: Points3DList,
+    points: NDArray,
     plane: str,
     *,
     keep_3d: bool = False,
-) -> Points2DList:
+) -> NDArray:
     """Projects 3D points into given plane.
 
     :param keep_3d: bool; if True, the dimensions of the array is kept the same, with given column equal to zero

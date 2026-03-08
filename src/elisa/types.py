@@ -1,22 +1,23 @@
 from __future__ import annotations
 
-from typing import Literal, Protocol, TypeAlias, TypedDict
+from typing import TYPE_CHECKING, Literal, Protocol, TypeAlias, TypedDict
 
 import numpy as np
 from astropy.units import Unit
-from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 Float: TypeAlias = float | np.float32 | np.float64 | np.floating
 Int: TypeAlias = int | np.int32 | np.int64 | np.integer
 Number: TypeAlias = Float | Int
 NumpyBool: TypeAlias = bool | np.bool_
 
-Points3DList: TypeAlias = NDArray
-Points2DList: TypeAlias = NDArray
 UnitType: TypeAlias = Unit
 
 ComponentName: TypeAlias = Literal["primary", "secondary"]
 ComponentSelection: TypeAlias = Literal["primary", "secondary", "all", "both"]
+
 
 class HasMeshData(Protocol):
     points: NDArray[Float]

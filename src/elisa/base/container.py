@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
     from elisa.base.star import Star
     from elisa.const import Position
-    from elisa.types import Float, Points3DList
+    from elisa.types import Float
 
 logger = getLogger("base.container")
 
@@ -399,6 +399,7 @@ class StarContainer:
         self.critical_surface_potential = None
         self.surface_potential = None
         self.albedo = up.NaN
+        self.polar_log_g = up.NaN
         # --------------------------------------------------------------------------------------------------------------
 
         self._flatten = False
@@ -567,7 +568,7 @@ class StarContainer:
         :returns: Array of spherical coordinates.
         """
         # separating variables to convert
-        centres_cartesian: Points3DList = copy(getattr(self, kind))
+        centres_cartesian: NDArray = copy(getattr(self, kind))
 
         # transforming variables
         centres_cartesian[:, 0] -= com_x
