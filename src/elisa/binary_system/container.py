@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import TYPE_CHECKING, Literal, TypeAlias
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -14,11 +14,9 @@ from elisa.logger import getLogger
 if TYPE_CHECKING:
     from elisa.binary_system.system import BinarySystem
     from elisa.const import Position
-    from elisa.types import Float
+    from elisa.types import ComponentSelection, Float
 
 logger = getLogger("binary_system.container")
-
-ComponentSelection: TypeAlias = Literal["primary", "secondary", "all", "both"]
 
 
 class OrbitalPositionContainer(PositionContainer):

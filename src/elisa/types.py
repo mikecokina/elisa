@@ -16,7 +16,7 @@ Points2DList: TypeAlias = NDArray
 UnitType: TypeAlias = Unit
 
 ComponentName: TypeAlias = Literal["primary", "secondary"]
-
+ComponentSelection: TypeAlias = Literal["primary", "secondary", "all", "both"]
 
 class HasMeshData(Protocol):
     points: NDArray[Float]

@@ -20,9 +20,7 @@ if TYPE_CHECKING:
 
     from elisa.binary_system.container import OrbitalPositionContainer
     from elisa.binary_system.system import BinarySystem
-    from elisa.types import Float, Int
-
-ComponentSelection: TypeAlias = Literal["primary", "secondary", "all", "both"]
+    from elisa.types import ComponentSelection, Float, Int
 
 MID_PHOTOMERIC_PHASE = 0.5
 

@@ -398,6 +398,7 @@ class StarContainer:
         self.gravity_darkening = up.NaN
         self.critical_surface_potential = None
         self.surface_potential = None
+        self.albedo = up.NaN
         # --------------------------------------------------------------------------------------------------------------
 
         self._flatten = False
