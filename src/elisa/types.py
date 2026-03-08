@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Protocol, TypeAlias, TypedDict
+from typing import Literal, Protocol, TypeAlias, TypedDict
 
 import numpy as np
 from astropy.units import Unit
@@ -14,6 +14,9 @@ NumpyBool: TypeAlias = bool | np.bool_
 Points3DList: TypeAlias = NDArray
 Points2DList: TypeAlias = NDArray
 UnitType: TypeAlias = Unit
+
+ComponentName: TypeAlias = Literal["primary", "secondary"]
+
 
 class HasMeshData(Protocol):
     points: NDArray[Float]

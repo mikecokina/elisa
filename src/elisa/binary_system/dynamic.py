@@ -22,7 +22,6 @@ if TYPE_CHECKING:
     from elisa.binary_system.system import BinarySystem
     from elisa.types import Float, Int
 
-ComponentName: TypeAlias = Literal["primary", "secondary"]
 ComponentSelection: TypeAlias = Literal["primary", "secondary", "all", "both"]
 
 MID_PHOTOMERIC_PHASE = 0.5

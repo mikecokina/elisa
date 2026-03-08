@@ -18,7 +18,6 @@ if TYPE_CHECKING:
 
 logger = getLogger("binary_system.container")
 
-ComponentName: TypeAlias = Literal["primary", "secondary"]
 ComponentSelection: TypeAlias = Literal["primary", "secondary", "all", "both"]
 
 
@@ -33,16 +32,17 @@ class OrbitalPositionContainer(PositionContainer):
     initialize this container correctly.
     """
 
-    __slots__ = [
+    __slots__ = (
         "eccentricity",
         "mass",
         "mass_ratio",
+        "morphology",
         "period",
         "primary",
         "secondary",
         "semi_major_axis",
         "time",
-    ]
+    )
 
     def __init__(
         self,
@@ -67,8 +67,8 @@ class OrbitalPositionContainer(PositionContainer):
         """
         super().__init__(position=position)
         self._components = ["primary", "secondary"]
-        self.primary = primary
-        self.secondary = secondary
+        self.primary: StarContainer = primary
+        self.secondary: StarContainer = secondary
 
         self.period = up.NaN
 

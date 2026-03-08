@@ -10,7 +10,6 @@ from elisa.base.types import FLOAT
 from elisa.types import Float
 
 NumericLike: TypeAlias = Float | NDArray[Float]
-ComponentName: TypeAlias = Literal["primary", "secondary"]
 
 
 def static_potential_primary_fn(radius: NumericLike, *args: Float) -> NumericLike:

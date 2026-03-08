@@ -33,12 +33,11 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
-    from elisa.types import Float
+    from elisa.types import ComponentName, Float
     from elisa.units import _DefaultBinarySystemInputUnits, _DefaultBinarySystemUnits
 
 logger = getLogger("binary_system.system")
 
-ComponentName: TypeAlias = Literal["primary", "secondary"]
 ComponentSelection: TypeAlias = Literal["primary", "secondary", "all", "both"]
 
 NUM_LAGRANGE_POINTS = 5

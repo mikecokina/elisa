@@ -13,7 +13,7 @@ from elisa.base.transform import SystemProperties
 from elisa.binary_system import model
 from elisa.binary_system.radius import calculate_side_radius
 from elisa.pypex.poly2d.polygon import Polygon
-from elisa.types import Float
+from elisa.types import ComponentName, Float
 from elisa.units import DefaultBinarySystemUnits
 from elisa.utils import is_empty
 
@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 
     from elisa.binary_system.container import OrbitalPositionContainer
 
-ComponentName: TypeAlias = Literal["primary", "secondary"]
 ComponentSelection: TypeAlias = Literal["primary", "secondary", "all", "both"]
 JSONScalar: TypeAlias = str | int | Float | bool | None
 JSONValue: TypeAlias = JSONScalar | dict[str, "JSONValue"] | list["JSONValue"]
