@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
     from elisa.base.container import StarContainer
     from elisa.binary_system.container import OrbitalPositionContainer
+    from elisa.binary_system.system import BinarySystem
     from elisa.types import ComponentName, ComponentSelection, Float, Int
 
 logger = getLogger("binary_system.surface.mesh")
@@ -1370,7 +1371,7 @@ def mesh_spots(  # noqa: C901, PLR0912, PLR0915
 
 
 def calculate_neck_position(
-    system: OrbitalPositionContainer,
+    system: BinarySystem | OrbitalPositionContainer,
     *,
     return_polynomial: bool = False,
 ) -> Float | tuple[Float, NDArray[Float]]:

@@ -1491,8 +1491,7 @@ class BinarySystem(System):
     def compute_lightcurve(self, **kwargs: Any) -> dict[str, NDArray[np.float64]]:
         """Decide which light-curve generator function should be used.
 
-        The selected generator depends on the basic properties of the binary
-        system.
+        The selected generator depends on the binary system's basic properties.
 
         ``kwargs`` are passed to light-curve generator functions. Supported
         options include passbands, bandwidths, phases, and position method.
@@ -1505,19 +1504,19 @@ class BinarySystem(System):
         curve_fn = c_router.resolve_curve_method(self, curve="lc")
         return curve_fn(**kwargs)
 
-    def _compute_circular_synchronous_lightcurve(self, **kwargs: Any) -> Any:
+    def _compute_circular_synchronous_lightcurve(self, **kwargs: Any) -> dict[str, NDArray[np.float64]]:
         return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
 
-    def _compute_circular_spotty_asynchronous_lightcurve(self, **kwargs: Any) -> Any:
+    def _compute_circular_spotty_asynchronous_lightcurve(self, **kwargs: Any) -> dict[str, NDArray[np.float64]]:
         return lc.compute_circular_spotty_asynchronous_lightcurve(self, **kwargs)
 
-    def _compute_circular_pulsating_lightcurve(self, **kwargs: Any) -> Any:
+    def _compute_circular_pulsating_lightcurve(self, **kwargs: Any) -> dict[str, NDArray[np.float64]]:
         return lc.compute_circular_pulsating_lightcurve(self, **kwargs)
 
-    def _compute_eccentric_spotty_lightcurve(self, **kwargs: Any) -> Any:
+    def _compute_eccentric_spotty_lightcurve(self, **kwargs: Any) -> dict[str, NDArray[np.float64]]:
         return lc.compute_eccentric_spotty_lightcurve(self, **kwargs)
 
-    def _compute_eccentric_lightcurve(self, **kwargs: Any) -> Any:
+    def _compute_eccentric_lightcurve(self, **kwargs: Any) -> dict[str, NDArray[np.float64]]:
         return lc.compute_eccentric_lightcurve_no_spots(self, **kwargs)
 
     def compute_rv(self, **kwargs: Any) -> dict[str, NDArray[np.float64]]:
@@ -1549,17 +1548,17 @@ class BinarySystem(System):
         )
         raise ValueError(message)
 
-    def _compute_circular_synchronous_rv_curve(self, **kwargs: Any) -> Any:
+    def _compute_circular_synchronous_rv_curve(self, **kwargs: Any) -> dict[str, NDArray[np.float64]]:
         return rv.compute_circular_synchronous_rv_curve(self, **kwargs)
 
-    def _compute_circular_spotty_asynchronous_rv_curve(self, **kwargs: Any) -> Any:
+    def _compute_circular_spotty_asynchronous_rv_curve(self, **kwargs: Any) -> dict[str, NDArray[np.float64]]:
         return rv.compute_circular_spotty_asynchronous_rv_curve(self, **kwargs)
 
-    def _compute_circular_pulsating_rv_curve(self, **kwargs: Any) -> Any:
+    def _compute_circular_pulsating_rv_curve(self, **kwargs: Any) -> dict[str, NDArray[np.float64]]:
         return rv.compute_circular_pulsating_rv_curve(self, **kwargs)
 
-    def _compute_eccentric_spotty_rv_curve(self, **kwargs: Any) -> Any:
+    def _compute_eccentric_spotty_rv_curve(self, **kwargs: Any) -> dict[str, NDArray[np.float64]]:
         return rv.compute_eccentric_spotty_rv_curve(self, **kwargs)
 
-    def _compute_eccentric_rv_curve_no_spots(self, **kwargs: Any) -> Any:
+    def _compute_eccentric_rv_curve_no_spots(self, **kwargs: Any) -> dict[str, NDArray[np.float64]]:
         return rv.compute_eccentric_rv_curve_no_spots(self, **kwargs)

@@ -1,31 +1,39 @@
-import numpy as np
+from __future__ import annotations
 
 from copy import deepcopy
-from . surface import (
-    mesh,
-    faces,
-    gravity,
-    temperature,
-    pulsations
-)
-from .. base.container import (
-    StarContainer,
-    PositionContainer
-)
-from .. logger import getLogger
+from typing import TYPE_CHECKING, Any
+
+import numpy as np
+
+from elisa import umpy as up
+from elisa.base.container import PositionContainer, StarContainer
+from elisa.logger import getLogger
+from elisa.single_system.surface import faces, gravity, mesh, pulsations, temperature
 
 logger = getLogger("single_system.container")
 
 
+if TYPE_CHECKING:
+    from elisa.const import Position
+    from elisa.single_system.system import SingleSystem
+    from elisa.types import Float
+
+
 class SinglePositionContainer(PositionContainer):
+    """Container for a single-star model at a given viewing position.
+
+    Initialize using :meth:`from_single_system` or
+    :meth:`elisa.single_system.system.SingleSystem.build_container`.
+
+    :param star: StarContainer instance describing static star parameters.
+    :type star: elisa.base.container.StarContainer
+    :param position: Viewing geometry (phase, inclination, etc.).
+    :type position: elisa.const.Position
     """
-    Object for handling models of a single star system at given orbital position.
-    Use functions SinglePositionContainer.from_single_system or
-    SingleSystem.build_container to correctly initialize this container.
-    """
-    def __init__(self, star: StarContainer, position, **properties):
+
+    def __init__(self, star: StarContainer, position: Position, **properties: Any) -> None:
         super().__init__(position=position)
-        self._components = ['star']
+        self._components = ["star"]
         self.star = star
 
         # placeholder (set in loop below)
@@ -35,80 +43,86 @@ class SinglePositionContainer(PositionContainer):
             setattr(self, key, val)
 
         # calculating a time that elapsed since t0
+        self.time = up.NaN  # set time to avoid warning about being set outside __init__
         self.set_time()
 
         # setting centre of mass
         self.set_com()
 
-    def set_on_position_params(self, position):
-        """
-        Defining the orientation of the single system container with respect to the observer.
+    def set_on_position_params(self, position: Position) -> SinglePositionContainer:
+        """Set viewing parameters on the container.
 
-        :param position: elisa.const.Position;
-        :return: SinglePositionContainer; container with set position
+        This assigns the supplied :class:`elisa.const.Position` namedtuple to
+        the container and returns ``self`` for fluent usage.
+
+        :param position: Viewing geometry namedtuple.
+        :type position: elisa.const.Position
+        :returns: Updated container with ``position`` set.
+        :rtype: elisa.single_system.container.SinglePositionContainer
         """
-        setattr(self, "position", position)
+        self.position = position
         return self
 
-    def set_com(self):
-        """
-        Setting a centre of mass of the single star object.
-        """
-        setattr(self.star, 'com', np.array([0, 0, 0]))
+    def set_com(self) -> None:
+        """Set the star centre of mass to the origin for a single-star system.
 
-    def set_time(self):
+        The value is stored on the contained :class:`StarContainer` as
+        ``star.com``.
         """
-        Calculating elapsed from `reference_time` for the instance of SinglePositionContainer.
+        self.star.com = np.array([0, 0, 0])
 
-        :return: float; time in seconds corresponding to the container
+    def set_time(self) -> Float:
+        """Compute and store elapsed time since reference in internal units.
+
+        The result is stored on the container attribute ``time`` and also
+        returned.
+
+        :returns: Time in seconds corresponding to the container phase.
+        :rtype: elisa.types.Float
         """
-        setattr(self, 'time', 86400 * self.rotation_period * self.position.phase)
-        return getattr(self, 'time')
+        self.time = 86400 * self.rotation_period * self.position.phase
+        return self.time
 
     @classmethod
-    def from_single_system(cls, single_system, position):
-        """
-        Construct an SinglePositionContainer based on the instance of SingleSystem and position.
+    def from_single_system(cls, single_system: SingleSystem, position: Position) -> SinglePositionContainer:
+        """Create a :class:`SinglePositionContainer` from a :class:`SingleSystem`.
 
-        :param single_system: elisa.single_system.system.SingleSystem;
-        :param position: elisa.const.Position; named tuple containing information system orientation
-                                               in space with respect to the observer.
-        :return: SinglePositionContainer;
+        :param single_system: Source single-system instance.
+        :type single_system: elisa.single_system.system.SingleSystem
+        :param position: Viewing geometry namedtuple.
+        :type position: elisa.const.Position
+        :returns: Initialized position container.
+        :rtype: elisa.single_system.container.SinglePositionContainer
         """
         star = StarContainer.from_star_instance(single_system.star)
         return cls(star, position, **single_system.properties_serializer())
 
-    def copy(self):
-        """Returns a deep copy of the SinglePositionContainer."""
+    def copy(self) -> SinglePositionContainer:
+        """Return a deep copy of the container."""
         return deepcopy(self)
 
-    def has_spots(self):
-        """Returns True if the star contains spots."""
+    def has_spots(self) -> bool:
+        """Return ``True`` when the contained star has spots."""
         return self.star.has_spots()
 
-    def has_pulsations(self):
-        """Returns True if the star contains pulsations."""
+    def has_pulsations(self) -> bool:
+        """Return ``True`` when the contained star has pulsations."""
         return self.star.has_pulsations()
 
-    def build(self, build_pulsations=True, **kwargs):
+    def build(self, *, build_pulsations: bool = True, **kwargs: Any) -> SinglePositionContainer:
+        """Build the per-position model for the single star.
+
+        The method executes the standard build pipeline and optionally
+        incorporates pulsations.
+
+        :param build_pulsations: If ``True`` add pulsation perturbations (keyword-only).
+        :type build_pulsations: bool
+        :param kwargs: Additional keyword arguments forwarded to sub-routines.
+        :type kwargs: Any
+        :returns: The same container after building.
+        :rtype: elisa.single_system.container.SinglePositionContainer
         """
-        Main method to build binary star system from parameters given on init of SingleStar.
-
-        called following methods::
-
-            - build_mesh
-            - build_faces
-            - build_velocities
-            - build_surface_gravity
-            - build_faces_orientation
-            - correct_mesh
-            - build_surface_areas
-            - build_temperature_distribution
-
-        :param kwargs:
-        :param build_pulsations: bool;  if True, only equilibrium model is build
-        :return: self;
-        """
+        logger.debug("build called with kwargs: %s", kwargs)
         self.build_surface()
         self.build_from_points()
 
@@ -117,26 +131,25 @@ class SinglePositionContainer(PositionContainer):
             self.build_pulsations()
         return self
 
-    def build_pulsations(self):
-        """
-        Incorporating user-defined pulsation modes into the model.
-        """
+    def build_pulsations(self) -> None:
+        """Incorporate user-defined pulsation modes into the model."""
         self.build_harmonics()
         self.build_perturbations()
 
-    def build_surface(self):
-        """
-        Building only clear surface. (points, faces, velocities)
-        """
+    def build_surface(self) -> None:
+        """Build the raw surface representation (points, faces, velocities)."""
         self.build_mesh()
         self.build_faces()
         self.build_velocities()
 
-    def build_from_points(self):
-        """
-        Build single system from present surface points
+    def build_from_points(self) -> SinglePositionContainer:
+        """Finalize derived surface quantities from already built points.
 
-        :return: SingleSystemPosition;
+        Runs gravity, face orientation, mesh correction and temperature
+        distribution calculations and returns ``self``.
+
+        :returns: Updated container.
+        :rtype: elisa.single_system.container.SinglePositionContainer
         """
         self.build_surface_gravity()
         self.build_faces_orientation()
@@ -145,90 +158,46 @@ class SinglePositionContainer(PositionContainer):
         self.build_temperature_distribution()
         return self
 
-    def build_mesh(self):
-        """
-        Build surface point mesh including spots.
-
-        :return: elisa.single_system.container.SinglePositionContainer; container updated with point mesh
-        """
+    def build_mesh(self) -> SinglePositionContainer:
+        """Build surface point mesh including spots and return the container."""
         return mesh.build_mesh(self)
 
-    def correct_mesh(self):
-        """
-        Correcting the underestimation of the surface due to the discretization.
-
-        :return: elisa.single_system.container.SinglePositionContainer; container updated with corrected point mesh
-        """
+    def correct_mesh(self) -> SinglePositionContainer:
+        """Apply mesh correction and return the updated container."""
         return mesh.correct_mesh(self)
 
-    def build_faces(self):
-        """
-        Function tessellates the stellar surface points into a set of triangles
-        covering the star without gaps and overlaps.
-
-        :return: elisa.single_system.container.SinglePositionContainer; container updated with faces
-        """
+    def build_faces(self) -> SinglePositionContainer:
+        """Tessellate surface points into triangular faces and return container."""
         return faces.build_faces(self)
 
-    def build_velocities(self):
-        """
-        Function calculates velocity vector for each face relative to the observer.
-
-        :return: elisa.single_system.container.SinglePositionContainer; container updated with face velocities
-        """
+    def build_velocities(self) -> SinglePositionContainer:
+        """Compute face velocity vectors and return the updated container."""
         return faces.build_velocities(self)
 
-    def build_surface_areas(self):
-        """
-        Compute surface areas of all faces (spots included).
-
-        :return: system; elisa.single_system.container.SinglePositionContainer; container updated with face
-                                                                                (triangle) areas
-        """
+    def build_surface_areas(self) -> SinglePositionContainer:
+        """Compute per-face surface areas and return the updated container."""
         return faces.compute_all_surface_areas(self)
 
-    def build_faces_orientation(self):
-        """
-        Compute face orientation (normals) for each face.
-
-        :return: elisa.single_system.container.SinglePositionContainer; container updated with correct normal vector
-                                                                        orientation for each face
-        """
+    def build_faces_orientation(self) -> SinglePositionContainer:
+        """Compute outward normals for faces and return the updated container."""
         return faces.build_faces_orientation(self)
 
-    def build_surface_gravity(self):
-        """
-        Function calculates gravity potential gradient magnitude (surface gravity) for each face.
-
-        :return: elisa.single_system.container.SinglePositionContainer; container updated with surface gravity
-                                                                        distribution
-        """
+    def build_surface_gravity(self) -> SinglePositionContainer:
+        """Calculate surface gravity magnitudes per face and return container."""
         return gravity.build_surface_gravity(self)
 
-    def build_temperature_distribution(self):
-        """
-        Function calculates temperature distribution on across all faces.
-
-        :return: elisa.single_system.container.SinglePositionContainer; container updated with surface
-                                                                        temperature distribution
-        """
+    def build_temperature_distribution(self) -> SinglePositionContainer:
+        """Compute temperature distribution across faces and return updated container."""
         return temperature.build_temperature_distribution(self)
 
-    def build_harmonics(self):
-        """
-        Adds pre-calculated harmonics for the respective pulsation modes.
-
-        :return: elisa.single_system.container.SinglePositionContainer; updated container
-        """
+    def build_harmonics(self) -> SinglePositionContainer:
+        """Add precomputed harmonic components for pulsations and return container."""
         return pulsations.build_harmonics(self)
 
-    def build_perturbations(self):
-        """
-        Function adds perturbation to the surface mesh due to pulsations.
-
-        :return: elisa.single_system.container.SinglePositionContainer; container with introduced pulsations
-        """
+    def build_perturbations(self) -> SinglePositionContainer:
+        """Apply pulsation perturbations to the mesh and return container."""
         return pulsations.build_perturbations(self)
 
-    def _phase(self, phase):
+    def _phase(self, phase: Float | None) -> Float:
+        """Return supplied phase or fallback to container position phase."""
         return phase if phase is not None else self.position.phase
