@@ -29,3 +29,20 @@ class ZeroPointType(TypedDict):
     unit: UnitType
     fluxes: dict[str, Float]
     reference_magnitudes: dict[str, Float]
+
+
+# Define a minimal Protocol for 3D Axes exposing only the methods used
+# in this module. Defining it at runtime (it's lightweight) helps IDEs
+# and static checkers recognise the 3D axis methods used here.
+class Axes3DProtocol(Protocol):
+    def get_xlim3d(self) -> tuple[float, float]: ...
+
+    def get_ylim3d(self) -> tuple[float, float]: ...
+
+    def get_zlim3d(self) -> tuple[float, float]: ...
+
+    def set_xlim3d(self, limits: tuple[float, float]) -> None: ...
+
+    def set_ylim3d(self, limits: tuple[float, float]) -> None: ...
+
+    def set_zlim3d(self, limits: tuple[float, float]) -> None: ...
