@@ -15,7 +15,7 @@ set_astropy_units()
 
 
 class DataTestCase(ElisaTestCase):
-    DATA = op.join(op.abspath(op.dirname(__file__)), "data", "dataset")
+    DATA = op.join(op.abspath(op.dirname(__file__)), "../data", "dataset")
 
 
 class DataReadTestCase(DataTestCase):
