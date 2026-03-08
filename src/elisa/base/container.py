@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from copy import copy, deepcopy
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -54,7 +54,7 @@ class SystemPropertiesContainer(PropertiesContainer):
     """Container for system properties."""
 
 
-class PositionContainer:
+class PositionContainer(ABC):
     """Container holding per-position model state (phase/time).
 
     This object groups per-component StarContainers and provides helpers
@@ -322,23 +322,23 @@ class StarContainer:
     """
 
     def __init__(
-            self,
-            points: NDArray | None = None,
-            normals: NDArray | None = None,
-            velocities: NDArray | None = None,
-            accelerations: NDArray | None = None,
-            indices: NDArray | None = None,
-            faces: NDArray | None = None,
-            temperatures: NDArray | None = None,
-            log_g: NDArray | None = None,
-            coverage: NDArray | None = None,
-            face_centres: NDArray | None = None,
-            metallicity: Float | None = None,
-            areas: NDArray | None = None,
-            potential_gradient_magnitudes: NDArray | None = None,
-            ld_cfs: NDArray | None = None,
-            normal_radiance: NDArray | None = None,
-            los_cosines: NDArray | None = None,
+        self,
+        points: NDArray | None = None,
+        normals: NDArray | None = None,
+        velocities: NDArray | None = None,
+        accelerations: NDArray | None = None,
+        indices: NDArray | None = None,
+        faces: NDArray | None = None,
+        temperatures: NDArray | None = None,
+        log_g: NDArray | None = None,
+        coverage: NDArray | None = None,
+        face_centres: NDArray | None = None,
+        metallicity: Float | None = None,
+        areas: NDArray | None = None,
+        potential_gradient_magnitudes: NDArray | None = None,
+        ld_cfs: NDArray | None = None,
+        normal_radiance: NDArray | None = None,
+        los_cosines: NDArray | None = None,
     ) -> None:
 
         self.points = points
@@ -396,6 +396,8 @@ class StarContainer:
         self.mass = up.NaN
         self.discretization_factor = up.NaN
         self.gravity_darkening = up.NaN
+        self.critical_surface_potential = None
+        self.surface_potential = None
         # --------------------------------------------------------------------------------------------------------------
 
         self._flatten = False
@@ -458,10 +460,12 @@ class StarContainer:
 
         vertices_map = [{"type": "object", "enum": -1}] * len(self.points)
         for idx, spot_instance in enumerate(self.spots.values()):
-            vertices_map = up.concatenate([
-                vertices_map,
-                [{"type": "spot", "enum": idx}] * len(spot_instance.points),
-            ])
+            vertices_map = up.concatenate(
+                [
+                    vertices_map,
+                    [{"type": "spot", "enum": idx}] * len(spot_instance.points),
+                ],
+            )
         return points, vertices_map
 
     def calculate_areas(self) -> NDArray:
@@ -551,9 +555,9 @@ class StarContainer:
         return self
 
     def transform_points_to_spherical_coordinates(
-            self,
-            kind: Literal["points", "face_centres"] = "points",
-            com_x: Float = 0.0,
+        self,
+        kind: Literal["points", "face_centres"] = "points",
+        com_x: Float = 0.0,
     ) -> NDArray:
         """Convert cartesian points to spherical coordinates (object frame).
 

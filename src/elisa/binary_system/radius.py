@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, TypeAlias
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -13,9 +13,7 @@ from elisa.opt.fsolver import fsolve
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from elisa.types import Float
-
-ComponentName: TypeAlias = Literal["primary", "secondary"]
+    from elisa.types import ComponentName, Float
 
 MAXIMAL_RADIUS_BOUNDARY = 30.0
 

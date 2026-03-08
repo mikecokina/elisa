@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from elisa.base.container import StarContainer
-    from elisa.types import Float
+    from elisa.types import Float, Int
 
 
 def initialize_model_container(vertices_map: list[dict[str, int | str]]) -> tuple[dict, dict]:
@@ -40,8 +40,8 @@ def initialize_model_container(vertices_map: list[dict[str, int | str]]) -> tupl
 
 def split_spots_and_component_faces(
         star: StarContainer,
-        points: NDArray[np.floating],
-        faces: NDArray[np.integer],
+        points: NDArray[Float],
+        faces: NDArray[Int],
         model: dict,
         spot_candidates: dict,
         vmap: list[dict[str, int | str]],
@@ -93,7 +93,7 @@ def resolve_spot_candidates(
         star: StarContainer,
         model: dict,
         spot_candidates: dict,
-        faces: NDArray[np.integer],
+        faces: NDArray[Int],
         component_com: Float,
 ) -> dict:
     """Assign mixed faces (candidates) to the correct spot or to the object.
@@ -139,8 +139,8 @@ def resolve_spot_candidates(
 
 
 def resolve_obvious_spots(
-        points: NDArray[np.floating],
-        faces: NDArray[np.integer],
+        points: NDArray[Float],
+        faces: NDArray[Int],
         model: dict,
         spot_candidates: dict,
         vmap: list[dict[str, int | str]],
@@ -200,7 +200,7 @@ def set_all_surface_centres(star: StarContainer) -> StarContainer:
     return star
 
 
-def calculate_surface_centres(points: NDArray[np.floating], faces: NDArray[np.integer]) -> NDArray[np.floating]:
+def calculate_surface_centres(points: NDArray[Float], faces: NDArray[Int]) -> NDArray[Float]:
     """Return centroids of triangular faces.
 
     :param points: Array of 3D points.
@@ -215,11 +215,11 @@ def calculate_surface_centres(points: NDArray[np.floating], faces: NDArray[np.in
 
 # noinspection PyUnreachableCode
 def calculate_normals(
-        points: NDArray[np.floating],
-        faces: NDArray[np.integer],
-        centres: NDArray[np.floating],
+        points: NDArray[Float],
+        faces: NDArray[Int],
+        centres: NDArray[Float],
         com: Float,
-) -> NDArray[np.floating]:
+) -> NDArray[Float]:
     """Compute outward unit normals for triangular faces.
 
     The orientation of normals is adjusted so that they point outwards
@@ -242,8 +242,17 @@ def calculate_normals(
     normals /= np.linalg.norm(normals, axis=1)[:, None]
     corr_centres = copy(centres) - np.array([com, 0, 0])[None, :]
 
-    sgn = up.sign(np.sum(up.multiply(normals, corr_centres), axis=1))
-    return normals * sgn[:, None]
+    # sign array is integer (-1, 0, 1). Cast it to a floating dtype before
+    # multiplying with `normals` so the multiplication yields a floating
+    # array; this also satisfies static type checkers which expect floats.
+    sgn: NDArray[Int] = up.sign(np.sum(up.multiply(normals, corr_centres), axis=1))
+    sgn_f: NDArray[Float] = sgn.astype(np.float64)
+    # make sure `normals` is a floating dtype (some linters/type-checkers
+    # may infer integer dtypes from upstream operations); cast explicitly
+    # so the multiplication yields a floating ndarray.
+    normals_f: NDArray[Float] = normals.astype(np.float64)
+    result: NDArray[Float] = normals_f * sgn_f[:, None]
+    return result
 
 
 def correct_face_orientation(star_container: StarContainer, com: Float = 0) -> StarContainer:
@@ -284,9 +293,9 @@ def correct_face_orientation(star_container: StarContainer, com: Float = 0) -> S
 
 
 def mirror_triangulation(
-        q_triangles: NDArray[np.integer],
-        inverse_point_symmetry_matrix: NDArray[np.integer],
-) -> NDArray[np.integer]:
+        q_triangles: NDArray[Int],
+        inverse_point_symmetry_matrix: NDArray[Int],
+) -> NDArray[Int]:
     """Mirror triangulation from base symmetry portion to the full mesh.
 
     :param q_triangles: Triangles of the base symmetric portion.
@@ -301,9 +310,9 @@ def mirror_triangulation(
 
 
 def mirror_face_values(
-        values: NDArray[np.floating],
-        face_symmetry_vector: NDArray[np.integer],
-) -> NDArray[np.floating]:
+        values: NDArray[Float],
+        face_symmetry_vector: NDArray[Int],
+) -> NDArray[Float]:
     """Map face-local values from the base symmetry block to the full surface.
 
     :param values: Values defined on the base symmetric faces.
@@ -316,7 +325,7 @@ def mirror_face_values(
     return values[face_symmetry_vector]
 
 
-def symmetry_face_reduction(values: NDArray[np.floating], base_symmetry_faces_number: int) -> NDArray[np.floating]:
+def symmetry_face_reduction(values: NDArray[Float], base_symmetry_faces_number: int) -> NDArray[Float]:
     """Reduce a full-surface distribution to its base-symmetry subset.
 
     :param values: Full-surface parameter distribution.

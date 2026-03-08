@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from packaging import version
 
 from elisa import const, settings
 from elisa import units as u
+from elisa.base.types import FLOAT, INT
 from elisa.units import (
     DefaultBinarySystemInputUnits,
     DefaultStarInputUnits,
@@ -14,7 +15,8 @@ from elisa.units import (
     DefaultSystemUnits,
 )
 
-from .types import FLOAT, INT
+if TYPE_CHECKING:
+    from elisa.types import Float
 
 WHEN_FLOAT64: tuple[type, ...] = (
     int,
@@ -32,11 +34,11 @@ WHEN_ARRAY = (list, np.ndarray, tuple)
 
 
 def quantity_transform(
-        value: Any,
-        unit: Any,
-        when_float64: tuple[type, ...] = WHEN_FLOAT64,
-        default_input_unit: Any | None = None,
-) -> float:
+    value: Any,
+    unit: Any,
+    when_float64: tuple[type, ...] = WHEN_FLOAT64,
+    default_input_unit: Any | None = None,
+) -> Float:
     """Transform a value into a floating-point value expressed in ``unit``.
 
     Accepts plain numbers, numpy scalars/arrays, astropy.Quantity or a
@@ -72,11 +74,11 @@ def quantity_transform(
 
 
 def deg_transform(
-        value: Any,
-        unit: Any,
-        when_float64: tuple[type, ...],
-        default_input_unit: Any = u.deg,
-) -> float:
+    value: Any,
+    unit: Any,
+    when_float64: tuple[type, ...],
+    default_input_unit: Any = u.deg,
+) -> Float:
     """Transform an angular value into ``unit`` and return as float.
 
     Similar to :func:`quantity_transform` but uses multiplicative
@@ -120,9 +122,8 @@ class TransformProperties:
 
 
 class SystemProperties(TransformProperties):
-
     @staticmethod
-    def inclination(value: Any) -> float:
+    def inclination(value: Any) -> Float:
         """Validate and convert system inclination to radians.
 
         When no unit is supplied the value is assumed to be in degrees.
@@ -153,7 +154,7 @@ class SystemProperties(TransformProperties):
         return float(value)
 
     @staticmethod
-    def period(value: Any) -> float:
+    def period(value: Any) -> Float:
         """Transform and validate orbital period.
 
         If unit is omitted, the default period input unit is assumed.
@@ -161,7 +162,7 @@ class SystemProperties(TransformProperties):
         return quantity_transform(value, DefaultSystemUnits.period, WHEN_FLOAT64, u.DefaultSystemInputUnits.period)
 
     @staticmethod
-    def gamma(value: Any) -> float:
+    def gamma(value: Any) -> Float:
         """Validate and transform systemic velocity (gamma).
 
         Accepts numeric values or :class:`astropy.units.Quantity` instances.
@@ -169,7 +170,7 @@ class SystemProperties(TransformProperties):
         return quantity_transform(value, u.DefaultSystemUnits.gamma, WHEN_FLOAT64, u.DefaultSystemInputUnits.gamma)
 
     @staticmethod
-    def additional_light(value: Any) -> float:
+    def additional_light(value: Any) -> Float:
         """Validate additional (third) light fraction in range [0, 1]."""
         if not 0.0 <= value <= 1.0:
             msg = "Invalid value of additional light. Valid values are between 0 and 1."
@@ -177,7 +178,7 @@ class SystemProperties(TransformProperties):
         return float(value)
 
     @staticmethod
-    def semi_major_axis(value: Any) -> float:
+    def semi_major_axis(value: Any) -> Float:
         """Validate and convert semi-major axis to internal units.
 
         Accepts numeric or :class:`astropy.units.Quantity` values.
@@ -204,7 +205,7 @@ class SystemProperties(TransformProperties):
         return float(value)
 
     @staticmethod
-    def distance(value: Any) -> float:
+    def distance(value: Any) -> Float:
         """Convert system distance to internal distance units and validate.
 
         Accepts numeric or :class:`astropy.units.Quantity` values.
@@ -231,7 +232,7 @@ class SystemProperties(TransformProperties):
 
 class BodyProperties(TransformProperties):
     @staticmethod
-    def synchronicity(value: Any) -> float:
+    def synchronicity(value: Any) -> Float:
         """Validate object synchronicity F = omega_rot/omega_orb.
 
         Expects a positive numeric value.
@@ -242,7 +243,7 @@ class BodyProperties(TransformProperties):
         return float(value)
 
     @staticmethod
-    def albedo(value: Any) -> float:
+    def albedo(value: Any) -> Float:
         """Validate and transform bolometric albedo (range 0..1)."""
         if value < 0 or value > 1:
             msg = f"Parameter albedo = {value} is out of range <0, 1>"
@@ -250,7 +251,7 @@ class BodyProperties(TransformProperties):
         return float(value)
 
     @staticmethod
-    def discretization_factor(value: Any) -> float:
+    def discretization_factor(value: Any) -> Float:
         """Transform discretization factor (default unit: degrees).
 
         The returned value is expressed in the internal star unit for
@@ -268,7 +269,7 @@ class BodyProperties(TransformProperties):
         return float(value)
 
     @staticmethod
-    def t_eff(value: Any) -> float:
+    def t_eff(value: Any) -> Float:
         """Convert effective temperature to internal units.
 
         If no unit is provided, Kelvin is assumed.
@@ -280,7 +281,7 @@ class BodyProperties(TransformProperties):
 
 class StarProperties(BodyProperties):
     @staticmethod
-    def equivalent_radius(value: Any) -> float:
+    def equivalent_radius(value: Any) -> Float:
         """Validate and convert equivalent radius to internal units.
 
         If quantity is not provided, the default distance unit is assumed.
@@ -304,7 +305,7 @@ class StarProperties(BodyProperties):
         return float(value)
 
     @staticmethod
-    def mass(value: Any) -> float:
+    def mass(value: Any) -> Float:
         """Validate and convert mass to internal units.
 
         If mass is provided as a plain numeric value it is interpreted in
@@ -327,7 +328,7 @@ class StarProperties(BodyProperties):
         return float(value)
 
     @staticmethod
-    def surface_potential(value: Any) -> float:
+    def surface_potential(value: Any) -> Float:
         """Return the surface potential of the star (validated positive).
 
         :param value: Numeric surface potential.
@@ -339,7 +340,7 @@ class StarProperties(BodyProperties):
         return float(value)
 
     @staticmethod
-    def metallicity(value: Any) -> float:
+    def metallicity(value: Any) -> Float:
         """Validate metallicity input as numeric.
 
         :param value: Numeric metallicity value.
@@ -351,7 +352,7 @@ class StarProperties(BodyProperties):
         return float(value)
 
     @staticmethod
-    def polar_log_g(value: Any) -> float:
+    def polar_log_g(value: Any) -> Float:
         """Convert polar surface gravity (log g) to internal units.
 
         If the input is a string or quantity it is converted appropriately;
@@ -373,7 +374,7 @@ class StarProperties(BodyProperties):
         return float(value)
 
     @staticmethod
-    def gravity_darkening(value: Any) -> float:
+    def gravity_darkening(value: Any) -> Float:
         """Validate gravity darkening parameter in range [0, 1]."""
         if value > 1 or value < 0:
             msg = f"Parameter gravity darkening = {value} is out of range <0, 1>"
@@ -426,17 +427,17 @@ class StarProperties(BodyProperties):
 
 class SpotProperties(BodyProperties):
     @staticmethod
-    def latitude(value: Any) -> float:
+    def latitude(value: Any) -> Float:
         """Convert spot latitude (degrees by default) to internal units."""
         return deg_transform(value, u.DefaultSpotUnits.latitude, WHEN_FLOAT64, u.DefaultSpotInputUnits.latitude)
 
     @staticmethod
-    def longitude(value: Any) -> float:
+    def longitude(value: Any) -> Float:
         """Convert spot longitude (degrees by default) to internal units."""
         return deg_transform(value, u.DefaultSpotUnits.longitude, WHEN_FLOAT64, u.DefaultSpotInputUnits.longitude)
 
     @staticmethod
-    def angular_radius(value: Any) -> float:
+    def angular_radius(value: Any) -> Float:
         """Convert spot angular radius to internal units."""
         return deg_transform(
             value,
@@ -446,7 +447,7 @@ class SpotProperties(BodyProperties):
         )
 
     @staticmethod
-    def temperature_factor(value: Any) -> float:
+    def temperature_factor(value: Any) -> Float:
         """Validate temperature factor is numeric."""
         if not isinstance(value, (int, INT, float, FLOAT)):
             msg = "Input of variable `temperature_factor` is not (numpy.)int or (numpy.)float."
@@ -454,7 +455,7 @@ class SpotProperties(BodyProperties):
         return float(value)
 
     @staticmethod
-    def discretization_factor(value: Any) -> float:
+    def discretization_factor(value: Any) -> Float:
         """Transform spot discretization factor (degrees by default)."""
         value = deg_transform(
             value,
