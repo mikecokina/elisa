@@ -137,7 +137,7 @@ def produce_circ_spotty_async_curves_mp(*args):
         # if None of components has to be rebuilt, use previously computed radiances and limbdarkening when available
         require_build_test = require_build is not None
         on_pos, normal_radiance, ld_cfs = \
-            crv_utils.update_surface_params(require_build_test, on_pos, normal_radiance, ld_cfs, **kwargs)
+            crv_utils.update_surface_params(on_pos, normal_radiance, ld_cfs, require_rebuild=require_build_test, **kwargs)
 
         _kwargs = dict(in_eclipse=in_eclipse[pos_idx], return_values=False, write_to_containers=True)
         compute_surface_coverage(on_pos, binary.semi_major_axis, **_kwargs)
@@ -420,8 +420,9 @@ def similar_neighbour_approximation_ecc_curve_integration(*args):
 
         _update_surface_in_ecc_orbits(initial_system, orbital_position=position, new_geometry_test=require_rebuild)
         on_pos = bsutils.move_sys_onpos(initial_system, position, on_copy=True, recalculate_velocities=True)
-        on_pos, normal_radiance, ld_cfs = crv_utils.update_surface_params(require_rebuild, on_pos, normal_radiance,
-                                                                          ld_cfs, **kwargs)
+        on_pos, normal_radiance, ld_cfs = crv_utils.update_surface_params(on_pos, normal_radiance,
+                                                                          ld_cfs, require_rebuild=require_rebuild,
+                                                                          **kwargs)
         # TODO: properly calculate in_eclipse parameter
         compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=True, return_values=False,
                                  write_to_containers=True)

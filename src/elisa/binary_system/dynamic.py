@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from copy import copy
-from typing import TYPE_CHECKING, Literal, TypeAlias
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
@@ -382,7 +382,7 @@ def resolve_irrad_update(
 
 
 def phase_crv_symmetry(
-    binary_system: BinarySystem,
+    binary_system: OrbitalPositionContainer,
     phase: NDArray[Float],
 ) -> tuple[NDArray[Float], NDArray[Int]]:
     """Exploit symmetry of circular systems without spots or pulsations.
