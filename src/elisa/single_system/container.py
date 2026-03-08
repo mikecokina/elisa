@@ -38,6 +38,7 @@ class SinglePositionContainer(PositionContainer):
 
         # placeholder (set in loop below)
         self.rotation_period = np.nan
+        self.angular_velocity = np.nan
 
         for key, val in properties.items():
             setattr(self, key, val)
