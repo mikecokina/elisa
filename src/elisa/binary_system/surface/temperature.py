@@ -86,14 +86,16 @@ def apply_reflection_effect(system, components_distance, iterations):
             areas[component], log_g[component] = init_surface_variables(star)
 
         # test for visibility of star faces
-        vis_test[component], vis_test_symmetry[component] = bsfaces.get_visibility_tests(centres[component],
-                                                                                         use_quarter_star_test,
-                                                                                         xlim[component],
-                                                                                         component,
-                                                                                         system.morphology)
+        vis_test[component], vis_test_symmetry[component] = bsfaces.get_visibility_tests(
+            centres[component],
+            xlim[component],
+            component,
+            system.morphology,
+            q_test=use_quarter_star_test,
+        )
         if star.has_spots():
             # including spots into overall surface
-            for spot_index, spot in star.spots.items():
+            for _spot_index, spot in star.spots.items():
                 vis_test_spot = bsfaces.visibility_test(spot.face_centres, xlim[component], component)
 
                 # merge surface and spot face parameters into one variable
