@@ -109,6 +109,7 @@ class DownloadManager:
                     if fobj is None:
                         continue
                     with target.open("wb") as out_f:
+                        # noinspection PyTypeChecker
                         shutil.copyfileobj(fobj, out_f)
 
     @classmethod
@@ -176,10 +177,12 @@ class DownloadManager:
         # Download with tqdm progress bar when file_size is known
         if file_size is not None and file_size > 0:
             with tqdm.wrapattr(r.raw, "read", total=file_size, desc="Downloading") as r_raw, Path(path).open("wb") as f:
+                # noinspection PyTypeChecker
                 shutil.copyfileobj(r_raw, f)
         else:
             # Unknown size: stream without progress bar
             with Path(path).open("wb") as f:
+                # noinspection PyTypeChecker
                 shutil.copyfileobj(r.raw, f)
 
     @classmethod

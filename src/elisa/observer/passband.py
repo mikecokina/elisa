@@ -180,6 +180,7 @@ class PassbandContainer:
             msg = f"Invalid or unsupported passband function: {passband}"
             raise ValueError(msg)
         file_path = Path(settings.PASSBAND_TABLES) / f"{passband}.csv"
+        # noinspection PyArgumentList
         df = pd.read_csv(file_path)
         df[settings.PASSBAND_DATAFRAME_WAVE] *= 10.0
         return df

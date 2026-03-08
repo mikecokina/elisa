@@ -129,7 +129,8 @@ class Plot:
         }
         if isinstance(unit, type(u.W / u.m ** 2)) and fluxes is None:
             for _filter, flux_values in kwargs["fluxes"].items():
-                kwargs["fluxes"][_filter] = (flux_values * self.observer.flux_unit).to(unit).value
+                # noinspection PyUnresolvedReferences
+                kwargs["fluxes"][_filter] = np.asarray(flux_values * self.observer.flux_unit).to(unit).value
 
         return graphics.phase_curve(**kwargs)
 
@@ -188,7 +189,8 @@ class Plot:
 
         if isinstance(unit, type(u.km / u.s)) and radial_velocities is None:
             for component, rvs in kwargs["rvs"].items():
-                kwargs["rvs"][component] = (rvs * self.observer.rv_unit).to(unit).value
+                # noinspection PyUnresolvedReferences
+                kwargs["rvs"][component] = np.asarray(rvs * self.observer.rv_unit).to(unit).value
 
         return graphics.rv_curve(**kwargs)
 

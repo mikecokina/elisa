@@ -169,6 +169,7 @@ class Observer:
         self._flux_unit = u.W / u.m ** 2
         self.radial_velocities: dict[str, NDArray] = {}
         self.rv_unit: object | None = None
+        # noinspection PyTypeChecker
         self.zero_points: ZeroPointType = {}
 
         self.plot = Plot(self)
