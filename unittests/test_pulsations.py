@@ -250,6 +250,38 @@ class TestPulsationModule(ElisaTestCase):
         assert_array_less(ts, overshoot * t_ampl)
         assert_array_less(t_ampl, ts.max())
 
+    def test_container_time_and_perturbations_not_nan(self):
+        """Ensure container.time is computed and pulsation perturbation arrays are finite.
+
+        Regression test guarding against accidental overwrites of the container time
+        (which previously produced NaNs in time-dependent pulsation arrays).
+        """
+        pulse_meta = [{
+            'l': 2,
+            'm': 1,
+            'amplitude': 1.0 * u.m / u.s,
+            'frequency': 1 / u.s,
+            'start_phase': 0.0,
+            'horizontal_to_radial_amplitude_ratio': 0.0,
+            'temperature_amplitude_factor': 0.01
+        }]
+
+        single = self.prepare_system(pulse_meta)
+        system_container = SingleSystem.build_container(single, phase=0.2854)
+
+        # time must be finite (not NaN or inf)
+        assert np.isfinite(system_container.time), "Container time must be finite and not NaN"
+
+        # position perturbation (point-wise) must not contain NaNs
+        pert = container_ops.position_perturbation(system_container.star, 0.0, False, True, True)
+        assert pert is not None
+        assert not np.isnan(pert).any(), "Position perturbation contains NaNs"
+
+        # velocity perturbation must not contain NaNs
+        vel = container_ops.velocity_perturbation(system_container.star, 1.0, False, True, True)
+        assert vel is not None
+        assert not np.isnan(vel).any(), "Velocity perturbation contains NaNs"
+
     def test_single_pulsating_lc(self):
         freq = 15
         pulse_meta = [{
