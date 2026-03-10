@@ -22,10 +22,14 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
+    from elisa.binary_system.system import BinarySystem
     from elisa.types import Float
 
 
 logger = getLogger("binary_system.curves.c_appx_router")
+
+# Constant to avoid magic number lint warning
+_PHASES_COUNT_THRESHOLD = 10
 
 
 def look_for_approximation(*, not_pulsations_test: bool) -> bool:
@@ -37,8 +41,8 @@ def look_for_approximation(*, not_pulsations_test: bool) -> bool:
 
     :param not_pulsations_test: Flag indicating that pulsations are not present.
     :type not_pulsations_test: bool
-    :return: ``True`` if at least one approximation mode is enabled and valid,
-             and pulsations do not prevent approximation use.
+    :returns: ``True`` if at least one approximation mode is enabled and valid,
+        and pulsations do not prevent approximation use.
     :rtype: bool
     """
     valid_nu_separation = settings.MAX_NU_SEPARATION is not None and settings.MAX_NU_SEPARATION > 0
@@ -53,11 +57,11 @@ def look_for_approximation(*, not_pulsations_test: bool) -> bool:
 
 
 def resolve_ecc_approximation_method(
-    binary,
+    binary: BinarySystem,
     phases: NDArray[Float],
     position_method: Callable[..., NDArray[Float]],
     crv_labels: Sequence[str],
-    curve_fn: Callable[..., Any],
+    curve_fn: Callable[..., dict[str, NDArray[Float]]],
     *,
     try_to_find_appx: bool,
     phases_span_test: bool,
@@ -93,18 +97,19 @@ def resolve_ecc_approximation_method(
     :param crv_labels: Labels of the calculated curves, such as passbands or
                        component identifiers.
     :type crv_labels: Sequence[str]
-    :param curve_fn: Low-level curve integration function.
-    :type curve_fn: Callable[..., object]
+    :param curve_fn: Low-level curve integration function. Should return a
+                     mapping from label to flux array when called.
+    :type curve_fn: Callable[..., dict[str, numpy.ndarray]]
     :param kwargs: Additional keyword arguments forwarded to the selected
                    integration routine. Supported keys may include passband
                    containers, bandwidth limits, atlas selection, and other
                    observer options.
     :type kwargs: dict[str, object]
-    :return: Tuple containing the approximation identifier and a zero-argument
+    :returns: Tuple containing the approximation identifier and a zero-argument
              callable that performs the selected integration.
     :rtype: tuple[str, Callable[[], dict[str, NDArray[Float]]]]
     """
-    approx_method_list = [
+    approx_method_list: list[Callable[..., dict[str, NDArray[Float]]]] = [
         integrate_eccentric_curve_exactly,
         integrate_eccentric_curve_interp_appx,
         integrate_eccentric_curve_symmetrical_counterparts_appx,
@@ -136,23 +141,26 @@ def resolve_ecc_approximation_method(
 
     azimuths = all_orbital_pos_arr[:, 2]
     _, counterpart_position_arr, reduced_phase_mask = crv_utils.prepare_apsidaly_symmetric_orbit(
-        binary, azimuths, phases
+        binary,
+        azimuths,
+        phases,
     )
 
     # spliting orbital motion into two separate groups on different sides of apsidal line
     reduced_orbit_arr, reduced_orbit_supplement_arr = crv_utils.split_orbit_by_apse_line(
-        all_orbital_pos_arr, reduced_phase_mask
+        all_orbital_pos_arr,
+        reduced_phase_mask,
     )
 
     # APPX ONE
-    interp_args = (
+    # call with phases_span_test as a keyword to keep boolean args keyword-only
+    interp_appx, reduced_orbit_arr, counterpart_position_arr = eval_interpolation_approximation(
         binary,
-        phases_span_test,
         reduced_orbit_arr,
         counterpart_position_arr,
         reduced_orbit_supplement_arr,
+        phases_span_test=phases_span_test,
     )
-    interp_appx, reduced_orbit_arr, counterpart_position_arr = eval_interpolation_approximation(*interp_args)
     if interp_appx:
         args = (
             binary,
@@ -167,14 +175,14 @@ def resolve_ecc_approximation_method(
         return "one", lambda: approx_method_list[1](*args, **kwargs)
 
     # APPX TWO
-    symmetric_args = (
+    # evaluate symmetrical counterparts approximation with keyword-only flag
+    symmetrical_counterparts_appx, orbital_supplements = eval_symmetrical_counterparts_approximation(
         binary,
         radii,
         reduced_orbit_arr,
         reduced_orbit_supplement_arr,
-        phases_span_test,
+        phases_span_test=phases_span_test,
     )
-    symmetrical_counterparts_appx, orbital_supplements = eval_symmetrical_counterparts_approximation(*symmetric_args)
     if symmetrical_counterparts_appx:
         args = (
             binary,
@@ -190,7 +198,7 @@ def resolve_ecc_approximation_method(
     # APPX THREE
     neighbour_args = (binary, radii, all_orbital_pos_arr)
     similar_neighbours_appx, new_geometry_mask, sorted_positions = eval_similar_neighbours_approximation(
-        *neighbour_args
+        *neighbour_args,
     )
     if similar_neighbours_appx:
         args = (
@@ -208,19 +216,20 @@ def resolve_ecc_approximation_method(
 
 
 def eval_interpolation_approximation(
-    binary,
-    phases_span_test: bool,
+    binary: BinarySystem,
     reduced_orbit_array: NDArray[Float],
     counterpart_position_array: NDArray[Float],
     reduced_orbit_supplement_arr: NDArray[Float],
+    *,
+    phases_span_test: bool,
 ) -> tuple[bool, NDArray[Float], NDArray[Float]]:
     """Evaluate whether interpolation approximation can be used.
 
-    The approximation computes one side of the apsidal line directly and
-    interpolates values for the other side. To be valid, the orbit sampling
-    must be dense enough, phase coverage must be sufficient, eclipse regions
-    must be adequately populated, and interpolation must not introduce
-    artifacts in flat eclipse plateaus.
+     The approximation computes one side of the apsidal line directly and
+     interpolates values for the other side. To be valid, the orbit sampling
+     must be dense enough, phase coverage must be sufficient, eclipse regions
+     must be adequately populated, and interpolation must not introduce
+     artifacts in flat eclipse plateaus.
 
     :param binary: Binary-system instance.
     :type binary: elisa.binary_system.system.BinarySystem
@@ -344,10 +353,11 @@ def eval_interpolation_approximation(
 
 
 def eval_symmetrical_counterparts_approximation(
-    binary,
+    binary: BinarySystem,
     radii: NDArray[Float],
     base_orbit_arr: NDArray[Float],
     orbit_supplement_arr: NDArray[Float],
+    *,
     phases_span_test: bool,
 ) -> tuple[bool, OrbitalSupplements | None]:
     """Evaluate whether symmetrical-counterparts approximation can be used.
@@ -394,7 +404,7 @@ def eval_symmetrical_counterparts_approximation(
 
 
 def eval_similar_neighbours_approximation(
-    binary,
+    binary: BinarySystem,
     radii: NDArray[Float],
     all_orbital_pos_arr: NDArray[Float],
 ) -> tuple[bool, NDArray[np.bool_] | None, NDArray[Float] | None]:
@@ -451,14 +461,14 @@ def eval_similar_neighbours_approximation(
 
 
 def integrate_eccentric_curve_interp_appx(
-    binary,
+    binary: BinarySystem,
     radii: NDArray[Float],
     phases: NDArray[Float],
     reduced_orbit_arr: NDArray[Float],
     counterpart_position_arr: NDArray[Float],
-    potentials,
+    potentials: dict[str, NDArray[Float]],
     crv_labels: Sequence[str],
-    curve_fn: Callable[..., object],
+    curve_fn: Callable[..., dict[str, NDArray[Float]]],
     **kwargs: Any,
 ) -> dict[str, NDArray[Float]]:
     """Integrate an eccentric curve using interpolation approximation.
@@ -491,7 +501,7 @@ def integrate_eccentric_curve_interp_appx(
     :return: Mapping of curve labels to interpolated flux arrays.
     :rtype: dict[str, NDArray[Float]]
     """
-    n = 5 if phases.shape[0] > 10 else int(phases.shape[0] / 2) - 1
+    n = 5 if phases.shape[0] > _PHASES_COUNT_THRESHOLD else int(phases.shape[0] / 2) - 1
 
     orbital_supplements = OrbitalSupplements(
         body=reduced_orbit_arr,
@@ -541,13 +551,13 @@ def integrate_eccentric_curve_interp_appx(
 
 
 def integrate_eccentric_curve_symmetrical_counterparts_appx(
-    binary,
+    binary: BinarySystem,
     radii: NDArray[Float],
     phases: NDArray[Float],
     orbital_supplements: OrbitalSupplements,
-    potentials,
+    potentials: dict[str, NDArray[Float]],
     crv_labels: Sequence[str],
-    curve_fn: Callable[..., object],
+    curve_fn: Callable[..., dict[str, NDArray[Float]]],
     **kwargs: Any,
 ) -> dict[str, NDArray[Float]]:
     """Integrate an eccentric curve using symmetrical-counterparts approximation.
@@ -606,12 +616,12 @@ def integrate_eccentric_curve_symmetrical_counterparts_appx(
 
 
 def integrate_eccentric_curve_similar_neighbours_appx(
-    binary,
+    binary: BinarySystem,
     orbital_positions: NDArray[Float],
     new_geometry_mask: NDArray[np.bool_],
-    potentials,
+    potentials: dict[str, NDArray[Float]],
     crv_labels: Sequence[str],
-    curve_fn: Callable[..., object],
+    curve_fn: Callable[..., dict[str, NDArray[Float]]],
     **kwargs: Any,
 ) -> dict[str, NDArray[Float]]:
     """Integrate an eccentric curve using similar-neighbours approximation.
@@ -652,11 +662,11 @@ def integrate_eccentric_curve_similar_neighbours_appx(
 
 
 def integrate_eccentric_curve_exactly(
-    binary,
-    orbital_motion,
-    potentials,
+    binary: BinarySystem,
+    orbital_motion: NDArray[Float],
+    potentials: dict[str, NDArray[Float]],
     crv_labels: Sequence[str],
-    curve_fn: Callable[..., object],
+    curve_fn: Callable[..., dict[str, NDArray[Float]]],
     **kwargs: Any,
 ) -> dict[str, NDArray[Float]]:
     """Integrate an eccentric curve exactly for all orbital positions.
