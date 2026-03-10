@@ -16,6 +16,7 @@ from elisa.analytics.binary_fit.plot import (
 )
 from elisa.analytics.params import bonds, parameters
 from elisa.logger import getLogger
+from elisa.types import Float
 
 logger = getLogger("analytics.tasks")
 
@@ -240,14 +241,14 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
         self.fit_cls.load_chain(filename, discard, percentiles)
         return self
 
-    def filter_chain(self, **boundaries: tuple[float, float]) -> None:
+    def filter_chain(self, **boundaries: tuple[Float, Float]) -> None:
         """Filter MCMC chain down to given parameter intervals.
 
         Filtering MCMC chain down to given parameter intervals. This function is
         useful in case of bimodal distribution of the MCMC chain. Allows restricting
         the posterior distribution to specific parameter ranges.
 
-        :param boundaries: Dictionary of parameter boundaries in format
+        :param boundaries: Dictionary of param  eter boundaries in format
                           {param_name: (min_value, max_value), ...}
                           Example: {'primary@t_eff': (5000, 6000), ...}
         :type boundaries: dict
@@ -327,7 +328,7 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
         *,
         discretization: int = 5,
         interpolation_treshold: int | None = None,
-    ) -> float:
+    ) -> Float:
         """Return R² (coefficient of determination) for model and observed data.
 
         Function returns R² for given model parameters and observed data.
@@ -352,7 +353,7 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
             else interpolation_treshold
         )
 
-        r2: float = self.fit_cls.coefficient_of_determination(
+        r2: Float = self.fit_cls.coefficient_of_determination(
             model_parameters,
             self.data,
             discretization,

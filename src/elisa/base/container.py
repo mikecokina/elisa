@@ -401,6 +401,7 @@ class StarContainer:
         self.albedo = up.NaN
         self.polar_log_g = up.NaN
         self.atmosphere = ""
+        self.synchronicity = None
         # --------------------------------------------------------------------------------------------------------------
 
         self._flatten = False
