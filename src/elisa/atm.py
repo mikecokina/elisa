@@ -1252,7 +1252,7 @@ def validated_atlas(atlas: str) -> str:
         return settings.ATM_ATLAS_NORMALIZER[atlas]
     except KeyError as exc:
         allowed = ", ".join(settings.ATM_ATLAS_NORMALIZER.keys())
-        msg = f"Incorrect atlas. Following are allowed: {allowed}"
+        msg = f"Incorrect atlas: {atlas}. Following are allowed: {allowed}"
         raise KeyError(msg) from exc
 
 
