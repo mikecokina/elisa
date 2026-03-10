@@ -63,6 +63,7 @@ class Body(metaclass=ABCMeta):
         self._spots: dict[int, Spot] = {}
         self.equatorial_radius: float = np.nan
         self.atmosphere: str = ""
+        self.limb_darkening_coefficients: dict[str, dict[str, Any]] | None = None
 
     @abstractmethod
     def init(self) -> None:
@@ -116,6 +117,10 @@ class Body(metaclass=ABCMeta):
     def has_spots(self) -> bool:
         """Return True when at least one spot is defined for this body."""
         return len(self._spots) > 0
+
+    @abstractmethod
+    def has_pulsations(self) -> bool:
+        ...
 
     def remove_spot(self, spot_index: int) -> None:
         """Remove the spot with the given index.
