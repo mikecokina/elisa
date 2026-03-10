@@ -1,29 +1,11 @@
+import os
+import sys
 import textwrap
 from pathlib import Path
-import os
 
 import pytest
 
-import sys
-
-
-def import_fresh_elisa_settings():
-    # Ensure project root (and src/) is on sys.path so `import elisa` works when running tests
-    project_root = Path(__file__).resolve().parent.parent
-    src_path = project_root / "src"
-    if str(src_path) not in sys.path:
-        sys.path.insert(0, str(src_path))
-    if str(project_root) not in sys.path:
-        sys.path.insert(0, str(project_root))
-
-    # Remove ALL elisa-related modules, not just elisa + elisa.settings
-    for name in list(sys.modules.keys()):
-        if name == "elisa" or name.startswith("elisa."):
-            sys.modules.pop(name, None)
-
-    # Now import fresh and return the Settings instance
-    from elisa import settings as settings_instance
-    return settings_instance
+from unittests import import_fresh_elisa_settings
 
 
 @pytest.fixture
@@ -146,7 +128,7 @@ def test_elisa_config_ini_types_do_not_raise(elisa_ini):
         raise AssertionError(
             "Importing `from elisa import settings` raised with an INI typed per docs.\n\n"
             f"INI used: {ini_path}\n"
-            f"Exception: {type(e).__name__}: {e}"
+            f"Exception: {type(e).__name__}: {e}",
         ) from e
 
     # sanity: got an instance with some expected attr
@@ -195,20 +177,19 @@ def test_elisa_settings_values_match_ini(elisa_ini):
                 if isinstance(e_i, float):
                     if not isinstance(g_i, float) or g_i != pytest.approx(e_i):
                         mismatches.append(
-                            f"{attr}[{i}]: expected float {e_i!r}, got {type(g_i).__name__} ({g_i!r})"
+                            f"{attr}[{i}]: expected float {e_i!r}, got {type(g_i).__name__} ({g_i!r})",
                         )
-                else:
-                    if g_i != e_i or type(g_i) is not type(e_i):
-                        mismatches.append(
-                            f"{attr}[{i}]: expected {e_i!r} ({type(e_i).__name__}), "
-                            f"got {g_i!r} ({type(g_i).__name__})"
-                        )
+                elif g_i != e_i or type(g_i) is not type(e_i):
+                    mismatches.append(
+                        f"{attr}[{i}]: expected {e_i!r} ({type(e_i).__name__}), "
+                        f"got {g_i!r} ({type(g_i).__name__})",
+                    )
             continue
 
         # everything else: strict value and strict type
         if got != exp or type(got) is not type(exp):
             mismatches.append(
-                f"{attr}: expected {exp!r} ({type(exp).__name__}), got {got!r} ({type(got).__name__})"
+                f"{attr}: expected {exp!r} ({type(exp).__name__}), got {got!r} ({type(got).__name__})",
             )
 
     assert not mismatches, "Loaded settings do not match INI:\n" + "\n".join(mismatches)
@@ -223,11 +204,11 @@ def test_invalid_limb_darkening_raises(elisa_ini):
     :rtype: None
     """
     ini_path, _ = elisa_ini
-    text = ini_path.read_text(encoding='utf-8')
-    text = text.replace('limb_darkening_law = cosine', 'limb_darkening_law = not_a_law')
-    ini_path.write_text(text, encoding='utf-8')
+    text = ini_path.read_text(encoding="utf-8")
+    text = text.replace("limb_darkening_law = cosine", "limb_darkening_law = not_a_law")
+    ini_path.write_text(text, encoding="utf-8")
 
-    with pytest.raises(ValueError, match='not valid name of limb darkening law'):
+    with pytest.raises(ValueError, match="not valid name of limb darkening law"):
         import_fresh_elisa_settings()
 
 
@@ -240,11 +221,11 @@ def test_malformed_rv_lambda_interval_raises(elisa_ini):
     :rtype: None
     """
     ini_path, _ = elisa_ini
-    text = ini_path.read_text(encoding='utf-8')
-    text = text.replace('rv_lambda_interval = (5500, 10500)', 'rv_lambda_interval = 5500-10500')
-    ini_path.write_text(text, encoding='utf-8')
+    text = ini_path.read_text(encoding="utf-8")
+    text = text.replace("rv_lambda_interval = (5500, 10500)", "rv_lambda_interval = 5500-10500")
+    ini_path.write_text(text, encoding="utf-8")
 
-    with pytest.raises(ValueError, match='invalid format'):
+    with pytest.raises(ValueError, match="invalid format"):
         import_fresh_elisa_settings()
 
 
@@ -254,13 +235,13 @@ def test_number_of_processes_clamped_and_warns(elisa_ini, monkeypatch):
     We set suppress_warnings=False in the INI to allow the warning to be emitted.
     """
     ini_path, _ = elisa_ini
-    text = ini_path.read_text(encoding='utf-8')
-    text = text.replace('number_of_processes = -1', 'number_of_processes = 9999')
-    text = text.replace('suppress_warnings = True', 'suppress_warnings = False')
-    ini_path.write_text(text, encoding='utf-8')
+    text = ini_path.read_text(encoding="utf-8")
+    text = text.replace("number_of_processes = -1", "number_of_processes = 9999")
+    text = text.replace("suppress_warnings = True", "suppress_warnings = False")
+    ini_path.write_text(text, encoding="utf-8")
 
     # Fake a small cpu count
-    monkeypatch.setattr(os, 'cpu_count', lambda: 4)
+    monkeypatch.setattr(os, "cpu_count", lambda: 4)
 
     with pytest.warns(UserWarning):
         s = import_fresh_elisa_settings()
@@ -276,9 +257,9 @@ def test_missing_tables_warn(elisa_ini):
     and ensure a UserWarning is raised during settings import.
     """
     ini_path, _ = elisa_ini
-    text = ini_path.read_text(encoding='utf-8')
-    text = text.replace('suppress_warnings = True', 'suppress_warnings = False')
-    ini_path.write_text(text, encoding='utf-8')
+    text = ini_path.read_text(encoding="utf-8")
+    text = text.replace("suppress_warnings = True", "suppress_warnings = False")
+    ini_path.write_text(text, encoding="utf-8")
 
     with pytest.warns(UserWarning):
         import_fresh_elisa_settings()
