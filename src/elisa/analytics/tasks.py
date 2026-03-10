@@ -1,341 +1,682 @@
+"""Framework for solving inverse problems with observed data and fitting methods."""
+from __future__ import annotations
+
 import json
 from abc import ABCMeta
-from typing import Union, Dict
+from typing import Any
 
-from . import transform
-from . params import bonds, parameters
-from . binary_fit import rv_fit, lc_fit
-from . binary_fit.plot import (
-    RVPlotMCMC, RVPlotLsqr,
-    LCPlotLsqr, LCPlotMCMC
+from elisa import settings, utils
+from elisa.analytics import transform
+from elisa.analytics.binary_fit import lc_fit, rv_fit
+from elisa.analytics.binary_fit.plot import (
+    LCPlotLsqr,
+    LCPlotMCMC,
+    RVPlotLsqr,
+    RVPlotMCMC,
 )
-from .. import utils
-from .. logger import getLogger
-from elisa import settings
+from elisa.analytics.params import bonds, parameters
+from elisa.logger import getLogger
 
-logger = getLogger('analytics.tasks')
+logger = getLogger("analytics.tasks")
 
 
-class AnalyticsTask(metaclass=ABCMeta):
+class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
+    """Abstract base class defining fitting task framework.
+
+    This structure provides a framework for solving inverse problems by
+    embedding observed data and fitting methods, providing unified output
+    from fitting methods along with visualization capabilities.
+
+    :param method: Name of the optimization/fitting method
+    :type method: str
+    :param name: Arbitrary name of instance
+    :type name: str | None
+    :param kwargs: Additional keyword arguments for configuration
+    :type kwargs: dict
+
+    **kwargs options:**
+
+    - **data** (:class:`dict`) - Data to be analyzed with the Analytics task instance
+    - **atmosphere_model** (:class:`str`) - Atmosphere model configuration
+    - **limb_darkening_coefficients** (:class:`dict`) - Limb darkening coefficients
+
+    **examples:**
+
+    Basic usage with light curves fitting::
+
+        task = LCBinaryAnalyticsTask(
+            method='mcmc',
+            data={'Generic.Bessell.V': lc_data},
+            atmosphere_model='blackbody',
+            limb_darkening_coefficients={'bolometric': [0.5, 0.3]}
+        )
+        result = task.fit(initial_params)
     """
-    Abstract class defining fitting task.  This structure aims to provide a framework for solving inverse problem for
-    one object that embeds observed data and fitting methods and provides unified output from fitting methods along with
-    capability to visualize the resulting fit.
 
-    :param name: str; arbitrary name of instance
-    :param data: Dict; data to bwe analyzed with the Analytics task instance
-    """
-    ID = 1
-    LS_NAMES = ('least_squares', 'least_squares', 'ls', 'LS')
-    MCMC_NAMES = ('mcmc', 'MCMC')
-    ALLOWED_METHODS = LS_NAMES + MCMC_NAMES
-    MANDATORY_KWARGS = ["data", ]
-    OPTIONAL_KWARGS = ["atmosphere_model", "limb_darkening_coefficients"]
-    ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
-    CONSTRAINT_OPERATORS = bonds.ALLOWED_CONSTRAINT_METHODS + bonds.ALLOWED_CONSTRAINT_CHARS
-    FIT_CLS = None
-    PLOT_CLS = None
-    TRANSFORM_PROPERTIES_CLS = None
+    ID: int = 1
+    LS_NAMES: tuple[str, ...] = ("least_squares", "least_squares", "ls", "LS")
+    MCMC_NAMES: tuple[str, ...] = ("mcmc", "MCMC")
+    ALLOWED_METHODS: tuple[str, ...] = LS_NAMES + MCMC_NAMES
+    MANDATORY_KWARGS: tuple[str, ...] = ("data",)
+    OPTIONAL_KWARGS: tuple[str, ...] = ("atmosphere_model", "limb_darkening_coefficients")
+    ALL_KWARGS: tuple[str, ...] = MANDATORY_KWARGS + OPTIONAL_KWARGS
+    CONSTRAINT_OPERATORS: tuple = (
+        bonds.ALLOWED_CONSTRAINT_METHODS + bonds.ALLOWED_CONSTRAINT_CHARS
+    )
+    FIT_CLS: Any = None
+    PLOT_CLS: Any = None
+    TRANSFORM_PROPERTIES_CLS: Any = None
 
-    def __init__(self, method, name=None, **kwargs):
-        self.data = dict()
-        self.method = method
+    def __init__(
+        self,
+        method: str,
+        name: str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize analytics task with method and configuration.
+
+        :param method: Name of the fitting method (least_squares or mcmc)
+        :type method: str
+        :param name: Instance name (defaults to auto-generated ID if not provided)
+        :type name: str | None
+        :param kwargs: Additional configuration options
+        :type kwargs: dict
+        """
+        self.data: dict = {}
+        self.method: str = method
+        self.validate_method(method)
 
         if utils.is_empty(name):
-            self.name = str(AnalyticsTask.ID)
-            logger.debug(f"name of class instance {self.__class__.__name__} set to {self.name}")
+            self.name: str = str(AnalyticsTask.ID)
+            logger.debug(
+                "name of class instance %s set to %s",
+                self.__class__.__name__,
+                self.name,
+            )
             self.__class__.ID += 1
         else:
             self.name = str(name)
 
         utils.invalid_kwarg_checker(kwargs, self.ALL_KWARGS, self.__class__)
-        utils.check_missing_kwargs(self.MANDATORY_KWARGS, kwargs, instance_of=AnalyticsTask)
+        utils.check_missing_kwargs(
+            self.MANDATORY_KWARGS, kwargs, instance_of=AnalyticsTask,
+        )
         kwargs = self.transform_input(**kwargs)
         self.init_properties(**kwargs)
 
-        logger.debug(f'initializing fitting module in class instance '
-                     f'{self.__class__.__name__} / {self.name}.')
-        self.fit_cls = self.__class__.FIT_CLS()
-        self.plot = self.__class__.PLOT_CLS(instance=self.fit_cls, data=self.data)
+        logger.debug(
+            "initializing fitting module in class instance %s / %s",
+            self.__class__.__name__,
+            self.name,
+        )
+        # noinspection PyCallingNonCallable
+        self.fit_cls: Any = self.__class__.FIT_CLS()
+        # noinspection PyCallingNonCallable
+        self.plot: Any = self.__class__.PLOT_CLS(instance=self.fit_cls, data=self.data)
 
     @classmethod
-    def validate_method(cls, method):
-        """
-        Checking if the user supplied the correct name for the optimization method.
+    def validate_method(cls, method: str) -> None:
+        """Validate if user supplied correct optimization method name.
 
-        :param method: str; name of the optimization method provided by the user
-        :return: Union[None, ValueError];
+        Checks if the provided method name is one of the allowed fitting methods
+        (the least squares or MCMC variants).
+
+        :param method: Name of the optimization method provided by the user
+        :type method: str
+        :raises ValueError: If method name is not in ALLOWED_METHODS
         """
         if method not in cls.ALLOWED_METHODS:
-            raise ValueError(f'Invalid fitting method. Use one of: {", ".join(cls.ALLOWED_METHODS)}')
+            error_msg: str = (
+                f"Invalid fitting method. Use one of: {', '.join(cls.ALLOWED_METHODS)}"
+            )
+            raise ValueError(error_msg)
 
-    def load_result(self, filename, autofill_sma=False):
-        """
-        Function loads a JSON file containing model parameters and stores it as an attribute of AnalyticsTask fitting
-        instance. This is useful if you want to examine already calculated results using functionality provided by the
-        AnalyticsTask instances (e.g: LCBinaryAnalyticsTask, RVBinaryAnalyticsTask, etc.). I also returns model
-        parameters in standard dict (JSON) format.
+    def load_result(self, filename: str, *, autofill_sma: bool = False) -> dict:
+        """Load model parameters from JSON file.
 
-        :param filename: str;
-        :param autofill_sma; bool; if True, the semi-major axis will be autofilled to fitting
-                                   parameters if absent
-        :return: Dict; model parameters in a standardized format
+        Function loads a JSON file containing model parameters and stores it as an
+        attribute of AnalyticsTask fitting instance. This is useful if you want to
+        examine already calculated results using functionality provided by the
+        AnalyticsTask instances (e.g: LCBinaryAnalyticsTask, RVBinaryAnalyticsTask, etc.).
+        It also returns model parameters in standard dict (JSON) format.
+
+        :param filename: Path to JSON file containing model parameters
+        :type filename: str
+        :param autofill_sma: If True, the semi-major axis will be autofilled to fitting
+                             parameters if absent (default: False)
+        :type autofill_sma: bool
+        :return: Model parameters in standardized format
+        :rtype: dict
         """
         self.fit_cls.load_result(filename, autofill_sma=autofill_sma)
         return self.fit_cls.get_result()
 
-    def save_result(self, filename):
-        """
-        Save result as JSON file.
+    def save_result(self, filename: str) -> None:
+        """Save fitting result as JSON file.
 
-        :param filename: str; path to file
+        :param filename: Path to output file where result will be saved
+        :type filename: str
         """
         self.fit_cls.save_result(filename)
 
-    def set_result(self, result, autofill_sma=False):
-        """
-        Set model parameters in dictionary (JSON format) as an attribute of AnalyticsTask fitting instance. This is
-        useful if you want to examine already calculated results using functionality provided by the AnalyticsTask
-        instances (e.g: LCBinaryAnalyticsTask, RVBinaryAnalyticsTask, etc.).
+    def set_result(self, result: dict, *, autofill_sma: bool = False) -> None:
+        """Set model parameters from dictionary in JSON format.
 
-        :param result: Dict; model parameters in JSON format
-        :param autofill_sma; bool; if True, the semi-major axis will be autofilled to fitting
-                                   parameters if absent
+        Set model parameters in dictionary (JSON format) as an attribute of AnalyticsTask
+        fitting instance. This is useful if you want to examine already calculated results
+        using functionality provided by the AnalyticsTask instances
+        (e.g: LCBinaryAnalyticsTask, RVBinaryAnalyticsTask, etc.).
+
+        :param result: Model parameters in JSON format
+        :type result: dict
+        :param autofill_sma: If True, the semi-major axis will be autofilled to fitting
+                             parameters if absent (default: False)
+        :type autofill_sma: bool
         """
         self.fit_cls.set_result(result, autofill_sma=autofill_sma)
 
-    def get_result(self):
-        """
-        Returns model parameters in standard dict (JSON) format.
+    def get_result(self) -> dict:
+        """Return model parameters in standard dict (JSON) format.
 
-        :return: Dict; model parameters in a standardized format
+        :return: Model parameters in standardized format
+        :rtype: dict
         """
         return self.fit_cls.get_result()
 
-    def result_summary(self, filename=None, **kwargs):
-        """
-        Function produces detailed summary of the current fitting task with the possibility to propagate
-        uncertainties of the fitted binary model parameters if MCMC method was used and `propagate_errors` is True.
+    def result_summary(self, filename: str | None = None, **kwargs: Any) -> None:
+        """Produce detailed summary of current fitting task.
 
-        :param filename: path where to store summary
-        :param kwargs: Dict;
-        :**kwargs options for MCMC method**:
-            * :propagate_errors: bool; errors of fitted parameters will be propagated to the rest of EB
-                                       parameters (takes a while to calculate)
-            * :percentiles: List; percentiles used to evaluate confidence intervals from posterior
-                                  distribution of EB parameters in MCMC chain . Used only when if
-                                  `propagate_errors` is True.
-            * :dimensionless_radii: bool; if True (default), radii are provided in SMA, otherwise solRad are used,
-                                          available only for light curve fitting
+        Function produces detailed summary of the current fitting task with the
+        possibility to propagate uncertainties of the fitted binary model parameters
+        if MCMC method was used and `propagate_errors` is True.
 
-        :return:
+        :param filename: Path where to store summary (if None, prints to console)
+        :type filename: str | None
+        :param kwargs: Method-dependent options
+        :type kwargs: dict
+
+        **kwargs options for MCMC method:**
+
+        - **propagate_errors** (:class:`bool`) - Errors of fitted parameters will be
+          propagated to the rest of EB parameters (takes a while to calculate)
+        - **percentiles** (:class:`list`) - Percentiles used to evaluate confidence
+          intervals from posterior distribution of EB parameters in MCMC chain.
+          Used only when `propagate_errors` is True. Default: [16, 50, 84]
+        - **dimensionless_radii** (:class:`bool`) - If True (default), radii are
+          provided in SMA, otherwise in solar radii. Available only for light
+          curve fitting.
         """
         self.fit_cls.fit_summary(filename, **kwargs)
 
     fit_summary = result_summary
 
-    def load_chain(self, filename, discard=0, percentiles=None):
-        """
-        Function loads MCMC chain along with auxiliary data from json file created after each MCMC run.
+    def load_chain(
+        self,
+        filename: str,
+        *,
+        discard: int = 0,
+        percentiles: list | None = None,
+    ) -> AnalyticsTask:
+        """Load MCMC chain along with auxiliary data from JSON file.
 
-        :param percentiles: List;
-        :param self: Union[] instance of fitting cls based on method (mcmc, lsqr) and type(lc, rv)
-        :param discard: int; Discard the first discard steps in the chain as burn-in. (default: 0)
-        :param filename: str; full name of the json file
-        :return: Tuple[numpy.ndarray, List, Dict]; flattened mcmc chain, labels of variables in `flat_chain` columns,
-                                                  {var_name: (min_boundary, max_boundary), ...} dictionary of
-                                                  boundaries defined by user for each variable needed
-                                                  to reconstruct real values from normalized `flat_chain` array
-        """
+        Function loads MCMC chain along with auxiliary data from json file created
+        after each MCMC run. The chain can be optionally filtered by discarding
+        burn-in steps and computing percentiles for confidence intervals.
 
+        :param filename: Full name/path of the JSON file containing MCMC chain
+        :type filename: str
+        :param discard: Number of first steps to discard as burn-in (default: 0)
+        :type discard: int
+        :param percentiles: List of percentiles used to create error results and
+                           confidence interval from MCMC chain
+        :type percentiles: list | None
+        :return: Self for method chaining
+        :rtype: AnalyticsTask
+        :raises ValueError: If method is not MCMC
+        """
         if self.method not in self.MCMC_NAMES:
-            raise ValueError('Load chain method can be used only with mcmc task.')
+            error_msg: str = "load_chain method can be used only with MCMC task."
+            raise ValueError(error_msg)
         self.fit_cls.load_chain(filename, discard, percentiles)
         return self
 
-    def filter_chain(self, **boundaries):
-        """
-        Filtering MCMC chain down to given parameter intervals. This function is useful in case of bimodal distribution
-        of the MCMC chain.
+    def filter_chain(self, **boundaries: tuple[float, float]) -> None:
+        """Filter MCMC chain down to given parameter intervals.
 
-        :param boundaries: Dict; dictionary of boundaries e.g. {'primary@te_ff': (5000, 6000), other parameters ...}
-        :return: numpy.array; filtered flat chain
+        Filtering MCMC chain down to given parameter intervals. This function is
+        useful in case of bimodal distribution of the MCMC chain. Allows restricting
+        the posterior distribution to specific parameter ranges.
+
+        :param boundaries: Dictionary of parameter boundaries in format
+                          {param_name: (min_value, max_value), ...}
+                          Example: {'primary@t_eff': (5000, 6000), ...}
+        :type boundaries: dict
+        :raises ValueError: If method is not MCMC
         """
         if self.method not in self.MCMC_NAMES:
-            raise ValueError('Filter chain method can be used only with mcmc task.')
+            error_msg: str = "filter_chain method can be used only with MCMC task."
+            raise ValueError(error_msg)
         self.fit_cls.filter_chain(**boundaries)
 
-    def fit(self, x0: Union[Dict, parameters.BinaryInitialParameters], **kwargs):
-        """
-        Function solves an inverse task of inferring parameters of the eclipsing binary from the observed light curve.
-        Least squares method is adopted from scipy.optimize.least_squares.
-        MCMC uses emcee package to perform sampling.
+    def fit(
+        self,
+        x0: dict | parameters.BinaryInitialParameters,
+        **kwargs: Any,
+    ) -> dict:
+        """Solve inverse problem of inferring binary parameters from observed data.
 
-        :param x0: Dict; initial state of the sampler, model parameters in standard JSON format
-        :param kwargs: Dict; method-dependent
-        :**additional light curve kwargs**:
-            * **morphology** * - str - `detached` or `over-contact`
-            * **interp_treshold** * - int - Above this total number of datapoints, light curve will be interpolated
-                                            using model containing `interp_treshold` equidistant points per epoch
-            * **discretization** * - Union[int, float] - discretization factor of the primary component, default: 5
-            * **samples** * - Union[str, List]; 'uniform' (equidistant sampling in phase), 'adaptive'
-                                                (equidistant sampling on curve) or list with phases in (0, 1) interval
+        Function solves an inverse task of inferring parameters of the eclipsing
+        binary from the observed light curve or radial velocities. Least squares
+        method is adopted from scipy.optimize.least_squares. MCMC uses emcee
+        package to perform sampling.
 
-        :**kwargs options for least_squares**: passes arguments of scipy.optimize.least_squares method except
-                                               `fun`, `x0` and `bounds`
+        :param x0: Initial state or model parameters in standard JSON format.
+                   Can be a dictionary or BinaryInitialParameters instance
+        :type x0: dict | BinaryInitialParameters
+        :param kwargs: Method-dependent options
+        :type kwargs: dict
+        :return: Resulting parameters in format
+                 {param_name: {`value`: value, `unit`: astropy.unit, ...}, ...}
+        :rtype: dict
 
-        :**kwargs options for MCMC method**:
-            * **nwalkers (int)** * - The number of walkers in the ensemble. Minimum is 2 * number of free parameters.
-            * **nsteps (int)** * - The number of steps to run. Default is 1000.
-            * **initial_state (numpy.ndarray)** * - The initial state or position vector made of free parameters with
-                    shape (nwalkers, number of free parameters). The order of the parameters is specified by their order
-                    in `x0`. Be aware that initial states should be supplied in normalized form (0, 1). For example, 0
-                    means value of the parameter at `min` and 1.0 at `max` value in `x0`. By default, they are generated
-                    randomly uniform distribution.
-            * **burn_in** * - The expected number of steps to run to achieve equilibrium where useful sampling can
-                              start.Default value is nsteps / 10.
-            * **progress** * - bool - display the progress bar of the sampling
-            * **percentiles** * - List of percentiles used to create error results and confidence interval from MCMC
-                                  chain. Default value is [16, 50, 84] (1-sigma confidence interval)
-            * **save** * - bool - save chain
-            * **fit_id** * - str - identificator or location of stored chain
-            * **samples** * - Union[str, List]; 'uniform' (equidistant sampling in phase), 'adaptive'
-                                                (equidistant sampling on curve) or list with phases in (0, 1) interval
+        **additional light curve kwargs:**
 
-        :return: Dict; resulting parameters {param_name: {`value`: value, `unit`: astropy.unit, ...}, ...}
+        - **morphology** (:class:`str`) - `detached` or `over-contact`
+        - **interp_threshold** (:class:`int`) - Above this total number of datapoints,
+          light curve will be interpolated using model containing `interp_threshold`
+          equidistant points per epoch
+        - **discretization** (:class:`int` | :class:`float`) - Discretization factor
+          of the primary component (default: 5)
+        - **samples** (:class:`str` | :class:`list`) - 'uniform' (equidistant sampling
+          in phase), 'adaptive' (equidistant sampling on curve) or list with phases
+          in (0, 1) interval
+
+        **kwargs options for least_squares:**
+
+        Passes arguments of scipy.optimize.least_squares method except `fun`, `x0`,
+        and `bounds`
+
+        **kwargs options for MCMC method:**
+
+        - **nwalkers** (:class:`int`) - The number of walkers in the ensemble.
+          Minimum is 2 * number of free parameters.
+        - **nsteps** (:class:`int`) - The number of steps to run (default: 1000)
+        - **initial_state** (:class:`ndarray`) - The initial state or position vector
+          made of free parameters with shape (nwalkers, number of free parameters).
+          The order is specified by parameter order in `x0`. Initial states should
+          be supplied in normalized form (0, 1). For example, 0 means value at `min`
+          and 1.0 at `max` value in `x0`. By default, randomly generated.
+        - **burn_in** (:class:`int`) - Expected number of steps to achieve equilibrium
+          where useful sampling can start (default: nsteps / 10)
+        - **progress** (:class:`bool`) - Display the progress bar of the sampling
+        - **percentiles** (:class:`list`) - Percentiles used to create error results
+          and confidence interval from MCMC chain (default: [16, 50, 84])
+        - **save** (:class:`bool`) - Save chain to file
+        - **fit_id** (:class:`str`) - Identifier or location of stored chain
+        - **samples** (:class:`str` | :class:`list`) - 'uniform' (equidistant sampling
+          in phase), 'adaptive' (equidistant sampling on curve) or list with phases
+          in (0, 1) interval
         """
         if isinstance(x0, dict):
             x0 = parameters.BinaryInitialParameters(**x0)
         return self.fit_cls.fit(x0, data=self.data, **kwargs)
 
-    def coefficient_of_determination(self, model_parameters=None, discretization=5, interpolation_treshold=None):
-        """
-        Function returns R^2 for given model parameters and observed data.
+    def coefficient_of_determination(
+        self,
+        model_parameters: dict | None = None,
+        *,
+        discretization: int = 5,
+        interpolation_treshold: int | None = None,
+    ) -> float:
+        """Return R² (coefficient of determination) for model and observed data.
 
-        :param model_parameters: Dict; if None, get_result() is called
-        :param discretization: float;
-        :param interpolation_treshold: int; if None settings.MAX_CURVE_DATAPOINTS is used
-        :return: float;
-        """
-        model_parameters = self.get_result() if model_parameters is None else model_parameters
-        interpolation_treshold = settings.MAX_CURVE_DATAPOINTS \
-            if interpolation_treshold is None else interpolation_treshold
+        Function returns R² for given model parameters and observed data.
+        If successful, the calculated R² value is stored in the result dictionary.
 
-        r2 = self.fit_cls.coefficient_of_determination(
+        :param model_parameters: Model parameters (if None, get_result() is called)
+        :type model_parameters: dict | None
+        :param discretization: Discretization factor for model calculation
+        :type discretization: int
+        :param interpolation_treshold: Maximum curve datapoints threshold.
+                                        If None, settings.MAX_CURVE_DATAPOINTS is used
+        :type interpolation_treshold: int | None
+        :return: R² value (coefficient of determination)
+        :rtype: float
+        """
+        model_parameters = (
+            self.get_result() if model_parameters is None else model_parameters
+        )
+        interpolation_treshold = (
+            settings.MAX_CURVE_DATAPOINTS
+            if interpolation_treshold is None
+            else interpolation_treshold
+        )
+
+        r2: float = self.fit_cls.coefficient_of_determination(
             model_parameters,
             self.data,
             discretization,
-            interpolation_treshold
+            interpolation_treshold,
         )
-        model_parameters['r_squared'] = r2
+        model_parameters["r_squared"] = r2
         self.set_result(model_parameters)
 
         return r2
 
     @classmethod
-    def transform_input(cls, **kwargs):
-        """
-        Transform and validate input kwargs.
+    def transform_input(cls, **kwargs: Any) -> dict:
+        """Transform and validate input kwargs.
 
-        :param kwargs: Dict;
-        :return: Dict;
+        :param kwargs: Input keyword arguments
+        :type kwargs: dict
+        :return: Transformed keyword arguments
+        :rtype: dict
         """
         return cls.TRANSFORM_PROPERTIES_CLS.transform_input(**kwargs)
 
-    def init_properties(self, **kwargs):
-        """
-        Setup system properties from input.
+    def init_properties(self, **kwargs: Any) -> None:
+        """Initialize system properties from input arguments.
 
-        :param kwargs: Dict; all supplied input properties
+        Setup system properties from input by setting all kwargs as instance
+        attributes. This allows dynamic property assignment based on provided
+        configuration.
+
+        :param kwargs: All supplied input properties
+        :type kwargs: dict
         """
-        logger.debug(f"initialising properties of analytics task {self.name}")
-        for kwarg in kwargs:
-            setattr(self, kwarg, kwargs[kwarg])
+        logger.debug(
+            "initialising properties of analytics task %s",
+            self.name,
+        )
+        for kwarg, value in kwargs.items():
+            setattr(self, kwarg, value)
 
 
 class LCBinaryAnalyticsTask(AnalyticsTask):
-    """
-    Fitting task class aimed to fit light curves of eclipsing binary stars.
-    """
-    FIT_CLS = None
-    PLOT_CLS = None
-    FIT_PARAMS_COMBINATIONS = json.dumps({
-        "standard": {"system": ["inclination", "eccentricity", "argument_of_periastron", "period",
-                                "primary_minimum_time", "additional_light", "phase_shift"],
-                     "primary": ["mass", "t_eff", "surface_potential", "gravity_darkening", "albedo",
-                                 "synchronicity", "metallicity", "spots", "pulsations"],
-                     "secondary": ["mass", "t_eff", "surface_potential", "gravity_darkening", "albedo",
-                                   "synchronicity", "metallicity", "spots", "pulsations"],
-                     "nuisance": ['ln_f']
-                     },
-        "community": {"system": ["inclination", "eccentricity", "argument_of_periastron", "period", "semi_major_axis",
-                                 "primary_minimum_time", "additional_light", "phase_shift" "mass_ratio"],
-                      "primary": ["t_eff", "surface_potential", "gravity_darkening", "albedo",
-                                  "synchronicity", "metallicity", "spots", "pulsations"],
-                      "secondary": ["t_eff", "surface_potential", "gravity_darkening", "albedo",
-                                    "synchronicity", "metallicity", "spots", "pulsations"],
-                      "nuisance": ['ln_f']
-                      },
-        "spots": ["longitude", "latituded", "angular_radius", "temperature_factor"],
-        "pulsations": ["l", "m", "amplitude", "frequency", "start_phase", "mode_axis_theta", "mode_axis_phi"]
-    }, indent=4)
-    TRANSFORM_PROPERTIES_CLS = transform.LCBinaryAnalyticsProperties
+    """Fitting task class for light curves of eclipsing binary stars.
 
-    def __init__(self, method, expected_morphology='detached', name=None,
-                 atmosphere_models=None, limb_darkening_coefficients=None, **kwargs):
+    This class specializes AnalyticsTask for fitting light curves of eclipsing
+    binary systems. It supports various morphologies (detached, semi-detached,
+    over-contact) and provides comprehensive fitting parameter combinations for
+    standard and community analysis approaches.
+
+    **class attributes:**
+
+    - **FIT_PARAMS_COMBINATIONS** - JSON format string containing available
+      parameter sets for fitting
+    - **TRANSFORM_PROPERTIES_CLS** - Class for transforming and validating input
+    """
+
+    FIT_CLS: Any = None
+    PLOT_CLS: Any = None
+    FIT_PARAMS_COMBINATIONS: str = json.dumps(
+        {
+            "standard": {
+                "system": [
+                    "inclination",
+                    "eccentricity",
+                    "argument_of_periastron",
+                    "period",
+                    "primary_minimum_time",
+                    "additional_light",
+                    "phase_shift",
+                ],
+                "primary": [
+                    "mass",
+                    "t_eff",
+                    "surface_potential",
+                    "gravity_darkening",
+                    "albedo",
+                    "synchronicity",
+                    "metallicity",
+                    "spots",
+                    "pulsations",
+                ],
+                "secondary": [
+                    "mass",
+                    "t_eff",
+                    "surface_potential",
+                    "gravity_darkening",
+                    "albedo",
+                    "synchronicity",
+                    "metallicity",
+                    "spots",
+                    "pulsations",
+                ],
+                "nuisance": ["ln_f"],
+            },
+            "community": {
+                "system": [
+                    "inclination",
+                    "eccentricity",
+                    "argument_of_periastron",
+                    "period",
+                    "semi_major_axis",
+                    "primary_minimum_time",
+                    "additional_light",
+                    "phase_shift",
+                    "mass_ratio",
+                ],
+                "primary": [
+                    "t_eff",
+                    "surface_potential",
+                    "gravity_darkening",
+                    "albedo",
+                    "synchronicity",
+                    "metallicity",
+                    "spots",
+                    "pulsations",
+                ],
+                "secondary": [
+                    "t_eff",
+                    "surface_potential",
+                    "gravity_darkening",
+                    "albedo",
+                    "synchronicity",
+                    "metallicity",
+                    "spots",
+                    "pulsations",
+                ],
+                "nuisance": ["ln_f"],
+            },
+            "spots": [
+                "longitude",
+                "latituded",
+                "angular_radius",
+                "temperature_factor",
+            ],
+            "pulsations": [
+                "l",
+                "m",
+                "amplitude",
+                "frequency",
+                "start_phase",
+                "mode_axis_theta",
+                "mode_axis_phi",
+            ],
+        },
+        indent=4,
+    )
+    TRANSFORM_PROPERTIES_CLS: Any = transform.LCBinaryAnalyticsProperties
+
+    def __init__(
+        self,
+        method: str,
+        *,
+        name: str | None = None,
+        expected_morphology: str = "detached",
+        atmosphere_models: str | None = None,
+        limb_darkening_coefficients: dict | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize light curve fitting task.
+
+        Sets up LC fitting task with specified fitting method and configuration.
+        Initializes appropriate fitting class (MCMC or Least Squares) and plotting
+        class based on the provided method.
+
+        :param method: Fitting method name (least_squares or mcmc)
+        :type method: str
+        :param name: Instance name (auto-generated if not provided)
+        :type name: str | None
+        :param expected_morphology: System morphology (default: 'detached').
+                                    Options: 'detached', 'semi-detached', 'over-contact'
+        :type expected_morphology: str
+        :param atmosphere_models: Atmosphere model configuration
+        :type atmosphere_models: str | None
+        :param limb_darkening_coefficients: Limb darkening coefficient configuration
+        :type limb_darkening_coefficients: dict | None
+        :param kwargs: Additional configuration options (data, atmosphere_model, etc.)
+        :type kwargs: dict
+        """
         self.validate_method(method)
         if method in self.MCMC_NAMES:
-            self.__class__.FIT_CLS = lambda: \
-                lc_fit.LCFitMCMC(morphology=expected_morphology,
-                                 atmosphere_model=atmosphere_models,
-                                 limb_darkening_coefficients=limb_darkening_coefficients)
+            def _create_lc_fit_mcmc() -> lc_fit.LCFitMCMC:
+                return lc_fit.LCFitMCMC(
+                    morphology=expected_morphology,
+                    atmosphere_model=atmosphere_models,
+                    limb_darkening_coefficients=limb_darkening_coefficients,
+                )
+            self.__class__.FIT_CLS = _create_lc_fit_mcmc
             self.__class__.PLOT_CLS = LCPlotMCMC
         elif method in self.LS_NAMES:
-            self.__class__.FIT_CLS = lambda: \
-                lc_fit.LCFitLeastSquares(morphology=expected_morphology,
-                                         atmosphere_model=atmosphere_models,
-                                         limb_darkening_coefficients=limb_darkening_coefficients)
+            def _create_lc_fit_least_squares() -> lc_fit.LCFitLeastSquares:
+                return lc_fit.LCFitLeastSquares(
+                    morphology=expected_morphology,
+                    atmosphere_model=atmosphere_models,
+                    limb_darkening_coefficients=limb_darkening_coefficients,
+                )
+            self.__class__.FIT_CLS = _create_lc_fit_least_squares
             self.__class__.PLOT_CLS = LCPlotLsqr
-        super().__init__(method, name, **kwargs)
+        super().__init__(method, name=name, **kwargs)
 
-    def load_result(self, filename, autofill_sma=True):
+    def load_result(self, filename: str, *, autofill_sma: bool = True) -> dict:
+        """Load result with default autofill_sma=True for light curves.
+
+        Load model parameters from JSON file with automatic semi-major axis
+        autofilling enabled by default (since SMA can be calculated from
+        LC observables for eccentric systems).
+
+        :param filename: Path to JSON file containing model parameters
+        :type filename: str
+        :param autofill_sma: Auto-fill semi-major axis if absent (default: True)
+        :type autofill_sma: bool
+        :return: Model parameters in standardized format
+        :rtype: dict
+        """
         return super().load_result(filename, autofill_sma=autofill_sma)
 
-    def set_result(self, result, autofill_sma=True):
+    def set_result(self, result: dict, *, autofill_sma: bool = True) -> None:
+        """Set result with default autofill_sma=True for light curves.
+
+        Set model parameters with automatic semi-major axis auto-filling
+        enabled by default.
+
+        :param result: Model parameters in JSON format
+        :type result: dict
+        :param autofill_sma: Auto-fill semi-major axis if absent (default: True)
+        :type autofill_sma: bool
+        """
         return super().set_result(result, autofill_sma=autofill_sma)
 
 
 class RVBinaryAnalyticsTask(AnalyticsTask):
-    """
-    Fitting task class aimed to fit radial velocity (RV) curves of eclipsing binary stars. For now, the method
-    support only kinematic method for calculation of radial velocities (regarding stars as point masses).
-    """
-    FIT_CLS = None
-    PLOT_CLS = None
-    FIT_PARAMS_COMBINATIONS = json.dumps({
+    """Fitting task class for radial velocity curves of eclipsing binary stars.
 
-        'community': {
-            'system': ['mass_ratio', 'asini', 'eccentricity', 'argument_of_periastron',
-                       'gamma', 'period', 'primary_minimum_time'],
-            'nuisance': ['ln_f']
+    This class specializes AnalyticsTask for fitting radial velocity (RV) data
+    from eclipsing binary systems. Currently, supports kinematic method for
+    calculation of radial velocities (treating stars as point masses).
+
+    The RV task provides parameter combinations suitable for both community
+    (mass ratio) and standard (individual masses) approaches to binary parameter
+    estimation.
+
+    **class attributes:**
+
+    - **FIT_PARAMS_COMBINATIONS** - JSON format string containing available
+      parameter sets for RV fitting
+    - **TRANSFORM_PROPERTIES_CLS** - Class for transforming and validating input
+    """
+
+    FIT_CLS: Any = None
+    PLOT_CLS: Any = None
+    FIT_PARAMS_COMBINATIONS: str = json.dumps(
+        {
+            "community": {
+                "system": [
+                    "mass_ratio",
+                    "asini",
+                    "eccentricity",
+                    "argument_of_periastron",
+                    "gamma",
+                    "period",
+                    "primary_minimum_time",
+                ],
+                "nuisance": ["ln_f"],
+            },
+            "standard": {
+                "primary": ["mass"],
+                "secondary": ["mass"],
+                "system": [
+                    "inclination",
+                    "eccentricity",
+                    "argument_of_periastron",
+                    "gamma",
+                    "period",
+                    "primary_minimum_time",
+                ],
+                "nuisance": ["ln_f"],
+            },
         },
+        indent=4,
+    )
+    TRANSFORM_PROPERTIES_CLS: Any = transform.RVBinaryAnalyticsTask
 
-        'standard': {
-            'primary': ['mass'],
-            'secondary': ['mass'],
-            'system': ['inclination', 'eccentricity', 'argument_of_periastron',
-                       'gamma', 'period', 'primary_minimum_time'],
-            'nuisance': ['ln_f']
-        }
-    }, indent=4)
-    TRANSFORM_PROPERTIES_CLS = transform.RVBinaryAnalyticsTask
+    # noinspection PyUnusedLocal
+    def __init__(
+        self,
+        method: str,
+        *,
+        name: str | None = None,
+        atmosphere_models: str | None = None,  # noqa: ARG002
+        limb_darkening_factor: dict | None = None,  # noqa: ARG002
+        **kwargs: Any,
+    ) -> None:
+        """Initialize radial velocity fitting task.
 
-    def __init__(self, method, name=None, atmosphere_models=None, limb_darkening_factor=None, **kwargs):
+        Sets up RV fitting task with specified fitting method and configuration.
+        Initializes appropriate fitting class (MCMC or Least Squares) and plotting
+        class based on the provided method. Supports kinematic method for
+        radial velocity calculation.
+
+        :param method: Fitting method name (least_squares or mcmc)
+        :type method: str
+        :param name: Instance name (auto-generated if not provided)
+        :type name: str | None
+        :param atmosphere_models: Atmosphere model configuration
+        :type atmosphere_models: str | None
+        :param limb_darkening_factor: Limb darkening factor configuration
+        :type limb_darkening_factor: dict | None
+        :param kwargs: Additional configuration options (data, atmosphere_model, etc.)
+        :type kwargs: dict
+
+        **note:**
+
+        Parameters `atmosphere_models` and `limb_darkening_factor` are accepted for
+        API consistency with LCBinaryAnalyticsTask but are not used in RV calculations
+        since RV method uses kinematic approach (point masses).
+        """
         self.validate_method(method)
         if method in self.MCMC_NAMES:
-            self.__class__.FIT_CLS = lambda: rv_fit.RVFitMCMC()
+            def _create_rv_fit_mcmc() -> rv_fit.RVFitMCMC:
+                return rv_fit.RVFitMCMC()
+
+            self.__class__.FIT_CLS = _create_rv_fit_mcmc
             self.__class__.PLOT_CLS = RVPlotMCMC
         elif method in self.LS_NAMES:
-            self.__class__.FIT_CLS = lambda: rv_fit.RVFitLeastSquares()
+            def _create_rv_fit_least_squares() -> rv_fit.RVFitLeastSquares:
+                return rv_fit.RVFitLeastSquares()
+
+            self.__class__.FIT_CLS = _create_rv_fit_least_squares
             self.__class__.PLOT_CLS = RVPlotLsqr
-        super().__init__(method, name, **kwargs)
+        super().__init__(method, name=name, **kwargs)
