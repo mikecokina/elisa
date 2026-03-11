@@ -128,8 +128,8 @@ class _Const:
     DATETIME_MASK = "%Y-%m-%dT%H.%M.%S"
     DATE_MASK = "%Y-%m-%d"
 
-    DATASET_MANDATORY_KWARGS: ClassVar = ["x_data", "y_data", "x_unit", "y_unit"]
-    DATASET_OPTIONAL_KWARGS: ClassVar = ["y_err"]
+    DATASET_MANDATORY_KWARGS: ClassVar = ("x_data", "y_data", "x_unit", "y_unit")
+    DATASET_OPTIONAL_KWARGS: ClassVar = ("y_err", )
 
     DELIM_WHITESPACE = r"\s+|\t+|\s+\t+|\t+\s+"
     DATA_PATH = Path(__file__).resolve().parent.parent / "data"
