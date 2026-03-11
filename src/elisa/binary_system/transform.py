@@ -108,7 +108,7 @@ class RadialVelocityObserverProperties(SystemProperties):
         if not value > 0:
             msg = f"Invalid value of property `mass_ratio`. Expected > 0, given {value}."
             raise ValueError(msg)
-        return float(FLOAT(value))
+        return float(np.float64(value))
 
     @staticmethod
     def asini(value: Any) -> float:

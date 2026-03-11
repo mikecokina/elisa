@@ -18,11 +18,12 @@ from elisa.single_system.curves import utils as crv_utils
 
 # TYPE_CHECKING block at the end of import header
 if TYPE_CHECKING:
-    from astropy.units import Quantity, Unit
     from matplotlib.figure import Figure
     from numpy.typing import NDArray
 
     from elisa.single_system.system import SingleSystem
+    from elisa.types import AstropyQuantity as Quantity
+    from elisa.types import AstropyUnit as Unit
     from elisa.types import Float
 
 

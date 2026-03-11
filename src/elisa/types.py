@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal, Protocol, TypeAlias, TypedDict
 
 import numpy as np
-from astropy.units import Unit
+from astropy.units import Quantity, Unit
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -18,6 +18,9 @@ UnitType: TypeAlias = Unit
 ComponentName: TypeAlias = Literal["primary", "secondary"]
 ComponentSelection: TypeAlias = Literal["primary", "secondary", "all", "both"]
 
+
+AstropyQuantity: TypeAlias = Quantity
+AstropyUnit: TypeAlias = Unit
 
 class HasMeshData(Protocol):
     points: NDArray[Float]

@@ -21,10 +21,10 @@ from elisa.numba_functions import operations
 
 if TYPE_CHECKING:
     from _typeshed import SupportsDunderGT, SupportsDunderLT
-    from astropy.units import Unit
     from numpy.typing import NDArray
 
     from elisa.const import Position
+    from elisa.types import AstropyUnit as Unit
     from elisa.types import Float, HasMeshData, Int, Number
 
 FEBRUARY_MONTH_NUMBER = 2

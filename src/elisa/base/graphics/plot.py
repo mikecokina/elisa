@@ -13,12 +13,12 @@ from elisa.pulse import utils as putils
 from elisa.utils import transform_values
 
 if TYPE_CHECKING:
-    from astropy.units import Unit
     from matplotlib.colors import Colormap
     from numpy.typing import NDArray
 
     from elisa.base.container import StarContainer
     from elisa.const import Position
+    from elisa.types import AstropyUnit as Unit
     from elisa.types import Float
 
 
@@ -161,8 +161,13 @@ def r_cmap(star: StarContainer, *args) -> NDArray:
         points: NDArray = star.points - star.com[None, :]
         value: NDArray = utils.cartesian_to_spherical(points)[:, 0]
     else:
-        pargs: tuple = (star, 0.0, False, True, True)
-        perturbation: NDArray = container_ops.position_perturbation(*pargs)
+        pargs: tuple = (star, 0.0)
+        kwargs = {
+            "update_container": True,
+            "return_perturbation": False,
+            "spherical_perturbation": False,
+        }
+        perturbation: NDArray = container_ops.position_perturbation(*pargs, **kwargs)
         value = perturbation[:, 0]
 
     value = value[star.faces].mean(axis=1) * model_scale
@@ -206,7 +211,9 @@ def horizonatal_displacement_cmap(star: StarContainer, *args) -> NDArray:
         raise ValueError(error_msg)
 
     pargs: tuple = (star, 0.0, False, True, True)
-    perturbation: NDArray = container_ops.position_perturbation(*pargs)
+    pkwargs: dict = {"update_container": True, "return_perturbation": False, "spherical_perturbation": False}
+
+    perturbation: NDArray = container_ops.position_perturbation(*pargs, **pkwargs)
 
     value: NDArray = putils.horizontal_component(perturbation, star.points_spherical)
     value = value[star.faces].mean(axis=1) * model_scale
@@ -245,8 +252,17 @@ def v_cmap(star: StarContainer, *args) -> NDArray:
 
     scale, unit, subtract_equilibrium, model_scale = args[:4]
 
-    pargs: tuple = (star, model_scale, False, True, False)
-    velocities: NDArray = container_ops.velocity_perturbation(*pargs) if subtract_equilibrium else star.velocities
+    pargs: tuple = (star, model_scale)
+    pkwargs: dict = {
+        "update_container": False,
+        "return_perturbation": True,
+        "spherical_perturbation": False,
+    }
+    velocities: NDArray = (
+        container_ops.velocity_perturbation(*pargs, **pkwargs)
+        if subtract_equilibrium
+        else star.velocities
+    )
     velocities = np.linalg.norm(velocities, axis=1)
     unt = units.m / units.s if unit == "default" else unit
     value: NDArray = transform_values(velocities, units.VELOCITY_UNIT, unt)
@@ -291,9 +307,18 @@ def v_rad_cmap(
 
     scale, unit, subtract_equilibrium, model_scale, inclination, position = args
 
-    pargs: tuple = (star, model_scale, False, True, False)
+    pargs: tuple = (star, model_scale)
+    pkwargs: dict = {
+        "update_container": False,
+        "return_perturbation": True,
+        "spherical_perturbation": False,
+    }
     velocities: NDArray = (
-        utils.rotate_item(container_ops.velocity_perturbation(*pargs), position, inclination)
+        utils.rotate_item(
+            container_ops.velocity_perturbation(*pargs, **pkwargs),
+            position,
+            inclination,
+        )
         if subtract_equilibrium
         else star.velocities
     )
@@ -341,8 +366,13 @@ def v_rad_pert_cmap(star: StarContainer, *args) -> NDArray:
         error_msg: str = "`v_r_perturbed` is relevant only for stars with pulsations."
         raise ValueError(error_msg)
 
-    pargs: tuple = (star, model_scale, False, True, True)
-    velocities: NDArray = container_ops.velocity_perturbation(*pargs)[:, 0]
+    pargs: tuple = (star, model_scale)
+    pkwargs: dict = {
+        "update_container": False,
+        "return_perturbation": True,
+        "spherical_perturbation": True,
+    }
+    velocities: NDArray = container_ops.velocity_perturbation(*pargs, **pkwargs)[:, 0]
     unt = units.m / units.s if unit == "default" else unit
     value: NDArray = transform_values(velocities, units.VELOCITY_UNIT, unt)
 
@@ -382,10 +412,18 @@ def v_horizontal_pert_cmap(star: StarContainer, *args) -> NDArray:
         error_msg: str = "`v_horizontal_perturbed` colormap is relevant only for stars with pulsations."
         raise ValueError(error_msg)
 
-    pargs: tuple = (star, model_scale, False, True, True)
-    velocities: NDArray = container_ops.velocity_perturbation(*pargs)
+    pargs: tuple = (star, model_scale)
+    pkwargs: dict = {
+        "update_container": False,
+        "return_perturbation": True,
+        "spherical_perturbation": True,
+    }
+    velocities: NDArray = container_ops.velocity_perturbation(*pargs, **pkwargs)
     face_centres_sph: NDArray = star.points_spherical[star.faces].mean(axis=1)
-    velocities = putils.horizontal_component(velocities, face_centres_sph, treat_poles=True) * model_scale
+    velocities = (
+        putils.horizontal_component(velocities, face_centres_sph, treat_poles=True)
+        * model_scale
+    )
     unt = units.m / units.s if unit == "default" else unit
     value: NDArray = transform_values(velocities, units.VELOCITY_UNIT, unt)
 
@@ -426,8 +464,13 @@ def g_cmap(star: StarContainer, *args) -> NDArray:
         if scale in ["log", "logarithmic"]:
             error_msg: str = "Logarithmic scale is not permitted with the `subtract_equilibrium=True`."
             raise ValueError(error_msg)
-        pargs: tuple = (star, model_scale, False, True, True)
-        g: NDArray = container_ops.gravity_acc_perturbation(*pargs)[:, 0]
+        pargs: tuple = (star, model_scale)
+        pkwargs: dict = {
+            "update_container": False,
+            "return_perturbation": True,
+            "spherical_perturbation": True,
+        }
+        g: NDArray = container_ops.gravity_acc_perturbation(*pargs, **pkwargs)[:, 0]
     else:
         log_g: NDArray = star.log_g
         g = np.power(10, log_g)
@@ -471,10 +514,18 @@ def horizontal_g_pert_cmap(star: StarContainer, *args) -> NDArray:
         error_msg: str = "`horizontal_acceleration` colormap is relevant only for stars with pulsations."
         raise ValueError(error_msg)
 
-    pargs: tuple = (star, model_scale, False, True, True)
-    acceleration: NDArray = container_ops.gravity_acc_perturbation(*pargs)
+    pargs: tuple = (star, model_scale)
+    pkwargs: dict = {
+        "update_container": False,
+        "return_perturbation": True,
+        "spherical_perturbation": True,
+    }
+    acceleration: NDArray = container_ops.gravity_acc_perturbation(*pargs, **pkwargs)
     face_centres_sph: NDArray = star.points_spherical[star.faces].mean(axis=1)
-    acceleration = putils.horizontal_component(acceleration, face_centres_sph, treat_poles=True) * model_scale
+    acceleration = (
+        putils.horizontal_component(acceleration, face_centres_sph, treat_poles=True)
+        * model_scale
+    )
     unt = units.ACCELERATION_UNIT if unit == "default" else unit
     value: NDArray = transform_values(acceleration, units.ACCELERATION_UNIT, unt)
 
@@ -510,8 +561,16 @@ def t_cmap(star: StarContainer, *args) -> NDArray:
 
     scale, unit, subtract_equilibrium, model_scale = args[:4]
 
-    pargs: tuple = (star, model_scale, False, True)
-    temperatures: NDArray = container_ops.temp_perturbation(*pargs) if subtract_equilibrium else star.temperatures
+    pargs: tuple = (star, model_scale)
+    pkwargs: dict = {
+        "update_container": False,
+        "return_perturbation": True,
+    }
+    temperatures: NDArray = (
+        container_ops.temp_perturbation(*pargs, **pkwargs)
+        if subtract_equilibrium
+        else star.temperatures
+    )
     value: NDArray = transform_values(temperatures, units.DefaultStarInputUnits.t_eff, unit)
 
     return to_log(value, scale)

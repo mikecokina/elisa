@@ -6,8 +6,7 @@ from elisa import units as u
 from elisa.base.transform import WHEN_FLOAT64, TransformProperties, quantity_transform
 
 if TYPE_CHECKING:
-    from astropy.units import Quantity
-
+    from elisa.types import AstropyQuantity as Quantity
     from elisa.types import Float, Int
 
 
