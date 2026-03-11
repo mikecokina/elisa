@@ -1,71 +1,109 @@
-"""
-Converting input parameters to default internal units.
-"""
+"""Convert input parameters to default internal units."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from .. params import conf
-from ... import units as u
-from ... base.transform import (
-    TransformProperties,
+import elisa.units as u
+from elisa.analytics.params import conf
+from elisa.base.transform import (
     WHEN_FLOAT64,
-    StarProperties, SpotProperties
+    SpotProperties,
+    StarProperties,
+    TransformProperties,
 )
-from ... binary_system.transform import (
+from elisa.binary_system.transform import (
     BinarySystemProperties,
-    RadialVelocityObserverProperties
+    RadialVelocityObserverProperties,
 )
-from ... pulse.transform import PulsationModeProperties
+from elisa.pulse.transform import PulsationModeProperties
+
+if TYPE_CHECKING:
+    from elisa.types import AstropyQuantity as Quantity
+
+    from elisa.types import Float
 
 
-def angular(value):
-    """
-    Transform all angular units to ELISa's default internal angular unit.
+def angular(value: Float | Quantity) -> Float:
+    """Transform all angular units to ELISa's default internal angular unit.
 
-    :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
-    :return: float;
+    :param value: Numeric value to transform, can be a float or astropy Quantity.
+    :type value: float | Quantity
+    :returns: Transformed angular value in default internal angular unit.
+    :rtype: float
+    :raises TypeError: If input is not a numeric type or astropy Quantity.
     """
     if isinstance(value, u.Quantity):
         value = np.float64(value.to(conf.DEFAULT_FLOAT_ANGULAR_UNIT))
     elif isinstance(value, WHEN_FLOAT64):
         value = np.float64(value)
     else:
-        raise TypeError('Input of variable is not (numpy.)int or (numpy.)float '
-                        'nor astropy.unit.quantity.Quantity instance.')
+        error_msg = (
+            "Input of variable is not (numpy.)int or (numpy.)float "
+            "nor astropy.unit.quantity.Quantity instance."
+        )
+        raise TypeError(error_msg)
     return value
 
 
 class BinaryInitialProperties(TransformProperties):
-    """
-    Module that handles conversion of binary system parameters units.
-    """
+    """Handler for conversion of binary system parameters units."""
+
     @staticmethod
-    def semi_major_axis(value):
+    def semi_major_axis(value: Float | Quantity) -> float:
+        """Transform semi-major axis value to internal units.
+
+        :param value: Semi-major axis value to transform.
+        :type value: float | Quantity
+        :returns: Transformed semi-major axis value in solar radii.
+        :rtype: float
+        :raises TypeError: If input is not a numeric type or astropy Quantity.
+        :raises ValueError: If value is negative.
+        """
         if isinstance(value, u.Quantity):
             value = np.float64(value.to(u.solRad))
         elif isinstance(value, WHEN_FLOAT64):
             value = np.float64(value)
         else:
-            raise TypeError('Input of variable `semi_major_axis` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
+            error_msg = (
+                "Input of variable `semi_major_axis` is not (numpy.)int or (numpy.)float "
+                "nor astropy.unit.quantity.Quantity instance."
+            )
+            raise TypeError(error_msg)
         if value < 0:
-            raise ValueError('Value of `semi_major_axis` cannot be negative.')
+            error_msg = "Value of `semi_major_axis` cannot be negative."
+            raise ValueError(error_msg)
         return value
 
     @staticmethod
-    def mass(value):
+    def mass(value: Float | Quantity) -> Float:
+        """Transform mass value to internal units.
+
+        :param value: Mass value to transform.
+        :type value: float | Quantity
+        :returns: Transformed mass value in default mass unit.
+        :rtype: float
+        :raises TypeError: If input is not a numeric type or astropy Quantity.
+        :raises ValueError: If value is not positive.
+        """
         if isinstance(value, u.Quantity):
             value = np.float64(value.to(conf.DEFAULT_FLOAT_MASS_UNIT))
         elif isinstance(value, WHEN_FLOAT64):
             value = np.float64(value)
         else:
-            raise TypeError('User input is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
+            error_msg = (
+                "User input is not (numpy.)int or (numpy.)float "
+                "nor astropy.unit.quantity.Quantity instance."
+            )
+            raise TypeError(error_msg)
         if value <= 0:
-            raise ValueError("Invalid mass, use value > 0!")
+            error_msg = "Invalid mass, use value > 0!"
+            raise ValueError(error_msg)
         return value
 
+    # ...existing code...
     eccentricity = BinarySystemProperties.eccentricity
     argument_of_periastron = angular
     inclination = angular
@@ -78,31 +116,36 @@ class BinaryInitialProperties(TransformProperties):
 
 
 class StarInitialProperties(StarProperties):
-    """
-    Module that handles conversion of component's parameters units.
-    """
+    """Handler for conversion of star component parameters units."""
+
     mass = BinaryInitialProperties.mass
 
 
 class SpotInitialProperties(SpotProperties):
-    """
-    Module that handles conversion of spot's parameters units.
-    """
+    """Handler for conversion of spot parameters units."""
+
     latitude = angular
     longitude = angular
     angular_radius = angular
 
 
 class NuisanceInitialProperties(TransformProperties):
-    """
-    Module that handles unit conversion of nuisance fit parameters.
-    """
-    ln_f = lambda x: x
+    """Handler for unit conversion of nuisance fit parameters."""
+
+    @staticmethod
+    def ln_f(value: Float) -> Float:
+        """Identity transformation for ln_f nuisance parameter.
+
+        :param value: Nuisance parameter value.
+        :type value: float
+        :returns: Unchanged parameter value.
+        :rtype: float
+        """
+        return value
 
 
 class PulsationModeInitialProperties(PulsationModeProperties):
-    """
-    Module that handles unit conversion of pulsation mode parameters.
-    """
+    """Handler for unit conversion of pulsation mode parameters."""
+
     mode_axis_theta = angular
     mode_axis_phi = angular
