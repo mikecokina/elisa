@@ -1,79 +1,155 @@
+"""Model parameter serializers for binary system fitting."""
+
+from __future__ import annotations
+
 import re
+from typing import Any
 
-from .. params.parameters import deflate_phenomena
-from ... import const
+from elisa import const
+from elisa.analytics.params.parameters import deflate_phenomena
 
 
-def serialize_system_kwargs(**kwargs):
-    """
-    The function is used to extract the system-related parameters used in synthetic model functions during the fit.
-    Those parameters are then returned as `system` component of the input JSON used to initialize the BinarySystem
-    instance.
+def serialize_system_kwargs(**kwargs: Any) -> dict[str, Any]:
+    """Extract system-related parameters for synthetic model functions during fitting.
 
-    :param kwargs: Dict[str, float]; model parameters in flat format
-    :return: Dict[str, float]; `system` model parameters
+    The function extracts system-related parameters used in synthetic model functions
+    during the fit. Those parameters are then returned as the `system` component of
+    the input JSON used to initialize the BinarySystem instance.
+
+    :param kwargs: Model parameters in flat format.
+    :type kwargs: dict[str, Any]
+    :returns: System-related model parameters.
+    :rtype: dict[str, Any]
     """
     return dict(
-        argument_of_periastron=kwargs.get('system@argument_of_periastron', const.HALF_PI),
-        gamma=kwargs.get('system@gamma', 0.0),
+        argument_of_periastron=kwargs.get("system@argument_of_periastron", const.HALF_PI),
+        gamma=kwargs.get("system@gamma", 0.0),
         period=kwargs["system@period"],
-        eccentricity=kwargs.get('system@eccentricity', 0.0),
+        eccentricity=kwargs.get("system@eccentricity", 0.0),
         primary_minimum_time=0.0,
         **{"inclination": kwargs["system@inclination"]} if kwargs.get("system@inclination") else {},
         **{"semi_major_axis": kwargs["system@semi_major_axis"]} if kwargs.get("system@semi_major_axis") else {},
         **{"mass_ratio": kwargs["system@mass_ratio"]} if kwargs.get("system@mass_ratio") else {},
         **{"asini": kwargs["system@asini"]} if kwargs.get("system@asini") else {},
         **{"additional_light": kwargs["system@additional_light"]} if kwargs.get("system@additional_light") else {},
-        **{"phase_shift": kwargs["system@phase_shift"]} if kwargs.get("system@phase_shift") else {}
+        **{"phase_shift": kwargs["system@phase_shift"]} if kwargs.get("system@phase_shift") else {},
     )
 
 
-def _serialize_star_kwargs(component, **kwargs):
+def _serialize_star_kwargs(component: str, **kwargs: Any) -> dict[str, Any]:
+    """Extract component-related parameters for synthetic model functions during fitting.
+
+    Extracts component-related parameters used in synthetic model functions during
+    the fit. Those parameters are then returned as the `primary` or `secondary`
+    component of the input JSON used to initialize the BinarySystem instance.
+
+    :param component: Component identifier (`primary` or `secondary`).
+    :type component: str
+    :param kwargs: Model parameters in flat format.
+    :type kwargs: dict[str, Any]
+    :returns: Component-related model parameters.
+    :rtype: dict[str, Any]
     """
-    General function for extraction of component-related parameters used in synthetic model functions during the fit.
-    Compoenet related parameters are then returned as `primary` or `secondary` component of the input JSON used to
-    initialize the BinarySystem instance.
 
-    :param component: str; `primary` or `secondary`
-    :param kwargs: Dict; model parameters in flat format
-    :return: Dict; component-related model parameters
-    """
-    prefix = lambda prop: f'{component}@{prop}'
-    params_tree = {"spots": dict(), "pulsations": dict()}
+    def _make_key(prop: str) -> str:
+        """Create a prefixed parameter key."""
+        return f"{component}@{prop}"
 
-    for phenom in params_tree.keys():
+    # Extract and process phenomena parameters
+    phenomena_map: dict[str, list[dict[str, Any]]] = {"spots": [], "pulsations": []}
 
-        _ = {key: value for key, value in kwargs.items()
-             if re.search(rf"^(?=.*\b{phenom[:-1]}\b)(?=.*\b{component}\b).*$", key)}
-        _ = deflate_phenomena(_)
-        params_tree[phenom] = [{key: val for key, val in value.items() if key not in ['label']} for value in _.values()]
+    for phenom_name in phenomena_map:
+        singular_name = phenom_name[:-1]  # e.g., 'spot' from 'spots'
+        pattern = rf"^(?=.*\b{singular_name}\b)(?=.*\b{component}\b).*$"
 
-    spots = params_tree['spots'] or dict()
-    pulsations = params_tree['pulsations'] or dict()
+        phenomena_params = {key: value for key, value in kwargs.items() if re.search(pattern, key)}
+        phenomena_params = deflate_phenomena(phenomena_params)
+        phenomena_map[phenom_name] = [
+            {key: val for key, val in value.items() if key != "label"} for value in phenomena_params.values()
+        ]
+
+    spots = phenomena_map["spots"] or []
+    pulsations = phenomena_map["pulsations"] or []
 
     return dict(
-        surface_potential=kwargs[prefix('surface_potential')],
-        synchronicity=kwargs.get(prefix('synchronicity'), 1.0),
-        t_eff=kwargs[prefix('t_eff')],
-        **{"gravity_darkening": kwargs[prefix("gravity_darkening")]} if kwargs.get(prefix("gravity_darkening")) else {},
-        **{"albedo": kwargs[prefix("albedo")]} if kwargs.get(prefix("albedo")) else {},
-        **{"metallicity": kwargs[prefix("metallicity")]} if kwargs.get(prefix("metallicity")) else {},
-        **{"mass": kwargs[prefix("mass")]} if kwargs.get(prefix("mass")) else {},
-        **{"discretization_factor": kwargs[prefix("discretization_factor")]}
-        if kwargs.get(prefix("discretization_factor")) else {},
-        **{"atmosphere": kwargs[prefix("atmosphere")]} if kwargs.get(prefix("atmosphere")) else {},
-        **{"limb_darkening_coefficients": kwargs[prefix("limb_darkening_coefficients")]}
-        if kwargs.get(prefix("limb_darkening_coefficients")) else {},
-        **{"spots": spots},
-        **{"pulsations": pulsations},
+        surface_potential=kwargs[_make_key("surface_potential")],
+        synchronicity=kwargs.get(_make_key("synchronicity"), 1.0),
+        t_eff=kwargs[_make_key("t_eff")],
+        **(
+            {
+                "gravity_darkening": kwargs[_make_key("gravity_darkening")],
+            }
+            if kwargs.get(_make_key("gravity_darkening"))
+            else {}
+        ),
+        **(
+            {
+                "albedo": kwargs[_make_key("albedo")],
+            }
+            if kwargs.get(_make_key("albedo"))
+            else {}
+        ),
+        **(
+            {
+                "metallicity": kwargs[_make_key("metallicity")],
+            }
+            if kwargs.get(_make_key("metallicity"))
+            else {}
+        ),
+        **(
+            {
+                "mass": kwargs[_make_key("mass")],
+            }
+            if kwargs.get(_make_key("mass"))
+            else {}
+        ),
+        **(
+            {
+                "discretization_factor": kwargs[_make_key("discretization_factor")],
+            }
+            if kwargs.get(_make_key("discretization_factor"))
+            else {}
+        ),
+        **(
+            {
+                "atmosphere": kwargs[_make_key("atmosphere")],
+            }
+            if kwargs.get(_make_key("atmosphere"))
+            else {}
+        ),
+        **(
+            {
+                "limb_darkening_coefficients": kwargs[
+                    _make_key(
+                        "limb_darkening_coefficients",
+                    )
+                ],
+            }
+            if kwargs.get(_make_key("limb_darkening_coefficients"))
+            else {}
+        ),
+        spots=spots,
+        pulsations=pulsations,
     )
 
 
-def serialize_primary_kwargs(**kwargs):
-    """Parameter extractor for the primary component."""
-    return _serialize_star_kwargs(component='primary', **kwargs)
+def serialize_primary_kwargs(**kwargs: Any) -> dict[str, Any]:
+    """Extract primary component parameters for synthetic model functions during fitting.
+
+    :param kwargs: Model parameters in flat format.
+    :type kwargs: dict[str, Any]
+    :returns: Primary component-related model parameters.
+    :rtype: dict[str, Any]
+    """
+    return _serialize_star_kwargs(component="primary", **kwargs)
 
 
-def serialize_secondary_kwargs(**kwargs):
-    """Parameter extractor for the secondary component."""
-    return _serialize_star_kwargs(component='secondary', **kwargs)
+def serialize_secondary_kwargs(**kwargs: Any) -> dict[str, Any]:
+    """Extract secondary component parameters for synthetic model functions during fitting.
+
+    :param kwargs: Model parameters in flat format.
+    :type kwargs: dict[str, Any]
+    :returns: Secondary component-related model parameters.
+    :rtype: dict[str, Any]
+    """
+    return _serialize_star_kwargs(component="secondary", **kwargs)
