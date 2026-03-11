@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Protocol, TypeAlias, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeAlias, TypedDict, runtime_checkable
 
 import numpy as np
 from astropy.units import Quantity, Unit
@@ -50,3 +50,22 @@ class Axes3DProtocol(Protocol):
     def set_ylim3d(self, limits: tuple[float, float]) -> None: ...
 
     def set_zlim3d(self, limits: tuple[float, float]) -> None: ...
+
+
+@runtime_checkable
+class TransformProperties(Protocol):
+    """Protocol defining the interface for transformation classes.
+
+    Any class implementing this protocol can be used as a transform_cls parameter
+    to properly transform and validate fit parameter values.
+    """
+
+    def transform_input(self, **kwargs: Any) -> dict[str, Any]:
+        """Transform input parameters to internal representation.
+
+        :param kwargs: Parameter names and values to transform.
+        :type kwargs: dict
+        :returns: Transformed parameters' dictionary.
+        :rtype: dict[str, Any]
+        """
+        ...

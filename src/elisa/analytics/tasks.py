@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 from abc import ABCMeta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from elisa import settings, utils
 from elisa.analytics import transform
@@ -16,7 +16,9 @@ from elisa.analytics.binary_fit.plot import (
 )
 from elisa.analytics.params import bonds, parameters
 from elisa.logger import getLogger
-from elisa.types import Float
+
+if TYPE_CHECKING:
+    from elisa.types import Float
 
 logger = getLogger("analytics.tasks")
 

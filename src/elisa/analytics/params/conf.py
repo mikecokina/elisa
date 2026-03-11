@@ -50,7 +50,7 @@ DEFAULT_NORMALIZATION_STAR = {
     "synchronicity": (0.01, 10),
 }
 
-CURRENT_TIME_JD = jd_from_datetime(datetime.datetime.now())
+CURRENT_TIME_JD = jd_from_datetime(datetime.datetime.now(tz=datetime.UTC))
 
 DEFAULT_NORMALIZATION_SYSTEM = {
     "inclination": (0, 180),

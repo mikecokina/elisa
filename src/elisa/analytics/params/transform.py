@@ -22,7 +22,6 @@ from elisa.pulse.transform import PulsationModeProperties
 
 if TYPE_CHECKING:
     from elisa.types import AstropyQuantity as Quantity
-
     from elisa.types import Float
 
 
