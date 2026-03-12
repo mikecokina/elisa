@@ -86,20 +86,26 @@ class Polygon(shape.Shape2D):
         :return: Intersection polygon or None
         :rtype: Polygon | None
         """
+        # Vertices of each polygon that lie strictly inside the other
         in_poly1 = poly.hull[self.mplpath.contains_points(poly.hull)]
         in_poly2 = self.hull[poly.mplpath.contains_points(self.hull)]
-        intersection_poly = np.concatenate((in_poly1, in_poly2), axis=0)
-        intersection_poly = np.array([Point(*point) for point in intersection_poly])
 
-        # Strict segment intersection is typically desired for polygon clipping vertex set construction
+        # Edge-edge intersection points (strict: touch_is_separated=False keeps endpoints)
         _, intersection_segment, intr_ptx, _, msg, _ = linter.intersections(
             self.hull, poly.hull, touch_is_separated=False,
         )
-        points_mask = np.logical_and(msg == b"INTERSECT", intersection_segment)
-        intr_ptx = [Point(*point) for point in intr_ptx[points_mask]]
-        intersection_poly = np.concatenate((intersection_poly, intr_ptx), axis=0)
-        intersection_poly = Point.set(intersection_poly, round_tol=round_tol)
-        return Polygon(intersection_poly, _validity=False) if len(intersection_poly) > MIN_POLY_POINTS - 1 else None
+        edge_pts = intr_ptx[(msg == b"INTERSECT") & intersection_segment]
+
+        # Collect all candidate vertices as raw float arrays — no Point wrappers needed.
+        # normalize_hull() in Shape2D handles plain numpy rows via its `else vertex` branch.
+        all_pts = np.concatenate((in_poly1, in_poly2, edge_pts), axis=0)
+        if len(all_pts) < MIN_POLY_POINTS:
+            return None
+
+        # Deduplicate by rounding — vectorised replacement for Point.set.
+        # np.unique sorts rows, which is fine: Polygon.__init__ re-sorts clockwise.
+        all_pts = np.unique(np.round(all_pts, round_tol), axis=0)
+        return Polygon(all_pts, _validity=False) if len(all_pts) >= MIN_POLY_POINTS else None
 
     def to_array(self) -> np.ndarray:
         """Return the hull as a numpy array.
