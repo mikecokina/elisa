@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from copy import copy
-from typing import TYPE_CHECKING, Literal, TypeAlias
+from typing import TYPE_CHECKING
 
 import matplotlib.path as mpltpath
 import numpy as np
@@ -19,11 +18,10 @@ if TYPE_CHECKING:
 
     from elisa.base.container import StarContainer
     from elisa.binary_system.container import OrbitalPositionContainer
-    from elisa.types import Float, Int, NumpyBool
+    from elisa.types import ComponentName, Float, Int, NumpyBool
 
 logger = getLogger("binary_system.surface.coverage")
 
-CoverComponent: TypeAlias = Literal["primary", "secondary"]
 
 
 def partial_visible_faces_surface_coverage(
@@ -73,14 +71,14 @@ def partial_visible_faces_surface_coverage(
 
 def calculate_centre_of_star_projection(
     system: OrbitalPositionContainer,
-    component: CoverComponent,
+    component: ComponentName,
 ) -> NDArray[Float]:
     """Return yz projection of the centre of mass of the given component.
 
     :param system: Orbital position container.
     :type system: OrbitalPositionContainer
     :param component: Component selector.
-    :type component: Literal["primary", "secondary"]
+    :type component: ComponentName
     :return: yz projection of the component centre of mass.
     :rtype: NDArray[Float]
     """
@@ -113,7 +111,7 @@ def calculate_centre_of_star_projection(
 def expand_star_outline(
     path: mpltpath.Path,
     system: OrbitalPositionContainer,
-    cover_component: CoverComponent,
+    cover_component: ComponentName,
 ) -> mpltpath.Path:
     """Expand the outline of the eclipsing component.
 
@@ -125,14 +123,14 @@ def expand_star_outline(
     :param system: Orbital position container.
     :type system: OrbitalPositionContainer
     :param cover_component: Component selector.
-    :type cover_component: Literal["primary", "secondary"]
+    :type cover_component: ComponentName
     :return: Expanded outline path.
     :rtype: matplotlib.path.Path
     """
     centre_projection = calculate_centre_of_star_projection(system, cover_component)
     alpha = const.FULL_ARC / path.vertices.shape[0]
     correction_factor = np.sqrt(2 - (np.sin(alpha) / alpha))
-    path.vertices = correction_factor * (path.vertices - centre_projection[None, :]) + centre_projection[None, :]
+    path.vertices = correction_factor * (path.vertices - centre_projection) + centre_projection
     return path
 
 
@@ -169,15 +167,10 @@ def visibility_out_of_eclipse(
         observer-facing triangles of the eclipsed component.
     :rtype: tuple[NDArray[np.bool_], NDArray[np.bool_], NDArray[np.bool_]]
     """
-    eclipse_faces_visibility = np.full(
-        undercover_object.normals.shape,
-        fill_value=False,
-        dtype=BOOL,
-    )
-    eclipse_faces_visibility[undercover_object.indices] = True
-
-    full_visible = np.all(eclipse_faces_visibility, axis=1)
-    placeholder = np.full(full_visible.shape, fill_value=False, dtype=BOOL)
+    n_faces = undercover_object.normals.shape[0]
+    full_visible = np.zeros(n_faces, dtype=BOOL)
+    full_visible[undercover_object.indices] = True
+    placeholder = np.zeros(n_faces, dtype=BOOL)
     return full_visible, placeholder, placeholder
 
 
@@ -256,17 +249,15 @@ def visibility_disimilar_objects(
     outline_min_coord = cover_outline.vertices.min(axis=0)
     cover_centre = 0.5 * (outline_max_coord + outline_min_coord)
     selection_radius = undercover_object.equivalent_radius * np.sin(undercover_object.discretization_factor)
+    cover_hi = cover_centre + selection_radius
+    cover_lo = cover_centre - selection_radius
 
     # square searchbox around cover component COM with half size equivalent to triangle size
-    # noinspection PyUnresolvedReferences
-    max_condition = np.array(
-        undercover_visible_projection < (cover_centre + selection_radius)[None, :],
-    ).all(axis=1)
-    min_condition = np.array(
-        undercover_visible_projection > (cover_centre - selection_radius)[None, :],
-    ).all(axis=1)
-
-    out_of_bound = ~np.logical_and(max_condition, min_condition)
+    in_bound = (
+        (undercover_visible_projection < cover_hi).all(axis=1)
+        & (undercover_visible_projection > cover_lo).all(axis=1)
+    )
+    out_of_bound = ~in_bound
 
     undercover_visible_point_indices = undercover_visible_point_indices[out_of_bound]
     undercover_faces = np.full(undercover_object.normals.shape, -1, dtype=INT)
@@ -278,8 +269,8 @@ def visibility_disimilar_objects(
     )
 
     full_visible = np.all(eclipse_faces_visibility, axis=1)
-    invisible = np.full(full_visible.shape, fill_value=False, dtype=BOOL)
-    partial_visible = copy(full_visible)
+    invisible = np.zeros(full_visible.shape, dtype=BOOL)
+    partial_visible = full_visible.copy()
     partial_visible[undercover_object.indices] = ~partial_visible[undercover_object.indices]
     return full_visible, invisible, partial_visible
 
@@ -313,7 +304,7 @@ def compute_surface_coverage(
     logger.debug("computing surface coverage for %s", system.position)
 
     bb_path = None
-    cover_component: CoverComponent = "secondary" if 0.0 < system.position.azimuth < const.PI else "primary"
+    cover_component: ComponentName = "secondary" if 0.0 < system.position.azimuth < const.PI else "primary"
     cover_object = getattr(system, cover_component)
     undercover_component = settings.BINARY_COUNTERPARTS[cover_component]
     undercover_object = getattr(system, undercover_component)
@@ -321,7 +312,7 @@ def compute_surface_coverage(
     # all surface values in sma unit which are smaller than following threshold
     # are discarded (set to 0.0)
     surface_noise_threshold = (
-        2.0 * np.pi * np.power(undercover_object.polar_radius, 2) / len(undercover_object.faces)
+        2.0 * np.pi * undercover_object.polar_radius**2 / len(undercover_object.faces)
     ) / 1e6
 
     cover_object_obs_visible_projection = utils.get_visible_projection(cover_object)
@@ -393,7 +384,7 @@ def compute_surface_coverage(
     cover_obj_coverage[cover_object.indices] = cover_object.areas[cover_object.indices]
 
     # areas are now in SMA^2, converting to SI
-    scale = up.power(semi_major_axis, 2)
+    scale = semi_major_axis**2
     cover_obj_coverage *= scale
     undercover_obj_coverage *= scale
 
