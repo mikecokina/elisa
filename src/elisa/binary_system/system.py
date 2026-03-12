@@ -454,9 +454,11 @@ class BinarySystem(System):
         :return: Binary system created from fit results.
         :rtype: BinarySystem
         """
-        extra_parameters = {
-            "atmosphere": atmosphere,
-            "limb_darkening_coefficients": limb_darkening_coefficients,
+        # Filter out None extra parameters upfront to avoid redundant checks in inner loop
+        filtered_extras = {
+            k: v
+            for k, v in {"atmosphere": atmosphere, "limb_darkening_coefficients": limb_darkening_coefficients}.items()
+            if v is not None
         }
 
         data: dict[str, Any] = {}
@@ -467,21 +469,18 @@ class BinarySystem(System):
             data[key] = {}
             for param, content in component.items():
                 if param in {"spots", "pulsations"}:
-                    features: list[dict[str, Any]] = []
-                    for feature in content:
-                        feature_data: dict[str, Any] = {}
-                        for f_param, f_content in feature.items():
-                            if f_param == "label":
-                                continue
-                            feature_data[f_param] = f_content["value"]
-                        features.append(feature_data)
-                    data[key][param] = features
+                    # Use list comprehension with dict comprehension instead of manual append loop
+                    data[key][param] = [
+                        {f_param: f_content["value"] for f_param, f_content in feature.items() if f_param != "label"}
+                        for feature in content
+                    ]
                 else:
                     data[key][param] = content["value"]
 
-            for extra_param, value in extra_parameters.items():
-                if value is not None and value.get(key) is not None:
-                    data[key][extra_param] = value[key]
+            # Apply filtered extra parameters
+            for extra_param, extra_dict in filtered_extras.items():
+                if key in extra_dict:
+                    data[key][extra_param] = extra_dict[key]
 
         return cls.from_json(data=data)
 
