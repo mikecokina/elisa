@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import itertools
 import json
-import sys
 import warnings
 from collections.abc import Iterable
 from copy import deepcopy
@@ -530,8 +529,9 @@ class NaiveInterpolatedAtm:
         :return: numpy.ndarray[float];
         """
         with np.errstate(divide="ignore", invalid="ignore"):
-            top_temperatures4 = np.power(np.array([a.temperature for a in top_atm_containers]), 4)
-            bottom_temperatures4 = np.power(np.array([a.temperature for a in bottom_atm_containers]), 4)
+            # Vectorized temperature extraction
+            top_temperatures4 = np.power(np.asarray([a.temperature for a in top_atm_containers], dtype=FLOAT), 4)
+            bottom_temperatures4 = np.power(np.asarray([a.temperature for a in bottom_atm_containers], dtype=FLOAT), 4)
 
             result = (np.power(temperatures, 4) - bottom_temperatures4) / (top_temperatures4 - bottom_temperatures4)
 
@@ -669,10 +669,21 @@ class NaiveInterpolatedAtm:
             },
         )
         directory = get_atm_directory(m, atlas)
-        # Use direct function references / vectorized conversions instead of lambdas
-        mh_name = domain_df["mh"].apply(utils.numeric_metallicity_to_string)
-        temp_name = domain_df["temp"].astype(int).astype(str)
-        log_g_name = domain_df["log_g"].apply(utils.numeric_logg_to_string)
+
+        # Vectorized string conversions (faster than pandas .apply())
+        # Metallicity: 0.5 -> 'p05', -1.1 -> 'm11'
+        signs = np.where(domain_df["mh"].to_numpy() >= 0, "p", "m")
+        abs_mh = np.abs(domain_df["mh"].to_numpy() * 10).astype(int)
+        mh_name = np.char.add(signs, np.char.zfill(abs_mh.astype(str), 2))
+
+        # Temperature: simple int conversion
+        temp_name = domain_df["temp"].to_numpy().astype(int).astype(str)
+
+        # Surface gravity: 0.5 -> 'g05', 1.0 -> 'g10'
+        logg_int = (domain_df["log_g"].to_numpy() * 10).astype(int)
+        log_g_name = np.char.add("g", np.char.zfill(logg_int.astype(str), 2))
+
+        # Build filenames
         fnames = str(atlas) + mh_name + "_" + temp_name + "_" + log_g_name
 
         return [str(Path(settings.ATLAS_TO_BASE_DIR[atlas]) / directory / (fname + ".csv")) for fname in fnames]
@@ -695,22 +706,17 @@ def arange_atm_to_same_wavelength(
         ``wavelength`` and ``flux`` arrays.
     :rtype: list[AtmDataContainer]
     """
-    wavelengths = np.unique(
-        np.array([atm.model.wavelength for atm in atm_containers]).flatten(),
-    )
+    # Check if all containers already have identical wavelengths
+    first_wavelengths = atm_containers[0].model.wavelength
+    if all(np.array_equal(first_wavelengths, atm.model.wavelength) for atm in atm_containers[1:]):
+        return atm_containers
+
+    # If not aligned, compute union and interpolate
+    wavelengths = np.unique(np.concatenate([atm.model.wavelength for atm in atm_containers]))
     wavelengths.sort()
     result = []
 
-    # Check if containers are already aligned
-    s_size = sys.maxsize
-    for atm in atm_containers:
-        s_size = min(s_size, len(atm.model))
-
-    # If aligned, interpolation is unnecessary
-    if s_size == len(wavelengths):
-        return atm_containers
-
-    # Otherwise, interpolate each container to common wavelengths
+    # Interpolate each container to common wavelengths
     for atm in atm_containers:
         i = interpolate.Akima1DInterpolator(atm.model.wavelength, atm.model.flux)
         atm.model = AtmModel(
@@ -834,7 +840,7 @@ def strip_to_bandwidth(
 
     The function selects indices with wavelengths strictly between
     ``left_bandwidth`` and ``right_bandwidth``, extends the selection to
-    include neighbouring boundary points (to support accurate
+    include neighboring boundary points (to support accurate
     interpolation), and then calls
     :func:`extend_atm_container_on_bandwidth_boundary` to ensure the
     returned model has exact boundary values.
@@ -897,10 +903,10 @@ def find_global_atm_bandwidth(
     :returns: Tuple of (min_wavelength, max_wavelength) for common coverage.
     :rtype: tuple[Float, Float]
     """
-    bounds = np.array(
-        [[atm.model.wavelength.min(), atm.model.wavelength.max()] for atm in atm_containers],
-    )
-    return bounds[:, 0].max(), bounds[:, 1].min()
+    # Vectorized extraction: get min of all maxima and max of all minima
+    mins = np.array([atm.model.wavelength.min() for atm in atm_containers])
+    maxs = np.array([atm.model.wavelength.max() for atm in atm_containers])
+    return float(mins.max()), float(maxs.min())
 
 
 def extend_atm_container_on_bandwidth_boundary(
@@ -1810,13 +1816,18 @@ def remap_passbanded_unique_atm_to_matrix(
     :returns: Flux matrix with shape (total_faces, wavelengths).
     :rtype: NDArray
     """
-    total = max(list(itertools.chain.from_iterable(fpaths_map.values()))) + 1
+    # Optimize total calculation with max of flattened indices
+    all_indices = list(itertools.chain.from_iterable(fpaths_map.values()))
+    total = max(all_indices) + 1
+
     wavelengths_defined = find_atm_defined_wavelength(atm_containers)
     wavelengths_length = len(wavelengths_defined)
     models_matrix = up.zeros((total, wavelengths_length))
 
+    # Vectorized assignment: collect indices and values, then assign
     for atm_container in atm_containers:
-        models_matrix[fpaths_map[atm_container.fpath]] = atm_container.model.flux
+        indices = fpaths_map[atm_container.fpath]
+        models_matrix[indices] = atm_container.model.flux
 
     return models_matrix
 
