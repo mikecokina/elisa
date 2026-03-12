@@ -372,7 +372,7 @@ def xs_reducer(xs: dict) -> tuple[NDArray, dict]:
     return xs_reduced, reverse
 
 
-def renormalize_value(val: Float | NDArray, _min: Float, _max: Float) -> Float:
+def renormalize_value(val: Float | NDArray, _min: Float, _max: Float) -> Float | NDArray:
     """Convert normalized value to actual parameter value within specified interval.
 
     Inverse function to :func:`normalize_value`. Converts a value from the
