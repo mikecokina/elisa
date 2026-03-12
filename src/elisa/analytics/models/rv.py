@@ -37,7 +37,7 @@ def central_rv_synthetic(
     phases: NDArray[Float],
     observer: Observer,
     **kwargs: Any,
-) -> tuple[NDArray[Float], NDArray[Float]]:
+) -> dict[str, NDArray[Float]]:
     """Generate synthetic radial velocity curve for binary system.
 
     Generates a synthetic radial velocity (RV) curve of a binary system
@@ -62,8 +62,8 @@ def central_rv_synthetic(
         * ``system@period`` - Orbital period (days)
 
     :type kwargs: dict[str, Any]
-    :returns: Tuple of phases and radial velocities.
-    :rtype: tuple[NDArray[Float], NDArray[Float]]
+    :returns: Radial velocities for each component (primary and secondary).
+    :rtype: dict[str, NDArray[Float]]
     :raises InitialParamsError: If initial parameters lead to an unknown model type.
     """
     # Set default values for parameters not provided

@@ -421,7 +421,7 @@ def normalize_value(val: float, _min: float, _max: float) -> float:
 
 
 def vector_renormalizer(
-    vector: Iterable[Float] | NDArray[Float], properties: Iterable[str], normalization: dict
+    vector: Iterable[Float] | NDArray[Float], properties: Iterable[str], normalization: dict,
 ) -> list:
     """Convert normalized parameter vector to actual values using normalization boundaries.
 
@@ -496,7 +496,7 @@ def prepare_properties_set(xn: NDArray, properties: list[str] | Iterable[str], c
     return kwargs
 
 
-def prepare_nuisance_properties_set(xn: NDArray, properties: list, fixed: dict) -> dict:
+def prepare_nuisance_properties_set(xn: NDArray | Iterable, properties: list[str] | Iterable[str], fixed: dict) -> dict:
     """Extract nuisance parameter values used during MCMC sampling.
 
     Extracts and combines nuisance parameters (such as `ln_f` jitter parameter)
