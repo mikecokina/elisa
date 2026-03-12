@@ -56,27 +56,29 @@ def calculate_potential_gradient(
     )
 
     f2 = up.power(synchronicity, 2)
+    f2_q1 = f2 * (mass_ratio + 1)       # precomputed common factor
+    inv_r3_sum = 1 / r3 + mass_ratio / r_hat3  # shared subexpression used in dy and dz
 
     if component == "primary":
         domega_dx = (
             -points[:, 0] / r3
             + mass_ratio * (components_distance - points[:, 0]) / r_hat3
-            + f2 * (mass_ratio + 1) * points[:, 0]
+            + f2_q1 * points[:, 0]
             - mass_ratio / up.power(components_distance, 2)
         )
     elif component == "secondary":
         domega_dx = (
             -points[:, 0] / r3
             + mass_ratio * (components_distance - points[:, 0]) / r_hat3
-            - f2 * (mass_ratio + 1) * (components_distance - points[:, 0])
+            - f2_q1 * (components_distance - points[:, 0])
             + 1 / up.power(components_distance, 2)
         )
     else:
         msg = f"Invalid value `{component}` of argument `component`.\nUse `primary` or `secondary`."
         raise ValueError(msg)
 
-    domega_dy = -points[:, 1] * (1 / r3 + mass_ratio / r_hat3 - f2 * (mass_ratio + 1))
-    domega_dz = -points[:, 2] * (1 / r3 + mass_ratio / r_hat3)
+    domega_dy = -points[:, 1] * (inv_r3_sum - f2_q1)
+    domega_dz = -points[:, 2] * inv_r3_sum
 
     return -np.column_stack((domega_dx, domega_dy, domega_dz))
 
@@ -118,7 +120,7 @@ def calculate_polar_potential_gradient_magnitude(
         domega_dx = (
             -points[0] / r3
             + mass_ratio * (components_distance - points[0]) / r_hat3
-            - np.power(synchronicity, 2) * (mass_ratio + 1) * (1 - points[0])
+            - up.power(synchronicity, 2) * (mass_ratio + 1) * (1 - points[0])
             + 1.0 / up.power(components_distance, 2)
         )
     else:
@@ -213,6 +215,7 @@ def build_surface_gravity(
 
     components = bsutils.component_to_list(component)
     mass_ratio = system.mass_ratio
+    scaling_factor = const.G * system.primary.mass / system.semi_major_axis**2
 
     for component_name in components:
         star = getattr(system, component_name)
@@ -223,7 +226,7 @@ def build_surface_gravity(
             mass_ratio,
             star.polar_radius,
             component_name,
-            star.synchronicity,
+            synchronicity,
         )
         star.polar_potential_gradient_magnitude = pgm
 
@@ -234,7 +237,6 @@ def build_surface_gravity(
 
         points, faces = bgravity.eval_args_for_magnitude_gradient(star)
 
-        scaling_factor = const.G * system.primary.mass / system.semi_major_axis**2
         p_grad = calculate_potential_gradient(
             components_distance,
             component_name,
@@ -244,11 +246,7 @@ def build_surface_gravity(
         )
         g_acc_vector = scaling_factor * p_grad
 
-        gravity = (
-            np.mean(np.linalg.norm(g_acc_vector, axis=1)[faces], axis=1)
-            if star.symmetry_test
-            else np.mean(np.linalg.norm(g_acc_vector, axis=1), axis=1)
-        )
+        gravity = np.mean(np.linalg.norm(g_acc_vector, axis=1)[faces], axis=1)
 
         if star.symmetry_test():
             star.potential_gradient_magnitudes = star.mirror_face_values(gravity)
@@ -258,7 +256,6 @@ def build_surface_gravity(
         star.log_g = np.log10(star.potential_gradient_magnitudes)
 
         if star.has_spots():
-            g_acc_vector_spot = {}
             for spot_index, spot in star.spots.items():
                 logger.debug(
                     "calculating surface SI unit gravity of %s component / %s spot",
@@ -278,10 +275,10 @@ def build_surface_gravity(
                     synchronicity=synchronicity,
                     mass_ratio=mass_ratio,
                 )
-                g_acc_vector_spot.update({spot_index: scaling_factor * p_grad})
+                g_acc_vector_spot = scaling_factor * p_grad
 
                 spot.potential_gradient_magnitudes = np.mean(
-                    np.linalg.norm(g_acc_vector_spot[spot_index], axis=1)[spot.faces], axis=1,
+                    np.linalg.norm(g_acc_vector_spot, axis=1)[spot.faces], axis=1,
                 )
                 spot.log_g = np.log10(spot.potential_gradient_magnitudes)
 
