@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import functools
 import json
-from copy import copy
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeAlias, cast
 
@@ -101,9 +101,7 @@ def apply_reflection_effect(  # noqa: C901, PLR0912, PLR0915
     )
 
     # this tests if you can use surface symmetries
-    not_pulsation_test = not system.has_pulsations()
-    not_spot_test = not system.has_spots()
-    use_quarter_star_test = not_pulsation_test and not_spot_test
+    use_quarter_star_test = not system.has_pulsations() and not system.has_spots()
     vis_test_symmetry: dict[str, NDArray[np.bool_] | None] = {}
 
     # declaring variables
@@ -262,9 +260,7 @@ def apply_reflection_effect(  # noqa: C901, PLR0912, PLR0915
         for _ in range(iterations):
             for component in components:
                 star = getattr(system, component)
-                counterpart_component = (
-                    "primary" if component == "secondary" else "secondary"
-                )
+                counterpart_component = settings.BINARY_COUNTERPARTS[component]
                 vis_sym = vis_test_symmetry[component]
                 if vis_sym is None:
                     msg = "Symmetry visibility mask is required in symmetry branch."
@@ -273,11 +269,10 @@ def apply_reflection_effect(  # noqa: C901, PLR0912, PLR0915
                 # calculation of reflection effect correction as
                 # 1 + (c / t_effi) * sum_j(r_j * Q_ab * t_effj^4 * D(gamma_j) * areas_j)
                 # calculating vector part of reflection effect correction
-                key_ = counterpart_component
                 vector_to_sum1 = (
-                    reflection_factor[key_]
-                    * teff4[key_][vis_test[key_]]
-                    * areas[key_][vis_test[key_]]
+                    reflection_factor[counterpart_component]
+                    * teff4[counterpart_component][vis_test[counterpart_component]]
+                    * areas[counterpart_component][vis_test[counterpart_component]]
                 )
                 counterpart_to_sum = (
                     up.matmul(vector_to_sum1, matrix_to_sum2["secondary"])
@@ -369,11 +364,10 @@ def apply_reflection_effect(  # noqa: C901, PLR0912, PLR0915
                 # calculation of reflection effect correction as
                 # 1 + (c / t_effi) * sum_j(r_j * Q_ab * t_effj^4 * D(gamma_j) * areas_j)
                 # calculating vector part of reflection effect correction
-                key_ = counterpart_component
                 vector_to_sum1 = (
-                    reflection_factor[key_]
-                    * teff4[key_][vis_test[key_]]
-                    * areas[key_][vis_test[key_]]
+                    reflection_factor[counterpart_component]
+                    * teff4[counterpart_component][vis_test[counterpart_component]]
+                    * areas[counterpart_component][vis_test[counterpart_component]]
                 )
                 counterpart_to_sum = (
                     up.matmul(vector_to_sum1, matrix_to_sum2["secondary"])
@@ -497,11 +491,11 @@ def init_surface_variables(
         NDArray[Float], NDArray[Float], NDArray[Float], NDArray[Float]]
     """
     points, faces = star.surface_serializer()
-    centres = copy(star.face_centres)
-    normals = copy(star.normals)
-    temperatures = copy(star.temperatures)
-    log_g = copy(star.log_g)
-    areas = copy(star.areas)
+    centres = star.face_centres.copy()
+    normals = star.normals.copy()
+    temperatures = star.temperatures.copy()
+    log_g = star.log_g.copy()
+    areas = star.areas.copy()
     return points, faces, centres, normals, temperatures, areas, log_g
 
 
@@ -695,16 +689,14 @@ def check_symmetric_gamma_for_negative_num(
     :return: ``None``.
     :rtype: None
     """
-    gamma["primary"][:, :shape_reduced[1]][gamma["primary"][:, :shape_reduced[1]] < 0] = 0.0
-    gamma["primary"][:shape_reduced[0], shape_reduced[1]:][
-        gamma["primary"][:shape_reduced[0], shape_reduced[1]:] < 0
-    ] = 0.0
-    gamma["secondary"][:shape_reduced[0], :][
-        gamma["secondary"][:shape_reduced[0], :] < 0
-    ] = 0.0
-    gamma["secondary"][shape_reduced[0]:, :shape_reduced[1]][
-        gamma["secondary"][shape_reduced[0]:, :shape_reduced[1]] < 0
-    ] = 0.0
+    s = gamma["primary"][:, :shape_reduced[1]]
+    np.maximum(s, 0.0, out=s)
+    s = gamma["primary"][:shape_reduced[0], shape_reduced[1]:]
+    np.maximum(s, 0.0, out=s)
+    s = gamma["secondary"][:shape_reduced[0], :]
+    np.maximum(s, 0.0, out=s)
+    s = gamma["secondary"][shape_reduced[0]:, :shape_reduced[1]]
+    np.maximum(s, 0.0, out=s)
 
 
 
@@ -828,6 +820,19 @@ def get_distance_matrix_shape(
 
 
 
+@functools.cache
+def _load_albedo_data() -> tuple[list, list]:
+    """Load and cache albedo interpolation tables from disk.
+
+    :return: Tuple ``(temperatures, albedos)`` of interpolation data loaded
+        from ``settings.PATH_TO_ALBEDOS``.
+    :rtype: tuple[list, list]
+    """
+    with Path(settings.PATH_TO_ALBEDOS).open("r") as f:
+        data = json.load(f)
+    return data["x"], data["y"]
+
+
 def interpolate_albedo(temperature: Float) -> Float:
     """Interpolate the default albedo value from tabulated data.
 
@@ -839,14 +844,9 @@ def interpolate_albedo(temperature: Float) -> Float:
     :return: Interpolated albedo in the interval ``(0, 1)``.
     :rtype: Float
     """
-    with Path(settings.PATH_TO_ALBEDOS).open("r") as f:
-        data = json.load(f)
-
-    interp_temps = data["x"]
-    interp_a = data["y"]
-
     if temperature <= 0:
         msg = "Negative temperature of the star encountered."
         raise ValueError(msg)
 
+    interp_temps, interp_a = _load_albedo_data()
     return np.interp(np.log10(temperature), interp_temps, interp_a)
