@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from elisa.analytics.binary_fit.lc_fit import LCFitLeastSquares, LCFitMCMC
-    from elisa.analytics.binary_fit.rv_fit import RVFitMCMC
+    from elisa.analytics.binary_fit.rv_fit import RVFitLeastSquares, RVFitMCMC
     from elisa.types import Float
 
 
@@ -38,7 +38,7 @@ DASH_N = 126
 
 
 def fit_lc_summary_with_error_propagation(  # noqa: C901, PLR0912, PLR0915
-    fit_instance: LCFitMCMC,
+    fit_instance: LCFitMCMC | RVFitMCMC,
     path: str | None,
     percentiles: list[int],
     *,
@@ -806,7 +806,7 @@ def evaluate_binary_params(*args: Any) -> NDArray:
 
 
 def simple_lc_fit_summary(  # noqa: C901, PLR0912, PLR0915
-    fit_instance: LCFitLeastSquares | LCFitMCMC,
+    fit_instance: LCFitLeastSquares | LCFitMCMC | RVFitMCMC,
     path: str | None,
     *,
     dimensionless_radii: bool = True,
@@ -1323,7 +1323,9 @@ def simple_lc_fit_summary(  # noqa: C901, PLR0912, PLR0915
             f.close()
 
 
-def simple_rv_fit_summary(fit_instance: LCFitLeastSquares | LCFitMCMC, path: str | None) -> None:
+def simple_rv_fit_summary(
+    fit_instance: LCFitLeastSquares | RVFitLeastSquares | LCFitMCMC | RVFitMCMC, path: str | None,
+) -> None:
     """Generate detailed radial velocity fit summary report.
 
     Produces comprehensive summary of radial velocity fitting results with
