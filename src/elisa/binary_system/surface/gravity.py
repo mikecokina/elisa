@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, TypeAlias
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -16,17 +16,15 @@ if TYPE_CHECKING:
 
     from elisa.base.container import StarContainer
     from elisa.binary_system.container import OrbitalPositionContainer
-    from elisa.types import Float
+    from elisa.types import ComponentName, ComponentSelection, Float
 
 logger = getLogger("binary_system.surface.gravity")
 
-ComponentSelection: TypeAlias = Literal["primary", "secondary", "all", "both"]
-SurfaceComponent: TypeAlias = Literal["primary", "secondary"]
 
 
 def calculate_potential_gradient(
     components_distance: Float,
-    component: SurfaceComponent,
+    component: ComponentName,
     points: NDArray[Float],
     synchronicity: Float,
     mass_ratio: Float,
@@ -36,7 +34,7 @@ def calculate_potential_gradient(
     :param components_distance: Component separation in SMA units.
     :type components_distance: Float
     :param component: Target component for the calculation.
-    :type component: Literal["primary", "secondary"]
+    :type component: ComponentName
     :param points: Surface points at which the gradient is evaluated.
     :type points: NDArray[Float]
     :param synchronicity: Component synchronicity factor.
@@ -56,22 +54,23 @@ def calculate_potential_gradient(
     )
 
     f2 = up.power(synchronicity, 2)
-    f2_q1 = f2 * (mass_ratio + 1)       # precomputed common factor
+    f2_q1 = f2 * (mass_ratio + 1)             # precomputed common factor
     inv_r3_sum = 1 / r3 + mass_ratio / r_hat3  # shared subexpression used in dy and dz
+    cd2 = up.power(components_distance, 2)     # precomputed scalar used in both branches
 
     if component == "primary":
         domega_dx = (
             -points[:, 0] / r3
             + mass_ratio * (components_distance - points[:, 0]) / r_hat3
             + f2_q1 * points[:, 0]
-            - mass_ratio / up.power(components_distance, 2)
+            - mass_ratio / cd2
         )
     elif component == "secondary":
         domega_dx = (
             -points[:, 0] / r3
             + mass_ratio * (components_distance - points[:, 0]) / r_hat3
             - f2_q1 * (components_distance - points[:, 0])
-            + 1 / up.power(components_distance, 2)
+            + 1 / cd2
         )
     else:
         msg = f"Invalid value `{component}` of argument `component`.\nUse `primary` or `secondary`."
@@ -87,7 +86,7 @@ def calculate_polar_potential_gradient_magnitude(
     components_distance: Float,
     mass_ratio: Float,
     polar_radius: Float,
-    component: SurfaceComponent,
+    component: ComponentName,
     synchronicity: Float,
 ) -> Float:
     """Calculate the magnitude of the polar potential gradient.
@@ -99,46 +98,45 @@ def calculate_polar_potential_gradient_magnitude(
     :param polar_radius: Polar radius of the component.
     :type polar_radius: Float
     :param component: Target component for the calculation.
-    :type component: Literal["primary", "secondary"]
+    :type component: ComponentName
     :param synchronicity: Component synchronicity factor.
     :type synchronicity: Float
     :return: Magnitude of the polar potential gradient.
     :rtype: Float
     """
-    points = [0.0, 0.0, polar_radius] if component == "primary" else [components_distance, 0.0, polar_radius]
-    points = np.array(points)
+    points = np.array(
+        [0.0, 0.0, polar_radius] if component == "primary" else [components_distance, 0.0, polar_radius],
+    )
 
     r3 = up.power(np.linalg.norm(points), 3)
     r_hat3 = up.power(
         np.linalg.norm(points - np.array([components_distance, 0.0, 0.0])),
         3,
     )
+    cd2 = up.power(components_distance, 2)  # shared scalar used in both branches
 
     if component == "primary":
-        domega_dx = mass_ratio * components_distance / r_hat3 - mass_ratio / up.power(components_distance, 2)
+        domega_dx = mass_ratio * components_distance / r_hat3 - mass_ratio / cd2
     elif component == "secondary":
         domega_dx = (
             -points[0] / r3
             + mass_ratio * (components_distance - points[0]) / r_hat3
             - up.power(synchronicity, 2) * (mass_ratio + 1) * (1 - points[0])
-            + 1.0 / up.power(components_distance, 2)
+            + 1.0 / cd2
         )
     else:
         msg = f"Invalid value `{component}` of argument `component`.\nUse `primary` or `secondary`."
         raise ValueError(msg)
 
     domega_dz = -points[2] * (1.0 / r3 + mass_ratio / r_hat3)
-    return up.power(
-        up.power(domega_dx, 2) + up.power(domega_dz, 2),
-        0.5,
-    )
+    return np.hypot(domega_dx, domega_dz)
 
 
 def calculate_polar_gravity_acceleration(
     star: StarContainer,
     components_distance: Float,
     mass_ratio: Float,
-    component: SurfaceComponent,
+    component: ComponentName,
     semi_major_axis: Float,
     synchronicity: Float,
     *,
@@ -163,7 +161,7 @@ def calculate_polar_gravity_acceleration(
     :param mass_ratio: Binary mass ratio.
     :type mass_ratio: Float
     :param component: Target component for the calculation.
-    :type component: Literal["primary", "secondary"]
+    :type component: ComponentName
     :param semi_major_axis: Semi-major axis.
     :type semi_major_axis: Float
     :param synchronicity: Component synchronicity factor.
