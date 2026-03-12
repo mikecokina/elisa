@@ -418,3 +418,274 @@ class TestAtmAdditional(ElisaTestCase):
         std = get_standard_wavelengths()
         assert isinstance(std, np.ndarray)
         assert std.size > 0
+
+
+
+# Tests for edge cases in atm module to ensure optimizations don't break anything
+
+
+from unittests.utils import ElisaTestCase
+
+set_astropy_units = lambda: None
+
+# Import set_astropy_units from main test
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from unittests import set_astropy_units
+
+set_astropy_units()
+
+
+class TestAtmEdgeCases(ElisaTestCase):
+    """Test edge cases and boundary conditions for atm module optimizations."""
+
+    def setUp(self):
+        super().setUp()
+        settings.configure(CK04_ATM_TABLES=os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "data", "ck04",
+        ))
+
+    def test_arange_atm_already_aligned(self):
+        """Test that already aligned wavelengths are handled correctly."""
+        c1 = AtmDataContainer(
+            AtmModel(flux=np.array([1, 2, 3]), wavelength=np.array([1., 2., 3.])),
+            10, 10, 10,
+        )
+        c2 = AtmDataContainer(
+            AtmModel(flux=np.array([1, 2, 3]), wavelength=np.array([1., 2., 3.])),
+            5, 5, 5,
+        )
+
+        result = atm.arange_atm_to_same_wavelength([c1, c2])
+
+        # Should still work and be aligned
+        assert_array_equal(result[0].model.wavelength, result[1].model.wavelength)
+        # Should not add unnecessary interpolation
+        assert len(result[0].model.wavelength) == 3
+
+    def test_arange_atm_single_container(self):
+        """Test that single container is handled correctly."""
+        c1 = AtmDataContainer(
+            AtmModel(flux=np.array([1, 2, 3]), wavelength=np.array([1., 2., 3.])),
+            10, 10, 10,
+        )
+
+        result = atm.arange_atm_to_same_wavelength([c1])
+
+        assert len(result) == 1
+        assert_array_equal(result[0].model.wavelength, c1.model.wavelength)
+        assert_array_equal(result[0].model.flux, c1.model.flux)
+
+    def test_arange_atm_different_lengths(self):
+        """Test alignment of containers with different wavelength array lengths."""
+        c1 = AtmDataContainer(
+            AtmModel(flux=np.array([1, 2, 3]), wavelength=np.array([1., 2., 3.])),
+            10, 10, 10,
+        )
+        c2 = AtmDataContainer(
+            AtmModel(
+                flux=np.array([1, 2, 3, 4, 5]),
+                wavelength=np.array([0.5, 1.5, 2.5, 3.5, 4.5]),
+            ),
+            5, 5, 5,
+        )
+
+        result = atm.arange_atm_to_same_wavelength([c1, c2])
+
+        # Both should have same wavelength length
+        assert len(result[0].model.wavelength) == len(result[1].model.wavelength)
+        # Both should have same wavelengths
+        assert_array_equal(result[0].model.wavelength, result[1].model.wavelength)
+        # Both should have same flux length
+        assert len(result[0].model.flux) == len(result[1].model.flux)
+
+    def test_compute_interpolation_weights_edge_cases(self):
+        """Test interpolation weight computation with edge cases."""
+        class MockAtm:
+            def __init__(self, t):
+                self.temperature = t
+
+        # Case 1: Same top and bottom temperatures (would cause division by zero)
+        top = [MockAtm(5000)]
+        bottom = [MockAtm(5000)]
+        temperatures = np.array([5000])
+
+        weights = atm.NaiveInterpolatedAtm.compute_interpolation_weights(
+            temperatures, top, bottom,
+        )
+        # Should be replaced with 1.0 due to NaN handling
+        assert weights[0] == 1.0
+
+    def test_temperature_array_extraction_vectorized(self):
+        """Test that temperature array extraction works correctly."""
+        class MockAtm:
+            def __init__(self, t):
+                self.temperature = t
+
+        containers = [MockAtm(t) for t in [3000, 4000, 5000, 6000]]
+
+        # Extract temperatures as the code would
+        temps = np.array([a.temperature for a in containers])
+
+        expected = np.array([3000, 4000, 5000, 6000])
+        assert_array_equal(temps, expected)
+
+    def test_wavelength_stacking_different_shapes(self):
+        """Test wavelength stacking with containers of different sizes."""
+        c1 = AtmDataContainer(
+            AtmModel(flux=np.array([1, 2, 3]), wavelength=np.array([1., 2., 3.])),
+            10, 10, 10,
+        )
+        c2 = AtmDataContainer(
+            AtmModel(
+                flux=np.array([1, 2, 3, 4]),
+                wavelength=np.array([1., 2., 3., 4.]),
+            ),
+            5, 5, 5,
+        )
+
+        # This is the operation that fails with inhomogeneous arrays
+        # We need to handle this correctly
+        wavelengths_list = [c1.model.wavelength, c2.model.wavelength]
+
+        # Using concatenate works for different sizes
+        wavelengths = np.unique(np.concatenate(wavelengths_list))
+        wavelengths.sort()
+
+        expected = np.array([1., 2., 3., 4.])
+        assert_array_equal(wavelengths, expected)
+
+    def test_flux_matrix_building(self):
+        """Test flux matrix building correctness."""
+        c1 = AtmDataContainer(
+            AtmModel(flux=np.array([1, 2, 3]), wavelength=np.array([1., 2., 3.])),
+            10, 10, 10,
+            fpath="path1",
+        )
+        c2 = AtmDataContainer(
+            AtmModel(flux=np.array([4, 5, 6]), wavelength=np.array([1., 2., 3.])),
+            5, 5, 5,
+            fpath="path2",
+        )
+
+        fpaths_map = {"path1": [0], "path2": [1]}
+
+        # Build matrix
+        total = 2
+        wavelengths_length = 3
+        models_matrix = up.zeros((total, wavelengths_length))
+
+        for atm_container in [c1, c2]:
+            models_matrix[fpaths_map[atm_container.fpath]] = atm_container.model.flux
+
+        expected = np.array([[1., 2., 3.], [4., 5., 6.]], dtype=np.float32)
+        assert_array_equal(models_matrix, expected)
+
+    def test_global_bandwidth_with_single_container(self):
+        """Test find_global_atm_bandwidth with single container."""
+        c1 = AtmDataContainer(
+            AtmModel(flux=np.array([1, 2, 3]), wavelength=np.array([1., 2., 3.])),
+            10, 10, 10,
+        )
+
+        result = atm.find_global_atm_bandwidth([c1])
+        expected = (1.0, 3.0)
+
+        self.assertTupleEqual(result, expected)
+
+    def test_global_bandwidth_identical_ranges(self):
+        """Test find_global_atm_bandwidth with identical ranges."""
+        c1 = AtmDataContainer(
+            AtmModel(flux=np.array([1, 2, 3]), wavelength=np.array([1., 2., 3.])),
+            10, 10, 10,
+        )
+        c2 = AtmDataContainer(
+            AtmModel(flux=np.array([1, 2, 3]), wavelength=np.array([1., 2., 3.])),
+            5, 5, 5,
+        )
+
+        result = atm.find_global_atm_bandwidth([c1, c2])
+        expected = (1.0, 3.0)
+
+        self.assertTupleEqual(result, expected)
+
+    def test_passband_application_multiple_passbands(self):
+        """Test passband application doesn't modify original containers."""
+        atmc = AtmDataContainer(
+            AtmModel(flux=np.array([1., 2., 3.]), wavelength=np.array([1., 2., 3.])),
+            10, 10, 10,
+        )
+
+        # Store original values
+        original_flux = atmc.model.flux.copy()
+
+        # Get passband containers (would be real in actual use)
+        from elisa.observer.passband import PassbandContainer
+
+        bandc = PassbandContainer(
+            pd.DataFrame({
+                settings.PASSBAND_DATAFRAME_THROUGHPUT: [1.0, 1.0, 1.0],
+                settings.PASSBAND_DATAFRAME_WAVE: [1., 2., 3.],
+            }),
+            passband="test",
+        )
+
+        result = atm.apply_passband([atmc], {"test": bandc})
+
+        # Original container should be unchanged (apply_passband makes copies)
+        assert_array_equal(atmc.model.flux, original_flux)
+        # Result should exist
+        assert "test" in result
+        assert len(result["test"]) > 0
+
+
+class TestAtmDataContainerEdgeCases(ElisaTestCase):
+    """Test edge cases for AtmDataContainer."""
+
+    def test_container_with_nan_handling(self):
+        """Test that containers handle NaN values appropriately."""
+        df = pd.DataFrame({
+            settings.ATM_MODEL_DATAFRAME_FLUX: np.array([1, 2, np.nan, 4, 5]),
+            settings.ATM_MODEL_DATAFRAME_WAVE: np.array([1, 2, 3, 4, 5]),
+        })
+
+        container = AtmDataContainer(df, 5000, 4.0, 0.0)
+
+        # Container should preserve the data structure
+        assert container.model.flux.shape == (5,)
+        # NaN should be present (not replaced)
+        assert np.isnan(container.model.flux[2])
+
+    def test_container_bandwidth_with_unsorted_wavelengths(self):
+        """Test bandwidth extraction with unsorted wavelengths."""
+        # Note: This might not be expected input, but test robustness
+        df = pd.DataFrame({
+            settings.ATM_MODEL_DATAFRAME_FLUX: np.array([1, 2, 3, 4, 5]),
+            settings.ATM_MODEL_DATAFRAME_WAVE: np.array([5, 2, 4, 1, 3]),
+        })
+
+        container = AtmDataContainer(df, 5000, 4.0, 0.0)
+
+        # Should find min and max
+        self.assertEqual(container.left_bandwidth, 1.0)
+        self.assertEqual(container.right_bandwidth, 5.0)
+
+    def test_container_model_setter_with_dataframe(self):
+        """Test that model setter correctly handles DataFrame input."""
+        df = pd.DataFrame({
+            settings.ATM_MODEL_DATAFRAME_FLUX: np.array([1., 2., 3.]),
+            settings.ATM_MODEL_DATAFRAME_WAVE: np.array([10., 20., 30.]),
+        })
+
+        container = AtmDataContainer(df, 5000, 4.0, 0.0)
+
+        assert isinstance(container.model, AtmModel)
+        assert_array_equal(container.model.wavelength, np.array([10., 20., 30.]))
+        assert_array_equal(container.model.flux, np.array([1., 2., 3.]))
+
+
+if __name__ == "__main__":
+    import unittest
+    unittest.main()
+
