@@ -41,7 +41,7 @@ from elisa.utils import is_empty
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from elisa.types import AstropyUnit, Number, TransformProperties
+    from elisa.types import AstropyUnit, Float, Number, TransformProperties
 
 logger = getLogger("analytics.params.parameters")
 
@@ -372,7 +372,7 @@ def xs_reducer(xs: dict) -> tuple[NDArray, dict]:
     return xs_reduced, reverse
 
 
-def renormalize_value(val: float, _min: float, _max: float) -> float:
+def renormalize_value(val: Float | NDArray, _min: Float, _max: Float) -> Float:
     """Convert normalized value to actual parameter value within specified interval.
 
     Inverse function to :func:`normalize_value`. Converts a value from the
@@ -380,7 +380,7 @@ def renormalize_value(val: float, _min: float, _max: float) -> float:
     defined by `_min` and `_max`.
 
     :param val: Normalized value (e.g., 0.5).
-    :type val: float
+    :type val: Float | NDArray
     :param _min: Bottom normalization boundary (e.g., 5000 K).
     :type _min: float
     :param _max: Top normalization boundary (e.g., 7000 K).
@@ -420,14 +420,16 @@ def normalize_value(val: float, _min: float, _max: float) -> float:
     return (val - _min) / (_max - _min)
 
 
-def vector_renormalizer(vector: Iterable, properties: Iterable, normalization: dict) -> list:
+def vector_renormalizer(
+    vector: Iterable[Float] | NDArray[Float], properties: Iterable[str], normalization: dict
+) -> list:
     """Convert normalized parameter vector to actual values using normalization boundaries.
 
     Denormalizes an array of normalized parameters [0, 1] to their actual values
     according to the specified normalization boundaries for each parameter.
 
     :param vector: Array of normalized parameter values.
-    :type vector: Iterable[float]
+    :type vector: Iterable[Float] | NDArray[Float]
     :param properties: Parameter names corresponding to vector elements.
     :type properties: Iterable[str]
     :param normalization: Normalization map with min/max boundaries.
@@ -445,14 +447,14 @@ def vector_renormalizer(vector: Iterable, properties: Iterable, normalization: d
     return [renormalize_value(value, *normalization[prop]) for value, prop in zip(vector, properties, strict=False)]
 
 
-def vector_normalizer(vector: Iterable, properties: Iterable, normalization: dict) -> list:
+def vector_normalizer(vector: Iterable[Float] | NDArray[Float], properties: Iterable[str], normalization: dict) -> list:
     """Normalize array of parameter values from actual values to [0, 1] interval.
 
     Normalizes an array of actual parameter values to the [0, 1] interval based
     on normalization boundaries for each parameter.
 
     :param vector: Array of actual parameter values.
-    :type vector: Iterable[float]
+    :type vector: Iterable[Float] | NDArray[Float]
     :param properties: Parameter names corresponding to vector elements.
     :type properties: Iterable[str]
     :param normalization: Normalization map with min/max boundaries.
@@ -470,7 +472,7 @@ def vector_normalizer(vector: Iterable, properties: Iterable, normalization: dic
     return [normalize_value(value, *normalization[prop]) for value, prop in zip(vector, properties, strict=False)]
 
 
-def prepare_properties_set(xn: NDArray, properties: list, constrained: dict, fixed: dict) -> dict:
+def prepare_properties_set(xn: NDArray, properties: list[str] | Iterable[str], constrained: dict, fixed: dict) -> dict:
     """Prepare final keyword arguments for synthetic model evaluation.
 
     Combines variable parameters with their values, applies constraints,
