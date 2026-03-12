@@ -147,7 +147,7 @@ class RVFitMCMC(RVFit):
             thermalization phase (default: 0).
         :type discard: int
         :param percentiles: Percentile intervals used to generate confidence intervals,
-            provided as [lower, centre, upper].
+            provided as [lower, center, upper].
         :type percentiles: list[float] | None
         :returns: Tuple containing flattened MCMC chain, labels of variables in
             flat_chain columns, and dictionary of boundaries for reconstructing

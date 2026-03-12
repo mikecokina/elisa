@@ -243,7 +243,7 @@ class LCFitMCMC(LCFit):
             thermalization phase (burn-in). Default is 0.
         :param percentiles: list[int] | None
             Percentile intervals used to generate confidence intervals.
-            Should be provided in form [lower_percentile, centre_percentile,
+            Should be provided in form [lower_percentile, center_percentile,
             upper_percentile], e.g., [16, 50, 84] for 1-sigma interval.
         :return: Any
             Tuple containing flattened MCMC chain (numpy.ndarray),
