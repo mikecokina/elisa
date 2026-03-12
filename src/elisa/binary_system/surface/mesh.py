@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
@@ -34,6 +35,7 @@ MESH_NUM_POINTS_OVERCONTACT_NECK = 5
 SPOT_POINTS_NDIM = 2
 
 
+@functools.cache
 def _load_correction_factors() -> dict[str, NDArray[Float]]:
     """Load mesh correction factor tables.
 
@@ -188,13 +190,17 @@ def trapezoidal_mesh(
 
     v_num = int(const.HALF_PI // vertical_alpha)
     thetas = np.linspace(discretization, const.HALF_PI, num=v_num - 1, endpoint=False)
+    phi_parts = [phi]
+    theta_parts = [theta]
     for theta_value in thetas:
         alpha_corrected = discretization / up.sin(theta_value)
         num = int(const.PI // alpha_corrected)
         alpha_corrected = const.PI / (num + 1)
         phi_q_add = alpha_corrected * np.arange(1, num + 1)
-        phi = up.concatenate((phi, phi_q_add))
-        theta = up.concatenate((theta, theta_value * np.ones(phi_q_add.shape[0])))
+        phi_parts.append(phi_q_add)
+        theta_parts.append(np.full(num, theta_value))
+    phi = np.concatenate(phi_parts)
+    theta = np.concatenate(theta_parts)
 
     return phi, theta, separator
 
@@ -274,6 +280,7 @@ def improved_trapezoidal_mesh(
         (est_eqt_r - polar_radius) * tan_tht / (polar_radius + est_eqt_r * tan_tht**2),
     )
 
+    phi_parts, theta_parts = [phi], [theta]
     for theta_value in thetas:
         alpha_corrected = discretization / up.sin(theta_value)
         num = int(const.PI // alpha_corrected)
@@ -297,8 +304,9 @@ def improved_trapezoidal_mesh(
         phi_q_add[inner_mask] += inner_corr
         phi_q_add[outer_mask] += outer_corr
 
-        phi = up.concatenate((phi, phi_q_add))
-        theta = up.concatenate((theta, theta_value * np.ones(phi_q_add.shape[0])))
+        phi_parts.append(phi_q_add)
+        theta_parts.append(np.full(num, theta_value))
+    phi, theta = np.concatenate(phi_parts), np.concatenate(theta_parts)
 
     return phi, theta, separator
 
@@ -392,15 +400,19 @@ def trapezoidal_overcontact_farside_points(
 
     v_num = int(const.HALF_PI / vertical_alpha)
     theta_meridian = np.linspace(0.0, const.HALF_PI, num=v_num - 1, endpoint=False)
+    phi_parts = [phi]
+    theta_parts = [theta]
     for theta_value in theta_meridian[1:]:
         alpha_corrected = discretization / up.sin(theta_value)
         num = int(const.HALF_PI // alpha_corrected)
         alpha_corrected = const.HALF_PI / (num + 1)
         phi_q_add = const.HALF_PI + alpha_corrected * np.arange(1, num + 1)
-        phi = np.concatenate((phi, phi_q_add))
-        theta = np.concatenate((theta, np.full(phi_q_add.shape, theta_value)))
+        phi_parts.append(phi_q_add)
+        theta_parts.append(np.full(phi_q_add.shape[0], theta_value))
+    phi = np.concatenate(phi_parts)
+    theta = np.concatenate(theta_parts)
 
-    separator.append(np.shape(theta)[0])
+    separator.append(len(theta))
     return phi, theta, separator
 
 
@@ -463,6 +475,8 @@ def improved_trapezoidal_overcontact_farside_points(
     theta_meridian += up.arctan(
         (est_eqt_r - polar_radius) * tan_tht / (polar_radius + est_eqt_r * tan_tht**2),
     )
+    phi_parts = [phi]
+    theta_parts = [theta]
     for theta_value in theta_meridian[1:]:
         alpha_corrected = discretization / up.sin(theta_value)
         num = int(const.HALF_PI // alpha_corrected)
@@ -475,10 +489,12 @@ def improved_trapezoidal_overcontact_farside_points(
         )
         phi_q_add += corr
 
-        phi = np.concatenate((phi, phi_q_add))
-        theta = np.concatenate((theta, np.full(phi_q_add.shape, theta_value)))
+        phi_parts.append(phi_q_add)
+        theta_parts.append(np.full(phi_q_add.shape[0], theta_value))
+    phi = np.concatenate(phi_parts)
+    theta = np.concatenate(theta_parts)
 
-    separator.append(np.shape(theta)[0])
+    separator.append(len(theta))
     return phi, theta, separator
 
 
@@ -589,15 +605,18 @@ def trapezoidal_overcontact_neck_points(
         neck_polynomial,
     )
 
+    phi_parts = [phi]
+    z_parts = [z]
     for index, zz in enumerate(z_ns):
         num = int(const.HALF_PI * r_neck[index] // delta_z)
         num = num + 1 if num < MESH_NUM_POINTS_OVERCONTACT_NECK else num
         phis = np.linspace(0, const.HALF_PI, num=int(num), endpoint=False)[1:]
-        z_n = np.full(phis.shape, zz)
-        phi = np.concatenate((phi, phis))
-        z = up.concatenate((z, z_n))
+        phi_parts.append(phis)
+        z_parts.append(np.full(phis.shape[0], zz))
+    phi = np.concatenate(phi_parts)
+    z = np.concatenate(z_parts)
 
-    separator.append(np.shape(z)[0])
+    separator.append(len(z))
     return phi, z, separator
 
 
@@ -636,17 +655,20 @@ def improved_trapezoidal_overcontact_neck_points(
     )
 
     eq_coeff = side_radius / polar_radius
+    phi_parts = [phi]
+    z_parts = [z]
     for index, zz in enumerate(z_ns):
         num = const.HALF_PI * r_neck[index] // delta_z
         num = num + 1 if num < MESH_NUM_POINTS_TRAPEZOIDAL_OVECONTACT else num
         phis = np.linspace(0, const.HALF_PI, num=int(num), endpoint=False)[1:]
         tan_phis = np.tan(phis)
         phis += up.arctan((eq_coeff - 1) * tan_phis / (1 + eq_coeff * tan_phis**2))
-        z_n = np.full(phis.shape, zz)
-        phi = np.concatenate((phi, phis))
-        z = up.concatenate((z, z_n))
+        phi_parts.append(phis)
+        z_parts.append(np.full(phis.shape[0], zz))
+    phi = np.concatenate(phi_parts)
+    z = np.concatenate(z_parts)
 
-    separator.append(np.shape(z)[0])
+    separator.append(len(z))
     return phi, z, separator
 
 
@@ -1359,15 +1381,13 @@ def mesh_spots(  # noqa: C901, PLR0912, PLR0915
                 spot_instance.boundary = np.array(boundary_points)
                 spot_instance.center = np.array(spot_center)
             else:
-                spot_instance.points = np.array(
-                    [np.array([components_distance - point[0], -point[1], point[2]]) for point in spot_points],
-                )
-                spot_instance.boundary = np.array(
-                    [np.array([components_distance - point[0], -point[1], point[2]]) for point in boundary_points],
-                )
-                spot_instance.center = np.array(
-                    [components_distance - spot_center[0], -spot_center[1], spot_center[2]],
-                )
+                # Vectorised transform: flip x and y, offset x by components_distance.
+                # Equivalent to: [cd - x, -y, z] applied row-wise.
+                _flip = np.array([-1.0, -1.0, 1.0])
+                _offset = np.array([components_distance, 0.0, 0.0])
+                spot_instance.points = spot_points * _flip + _offset
+                spot_instance.boundary = boundary_points * _flip + _offset
+                spot_instance.center = spot_center * _flip + _offset
 
 
 def calculate_neck_position(
