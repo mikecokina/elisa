@@ -367,7 +367,7 @@ class Observer:
             if self.flux_unit in [None, u.W / u.m ** 2]:
                 self.fluxes = curves
             elif self.flux_unit == u.mag:
-                if self.zero_points["system"] != settings.MAGNITUDE_SYSTEM.lower():
+                if is_empty(self.zero_points) or self.zero_points["system"] != settings.MAGNITUDE_SYSTEM.lower():
                     self.zero_points = load_standard(settings.MAGNITUDE_SYSTEM)
                 self.fluxes = outils.convert_to_magnitudes(curves, self.zero_points)
                 self.magnitudes = self.fluxes
@@ -492,14 +492,14 @@ class Observer:
         if self._system_cls == BinarySystem or str(self._system_cls) == str(BinarySystem):
             # function shouldn't search for base phases if system has pulsations or is asynchronous with spots
             has_pulsation_test = (
-                self._system.primary.has_pulsations() | self._system.secondary.has_pulsations()
+                self._system.primary.has_pulsations() or self._system.secondary.has_pulsations()
             )
 
-            test1 = (self._system.primary.synchronicity != 1.0) & self._system.primary.has_spots()
-            test2 = (self._system.secondary.synchronicity != 1.0) & self._system.secondary.has_spots()
-            asynchronous_spotty_test = test1 | test2
+            test1 = (self._system.primary.synchronicity != 1.0) and self._system.primary.has_spots()
+            test2 = (self._system.secondary.synchronicity != 1.0) and self._system.secondary.has_spots()
+            asynchronous_spotty_test = test1 or test2
 
-            if has_pulsation_test | asynchronous_spotty_test:
+            if has_pulsation_test or asynchronous_spotty_test:
                 return phases, up.arange(phases.shape[0])
             base_interval = np.round(phases % 1, 9)
             unique, inverse = np.unique(base_interval, return_inverse=True)

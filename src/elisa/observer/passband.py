@@ -83,7 +83,7 @@ def bolometric(x: Float | list | NDArray) -> Float | list | NDArray:
     if isinstance(x, list):
         return [1.0] * len(x)
     if isinstance(x, np.ndarray):
-        return np.array([1.0] * len(x))
+        return np.ones(len(x))
     msg = f"Unexpected type for x: {type(x)}"
     raise TypeError(msg)
 

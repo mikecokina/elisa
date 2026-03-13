@@ -63,18 +63,18 @@ def normalize_light_curve(
     elif kind == "maximum":
         n = {key: int(top_fraction_to_average * len(val)) + 1 for key, val in y_data_arrays.items()}
         coeff = {
-            key: np.average(val[np.argsort(val)[-n[key]:]])
+            key: np.average(np.partition(val, -n[key])[-n[key]:])
             for key, val in y_data_arrays.items()
         }
     elif kind == "global_maximum":
         vals = np.concatenate(list(y_data_arrays.values()))
         n = int(top_fraction_to_average * len(vals) / len(y_data_arrays)) + 1
-        c = np.average(vals[np.argsort(vals)[-n:]])
+        c = np.average(np.partition(vals, -n)[-n:])
         coeff = dict.fromkeys(y_data_arrays, c)
     elif kind == "minimum":
         n = {key: int(top_fraction_to_average * len(val)) for key, val in y_data_arrays.items()}
         coeff = {
-            key: np.average(val[np.argsort(val)[:n[key]]])
+            key: np.average(np.partition(val, n[key])[:n[key]])
             for key, val in y_data_arrays.items()
         }
     else:
@@ -113,7 +113,7 @@ def adjust_flux_for_distance(
         (dict[str, NDArray[Float]]).
     :rtype: dict[str, NDArray[Float]]
     """
-    d_squared = np.power(distance, 2)
+    d_squared = distance ** 2
     return {
         band: np.asarray(curve, dtype=float) / d_squared
         for band, curve in curves.items()
