@@ -64,6 +64,7 @@ def calculate_radius(
     """
     if component == "primary":
         potential_fn = model.potential_primary_fn
+        # noinspection PyTypeChecker
         precalculate_fn = model.pre_calculate_for_potential_value_primary
     elif component == "secondary":
         potential_fn = model.potential_secondary_fn
