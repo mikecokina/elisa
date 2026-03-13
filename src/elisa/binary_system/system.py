@@ -33,6 +33,7 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
+    from elisa.binary_system.orbit.orbit import Orbit
     from elisa.types import ComponentName, Float
     from elisa.units import _DefaultBinarySystemInputUnits, _DefaultBinarySystemUnits
 
@@ -89,68 +90,72 @@ class BinarySystem(System):
                                             be supplied as dict {passband: ld_coefs}. If unused, elisa will
                                             interpolate the values from supplied limb-darkening tables.
 
-    Each component instance will after initialization contain following
-    attributes:
+    *Attributes:*
 
-        :critical_surface_potential: float; potential of the star required to fill its Roche lobe
-        :equivalent_radius: float; radius of a sphere with the same volume as a component (in SMA units)
-        :filling_factor: float: calculated as (Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter})
+    orbit : :class:`elisa.binary_system.orbit.orbit.Orbit` | None
+        Orbital parameters container for the binary system.
+    critical_surface_potential : float
+        Potential of the star required to fill its Roche lobe.
+    equivalent_radius : float
+        Radius of a sphere with the same volume as a component (in SMA units).
+    filling_factor : float
+        Calculated as (Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter}).
+        Values indicate: < 0 (does not fill Roche lobe), = 0 (fills precisely),
+        0-1 (overflows), = 1 (upper boundary).
+    polar_radius : float
+        Radius of a star towards the pole of the star (at periastron, in SMA units).
+    side_radius : float
+        Radius of a star in the direction perpendicular to the pole and direction
+        of a companion (at periastron, in SMA units).
+    backward_radius : float
+        Radius of a star in the opposite direction as the binary companion
+        (at periastron, in SMA units).
 
-                            :filling factor < 0: component does not fill its Roche lobe
-                            :filling factor = 0: component fills preciselly its Roche lobe
-                            :1 > filling factor > 0: component overflows its Roche lobe
-                            :filling factor = 1: upper boundary of the filling factor, higher value would lead to
-                                                 the mass loss trough Lagrange point L2
+    forward_radius : float
+        Radius of a star towards the binary companion (at periastron, in SMA units).
+        Returns numpy.NaN if the system is over-contact.
 
-        Radii at periastron (in SMA units)
-            :polar_radius: float; radius of a star towards the pole of the star
-            :side_radius: float; radius of a star in the direction perpendicular to the pole
-                                 and direction of a companion
-            :backward_radius: float; radius of a star in the opposite direction as the binary companion
-            :forward_radius: float; radius of a star towards the binary companion,
-                                    returns numpy.NaN if the system is over-contact
+    *Notes:*
 
-    The ``BinarySystem`` can be initialized either by using valid class
-    arguments, e.g.::
+    The ``BinarySystem`` can be initialized by using valid class arguments, e.g.::
 
-        >>> from elisa import BinarySystem
-        >>> from elisa import Star
-        >>> # noinspection PyShadowingNames
-        >>> from astropy import units as u
-        >>>
-        >>> primary = Star(
-        >>>     mass=2.15 * u.solMass,
-        >>>     surface_potential=3.6,
-        >>>     synchronicity=1.0,
-        >>>     t_eff=10000 * u.K,
-        >>>     gravity_darkening=1.0,
-        >>>     discretization_factor=5,
-        >>>     albedo=0.6,
-        >>>     metallicity=0.0,
-        >>> )
-        >>>
-        >>> secondary = Star(
-        >>>     mass=0.45 * u.solMass,
-        >>>     surface_potential=5.39,
-        >>>     synchronicity=1.0,
-        >>>     t_eff=8000 * u.K,
-        >>>     gravity_darkening=1.0,
-        >>>     albedo=0.6,
-        >>>     metallicity=0,
-        >>> )
-        >>>
-        >>> bs = BinarySystem(
-        >>>     primary=primary,
-        >>>     secondary=secondary,
-        >>>     argument_of_periastron=58 * u.deg,
-        >>>     gamma=-30.7 * u.km / u.s,
-        >>>     period=2.5 * u.d,
-        >>>     eccentricity=0.0,
-        >>>     inclination=85 * u.deg,
-        >>>     primary_minimum_time=2440000.00000 * u.d,
-        >>>     phase_shift=0.0,
-        >>>     distance=162 * u.pc,
-        >>> )
+        from elisa import BinarySystem
+        from elisa import Star
+        from astropy import units as u
+
+        primary = Star(
+            mass=2.15 * u.solMass,
+            surface_potential=3.6,
+            synchronicity=1.0,
+            t_eff=10000 * u.K,
+            gravity_darkening=1.0,
+            discretization_factor=5,
+            albedo=0.6,
+            metallicity=0.0,
+        )
+
+        secondary = Star(
+            mass=0.45 * u.solMass,
+            surface_potential=5.39,
+            synchronicity=1.0,
+            t_eff=8000 * u.K,
+            gravity_darkening=1.0,
+            albedo=0.6,
+            metallicity=0,
+        )
+
+        bs = BinarySystem(
+            primary=primary,
+            secondary=secondary,
+            argument_of_periastron=58 * u.deg,
+            gamma=-30.7 * u.km / u.s,
+            period=2.5 * u.d,
+            eccentricity=0.0,
+            inclination=85 * u.deg,
+            primary_minimum_time=2440000.00000 * u.d,
+            phase_shift=0.0,
+            distance=162 * u.pc,
+        )
 
     It can also be initialized by using the
     :meth:`BinarySystem.from_json` method that accepts various parameter
@@ -158,6 +163,7 @@ class BinarySystem(System):
 
     The orbit of the binary system can be modeled using
     :meth:`calculate_orbital_motion`, e.g.::
+
         >>> from elisa import get_default_binary
         >>>> binary = get_default_binary()
         >>> binary.calculate_orbital_motion(np.linspace(0, 1))
@@ -248,7 +254,7 @@ class BinarySystem(System):
         self.secondary = secondary
         self._components: dict[str, Star] = {"primary": self.primary, "secondary": self.secondary}
 
-        self.orbit: orbit.Orbit | None = None
+        self.orbit: Orbit | None = None
         self.period: Float = np.nan
         self.eccentricity: Float = np.nan
         self.argument_of_periastron: Float = np.nan

@@ -19,6 +19,7 @@ from elisa.base.types import INT
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
+    from elisa.analytics.dataset.graphic.plot import Plot
     from elisa.types import TransformPropertiesType
 
 logger = logger_module.getLogger("analytics.dataset.base")
@@ -67,7 +68,9 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
         """
         # initial kwargs
         self.kwargs: dict[str, Any] = copy(kwargs)
-        self.plot: plot.Plot = plot.Plot(self)
+        #: Plotting interface for the dataset.
+        #: :type: elisa.analytics.dataset.graphic.plot.Plot
+        self.plot: Plot = plot.Plot(self)
 
         if utils.is_empty(name):
             self.name: str = str(DataSet.ID)

@@ -37,7 +37,7 @@ class Plot:
     defpos = Position(*(0, np.nan, 0.0, np.nan, 0.0))
 
     def __init__(self, instance: SingleSystem) -> None:
-        """Create a :class:`Plot` wrapper for a :class:`SingleSystem`.
+        """Create a :class:`elisa.single_system.graphic.plot.Plot` wrapper for a :class:`SingleSystem`.
 
         :param instance: SingleSystem instance to visualise.
         :type instance: elisa.single_system.system.SingleSystem
