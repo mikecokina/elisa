@@ -8,12 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [0.7.0dev0] - 2026-03-02
+## [0.7.0dev0] - 2026-??-??
 
 ### Added
 - Support for Python 3.13 and 3.14.
 - `pyproject.toml` with PEP 517 build isolation using setuptools backend.
 - Structured development extras including build and publishing tools.
+- Comprehensive type annotations throughout the codebase for improved type safety and IDE support.
 
 ### Changed
 - Raised minimum supported Python version to 3.10.
@@ -21,9 +22,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Replaced deprecated NumPy APIs (`np.row_stack`, `np.chararray`, `np.NaN`, ...) with NumPy 2.x compatible implementations.
 - Improved compatibility with NumPy 2.x across geometry and intersection utilities.
 - Standardized changelog format to follow *Keep a Changelog* specification.
+- **Performance optimizations across fitting pipeline:**
+  - Eliminated hot-loop overhead in MCMC cost functions: replaced `scipy.stats.norm()` instantiation per call
+    with direct log-normal formula, avoided redundant array operations with `**` instead of `np.power()`
+  - Optimized parameter serializers: replaced regex-based phenomenon filtering with simple string checks, 
+    eliminated double-dictionary lookups in optional parameter extraction
+  - Reduced curve integration redundancy: precompute argsort indices, cache getattr results, avoid unnecessary
+    array copies
+  - Implemented lazy evaluation of R² computation guarded by logging level checks
+- **Surface mesh and temperature improvements:**
+  - Cache albedo and correction factor computations to avoid repeated I/O operations
+  - Vectorized surface transformations and spot temperature scaling
+  - Fixed O(n²) array growth pattern in mesh point handling
+- **Observer and multiprocessing fixes:**
+  - Replaced Pool context manager with explicit close/join to prevent worker process hangs
+  - Optimized argsort usage with partition for efficiency
+  - Added KeyError guards in zero-point lookups
 
 ### Removed
 - Support for Python versions below 3.10.
+- `import re` from parameter serializers (replaced regex with string operations).
 
 ### Fixed
 - Packaging now correctly includes required data files in source distributions.
