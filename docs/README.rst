@@ -19,7 +19,7 @@ Generate apidoc - developers only
 1. ``cd /path/to/docs``
 2. activate virtual environment
 3. remove old api docs folder
-4. ``sphinx-apidoc  ..\src\elisa  -o .\source\api -f``
+4. ``sphinx-apidoc  ../src/elisa  -o ./source/api -f``
 5. make sure ``source/api/elisa.rst`` contain at the end of file
 
 ::
