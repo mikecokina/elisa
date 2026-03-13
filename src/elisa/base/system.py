@@ -261,13 +261,13 @@ class System(metaclass=ABCMeta):
         return any(instance.has_spots() for instance in self.components.values())
 
     @staticmethod
-    def object_params_validity_check(components: dict[str, Body], mandatory_kwargs: list[str]) -> None:
+    def object_params_validity_check(components: dict[str, Body], mandatory_kwargs: list[str] | tuple[str]) -> None:
         """Validate that provided component objects are correctly initialised.
 
         :param components: Mapping of component name to component instance.
         :type components: dict[str, elisa.base.body.Body]
         :param mandatory_kwargs: List of attributes required on each component.
-        :type mandatory_kwargs: list[str]
+        :type mandatory_kwargs: list[str] | tuple[str]
         :raises TypeError: When a component is not an instance of Body.
         :raises ValueError: When mandatory attributes are missing.
         :returns: None

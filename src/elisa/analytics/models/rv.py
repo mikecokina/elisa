@@ -87,9 +87,9 @@ def central_rv_synthetic(
 
     # Build system configuration dictionary
     json_config = {
-        "primary": dict(**primary_kwargs),
-        "secondary": dict(**secondary_kwargs),
-        "system": dict(**system_kwargs),
+        "primary": primary_kwargs,
+        "secondary": secondary_kwargs,
+        "system": system_kwargs,
     }
 
     # Determine system type and create appropriate observable
