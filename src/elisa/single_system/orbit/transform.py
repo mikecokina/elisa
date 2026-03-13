@@ -18,7 +18,7 @@ class OrbitProperties(TransformProperties):
         """Transform and validate rotational period of single star system.
 
         If unit is not specified, the default period unit from
-        :pyattr:`elisa.units.DefaultSingleSystemUnits.system.rotation_period` is assumed.
+        :attr:`elisa.units.DefaultSingleSystemUnits.system.rotation_period` is assumed.
 
         :param value: Rotational period as an :class:`astropy.units.Quantity` or a numeric value.
         :type value: Quantity | Float | Int

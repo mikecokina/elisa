@@ -56,8 +56,10 @@ def prep_initial_system(single: SingleSystem, **kwargs: Any) -> SinglePositionCo
     :param single: Source SingleSystem object.
     :type single: elisa.single_system.system.SingleSystem
     :param kwargs: Forwarded keyword arguments. Recognized key:
-        * ``build_pulsations`` (bool) -- whether to build pulsations on the
+
+        - ``build_pulsations`` (bool) -- whether to build pulsations on the
           placeholder container (default: True).
+
     :type kwargs: dict
 
     :returns: Initialized SinglePositionContainer ready for curve production.

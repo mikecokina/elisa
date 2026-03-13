@@ -158,14 +158,14 @@ def test_size_similarity(
 
 def visibility_out_of_eclipse(
     undercover_object: StarContainer,
-) -> tuple[NDArray[np.bool_], NDArray[np.bool_], NDArray[np.bool_]]:
+) -> tuple[NDArray[np.bool], NDArray[np.bool], NDArray[np.bool]]:
     """Determine visible near-side faces outside eclipse.
 
     :param undercover_object: Eclipsed component.
     :type undercover_object: StarContainer
     :return: Tuple of ``(full_visible, invisible, partial_visible)`` masks for
         observer-facing triangles of the eclipsed component.
-    :rtype: tuple[NDArray[np.bool_], NDArray[np.bool_], NDArray[np.bool_]]
+    :rtype: tuple[NDArray[bool], NDArray[bool, NDArray[bool]]
     """
     n_faces = undercover_object.normals.shape[0]
     full_visible = np.zeros(n_faces, dtype=BOOL)
@@ -179,7 +179,7 @@ def visibility_similar_objects(
     undercover_object: StarContainer,
     undercover_visible_point_indices: NDArray[Int],
     cover_outline: mpltpath.Path,
-) -> tuple[NDArray[np.bool_], NDArray[np.bool_], NDArray[np.bool_]]:
+) -> tuple[NDArray[np.bool], NDArray[np.bool], NDArray[np.bool]]:
     """Determine face visibility during eclipse for similarly sized objects.
 
     This branch is used when the eclipsing component is much larger than a
@@ -197,7 +197,7 @@ def visibility_similar_objects(
     :type cover_outline: matplotlib.path.Path
     :return: Tuple of ``(full_visible, invisible, partial_visible)`` masks for
         observer-facing triangles of the eclipsed component.
-    :rtype: tuple[NDArray[np.bool_], NDArray[np.bool_], NDArray[np.bool_]]
+    :rtype: tuple[NDArray[bool], NDArray[bool], NDArray[bool]]
     """
     # obtain points out of eclipse (out of boundary defined by hull of
     # 'infront' object)
@@ -225,7 +225,7 @@ def visibility_disimilar_objects(
     undercover_object: StarContainer,
     undercover_visible_point_indices: NDArray[Int],
     cover_outline: mpltpath.Path,
-) -> tuple[NDArray[np.bool_], NDArray[np.bool_], NDArray[np.bool_]]:
+) -> tuple[NDArray[np.bool], NDArray[np.bool], NDArray[np.bool]]:
     """Determine face visibility during eclipse for dissimilar-sized objects.
 
     This branch is used when the eclipsing component is comparable to or
@@ -243,7 +243,7 @@ def visibility_disimilar_objects(
     :type cover_outline: matplotlib.path.Path
     :return: Tuple of ``(full_visible, invisible, partial_visible)`` masks for
         observer-facing triangles of the eclipsed component.
-    :rtype: tuple[NDArray[np.bool_], NDArray[np.bool_], NDArray[np.bool_]]
+    :rtype: tuple[NDArray[bool], NDArray[bool], NDArray[bool]]
     """
     outline_max_coord = cover_outline.vertices.max(axis=0)
     outline_min_coord = cover_outline.vertices.min(axis=0)

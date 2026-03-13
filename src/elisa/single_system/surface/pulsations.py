@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 def build_harmonics(system: SinglePositionContainer) -> SinglePositionContainer:
     """Add precomputed harmonics for pulsation modes to the star in the container.
 
-    If the star stored in :paramref:`system` has pulsation modes defined, this
+    If the star stored in :obj:`system` has pulsation modes defined, this
     function computes harmonics for those modes and assigns the result back to
     the star attribute of the supplied container.
 
@@ -32,7 +32,7 @@ def build_harmonics(system: SinglePositionContainer) -> SinglePositionContainer:
 def build_perturbations(system: SinglePositionContainer) -> SinglePositionContainer:
     """Add surface-geometry perturbations due to pulsations to the star in the container.
 
-    If the star stored in :paramref:`system` has pulsation modes defined, this
+    If the star stored in :obj:`system` has pulsation modes defined, this
     function computes positional perturbations for the surface mesh and assigns
     the perturbed model back to the star attribute of the supplied container.
 

@@ -809,7 +809,7 @@ def mesh_detached(
     :type symmetry_output: bool
     :return: Surface points or ``(points, base_symmetry_points_number,
         inverse_symmetry_matrix)``.
-    :rtype: NDArray[Float] | tuple[NDArray[Float], Int, NDArray[np.int64]]
+    :rtype: NDArray[Float] | tuple[NDArray[Float], Int, NDArray[int]]
     """
     star = getattr(system, component)
     discretization_factor = star.discretization_factor
@@ -1018,7 +1018,7 @@ def mesh_over_contact(  # noqa: PLR0915
     :type symmetry_output: bool
     :return: Surface points or ``(points, base_symmetry_points_number,
         inverse_symmetry_matrix)``.
-    :rtype: NDArray[Float] | tuple[NDArray[Float], Int, NDArray[np.int64]]
+    :rtype: NDArray[Float] | tuple[NDArray[Float], Int, NDArray[int]]
     """
     star = getattr(system, component)
     discretization_factor = star.discretization_factor

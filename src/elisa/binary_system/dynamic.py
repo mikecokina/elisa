@@ -208,7 +208,7 @@ def resolve_object_geometry_update(
     size: int,
     rel_d: NDArray,
     max_allowed_difference: Float | None = None,
-) -> NDArray[np.bool_]:
+) -> NDArray[np.bool]:
     """Evaluate where object geometry must be fully updated.
 
     The decision depends on the cumulative difference of relative radii between
@@ -227,7 +227,7 @@ def resolve_object_geometry_update(
     :type max_allowed_difference: Float | None
     :return: Boolean mask indicating where full geometry recalculation is
         required.
-    :rtype: NDArray[numpy.bool_]
+    :rtype: NDArray[bool]
     """
     return _resolve_geometry_update(
         has_spots=has_spots,
@@ -243,7 +243,7 @@ def resolve_spots_geometry_update(
     size: int,
     pulsations_tests: dict[str, bool],
     max_allowed_difference: Float | None = None,
-) -> tuple[NDArray[np.bool_], NDArray[np.bool_]]:
+) -> tuple[NDArray[np.bool], NDArray[np.bool]]:
     """Evaluate where spot geometry must be fully updated.
 
     The decision depends on the cumulative difference of spot longitudes
@@ -264,9 +264,9 @@ def resolve_spots_geometry_update(
         between full updates. If ``None``, the configured default is used.
     :type max_allowed_difference: Float | None
     :return: Geometry update masks for primary and secondary components.
-    :rtype: tuple[NDArray[numpy.bool_], NDArray[numpy.bool_]]
+    :rtype: tuple[NDArray[bool], NDArray[bool]]
     """
-    reducer: dict[str, NDArray[np.bool_]] = {}
+    reducer: dict[str, NDArray[np.bool]] = {}
 
     for component in settings.BINARY_COUNTERPARTS:
         if pulsations_tests[component]:
@@ -302,7 +302,7 @@ def _resolve_geometry_update(
     max_allowed_difference: Float,
     *,
     resolve: Literal["object", "spot"] = "object",
-) -> NDArray[np.bool_]:
+) -> NDArray[np.bool]:
     """Evaluate where full geometry updates are required.
 
     The decision is made from cumulative changes between neighboring orbital
@@ -321,7 +321,7 @@ def _resolve_geometry_update(
     :type resolve: Literal["object", "spot"]
     :return: Boolean mask indicating where full geometry recalculation is
         required.
-    :rtype: NDArray[numpy.bool_]
+    :rtype: NDArray[bool]
     :raises ValueError: If ``resolve`` has an invalid value.
     """
     if resolve not in {"object", "spot"}:
@@ -355,7 +355,7 @@ def _resolve_geometry_update(
 def resolve_irrad_update(
     rel_d_irrad: NDArray,
     size: int,
-) -> NDArray[np.bool_]:
+) -> NDArray[np.bool]:
     """Evaluate where irradiation must be recalculated.
 
     :param rel_d_irrad: Change in flux due to variation in mutual irradiation.
@@ -364,7 +364,7 @@ def resolve_irrad_update(
     :type size: int
     :return: Boolean mask indicating positions where reflected flux must be
         recalculated.
-    :rtype: NDArray[numpy.bool_]
+    :rtype: NDArray[bool]
     """
     rel_d_irrad_array = np.asarray(rel_d_irrad)
     require_new_build = np.ones(size, dtype=BOOL)
@@ -417,7 +417,7 @@ def phase_crv_symmetry(
 def in_eclipse_test(
     azimuths: NDArray,
     ecl_boundaries: NDArray,
-) -> NDArray[np.bool_]:
+) -> NDArray[np.bool]:
     """Test whether eclipse occurs at the given azimuths.
 
     This function works only for circular orbits.
@@ -427,7 +427,7 @@ def in_eclipse_test(
     :param ecl_boundaries: Eclipse boundary azimuths.
     :type ecl_boundaries: NDArray
     :return: Boolean mask indicating eclipse presence.
-    :rtype: NDArray[numpy.bool_]
+    :rtype: NDArray[bool]
     """
     azimuths_array = np.asarray(azimuths)
     ecl_boundaries_array = np.asarray(ecl_boundaries)

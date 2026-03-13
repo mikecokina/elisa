@@ -98,7 +98,7 @@ except AttributeError:
         (n, m, polar, azimuth) used by scipy.special.sph_harm_y.
 
         :param m: int; order of the spherical harmonic
-        :param n: int; degree of the spherical harmonic (n >= |m|)
+        :param n: int; degree of the spherical harmonic (n >= ``|m|``)
         :param theta: float or numpy.ndarray; azimuthal angle in radians (maps to phi in new API)
         :param phi: float or numpy.ndarray; polar angle in radians (maps to theta in new API)
         :param out: numpy.ndarray | None; optional output array for the result

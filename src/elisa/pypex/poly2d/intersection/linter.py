@@ -178,8 +178,8 @@ def intersections(  # noqa: PLR0915
         tol: float = PRECISION,
         round_tol: int = ROUND_PRECISION,
 ) -> tuple[
-    NDArray[np.bool_],
-    NDArray[np.bool_],
+    NDArray[np.bool],
+    NDArray[np.bool],
     NDArray[np.floating],
     NDArray[np.floating],
     NDArray[np.bytes_],

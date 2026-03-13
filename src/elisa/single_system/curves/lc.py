@@ -25,10 +25,12 @@ def compute_light_curve_without_pulsations(single: SingleSystem, **kwargs: Any) 
     :param single: Single star system instance.
     :type single: elisa.single_system.system.SingleSystem
     :param kwargs: Forwarded keyword arguments. Expected keys:
-        * ``passband`` (dict[str, elisa.observer.PassbandContainer]) -- mapping
+
+        - ``passband`` (dict[str, elisa.observer.PassbandContainer]) -- mapping
           of passband name to container
-        * ``phases`` (numpy.ndarray) -- photometric phases array
-        * other keys are forwarded unchanged to the curve producer
+        - ``phases`` (numpy.ndarray) -- photometric phases array
+        - other keys are forwarded unchanged to the curve producer
+
     :type kwargs: dict
 
     :returns: Mapping from passband name to light curve numpy arrays.
@@ -54,10 +56,12 @@ def compute_light_curve_with_pulsations(single: SingleSystem, **kwargs: Any) -> 
     :param single: Single star system instance.
     :type single: elisa.single_system.system.SingleSystem
     :param kwargs: Forwarded keyword arguments. Expected keys:
-        * ``passband`` (dict[str, elisa.observer.PassbandContainer]) -- mapping
+
+        - ``passband`` (dict[str, elisa.observer.PassbandContainer]) -- mapping
           of passband name to container
-        * ``phases`` (numpy.ndarray) -- photometric phases array
-        * other keys are forwarded unchanged to the curve producer
+        - ``phases`` (numpy.ndarray) -- photometric phases array
+        - other keys are forwarded unchanged to the curve producer
+
     :type kwargs: dict
 
     :returns: Mapping from passband name to light curve numpy arrays.

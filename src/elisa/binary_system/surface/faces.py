@@ -46,7 +46,7 @@ def visibility_test(
     centres: NDArray[np.float64],
     xlim: Float,
     component: SurfaceComponent,
-) -> NDArray[np.bool_]:
+) -> NDArray[np.bool]:
     """Test whether faces are visible from the other star.
 
     :param centres: Face centres.
@@ -56,7 +56,7 @@ def visibility_test(
     :param component: Component selector.
     :type component: Literal["primary", "secondary"]
     :return: Visibility mask.
-    :rtype: NDArray[np.bool_]
+    :rtype: NDArray[bool]
     """
     return centres[:, 0] >= xlim if component == "primary" else centres[:, 0] <= xlim
 
@@ -68,7 +68,7 @@ def get_visibility_tests(
     morphology: str,
     *,
     q_test: bool,
-) -> tuple[NDArray[np.bool_], NDArray[np.bool_] | None]:
+) -> tuple[NDArray[np.bool], NDArray[np.bool] | None]:
     """Calculate visibility tests for illumination from the companion.
 
     Used in reflection-effect calculations.
@@ -85,7 +85,7 @@ def get_visibility_tests(
     :type morphology: str
     :return: Visibility masks for the full geometry and the symmetry-reduced
         geometry.
-    :rtype: tuple[NDArray[np.bool_], NDArray[np.bool_] | None]
+    :rtype: tuple[NDArray[bool], NDArray[bool] | None]
     """
     if q_test:
         y_test = centres[:, 1] > 0

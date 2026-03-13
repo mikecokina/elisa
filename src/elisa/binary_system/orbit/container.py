@@ -139,7 +139,7 @@ class OrbitalSupplements(Sequence[tuple[NDArray[Float], NDArray[Float]]]):
         :param val: Orbital position row.
         :type val: NDArray
         :return: ``True`` if the row is empty, otherwise ``False``.
-        :rtype: numpy.bool_
+        :rtype: bool
         """
         value_array = np.asarray(val, dtype=FLOAT)
         return np.all(up.isnan(value_array))

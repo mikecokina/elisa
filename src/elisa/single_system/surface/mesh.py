@@ -71,11 +71,10 @@ def mesh(
     :param symmetry_output: Whether to also return symmetry metadata.
     :type symmetry_output: bool
     :returns: Surface mesh points, optionally with symmetry metadata.
-    :rtype: numpy.typing.NDArray[numpy.float64] |
-            tuple[numpy.typing.NDArray[numpy.float64], Int, numpy.typing.NDArray[numpy.int_]]
+    :rtype: numpy.typing.NDArray[numpy.float64] | tuple[numpy.typing.NDArray[numpy.float64], Int, numpy.typing.NDArray[int]]
     :raises ValueError: If the discretization factor is greater than
         ``const.HALF_PI``.
-    """
+    """  # noqa: E501
     star_container = system_container.star
     discretization_factor = star_container.discretization_factor
     if discretization_factor > const.HALF_PI:

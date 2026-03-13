@@ -19,7 +19,7 @@ from elisa.base.types import INT
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from elisa.types import TransformProperties
+    from elisa.types import TransformPropertiesType
 
 logger = logger_module.getLogger("analytics.dataset.base")
 
@@ -31,17 +31,28 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
     data with their corresponding units and error information. Subclasses implement
     specific data handling for radial velocities (RVData) and light curves (LCData).
 
-    :ivar name: Identifier name for the dataset instance.
-    :ivar x_data: Independent variable data (times or phases).
-    :ivar x_unit: Unit of the independent variable.
-    :ivar y_data: Observable data (velocities, fluxes, magnitudes).
-    :ivar y_unit: Unit of the observable.
-    :ivar y_err: Errors or uncertainties in the observable.
-    :ivar kwargs: Initial keyword arguments passed at initialization.
-    :ivar plot: Plotting interface for the dataset.
+    Attributes
+    ----------
+    name : str
+        Identifier name for the dataset instance.
+    x_data : :class:`numpy.ndarray`
+        Independent variable data (times or phases).
+    x_unit : unit-like
+        Unit of the independent variable.
+    y_data : :class:`numpy.ndarray`
+        Observable data (velocities, fluxes, magnitudes).
+    y_unit : unit-like
+        Unit of the observable.
+    y_err : :class:`numpy.ndarray` | None
+        Errors or uncertainties in the observable.
+    kwargs : dict
+        Initial keyword arguments passed at initialization.
+    plot : :class:`elisa.analytics.dataset.graphic.plot.Plot`
+        Plotting interface for the dataset.
+
     """
 
-    TRANSFORM_PROPERTIES_CLS: TransformProperties | None = None
+    TRANSFORM_PROPERTIES_CLS: TransformPropertiesType | None = None
     ID: int = 1
 
     def __init__(self, name: str | None = None, **kwargs: Any) -> None:
@@ -328,6 +339,12 @@ class RVData(DataSet):
         otherwise must be convertible to time units (e.g., days).
     :param y_unit: Unit of y_data. Must be convertible to velocity units (e.g., m/s, km/s).
     :param name: Optional dataset identifier (auto-generated if not provided).
+
+    Attributes
+    ----------
+    plot : :class:`elisa.analytics.dataset.graphic.plot.Plot`
+        Plotting interface for the radial velocity dataset (inherited from DataSet).
+
     """
 
     MANDATORY_KWARGS: tuple[str, ...] = settings.DATASET_MANDATORY_KWARGS
@@ -461,6 +478,12 @@ class LCData(DataSet):
         Required if y_unit is magnitude-based.
     :param passband: Optional photometric passband identifier for the light curve.
     :param name: Optional dataset identifier (auto-generated if not provided).
+
+    Attributes
+    ----------
+    plot : :class:`elisa.analytics.dataset.graphic.plot.Plot`
+        Plotting interface for the light curve dataset (inherited from DataSet).
+
     """
 
     MANDATORY_KWARGS: tuple[str, ...] = settings.DATASET_MANDATORY_KWARGS

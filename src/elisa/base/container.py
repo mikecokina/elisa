@@ -266,7 +266,7 @@ class StarContainer:
         Shape: (M,).
 
     Output attributes (available after building)
-    -------
+    =============================================
     points : numpy.ndarray
         Vertex array as described above.
     normals : numpy.ndarray

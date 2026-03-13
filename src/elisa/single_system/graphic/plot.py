@@ -228,7 +228,7 @@ class Plot:
         self,
         phase: Float = 0.0,
         colormap: str | None = None,
-        face_mask: NDArray[np.bool_] | None = None,
+        face_mask: NDArray[np.bool] | None = None,
         elevation: Quantity | Float | None = None,
         azimuth: Quantity | Float | None = None,
         colorbar_unit: str = "default",

@@ -407,7 +407,7 @@ def eval_similar_neighbours_approximation(
     binary: BinarySystem,
     radii: NDArray[Float],
     all_orbital_pos_arr: NDArray[Float],
-) -> tuple[bool, NDArray[np.bool_] | None, NDArray[Float] | None]:
+) -> tuple[bool, NDArray[np.bool] | None, NDArray[Float] | None]:
     """Evaluate whether similar-neighbours approximation can be used.
 
     This approximation avoids rebuilding surface geometry for neighbouring
@@ -421,10 +421,10 @@ def eval_similar_neighbours_approximation(
     :param all_orbital_pos_arr: Array of all orbital positions.
     :type all_orbital_pos_arr: NDArray[Float]
     :return: Tuple containing the approximation decision, the mask indicating
-             where full geometry updates are required, and orbital positions
-             sorted by component distance. If the approximation is unavailable,
-             the last two items are ``None``.
-    :rtype: tuple[bool, NDArray[np.bool_] | None, NDArray[Float] | None]
+        where full geometry updates are required, and orbital positions
+        sorted by component distance. If the approximation is unavailable,
+        the last two items are ``None``.
+    :rtype: tuple[bool, NDArray[bool] | None, NDArray[Float] | None]
     """
     if not settings.USE_SIMILAR_NEIGHBOURS_APPROXIMATION:
         return False, None, None
@@ -618,7 +618,7 @@ def integrate_eccentric_curve_symmetrical_counterparts_appx(
 def integrate_eccentric_curve_similar_neighbours_appx(
     binary: BinarySystem,
     orbital_positions: NDArray[Float],
-    new_geometry_mask: NDArray[np.bool_],
+    new_geometry_mask: NDArray[np.bool],
     potentials: dict[str, NDArray[Float]],
     crv_labels: Sequence[str],
     curve_fn: Callable[..., dict[str, NDArray[Float]]],
@@ -636,7 +636,7 @@ def integrate_eccentric_curve_similar_neighbours_appx(
     :type orbital_positions: NDArray[Float]
     :param new_geometry_mask: Mask indicating which positions require full
                               surface-geometry recalculation.
-    :type new_geometry_mask: NDArray[np.bool_]
+    :type new_geometry_mask: NDArray[bool]
     :param potentials: Corrected surface potentials.
     :type potentials: dict[str, ArrayLike]
     :param crv_labels: Curve labels.

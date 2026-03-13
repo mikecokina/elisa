@@ -41,9 +41,9 @@ class Star(Body):
     defaults (for example temperature in Kelvin).
 
     Mandatory arguments (SingleSystem)
-    ---------------------------------
+    ==================================
     These arguments are required when the star is created as a
-    component of a ``SingleSystem``::
+    component of a ``SingleSystem``:
 
     :param mass: Stellar mass. If given as a plain number (``int`` or
         ``float``) it is assumed to be in solar masses; if an
@@ -60,7 +60,7 @@ class Star(Body):
     :type polar_log_g: float
 
     Optional / derived (SingleSystem)
-    ---------------------------------
+    ==================================
     The following optional arguments influence model behavior; when
     omitted, default values or interpolated tables are used:
 
@@ -80,9 +80,9 @@ class Star(Body):
     :type limb_darkening_coefficients: float | dict[str, list[float]]
 
     Mandatory arguments (BinarySystem)
-    ---------------------------------
+    ==================================
     When the star is a component of a ``BinarySystem`` the following
-    keywords are typically required::
+    keywords are typically required:
 
     :param mass: See description above.
     :type mass: float | astropy.units.Quantity
@@ -103,7 +103,7 @@ class Star(Body):
     :type albedo: float
 
     Additional derived attributes (available after system initialization)
-    -------------------------------------------------------------------
+    =======================================================================
     After the containing system is initialized (single or binary), the
     :class:`Star` instance will expose several derived attributes (these
     are computed by the system initialization code rather than by the
@@ -123,7 +123,7 @@ class Star(Body):
           filling_factor = 1  -> upper boundary (further increase implies mass loss)
 
     Radii at periastron (for eccentric systems)
-    -------------------------------------------
+    ============================================
     The following radii (in units of the semi-major axis) are made
     available after system initialization:
 
@@ -134,7 +134,7 @@ class Star(Body):
         over-contact systems).
 
     Optional parameters
-    -------------------
+    ===================
     Additional optional parameters accepted by the constructor include:
 
     :param spots: A list of spot definitions. The order of list items
@@ -325,7 +325,7 @@ class Star(Body):
         """Return pulsation modes attached to the star.
 
         The property returns either a list or a dict-like mapping of
-        pulsation modes. When set via the :paramref:`pulsations` setter,
+        pulsation modes. When set via the :obj:`pulsations` setter,
         a mapping {index: :class:`PulsationMode`} is used.
 
         :returns: Pulsation modes collection.

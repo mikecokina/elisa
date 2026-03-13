@@ -41,7 +41,7 @@ from elisa.utils import is_empty
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from elisa.types import AstropyUnit, Float, Number, TransformProperties
+    from elisa.types import AstropyUnit, Float, Number, TransformPropertiesType
 
 logger = getLogger("analytics.params.parameters")
 
@@ -684,7 +684,7 @@ class InitialParameter:
     Handles unit conversions and parameter validation according to fitting requirements.
 
     :param transform_cls: Class type implementing TransformProperties protocol to transform fit parameters.
-    :type transform_cls: type[TransformProperties]
+    :type transform_cls: type[elisa.types.TransformPropertiesType]
     :param kwargs: Fit parameter attributes dictionary.
     :type kwargs: dict
 
@@ -711,7 +711,7 @@ class InitialParameter:
         "sigma": None,
     }
 
-    def __init__(self, transform_cls: TransformProperties, **kwargs) -> None:
+    def __init__(self, transform_cls: TransformPropertiesType, **kwargs: Any) -> None:
         self.unit: AstropyUnit | None = kwargs.get("unit")
         self.param: str | None = kwargs.get("param")
         self.property: str | None = self.param
@@ -796,9 +796,11 @@ class InitialParameters(metaclass=abc.ABCMeta):
     Abstract base class for managing collections of initial fit parameters,
     including validation, transformation, and constraint handling for various
     binary system or single-star fitting scenarios.
+
+    :cvar TRANSFORM_PROPERTIES_CLS: Transformation properties class implementing the protocol.
     """
 
-    TRANSFORM_PROPERTIES_CLS: ClassVar[TransformProperties]
+    TRANSFORM_PROPERTIES_CLS: ClassVar[TransformPropertiesType]
     DEFAULT_NORMALIZATION: ClassVar[dict[str, tuple]]
 
     @property

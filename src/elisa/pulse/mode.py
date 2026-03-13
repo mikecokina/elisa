@@ -32,7 +32,7 @@ class PulsationMode:
     l : int
         Spherical harmonic degree (non-negative integer).
     m : int
-        Azimuthal order (integer with |m| <= l).
+        Azimuthal order (integer with ``|m| <= l``).
     amplitude : float
         Radial velocity amplitude in m/s.
     frequency : float
@@ -222,7 +222,7 @@ class PulsationMode:
 
         Parameters
         ----------
-        **kwargs : dict
+        kwargs : dict
             Raw input keyword arguments.
 
         Returns
@@ -234,12 +234,12 @@ class PulsationMode:
         return PulsationModeProperties.transform_input(**kwargs)
 
     def validate_mode(self) -> None:
-        """Validate that azimuthal order constraint |m| <= l is satisfied.
+        """Validate that azimuthal order constraint ``|m| <= l`` is satisfied.
 
         Raises
         ------
         ValueError
-            If |m| > l, which is physically invalid for spherical harmonics.
+            If ``|m| > l``, which is physically invalid for spherical harmonics.
 
         """
         if np.abs(self.m) > self.l:
@@ -256,7 +256,7 @@ class PulsationMode:
 
         Parameters
         ----------
-        **kwargs : dict
+        kwargs : dict
             Validated and transformed keyword arguments.
 
         """

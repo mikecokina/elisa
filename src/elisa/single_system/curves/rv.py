@@ -24,12 +24,13 @@ def com_radial_velocity(single: SingleSystem, **kwargs: Any) -> dict[str, NDArra
     :param single: Instance of the single-star system to process.
     :type single: elisa.single_system.system.SingleSystem
     :param kwargs: Keyword arguments. Expected key:
-        * ``phases`` (numpy.ndarray) -- array of photometric phases for which
-          the radial velocity should be computed.
-    :type kwargs: dict
 
+        - ``phases`` (numpy.ndarray) -- array of photometric phases for which
+          the radial velocity should be computed.
+
+    :type kwargs: dict
     :returns: Mapping with key ``'star'`` containing an array of radial velocities
-              (same length as the provided phases).
+        (same length as the provided phases).
     :rtype: dict[str, numpy.ndarray]
 
     """

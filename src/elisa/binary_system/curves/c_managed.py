@@ -538,7 +538,7 @@ def similar_neighbour_approximation_ecc_curve_integration(
     binary: BinarySystem,
     potentials: dict[str, NDArray[Float]],
     motion_batch: NDArray[Float],
-    new_geometry_mask: NDArray[np.bool_],
+    new_geometry_mask: NDArray[np.bool],
     crv_labels: list[str],
     curve_fn: Callable[..., dict[str, NDArray[Float]]],
     kwargs: dict[str, Any],
@@ -560,7 +560,7 @@ def similar_neighbour_approximation_ecc_curve_integration(
     :type motion_batch: NDArray[Float]
     :param new_geometry_mask: Boolean mask over the full orbital position array
         indicating which positions require a full surface rebuild.
-    :type new_geometry_mask: NDArray[numpy.bool_]
+    :type new_geometry_mask: NDArray[bool]
     :param crv_labels: Curve band / observable labels.
     :type crv_labels: list[str]
     :param curve_fn: Function that accumulates curve values at each orbital

@@ -624,14 +624,16 @@ def single_star_wireframe(**kwargs) -> Figure | None:
 def binary_wireframe(**kwargs) -> Figure | None:
     """Display wireframe model of the stellar surface.
 
-    :param kwargs:
-    **kwargs options**:
-        * **phase** * -- float; phase at which to construct plot
-        * **components_to_plot** * -- str; component to plot `primary`, `secondary` or `both` (default)
-        * **plot_axis** * -- bool; switch the plot axis on/off
-        * **inclination** * -- float; elevation of the camera (in degrees)
-        * **azimuth** * -- float; azimuth of the camera (in degrees)
-    :return:
+    :param kwargs: Options controlling the wireframe plot. Recognized keys:
+
+        - **phase** (float) -- phase at which to construct plot
+        - **components_to_plot** (str) -- component to plot ``primary``, ``secondary`` or ``both`` (default)
+        - **plot_axis** (bool) -- switch the plot axis on/off
+        - **inclination** (float) -- elevation of the camera (in degrees)
+        - **azimuth** (float) -- azimuth of the camera (in degrees)
+
+    :return: Matplotlib figure object if successful, ``None`` otherwise.
+    :rtype: matplotlib.figure.Figure | None
     """
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection="3d")

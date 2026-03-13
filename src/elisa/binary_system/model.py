@@ -588,13 +588,7 @@ def pre_calculate_for_potential_value_secondary(
     :type return_as_tuple: bool
     :return: Either scalar coefficients ``(b, c, d, e, f)``, a coefficient
         matrix, or a tuple of coefficient vectors.
-    :rtype: tuple[Float, Float, Float, Float, Float]
-            | NDArray[Float]
-            | tuple[NDArray[Float],
-                    NDArray[Float],
-                    NDArray[Float],
-                    NDArray[Float],
-                    NDArray[numpy.float64]]
+    :rtype: tuple[Float, Float, Float, Float, Float] | NDArray[Float] | tuple[NDArray[Float], NDArray[Float], NDArray[Float], NDArray[Float], NDArray[Float]]
     """
     sin_theta = up.sin(theta)
     cs = up.cos(phi) * sin_theta
@@ -761,14 +755,8 @@ def pre_calculate_for_potential_value_primary_cylindrical(
     :type return_as_tuple: bool
     :return: Either scalar coefficients ``(a, b, c, d, e)``, a coefficient
         matrix, or a tuple of coefficient vectors.
-    :rtype: tuple[Float, Float, Float, Float, Float]
-            | NDArray[Float]
-            | tuple[NDArray[Float],
-                    NDArray[Float],
-                    NDArray[Float],
-                    NDArray[Float],
-                    NDArray[numpy.float64]]
-    """
+    :rtype: tuple[Float, Float, Float, Float, Float] | NDArray[Float] | tuple[NDArray[Float], NDArray[Float], NDArray[Float], NDArray[Float], NDArray[float]]
+    """  # noqa: E501
     a = up.power(z, 2)
     b = up.power(distance - z, 2)
     c = mass_ratio * z / up.power(distance, 2)
@@ -877,15 +865,8 @@ def pre_calculate_for_potential_value_secondary_cylindrical(
     :type return_as_tuple: bool
     :return: Either scalar coefficients ``(a, b, c, d, e, f)``, a coefficient
         matrix, or a tuple of coefficient vectors.
-    :rtype: tuple[Float, Float, Float, Float, Float, Float]
-            | NDArray[Float]
-            | tuple[NDArray[Float],
-                    NDArray[Float],
-                    NDArray[Float],
-                    NDArray[Float],
-                    NDArray[Float],
-                    NDArray[numpy.float64]]
-    """
+    :rtype: tuple[Float, Float, Float, Float, Float, Float] | NDArray[Float] | tuple[NDArray[Float], NDArray[Float], NDArray[Float], NDArray[Float], NDArray[Float], NDArray[float]]
+    """  # noqa: E501
     a = up.power(z, 2)
     b = up.power(distance - z, 2)
     c = z / up.power(distance, 2)

@@ -253,7 +253,7 @@ def update_surface_params(
 
 def split_orbit_by_apse_line(
     orbital_motion: NDArray[Float],
-    orbital_mask: NDArray[np.bool_],
+    orbital_mask: NDArray[np.bool],
 ) -> tuple[NDArray[Float], NDArray[Float]]:
     """Split orbital positions into two groups separated by the line of apsides.
 
@@ -263,7 +263,7 @@ def split_orbit_by_apse_line(
     :type orbital_motion: NDArray[Float]
     :param orbital_mask: Boolean mask which defines the separation. ``True`` is
         one side and ``False`` is the other side.
-    :type orbital_mask: NDArray[np.bool_]
+    :type orbital_mask: NDArray[bool]
     :return: Reduced orbit array and its supplement.
     :rtype: tuple[NDArray[Float], NDArray[Float]]
     """
@@ -426,9 +426,9 @@ def compute_rel_d_radii_from_counterparts(
     :param radii: Forward radii.
     :type radii: NDArray
     :param base_positions: Base orbital position array.
-    :type base_positions: NDArray[np.int_]
+    :type base_positions: NDArray[int]
     :param mirrors: Orbital counterpart position array.
-    :type mirrors: NDArray[np.int_]
+    :type mirrors: NDArray[int]
     :return: Relative changes in relative distances.
     :rtype: NDArray[Float]
     """
@@ -442,7 +442,7 @@ def prepare_apsidaly_symmetric_orbit(
     binary: BinarySystem,
     azimuths: NDArray,
     phases: NDArray,
-) -> tuple[NDArray[np.int_], NDArray[Float], NDArray[np.bool_]]:
+) -> tuple[NDArray[np.int_], NDArray[Float], NDArray[np.bool]]:
     """Prepare orbital positions symmetrical in terms of surface geometry.
 
     For each pair, the orbital position is mirrored using the apsidal line in
@@ -458,7 +458,7 @@ def prepare_apsidaly_symmetric_orbit(
     :type phases: NDArray
     :return: Tuple containing unique phase indices, mirrored counterpart orbital
         positions, and the geometry-selection mask.
-    :rtype: tuple[NDArray[np.int_], NDArray[Float], NDArray[np.bool_]]
+    :rtype: tuple[NDArray[int], NDArray[Float], NDArray[bool]]
 
     Shape::
 

@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 logger = getLogger("binary_system.surface.temperature")
 
 SurfaceDataDict: TypeAlias = dict[str, NDArray[Float]]
-VisibilityDict: TypeAlias = dict[str, NDArray[np.bool_]]
+VisibilityDict: TypeAlias = dict[str, NDArray[np.bool]]
 GammaDict: TypeAlias = dict[str, NDArray[Float]]
 
 
@@ -102,7 +102,7 @@ def apply_reflection_effect(  # noqa: C901, PLR0912, PLR0915
 
     # this tests if you can use surface symmetries
     use_quarter_star_test = not system.has_pulsations() and not system.has_spots()
-    vis_test_symmetry: dict[str, NDArray[np.bool_] | None] = {}
+    vis_test_symmetry: dict[str, NDArray[np.bool] | None] = {}
 
     # declaring variables
     centres: SurfaceDataDict = {}
@@ -511,14 +511,14 @@ def include_spot_to_surface_variables(
     spot_areas: NDArray[Float],
     log_g: NDArray[Float],
     spot_log_g: NDArray[Float],
-    vis_test: NDArray[np.bool_],
-    vis_test_spot: NDArray[np.bool_],
+    vis_test: NDArray[np.bool],
+    vis_test_spot: NDArray[np.bool],
 ) -> tuple[
     NDArray[Float],
     NDArray[Float],
     NDArray[Float],
     NDArray[Float],
-    NDArray[np.bool_],
+    NDArray[np.bool],
     NDArray[Float],
 ]:
     """Include spot-face parameters into global reflection-effect arrays.
@@ -544,12 +544,11 @@ def include_spot_to_surface_variables(
     :param spot_log_g: Spot log-g values to append to ``log_g``.
     :type spot_log_g: NDArray[Float]
     :param vis_test: Surface visibility mask.
-    :type vis_test: NDArray[np.bool_]
+    :type vis_test: NDArray[bool]
     :param vis_test_spot: Spot visibility mask to append to ``vis_test``.
-    :type vis_test_spot: NDArray[np.bool_]
+    :type vis_test_spot: NDArray[bool]
     :return: Tuple ``(centres, normals, temperatures, areas, vis_test, log_g)``.
-    :rtype: tuple[NDArray[Float], NDArray[Float], NDArray[Float],
-        NDArray[Float], NDArray[np.bool_], NDArray[Float]]
+    :rtype: tuple[NDArray[Float], NDArray[Float], NDArray[Float], NDArray[Float], NDArray[bool], NDArray[Float]]
     """
     centres = np.append(centres, spot_centres, axis=0)
     normals = np.append(normals, spot_normals, axis=0)
@@ -567,7 +566,7 @@ def get_symmetrical_distance_matrix(
     shape_reduced: tuple[Int, Int],
     centres: SurfaceDataDict,
     vis_test: VisibilityDict,
-    vis_test_symmetry: dict[str, NDArray[np.bool_] | None],
+    vis_test_symmetry: dict[str, NDArray[np.bool] | None],
 ) -> tuple[NDArray[Float], NDArray[Float]]:
     """Reduce distance-matrix computation by exploiting surface symmetry.
 
@@ -578,9 +577,9 @@ def get_symmetrical_distance_matrix(
     :param centres: Face centres for both components.
     :type centres: dict[str, NDArray[Float]]
     :param vis_test: Visibility masks for both components.
-    :type vis_test: dict[str, NDArray[np.bool_]]
+    :type vis_test: dict[str, NDArray[np.bool]]
     :param vis_test_symmetry: Symmetry visibility masks for both components.
-    :type vis_test_symmetry: dict[str, NDArray[np.bool_] | None]
+    :type vis_test_symmetry: dict[str, NDArray[np.bool] | None]
     :return: Tuple ``(distance, join_vector)``.
     :rtype: tuple[NDArray[Float], NDArray[Float]]
     """
@@ -624,7 +623,7 @@ def get_symmetrical_gammma(
     normals: SurfaceDataDict,
     join_vector: NDArray[Float],
     vis_test: VisibilityDict,
-    vis_test_symmetry: dict[str, NDArray[np.bool_] | None],
+    vis_test_symmetry: dict[str, NDArray[np.bool] | None],
 ) -> GammaDict:
     """Use surface symmetries to compute cosine matrices of visibility angles.
 
@@ -637,9 +636,9 @@ def get_symmetrical_gammma(
     :param join_vector: Join-vector matrix.
     :type join_vector: NDArray[Float]
     :param vis_test: Visibility masks for both components.
-    :type vis_test: dict[str, NDArray[np.bool_]]
+    :type vis_test: dict[str, NDArray[np.bool]]
     :param vis_test_symmetry: Symmetry visibility masks for both components.
-    :type vis_test_symmetry: dict[str, NDArray[np.bool_] | None]
+    :type vis_test_symmetry: dict[str, NDArray[np.bool] | None]
     :return: Cosine matrices ``gamma`` for both components.
     :rtype: dict[str, NDArray[Float]]
     """
@@ -807,7 +806,7 @@ def get_distance_matrix_shape(
     :param system: Orbital position container.
     :type system: OrbitalPositionContainer
     :param vis_test: Visibility masks for both components.
-    :type vis_test: dict[str, NDArray[np.bool_]]
+    :type vis_test: dict[str, NDArray[np.bool]]
     :return: Tuple ``(shape, shape_reduced)``.
     :rtype: tuple[tuple[Int, Int, Int], tuple[Int, Int]]
     """

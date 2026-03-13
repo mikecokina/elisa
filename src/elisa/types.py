@@ -53,7 +53,7 @@ class Axes3DProtocol(Protocol):
 
 
 @runtime_checkable
-class TransformProperties(Protocol):
+class TransformPropertiesType(Protocol):
     """Protocol defining the interface for transformation classes.
 
     Any class implementing this protocol can be used as a transform_cls parameter

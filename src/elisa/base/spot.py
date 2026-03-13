@@ -198,7 +198,7 @@ def split_points_of_spots_and_component(
     :type points: numpy.typing.NDArray[numpy.float64]
     :param vertices_map: Integer array assigning each point to either the
         component (-1) or a spot index (>= 0).
-    :type vertices_map: numpy.typing.NDArray[numpy.int_]
+    :type vertices_map: numpy.typing.NDArray[int]
     :returns: Mapping with key ``"object"`` for component points and keys
         ``"0"``, ``"1"`` ... for spot points.
     :rtype: dict[str, numpy.typing.NDArray[numpy.float64]]
@@ -336,7 +336,7 @@ def remove_overlaped_spots_by_spot_index(
     :param from_container: Container with ``spots``.
     :type from_container: ContainerWithSpots
     :param keep_spot_indices: Iterable of spot indices that have points and should be kept.
-    :type keep_spot_indices: numpy.typing.NDArray[numpy.int_]
+    :type keep_spot_indices: numpy.typing.NDArray[int]
     :param _raise: If True, raise :class:`ValueError` when spots would be removed.
     :type _raise: bool
     :returns: Updated container.
