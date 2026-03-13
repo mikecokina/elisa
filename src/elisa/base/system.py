@@ -13,6 +13,8 @@ from elisa.logger import getLogger
 from elisa.pulse import pulsations
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from elisa.types import Float
 
 
@@ -261,13 +263,13 @@ class System(metaclass=ABCMeta):
         return any(instance.has_spots() for instance in self.components.values())
 
     @staticmethod
-    def object_params_validity_check(components: dict[str, Body], mandatory_kwargs: list[str] | tuple[str]) -> None:
+    def object_params_validity_check(components: dict[str, Body], mandatory_kwargs: Sequence[str]) -> None:
         """Validate that provided component objects are correctly initialised.
 
         :param components: Mapping of component name to component instance.
         :type components: dict[str, elisa.base.body.Body]
-        :param mandatory_kwargs: List of attributes required on each component.
-        :type mandatory_kwargs: list[str] | tuple[str]
+        :param mandatory_kwargs: Sequence of attribute names required on each component.
+        :type mandatory_kwargs: Sequence[str]
         :raises TypeError: When a component is not an instance of Body.
         :raises ValueError: When mandatory attributes are missing.
         :returns: None

@@ -232,7 +232,7 @@ class BinarySystem(System):
         utils.check_missing_kwargs(BinarySystem.MANDATORY_KWARGS, kwargs, instance_of=BinarySystem)
         self.object_params_validity_check(
             {"primary": primary, "secondary": secondary},
-            self.STAR_MANDATORY_KWARGS,
+            mandatory_kwargs=self.STAR_MANDATORY_KWARGS,
         )
         transformed_kwargs = self.transform_input(**kwargs)
 
