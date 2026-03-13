@@ -1447,7 +1447,7 @@ def calculate_neck_position(
 def add_spots_to_mesh(
     system: OrbitalPositionContainer,
     components_distance: Float,
-    component: ComponentSelection = "all",
+    component: ComponentSelection | None = "all",
 ) -> None:
     """Incorporate spot surface points into the clean stellar mesh.
 
@@ -1459,7 +1459,7 @@ def add_spots_to_mesh(
     :param components_distance: Distance between components in SMA units.
     :type components_distance: Float
     :param component: Component selector.
-    :type component: ComponentSelection
+    :type component: ComponentSelection | None
     :return: ``None``.
     :rtype: None
     """
