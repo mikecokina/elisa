@@ -5,6 +5,7 @@ Subpackages
 -----------
 
 .. toctree::
+   :maxdepth: 4
 
    elisa.binary_system.curves
    elisa.binary_system.graphic
@@ -77,7 +78,6 @@ elisa.binary\_system.utils module
    :members:
    :undoc-members:
    :show-inheritance:
-
 
 Module contents
 ---------------

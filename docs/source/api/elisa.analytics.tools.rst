@@ -28,7 +28,6 @@ elisa.analytics.tools.utils module
    :undoc-members:
    :show-inheritance:
 
-
 Module contents
 ---------------
 

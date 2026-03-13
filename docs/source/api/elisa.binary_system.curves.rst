@@ -68,7 +68,6 @@ elisa.binary\_system.curves.utils module
    :undoc-members:
    :show-inheritance:
 
-
 Module contents
 ---------------
 

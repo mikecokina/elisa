@@ -12,7 +12,6 @@ elisa.base.orbit.orbit module
    :undoc-members:
    :show-inheritance:
 
-
 Module contents
 ---------------
 

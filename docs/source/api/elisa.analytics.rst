@@ -5,6 +5,7 @@ Subpackages
 -----------
 
 .. toctree::
+   :maxdepth: 4
 
    elisa.analytics.binary_fit
    elisa.analytics.dataset
@@ -30,7 +31,6 @@ elisa.analytics.transform module
    :members:
    :undoc-members:
    :show-inheritance:
-
 
 Module contents
 ---------------

@@ -5,6 +5,7 @@ Subpackages
 -----------
 
 .. toctree::
+   :maxdepth: 4
 
    elisa.single_system.curves
    elisa.single_system.graphic
@@ -69,7 +70,6 @@ elisa.single\_system.utils module
    :members:
    :undoc-members:
    :show-inheritance:
-
 
 Module contents
 ---------------

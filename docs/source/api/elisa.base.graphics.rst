@@ -12,7 +12,6 @@ elisa.base.graphics.plot module
    :undoc-members:
    :show-inheritance:
 
-
 Module contents
 ---------------
 

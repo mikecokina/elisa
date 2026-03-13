@@ -20,7 +20,6 @@ elisa.opt.newton module
    :undoc-members:
    :show-inheritance:
 
-
 Module contents
 ---------------
 

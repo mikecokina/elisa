@@ -52,7 +52,6 @@ elisa.single\_system.curves.utils module
    :undoc-members:
    :show-inheritance:
 
-
 Module contents
 ---------------
 
