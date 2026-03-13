@@ -13,9 +13,14 @@
 
 import os
 import sys
+import warnings
 
 sys.path.insert(0, os.path.abspath("../../"))
 sys.path.insert(0, os.path.abspath("../../src"))
+
+# Suppress the DeprecationWarning emitted by elisa.conf.settings during import
+# ("Variable `atlas` in configuration section `support` is not longer supported").
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="elisa")
 
 from elisa import __version__ as release
 
@@ -47,7 +52,7 @@ templates_path = ["_templates"]
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
-source_suffix = ".rst"
+source_suffix = {".rst": "restructuredtext"}
 
 # The master toctree document.
 master_doc = "index"
@@ -75,6 +80,11 @@ htmlhelp_basename = "elisadocs"
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
+
+# Suppress "more than one target found for cross-reference" warnings that arise
+# because multiple modules define classes with identical short names (e.g. Plot,
+# Orbit). Sphinx emits ref.python warnings.
+suppress_warnings = ["ref.python"]
 
 #
 # This is also used if you do content translation via gettext catalogs.

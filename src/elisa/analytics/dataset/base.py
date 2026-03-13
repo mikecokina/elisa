@@ -68,8 +68,6 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
         """
         # initial kwargs
         self.kwargs: dict[str, Any] = copy(kwargs)
-        #: Plotting interface for the dataset.
-        #: :type: elisa.analytics.dataset.graphic.plot.Plot
         self.plot: Plot = plot.Plot(self)
 
         if utils.is_empty(name):
