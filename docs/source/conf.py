@@ -1,4 +1,4 @@
-# Configuration file for the Sphinx documentation builder.
+# Configuration file for the Sphinx documentation builder.  # noqa: INP001
 #
 # This file only contains a selection of the most common options. For a full
 # list see the documentation:
@@ -11,18 +11,42 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 
-import os
+from __future__ import annotations
+
 import sys
 import warnings
+from pathlib import Path
+from typing import Any
 
-sys.path.insert(0, os.path.abspath("../../"))
-sys.path.insert(0, os.path.abspath("../../src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 
-# Suppress the DeprecationWarning emitted by elisa.conf.settings during import
-# ("Variable `atlas` in configuration section `support` is not longer supported").
-warnings.filterwarnings("ignore", category=DeprecationWarning, module="elisa")
+# ---------------------------------------------------------------------------
+# elisa's settings.py calls warnings.simplefilter("always", DeprecationWarning)
+# *without* a catch_warnings() guard, so standard filter-based suppression
+# cannot override it.  Patching warnings.warn itself is the only hook that
+# survives that, because catch_warnings() only saves/restores
+# warnings.filters and warnings.showwarning - not warnings.warn.
+# ---------------------------------------------------------------------------
+_original_warn = warnings.warn
 
-from elisa import __version__ as release
+
+def _suppress_atlas_deprecation(
+    message: str | Warning,
+    category: type[Warning] | None = None,
+    stacklevel: int = 1,
+    *,
+    source: Any = None,
+) -> None:
+    """Suppress atlas-related DeprecationWarning but pass through others."""
+    if "atlas" in str(message) and "not longer supported" in str(message):
+        return
+    _original_warn(message, category, stacklevel, source=source)
+
+
+warnings.warn = _suppress_atlas_deprecation
+
+from elisa import __version__ as release  # noqa: E402, F401
 
 # -- Project information -----------------------------------------------------
 
@@ -90,3 +114,7 @@ suppress_warnings = ["ref.python"]
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
 language = "en"
+
+# Sphinx 9+ defaults to language="en" internally and searches for locale files
+# even when no translations exist.  An empty list disables that lookup.
+locale_dirs = []
