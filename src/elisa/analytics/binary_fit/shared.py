@@ -670,10 +670,8 @@ def r_squared(synthetic: dict[str, Any], observed: dict[str, Any])-> Float:
     :return: Coefficient of determination (1.0 means perfect fit).
     :rtype: float
     """
-    variability = np.sum(
-        [np.sum(np.power(observed[item] - np.mean(observed[item]), 2)) for item in observed],
-    )
-    residual = np.sum([np.sum(np.power(synthetic[item] - observed[item], 2)) for item in observed])
+    variability = sum(np.sum((observed[item] - np.mean(observed[item])) ** 2) for item in observed)
+    residual = sum(np.sum((synthetic[item] - observed[item]) ** 2) for item in observed)
 
     # noinspection PyUnresolvedReferences
     return 1 - (residual / variability)

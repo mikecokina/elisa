@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+import logging
 from abc import ABCMeta
 from typing import TYPE_CHECKING, Any
 
@@ -177,7 +178,8 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
 
         residuals = cost_fns.wssr(self.y_data, self.y_err, synthetic)
 
-        logger.info("current R2: %s", r_squared(synthetic, self.y_data))
+        if logger.isEnabledFor(logging.INFO):
+            logger.info("current R2: %s", r_squared(synthetic, self.y_data))
 
         return residuals
 

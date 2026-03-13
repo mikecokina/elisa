@@ -8,6 +8,8 @@ import numpy as np
 
 from elisa.const import PI
 
+_TWO_PI = 2.0 * PI
+
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
@@ -33,7 +35,8 @@ def s_squared(
         (sigma squared).
     :rtype: dict[str, NDArray[Any]]
     """
-    return {key: np.power(errors, 2) + np.power(errors, 2) * np.exp(2 * ln_f) for key, errors in y_errs.items()}
+    exp_factor = 1.0 + np.exp(2.0 * ln_f)  # scalar - compute once, not once per passband
+    return {key: errors**2 * exp_factor for key, errors in y_errs.items()}
 
 
 def likelihood_fn(
@@ -64,15 +67,9 @@ def likelihood_fn(
     """
     sigma2 = s_squared(y_errs, ln_f)
 
-    return -0.5 * (
-        np.sum(
-            [
-                np.sum(
-                    (np.power((y_data[key] - synthetic[key]), 2) / sigma2[key]) + np.log(2.0 * PI * sigma2[key]),
-                )
-                for key in synthetic
-            ],
-        )
+    return -0.5 * sum(
+        np.sum((y_data[key] - synthetic[key]) ** 2 / sigma2[key] + np.log(_TWO_PI * sigma2[key]))
+        for key in synthetic
     )
 
 
@@ -97,6 +94,4 @@ def wssr(
     :returns: Weighted sum of squared residuals value.
     :rtype: Float
     """
-    return np.sum(
-        [np.sum(np.power((synthetic[item] - y_data[item]) / y_err[item], 2)) for item in synthetic],
-    )
+    return sum(np.sum(((synthetic[item] - y_data[item]) / y_err[item]) ** 2) for item in synthetic)

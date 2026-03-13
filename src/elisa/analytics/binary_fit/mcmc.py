@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any
 import emcee
 import numpy as np
 from scipy import interpolate
-from scipy.stats.distributions import norm
 
 from elisa import settings
 from elisa.analytics.models import cost_fns
@@ -39,6 +38,10 @@ if TYPE_CHECKING:
 
     from elisa.analytics.dataset.base import LCData, RVData
     from elisa.types import Float
+
+# Precomputed constant: 0.5 * log(2*pi) = log(sqrt(2*pi))
+# log N(z; 0, 1) = -0.5*z**2 - _HALF_LOG_2PI  — avoids scipy.stats.norm instantiation per call.
+_HALF_LOG_2PI: float = 0.5 * float(np.log(2.0 * np.pi))
 
 logger = getPersistentLogger("analytics.binary_fit.mcmc")
 
@@ -97,19 +100,22 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         retval = np.empty(sigmas.shape)
 
         nan_mask = np.isnan(sigmas)
-        uni_prior = np.all(
-            np.bitwise_and(
-                np.greater_equal(xn[nan_mask], 0.0),
-                np.less_equal(xn[nan_mask], 1.0),
-            ),
-        ).astype(float)
-        retval[nan_mask] = -np.inf if uni_prior == 0 else np.log(uni_prior)
 
-        retval[~nan_mask] = (
-            np.log(norm().pdf((xn[~nan_mask] - x0[~nan_mask]) / sigmas[~nan_mask]))
-            if np.logical_and(xn[~nan_mask] >= 0, xn[~nan_mask] <= 1.0).all()
-            else -np.inf
-        )
+        # --- uniform prior (parameters without a supplied sigma) ---
+        xn_uniform = xn[nan_mask]
+        in_bounds = bool(np.all((xn_uniform >= 0.0) & (xn_uniform <= 1.0)))
+        retval[nan_mask] = 0.0 if in_bounds else -np.inf
+
+        # --- normal prior (parameters with a supplied sigma) ---
+        normal_mask = ~nan_mask
+        xn_normal = xn[normal_mask]
+        if np.all((xn_normal >= 0.0) & (xn_normal <= 1.0)):
+            # log N(z; 0, 1) = -0.5*z^2 - 0.5*log(2*pi)  — no scipy object needed
+            z = (xn_normal - x0[normal_mask]) / sigmas[normal_mask]
+            retval[normal_mask] = -0.5 * z**2 - _HALF_LOG_2PI
+        else:
+            retval[normal_mask] = -np.inf
+
         return np.sum(retval)
 
     @abstractmethod
