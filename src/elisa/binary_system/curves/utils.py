@@ -79,12 +79,11 @@ def _get_normal_radiance(
     :rtype: dict[str, dict[str, NDArray[Float]]]
     """
     components = butils.component_to_list(component)
-    symmetry_test = {
-        component_name: (
-            not getattr(system, component_name).has_spots() and not getattr(system, component_name).has_pulsations()
-        )
-        for component_name in components
-    }
+    symmetry_test: dict[str, bool] = {}
+    for component_name in components:
+        comp = getattr(system, component_name)
+        symmetry_test[component_name] = not comp.has_spots() and not comp.has_pulsations()
+
     temperatures: dict[str, NDArray[Float]] = {}
     log_g: dict[str, NDArray[Float]] = {}
 
@@ -102,18 +101,18 @@ def _get_normal_radiance(
             temperatures[component_name] = component_instance.temperatures
             log_g[component_name] = component_instance.log_g
 
-    retval = {
-        component_name: atm.NaiveInterpolatedAtm.radiance(
+    retval: dict[str, dict[str, NDArray[Float]]] = {}
+    for component_name in components:
+        comp = getattr(system, component_name)
+        retval[component_name] = atm.NaiveInterpolatedAtm.radiance(
             **dict(
                 temperature=temperatures[component_name],
                 log_g=log_g[component_name],
-                metallicity=getattr(system, component_name).metallicity,
-                atlas=(getattr(system, component_name).atmosphere or settings.ATM_ATLAS),
+                metallicity=comp.metallicity,
+                atlas=(comp.atmosphere or settings.ATM_ATLAS),
                 **kwargs,
             ),
         )
-        for component_name in components
-    }
 
     # mirroring symmetrical part back to the rest of the surface
     for component_name in components:
@@ -371,11 +370,8 @@ def relative_irradiation(
     """
     distance_array = np.asarray(distances, dtype=np.float64)
 
-    temp_ratio4 = np.power(binary.primary.t_eff / binary.secondary.t_eff, 4)
-    r_ratio2 = np.power(
-        binary.primary.equivalent_radius / binary.secondary.equivalent_radius,
-        2,
-    )
+    temp_ratio4 = (binary.primary.t_eff / binary.secondary.t_eff) ** 4
+    r_ratio2 = (binary.primary.equivalent_radius / binary.secondary.equivalent_radius) ** 2
     coeff = r_ratio2 * temp_ratio4
     irrad1 = np.power(binary.primary.equivalent_radius / distance_array, 2) / (1 + coeff)
     irrad2 = np.power(binary.secondary.equivalent_radius / distance_array, 2) / (1 + 1 / coeff)

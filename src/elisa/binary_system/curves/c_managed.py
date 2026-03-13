@@ -467,9 +467,10 @@ def integrate_eccentric_curve_w_orbital_symmetry(
     :rtype: dict[str, NDArray[Float]]
     """
     # surface potentials with constant volume of components
-    potentials = {component: pot[orbital_positions[:, 0, 0].astype(int)] for component, pot in all_potentials.items()}
+    body_idxs = orbital_positions[:, 0, 0].astype(int)
+    potentials = {component: pot[body_idxs] for component, pot in all_potentials.items()}
 
-    base_radii = radii[:, orbital_positions[:, 0, 0].astype(int)]
+    base_radii = radii[:, body_idxs]
     rel_d_radii = crv_utils.compute_rel_d_geometry(binary, base_radii[:, 1:], base_radii[:, :-1])
     _args = (binary.has_spots(), orbital_positions.shape[0], rel_d_radii)
     new_geometry_mask = dynamic.resolve_object_geometry_update(*_args)

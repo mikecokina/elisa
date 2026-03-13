@@ -532,8 +532,7 @@ def integrate_eccentric_curve_interp_appx(
     # checking for accidental alignment between templates and mirrors
     x, unique_idx = np.unique(x, return_index=True)
 
-    sort_idx = np.argsort(x)
-    x = x[sort_idx]
+    # np.unique already returns a sorted array, so no further sort is needed
     x = np.concatenate((x[-n:] - 1, x, x[:n] + 1))
 
     band_curves: dict[str, NDArray[Float]] = {}
@@ -541,7 +540,7 @@ def integrate_eccentric_curve_interp_appx(
         y = np.concatenate(
             (stacked_band_curves[curve][:, 0], stacked_band_curves[curve][:, 1]),
         )
-        y = ((y[not_nan_test])[unique_idx])[sort_idx]
+        y = (y[not_nan_test])[unique_idx]
         y = np.concatenate((y[-n:], y, y[:n]))
 
         interpolator = Akima1DInterpolator(x, y)
@@ -600,16 +599,17 @@ def integrate_eccentric_curve_symmetrical_counterparts_appx(
         **kwargs,
     )
 
+    # hoist loop-invariant index arrays outside the per-label loop
+    base_idxs = np.array(orbital_supplements.body[:, 0], dtype=np.int32)
+    not_nan_test = ~np.isnan(orbital_supplements.mirror[:, 0])
+    mirror_idxs = np.array(
+        orbital_supplements.mirror[not_nan_test, 0],
+        dtype=np.int32,
+    )
+
     band_curves = {key: np.empty(phases.shape) for key in crv_labels}
     for lbl in crv_labels:
-        base_idxs = np.array(orbital_supplements.body[:, 0], dtype=np.int32)
         band_curves[lbl][base_idxs] = stacked_band_curves[lbl][:, 0]
-
-        not_nan_test = ~np.isnan(orbital_supplements.mirror[:, 0])
-        mirror_idxs = np.array(
-            orbital_supplements.mirror[not_nan_test, 0],
-            dtype=np.int32,
-        )
         band_curves[lbl][mirror_idxs] = stacked_band_curves[lbl][not_nan_test, 1]
 
     return band_curves
@@ -658,7 +658,8 @@ def integrate_eccentric_curve_similar_neighbours_appx(
         **kwargs,
     )
 
-    return {key: band_curves_unsorted[key][orbital_positions[:, 0].argsort()] for key in crv_labels}
+    sort_idx = orbital_positions[:, 0].argsort()
+    return {key: band_curves_unsorted[key][sort_idx] for key in crv_labels}
 
 
 def integrate_eccentric_curve_exactly(
