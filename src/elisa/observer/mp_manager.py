@@ -15,6 +15,12 @@ if TYPE_CHECKING:
 
 logger = getLogger("observer.mp")
 
+# Use forkserver so pool workers are forked from a clean, single-threaded
+# server process rather than directly from the main process.  This avoids
+# the Python 3.12 DeprecationWarning that fires when fork() is called from
+# a multithreaded process (the atmosphere table reader uses threads).
+_MP_CONTEXT = multiprocessing.get_context("forkserver")
+
 
 def manage_observations(
         fn: Callable,
@@ -43,7 +49,7 @@ def manage_observations(
     if len(position) >= settings.NUMBER_OF_PROCESSES > 1:
         logger.info("starting multiprocessor workers")
         phase_batches = split_to_batches(array=position, n_proc=settings.NUMBER_OF_PROCESSES)
-        pool = multiprocessing.pool.Pool(processes=settings.NUMBER_OF_PROCESSES)
+        pool = _MP_CONTEXT.Pool(processes=settings.NUMBER_OF_PROCESSES)
 
         result = [pool.apply_async(fn, (*args[:2], batch, *args[2:])) for batch in phase_batches]
         pool.close()
