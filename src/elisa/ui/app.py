@@ -17,6 +17,7 @@ from __future__ import annotations
 import gradio as gr
 
 from elisa.ui.tabs.lc_modeling import tab as lc_tab
+from elisa.ui.tabs.rv_modeling import tab as rv_tab
 
 
 def build_app() -> gr.Blocks:
@@ -41,8 +42,8 @@ def build_app() -> gr.Blocks:
 
         # --- register tabs ---
         lc_tab.build()
-        # Future tabs (e.g. RV modeling, fitting) can be added here:
-        # rv_tab.build()
+        rv_tab.build()
+        # Future tabs (e.g. fitting) can be added here:
         # fitting_tab.build()
 
     return demo

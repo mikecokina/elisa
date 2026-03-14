@@ -124,3 +124,57 @@ def render_lc_figure(
         fig.tight_layout()
 
     return fig
+
+
+def render_rv_figure(
+    phases: NDArray,
+    rvs: dict[str, NDArray],
+) -> Figure:
+    """Render a publication-quality radial velocity curve figure.
+
+    Creates a Matplotlib figure with one line per component (primary,
+    secondary) using the same curated color palette and scientific style
+    as the light-curve plotter.
+
+    :param phases: 1-D array of orbital phases.
+    :type phases: NDArray
+    :param rvs: Mapping of component name (``"primary"``, ``"secondary"``)
+        to 1-D radial velocity array in km/s.
+    :type rvs: dict[str, NDArray]
+    :returns: Matplotlib figure ready for display.
+    :rtype: matplotlib.figure.Figure
+    """
+    with mpl.rc_context(_RC):
+        fig, ax = plt.subplots(figsize=(10, 5))
+
+        for (component, rv), color in zip(
+            rvs.items(), _PALETTE, strict=False,
+        ):
+            ax.plot(phases, rv, label=component.capitalize(), linewidth=1.8, color=color)
+
+        # add breathing margin
+        ax.margins(x=0.02, y=0.06)
+
+        # vertical markers at primary (0) and secondary (0.5) eclipse
+        x_lo, x_hi = float(np.min(phases)), float(np.max(phases))
+        for eclipse_phase, style in ((0.0, "-"), (0.5, "--")):
+            if x_lo <= eclipse_phase <= x_hi:
+                ax.axvline(
+                    eclipse_phase,
+                    color="#aaaaaa",
+                    linewidth=0.9,
+                    linestyle=style,
+                    zorder=0,
+                )
+
+        ax.set_xlabel("Phase")
+        ax.set_ylabel(r"Radial velocity  (km s$^{-1}$)")
+        ax.set_title("Synthetic Radial Velocity Curve", pad=10)
+
+        ax.grid(visible=True)
+        ax.legend(loc="best")
+
+        fig.tight_layout()
+
+    return fig
+

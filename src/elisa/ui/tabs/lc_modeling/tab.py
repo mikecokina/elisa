@@ -14,12 +14,9 @@ import gradio as gr
 import pandas as pd  # noqa: TC002  - needed at runtime for Gradio get_type_hints()
 from matplotlib.figure import Figure  # noqa: TC002  - same reason
 
+from elisa.ui.components import star_inputs, system_inputs
 from elisa.ui.shared.const import ATMOSPHERE_CHOICES
-from elisa.ui.tabs.lc_modeling.components import (
-    observer_inputs,
-    star_inputs,
-    system_inputs,
-)
+from elisa.ui.tabs.lc_modeling.components import observer_inputs
 from elisa.ui.tabs.lc_modeling.logic import compute
 
 if TYPE_CHECKING:
@@ -53,7 +50,7 @@ _SYSTEM_DEFAULTS: dict[str, Number | str] = {
     "period": 2.5,
     "eccentricity": 0.0,
     "argument_of_periastron": 90.0,
-    "gamma": 30.0,
+    "gamma": 0.0,
     "phase_shift": 0.0,
     "additional_light": 0.0,
     "primary_minimum_time": 2440000.0,
