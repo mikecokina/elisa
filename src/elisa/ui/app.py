@@ -5,6 +5,7 @@ from __future__ import annotations
 import gradio as gr
 
 from elisa.ui.tabs.lc_modeling import tab as lc_tab
+from elisa.ui.tabs.rv_fitting import tab as rv_fit_tab
 from elisa.ui.tabs.rv_modeling import tab as rv_tab
 from elisa.ui.tabs.system_visualization import tab as sys_viz_tab
 
@@ -31,6 +32,7 @@ def build_app() -> gr.Blocks:
 
         lc_tab.build()
         rv_tab.build()
+        rv_fit_tab.build()
         sys_viz_tab.build()
 
     return demo
