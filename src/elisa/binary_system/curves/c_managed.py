@@ -277,8 +277,13 @@ def integrate_eccentric_curve_exactly(
     """Generate curves via exact per-position integration for eccentric orbits.
 
     Each orbital position is built fully from scratch; no geometry
-    approximations are applied. This function is designed to be used as a
-    multiprocessing worker and is called via
+    approximations are applied. A single :class:`OrbitalPositionContainer` is
+    created once before the loop and reused across all positions - the
+    :meth:`~elisa.binary_system.container.OrbitalPositionContainer.build`
+    method resets the flatten state and recomputes position-specific radii on
+    every call, so the container always reflects the current orbital
+    configuration.  This function is designed to be used as a multiprocessing
+    worker and is called via
     :func:`elisa.observer.mp_manager.manage_observations`.
 
     :param binary: Binary system instance.
@@ -302,14 +307,32 @@ def integrate_eccentric_curve_exactly(
     :rtype: dict[str, NDArray[Float]]
     """
     curves = {key: np.empty(len(motion_batch)) for key in crv_labels}
+
+    # Build the container once with a dummy position to avoid repeating the
+    # expensive correct_potentials + StarContainer construction on every
+    # orbital position.  set_on_position_params updates the surface potentials
+    # each iteration, and build() resets the flatten state and recomputes the
+    # position-specific radii internally inside mesh_detached.
+    initial_system = OrbitalPositionContainer.from_binary_system(
+        binary_system=binary,
+        position=const.Position(0, 1.0, 0.0, 0.0, 0.0),
+    )
+
     for run_idx, position in enumerate(motion_batch):
         pos_idx = int(position.idx)
-        from_this = {"binary_system": binary, "position": position}
-        on_pos = OrbitalPositionContainer.from_binary_system(**from_this)
-        dynamic.assign_spot_longitudes(on_pos, spots_longitudes, index=pos_idx, component="all")
-        on_pos.set_on_position_params(position, potentials["primary"][pos_idx], potentials["secondary"][pos_idx])
-        on_pos.build(components_distance=position.distance)
-        on_pos = bsutils.move_sys_onpos(on_pos, position, on_copy=False)
+        initial_system.set_on_position_params(
+            position,
+            potentials["primary"][pos_idx],
+            potentials["secondary"][pos_idx],
+        )
+        # update self.time so that build_pulsations uses the correct phase-based
+        # time for each orbital position (set_on_position_params only updates
+        # self.position but leaves self.time unchanged)
+        initial_system.set_time()
+        dynamic.assign_spot_longitudes(initial_system, spots_longitudes, index=pos_idx, component="all")
+        initial_system.build(components_distance=position.distance)
+        # on_copy=True preserves initial_system for the next iteration
+        on_pos = bsutils.move_sys_onpos(initial_system, position, on_copy=True)
 
         crv_utils.prep_surface_params(on_pos, return_values=False, write_to_containers=True, **kwargs)
         # TODO: properly calculate in_eclipse parameter  # noqa: FIX002, TD002, TD003

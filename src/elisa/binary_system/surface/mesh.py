@@ -12,6 +12,7 @@ from elisa.base.spot import incorporate_spots_mesh
 from elisa.base.surface.mesh import correct_component_mesh
 from elisa.base.types import FLOAT
 from elisa.binary_system import model
+from elisa.binary_system import radius as bsradius
 from elisa.binary_system import utils as bsutils
 from elisa.logger import getLogger
 from elisa.opt.fsolver import fsolver
@@ -820,6 +821,23 @@ def mesh_detached(
     potential_fn = getattr(model, f"potential_{component}_fn")
     precalc_fn = getattr(model, f"pre_calculate_for_potential_value_{component}")
     fprime = getattr(model, f"radial_{component}_potential_derivative")
+
+    # Recompute position-specific radii from the current surface potential and
+    # component distance.  This makes mesh_detached self-contained and ensures
+    # correctness when the container is reused across orbital positions (e.g.
+    # integrate_eccentric_curve_exactly), where set_on_position_params updates
+    # the surface potential but not the cached radii.
+    _rad_kwargs = {
+        "synchronicity": synchronicity,
+        "mass_ratio": mass_ratio,
+        "components_distance": components_distance,
+        "surface_potential": potential,
+        "component": component,
+    }
+    star.polar_radius = bsradius.calculate_polar_radius(**_rad_kwargs)
+    star.side_radius = bsradius.calculate_side_radius(**_rad_kwargs)
+    star.backward_radius = bsradius.calculate_backward_radius(**_rad_kwargs)
+    star.forward_radius = bsradius.calculate_forward_radius(**_rad_kwargs)
 
     phi, theta, separator = pre_calc_azimuths_for_detached_points(
         discretization_factor,

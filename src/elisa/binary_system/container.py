@@ -204,8 +204,14 @@ class OrbitalPositionContainer(PositionContainer):
     ) -> OrbitalPositionContainer:
         """Build the binary model for the current orbital position.
 
+        The flatten state is reset at the start of each call so the container
+        can be safely reused across multiple orbital positions — call
+        :meth:`set_on_position_params` to update the position and potentials
+        before invoking this method again.
+
         The following methods are applied::
 
+            - reset_flatten  (idempotency guard reset)
             - build_mesh
             - build_faces
             - build_velocities
@@ -232,6 +238,7 @@ class OrbitalPositionContainer(PositionContainer):
         """
         del kwargs
 
+        self.reset_flatten()
         resolved_distance = self._components_distance(components_distance)
         self.build_mesh(
             components_distance=resolved_distance,

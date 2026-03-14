@@ -121,6 +121,23 @@ class PositionContainer(ABC):
         self._flatten = True
         return self
 
+    def reset_flatten(self) -> None:
+        """Reset the flatten state on this container and all component containers.
+
+        After calling this method, :meth:`flat_it` will perform the full
+        merge of spot and pulsation data into the main component arrays on
+        the next invocation.  This is required when a container instance is
+        reused across multiple orbital positions so that each call to
+        :meth:`build` produces a correctly flattened result.
+
+        :return: ``None``.
+        :rtype: None
+        """
+        self._flatten = False
+        for component in self._components:
+            star_container = getattr(self, component)
+            star_container.reset_flatten()
+
     def apply_rotation(self) -> PositionContainer:
         """Rotate per-component vector properties into the observer frame.
 
@@ -557,6 +574,20 @@ class StarContainer:
 
         self._flatten = True
         return self
+
+    def reset_flatten(self) -> None:
+        """Reset the flatten state of this star container.
+
+        After calling this method, :meth:`flat_it` will perform the full
+        merge of spot data into the main arrays on the next invocation.
+        This is required when a container instance is reused across multiple
+        orbital positions so that each rebuild produces a correctly flattened
+        result.
+
+        :return: ``None``.
+        :rtype: None
+        """
+        self._flatten = False
 
     def transform_points_to_spherical_coordinates(
         self,
