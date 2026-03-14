@@ -58,19 +58,30 @@ Pre-release steps
     >> twine upload dist/* -r pypi
 """
 
+from __future__ import annotations
+
 # Always prefer setuptools over distutils
-# To use a consistent encoding
-from codecs import open  # noqa: A004
-from os import path
+# Use pathlib for path operations and Path.open for file IO
+from pathlib import Path
 
 from setuptools import find_packages, setup
 
-here = path.dirname(__file__)
+here = Path(__file__).parent
 
 
-def read_version():
-    version_file = path.join(here, "src", "elisa", "__init__.py")
-    with open(version_file, encoding="utf-8") as f:
+def read_version() -> str:
+    """Read project version from `src/elisa/__init__.py`.
+
+    This helper returns the value of the ``__version__`` string defined in
+    the package's ``__init__.py``.  It uses :class:`pathlib.Path` for safe
+    cross-platform path handling and :meth:`Path.open` for file access.
+
+    :return: Version string, e.g. ``"0.1.0"``.
+    :rtype: str
+    :raises RuntimeError: When the ``__version__`` variable cannot be found.
+    """
+    version_file = here / "src" / "elisa" / "__init__.py"
+    with version_file.open(encoding="utf-8") as f:
         for line in f:
             if line.startswith("__version__"):
                 delim = '"' if '"' in line else "'"
