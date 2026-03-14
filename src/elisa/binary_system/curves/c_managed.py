@@ -618,8 +618,12 @@ def similar_neighbour_approximation_ecc_curve_integration(
         on_pos, normal_radiance, ld_cfs = crv_utils.update_surface_params(
             on_pos, normal_radiance, ld_cfs, require_rebuild=require_rebuild, **kwargs,
         )
-        # TODO: properly calculate in_eclipse parameter  # noqa: FIX002, TD002, TD003
-        compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=True, return_values=False,
-                                 write_to_containers=True)
+        compute_surface_coverage(
+            on_pos,
+            binary.semi_major_axis,
+            in_eclipse=True,
+            return_values=False,
+            write_to_containers=True,
+        )
         curves = curve_fn(curves, run_idx, crv_labels, on_pos)
     return curves
