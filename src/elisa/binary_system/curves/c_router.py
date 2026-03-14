@@ -371,6 +371,11 @@ def produce_ecc_curves_with_spots(
 ) -> dict[str, NDArray[Float]]:
     """Generate curves of binaries with eccentric orbit and spots.
 
+    .. note::
+        Spotty eccentric systems must always use the exact integration method
+        (no symmetry-based or similar-neighbours approximations are possible)
+        due to the lack of symmetry introduced by spots.
+
     :param binary: Binary system instance.
     :type binary: BinarySystem
     :param curve_fn: Curve generator function.
