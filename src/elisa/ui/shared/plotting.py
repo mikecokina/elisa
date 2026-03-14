@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 # Ensure a non-interactive backend suitable for server-side rendering.
 mpl.use("Agg")
 
-# Curated color palette - colorblind-friendly, distinguishable on white.
+# Curated color palette - colorblind-friendly, used as fallback for unknown passbands.
 _PALETTE: list[str] = [
     "#0C5DA5",  # blue
     "#FF6B35",  # orange
@@ -27,7 +27,33 @@ _PALETTE: list[str] = [
     "#00B2CC",  # teal
 ]
 
-# rcParams applied only within the figure context - no global side-effects.
+# Conventional per-filter colors - mirrors ELISa's own datapoint_clrs mapping
+# in elisa.graphic.graphics.binary_lc_fit_plot so the UI is consistent with
+# the rest of the library.
+_PASSBAND_COLORS: dict[str, str] = {
+    "bolometric":          "#808080",
+    "Generic.Bessell.U":   "#cc0099",
+    "Generic.Bessell.B":   "#00007f",
+    "Generic.Bessell.V":   "#008000",
+    "Generic.Bessell.R":   "#ff0000",
+    "Generic.Bessell.I":   "#800000",
+    "SLOAN.SDSS.u":        "#000099",
+    "SLOAN.SDSS.g":        "#009900",
+    "SLOAN.SDSS.r":        "#e60000",
+    "SLOAN.SDSS.i":        "#800080",
+    "SLOAN.SDSS.z":        "#00cccc",
+    "Generic.Stromgren.u": "#990099",
+    "Generic.Stromgren.v": "#cc00cc",
+    "Generic.Stromgren.b": "#0000cc",
+    "Generic.Stromgren.y": "#00b300",
+    "Kepler":              "#890000",
+    "Gaia.2010.G":         "#006400",
+    "Gaia.2010.BP":        "#0000cd",
+    "Gaia.2010.RP":        "#cd0000",
+    "TESS":                "#006989",
+}
+
+# rcParams applied only within the figure context - no global side effects.
 _RC: dict[str, object] = {
     "font.family": "serif",
     "font.size": 11,
@@ -86,9 +112,10 @@ def render_lc_figure(
     with mpl.rc_context(_RC):
         fig, ax = plt.subplots(figsize=(10, 5))
 
-        for (passband, flux), color in zip(
+        for (passband, flux), fallback in zip(
             fluxes.items(), _PALETTE, strict=False,
         ):
+            color = _PASSBAND_COLORS.get(passband, fallback)
             ax.plot(phases, flux, label=passband, linewidth=1.8, color=color)
 
 
@@ -144,6 +171,7 @@ def render_rv_figure(
     :returns: Matplotlib figure ready for display.
     :rtype: matplotlib.figure.Figure
     """
+    # noinspection PyTypeChecker
     with mpl.rc_context(_RC):
         fig, ax = plt.subplots(figsize=(10, 5))
 
