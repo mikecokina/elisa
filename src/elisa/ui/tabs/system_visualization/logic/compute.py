@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import matplotlib.pyplot as plt
+
 from elisa import BinarySystem, Star
 from elisa import units as u
 
@@ -153,6 +155,10 @@ def run_visualization(
     secondary_params = _filter_none(_convert_params(secondary_params))
     system_params = _filter_none(_convert_params(system_params))
 
+    # Close figures left open by the previous call - Gradio serialises them
+    # before the next request arrives, so they are safe to discard here.
+    plt.close("all")
+
     visualization_mode: str = observer_params.get("visualization_mode") or ""
     phase: Float = _ensure_float(observer_params["phase"])
     components_to_plot: str = observer_params["components_to_plot"]
@@ -208,4 +214,3 @@ def run_visualization(
         )
 
     return mesh_fig, orbit_fig, equipotential_fig, surface_fig
-
