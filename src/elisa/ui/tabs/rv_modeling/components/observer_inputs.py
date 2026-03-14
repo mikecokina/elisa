@@ -71,8 +71,8 @@ def build(*, defaults: dict[str, Number | str] | None = None) -> dict[str, gr.Co
         label="RV computation method",
         choices=RV_METHODS,
         value=_METHOD_DEFAULT,
-        info="Kinematic: line-of-sight velocity of stellar surfaces. "
-             "Radiometric: center-of-mass orbital velocity.",
+        info="Kinematic: treats each star as a rigid point mass. "
+             "Radiometric: integrates over stellar surface elements.",
     )
 
     return components
