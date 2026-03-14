@@ -177,7 +177,7 @@ def build(*, defaults: dict[str, Float | str | None] | None = None) -> dict[str,
             label="Camera Elevation",
             info="Vertical angle of the camera in degrees (0 = equator, 90 = top).",
         )
-        azimuth_default = defaults.get("azimuth", 0.0)
+        azimuth_default = defaults.get("azimuth", 90.0)
         components["azimuth"] = gr.Slider(
             minimum=-180,
             maximum=180,
