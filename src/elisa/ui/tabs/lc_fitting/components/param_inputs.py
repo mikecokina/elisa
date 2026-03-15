@@ -56,7 +56,7 @@ _SYSTEM_COMMON_SPEC: dict[str, _Spec] = {
     ),
     "period": (
         "**Orbital period**  P  [d]",
-        4.5, True, 0.01, 1000.0, "d",
+        2.5, True, 0.01, 1000.0, "d",
     ),
     "primary_minimum_time": (
         "**Primary minimum time**  T₀  [d]",
@@ -76,11 +76,11 @@ _SYSTEM_COMMON_SPEC: dict[str, _Spec] = {
 _SYSTEM_COMMUNITY_SPEC: dict[str, _Spec] = {
     "semi_major_axis": (
         "**Semi-major axis**  a  [R☉]",
-        16.515, False, 10.0, 30.0, "R☉",
+        11.55, False, 5.0, 30.0, "R☉",
     ),
     "mass_ratio": (
         "**Mass ratio**  q = M₂/M₁",
-        0.5, True, 0.1, 2.0, None,
+        0.56, True, 0.1, 2.0, None,
     ),
 }
 
@@ -88,15 +88,15 @@ _SYSTEM_COMMUNITY_SPEC: dict[str, _Spec] = {
 _COMPONENT_COMMON_SPEC: dict[str, _Spec] = {
     "t_eff": (
         "**Effective temperature**  T_eff  [K]",
-        8307.0, False, 7800.0, 8800.0, "K",
+        9500.0, False, 9000.0, 11000.0, "K",
     ),
     "surface_potential": (
         "**Surface potential**  Ω",
-        3.0, False, 3.0, 5.0, None,
+        4.0, False, 3.0, 5.0, None,
     ),
     "gravity_darkening": (
         "**Gravity darkening**  β",
-        0.32, True, 0.0, 1.0, None,
+        1.0, True, 0.0, 1.0, None,
     ),
     "albedo": (
         "**Albedo**  A",
@@ -448,7 +448,14 @@ def _build_approach_params(
             fixed = defaults.get(f"system_{name}_fixed", def_fixed)
             lo = defaults.get(f"system_{name}_min", def_min)
             hi = defaults.get(f"system_{name}_max", def_max)
-            constraint = defaults.get(f"system_{name}_constraint")
+            # semi_major_axis defaults to constrained mode in community approach
+            if name == "semi_major_axis" and approach == "community":
+                constraint = defaults.get(
+                    f"system_{name}_constraint",
+                    "11.55 / sin(radians(system@inclination))",
+                )
+            else:
+                constraint = defaults.get(f"system_{name}_constraint")
             _param_row(components, "system", name, label, val, fixed, lo, hi, constraint)
 
     # ------------------------------------------------------------------ #
@@ -463,9 +470,9 @@ def _build_approach_params(
     with gr.Accordion("Secondary Component Parameters", open=False):
         _secondary_value_overrides: dict[str, tuple[float, float, float]] = {
             "mass": (1.0, 0.1, 100.0),
-            "t_eff": (4000.0, 4000.0, 7000.0),
-            "surface_potential": (5.0, 5.0, 7.0),
-            "gravity_darkening": (0.32, 0.0, 1.0),
+            "t_eff": (7850.0, 7000.0, 8000.0),
+            "surface_potential": (4.5, 3.2, 5.5),
+            "gravity_darkening": (1.0, 0.0, 1.0),
             "albedo": (0.6, 0.0, 1.0),
             "synchronicity": (1.0, 0.1, 10.0),
             "metallicity": (0.0, -2.0, 1.0),
