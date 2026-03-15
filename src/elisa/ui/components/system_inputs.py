@@ -89,31 +89,31 @@ def build(*, defaults: dict[str, Number | str] | None = None) -> dict[str, gr.Co
         components["gamma"] = gr.Textbox(
             label="Gamma velocity (km/s)",
             value=str(defaults["gamma"]) if "gamma" in defaults else "",
-            placeholder="leave empty for 0.0 (ELISa default)",
+            placeholder="Leave empty for 0.0 (ELISa default)",
             info="Centre-of-mass (systemic) radial velocity in km/s.",
         )
         components["phase_shift"] = gr.Textbox(
             label="Phase shift",
             value=str(defaults["phase_shift"]) if "phase_shift" in defaults else "",
-            placeholder="leave empty for 0.0 (ELISa default)",
+            placeholder="Leave empty for 0.0 (ELISa default)",
             info="Shift applied to phase so that primary minimum coincides with phase 0.",
         )
         components["additional_light"] = gr.Textbox(
             label="Additional light  [0, 1]",
             value=str(defaults["additional_light"]) if "additional_light" in defaults else "",
-            placeholder="leave empty for 0.0 (ELISa default)",
+            placeholder="Leave empty for 0.0 (ELISa default)",
             info="Fraction of total light not originating from the binary system.",
         )
         components["primary_minimum_time"] = gr.Textbox(
             label="Primary minimum time (JD)",
             value=str(defaults["primary_minimum_time"]) if "primary_minimum_time" in defaults else "",
-            placeholder="leave empty for 0.0 (ELISa default)",
+            placeholder="Leave empty for 0.0 (ELISa default)",
             info="Reference time of primary minimum in Julian Days.",
         )
         components["distance"] = gr.Textbox(
             label="Distance (pc)  > 0",
             value=str(defaults["distance"]) if "distance" in defaults else "",
-            placeholder="leave empty - required only for absolute flux",
+            placeholder="Leave empty - required only for absolute flux",
             info="Distance to the system in parsecs.  Required when normalize is off.",
         )
 

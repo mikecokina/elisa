@@ -92,13 +92,13 @@ def build(prefix: str, *, defaults: dict[str, Number | str] | None = None) -> di
         components["gravity_darkening"] = gr.Textbox(
             label="Gravity darkening  [0, 1]",
             value=str(defaults["gravity_darkening"]) if "gravity_darkening" in defaults else "",
-            placeholder="leave empty to auto-interpolate (Claret 2003)",
+            placeholder="Leave empty to auto-interpolate",
             info="Gravity-darkening exponent in [0, 1].  Leave empty to interpolate.",
         )
         components["albedo"] = gr.Textbox(
             label="Albedo  [0, 1]",
             value=str(defaults["albedo"]) if "albedo" in defaults else "",
-            placeholder="leave empty to auto-interpolate (Claret 2001)",
+            placeholder="Leave empty to auto-interpolate",
             info="Surface albedo in [0, 1].  Leave empty to interpolate.",
         )
         components["metallicity"] = gr.Number(
@@ -109,7 +109,7 @@ def build(prefix: str, *, defaults: dict[str, Number | str] | None = None) -> di
         components["discretization_factor"] = gr.Textbox(
             label="Discretization factor (deg)",
             value=str(defaults["discretization_factor"]) if "discretization_factor" in defaults else "",
-            placeholder="leave empty for ELISa default",
+            placeholder="Leave empty for ELISa default",
             info="Surface mesh angular element size in degrees.  Must be a positive integer.",
         )
         components["atmosphere"] = gr.Dropdown(
