@@ -363,8 +363,8 @@ def build() -> None:  # noqa: PLR0915
 
             Calls :func:`~logic.compute.load_params_from_json` and returns a
             ``gr.update`` for every component in ``fit_inputs_list``, setting
-            ``value`` (and ``interactive`` for min/max fields based on the
-            fixed flag).
+            ``value``, ``mode``, ``constraint``, and interactivity of min/max
+            based on the loaded mode.
 
             :param json_file: Gradio file object from the upload component.
             :type json_file: object
@@ -384,14 +384,18 @@ def build() -> None:  # noqa: PLR0915
             updates: list[object] = []
             for key in fit_keys:
                 if key.endswith(("_min", "_max")):
-                    param_name = key.rsplit("_", 1)[0]
-                    is_fixed = bool(params.get(f"{param_name}_fixed", False))
+                    param_name = key.rsplit("_", maxsplit=1)[0]
+                    mode = str(params.get(f"{param_name}_mode", "free"))
                     val = params.get(key)
-                    updates.append(
-                        gr.update(interactive=not is_fixed)
-                        if val is None
-                        else gr.update(value=val, interactive=not is_fixed),
-                    )
+                    upd = gr.update(interactive=mode == "free")
+                    if val is not None:
+                        upd = gr.update(value=val, interactive=mode == "free")
+                    updates.append(upd)
+                elif key.endswith("_constraint"):
+                    param_name = key.rsplit("_", maxsplit=1)[0]
+                    mode = str(params.get(f"{param_name}_mode", "free"))
+                    val = params.get(key, "")
+                    updates.append(gr.update(value=val, interactive=mode == "constrained"))
                 elif key in params:
                     updates.append(gr.update(value=params[key]))
                 else:

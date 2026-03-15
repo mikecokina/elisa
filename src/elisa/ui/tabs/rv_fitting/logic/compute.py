@@ -131,8 +131,9 @@ def build_x0(param_values: dict[str, object]) -> dict:
     as ``x0``.
 
     :param param_values: Flat dict keyed by ``"{name}_value"``,
-        ``"{name}_fixed"``, ``"{name}_min"``, ``"{name}_max"`` for every
-        parameter in :data:`~elisa.ui.tabs.rv_fitting.components.param_inputs.PARAMS`.
+        ``"{name}_mode"``, ``"{name}_constraint"``, ``"{name}_min"``,
+        ``"{name}_max"`` for every parameter in
+        :data:`~elisa.ui.tabs.rv_fitting.components.param_inputs.PARAMS`.
     :type param_values: dict[str, object]
     :returns: Nested initial-parameter dict suitable for
         ``RVBinaryAnalyticsTask.fit(x0=...)``.
@@ -143,12 +144,16 @@ def build_x0(param_values: dict[str, object]) -> dict:
 
     for name, unit_str in _PARAM_UNITS.items():
         value = _opt_float(param_values.get(f"{name}_value"))
-        fixed = bool(param_values.get(f"{name}_fixed", False))
+        mode = str(param_values.get(f"{name}_mode", "free"))
+        fixed = mode == "fixed"
+        constraint = str(param_values.get(f"{name}_constraint", "") or "").strip()
         lo = _opt_float(param_values.get(f"{name}_min"))
         hi = _opt_float(param_values.get(f"{name}_max"))
 
         entry: dict[str, object] = {"value": value, "fixed": fixed}
-        if not fixed:
+        if mode == "constrained" and constraint:
+            entry["constraint"] = constraint
+        elif not fixed:
             entry["min"] = lo
             entry["max"] = hi
         if unit_str is not None:
