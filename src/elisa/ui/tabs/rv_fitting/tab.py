@@ -206,7 +206,7 @@ def build() -> None:
     Gradio components to the computation back-end and registers the
     following event handlers:
 
-    - **Run Least Squares** - runs :func:`~logic.compute.run_lsqrt` and
+    - **Run The Least Squares** - runs :func:`~logic.compute.run_lsqrt` and
       populates the *LSQRT Results* sub-tab.
     - **Transfer to MCMC** - copies fitted values from the session state
       into the parameter form so the MCMC run starts from the LSQRT
@@ -345,6 +345,53 @@ def build() -> None:
 
         lsqrt_all_inputs = data_inputs_list + fit_inputs_list
         mcmc_all_inputs = data_inputs_list + fit_inputs_list + mcmc_inputs_list
+
+        # Load parameters from uploaded result JSON
+        def _load_json_handler(json_file: object) -> list[object]:
+            """Populate the parameter form from an uploaded result JSON.
+
+            Calls :func:`~logic.compute.load_params_from_json` and returns a
+            ``gr.update`` for every component in ``fit_inputs_list``, setting
+            ``value`` (and ``interactive`` for min/max fields based on the
+            fixed flag).
+
+            :param json_file: Gradio file object from the upload component.
+            :type json_file: object
+            :returns: One ``gr.update`` per component in :data:`param_inputs.FIELD_ORDER`.
+            :rtype: list[object]
+            """
+            path: str | None = getattr(json_file, "name", None)
+            if path is None:
+                msg = "No file uploaded."
+                raise gr.Error(msg)
+
+            try:
+                params = compute.load_params_from_json(path)
+            except ValueError as exc:
+                raise gr.Error(str(exc)) from exc
+
+            updates: list[object] = []
+            for key in fit_keys:
+                if key.endswith(("_min", "_max")):
+                    param_name = key.rsplit("_", 1)[0]
+                    is_fixed = bool(params.get(f"{param_name}_fixed", False))
+                    val = params.get(key)
+                    updates.append(
+                        gr.update(interactive=not is_fixed)
+                        if val is None
+                        else gr.update(value=val, interactive=not is_fixed)
+                    )
+                elif key in params:
+                    updates.append(gr.update(value=params[key]))
+                else:
+                    updates.append(gr.update())
+            return updates
+
+        data_comps["params_json"].upload(
+            fn=_load_json_handler,
+            inputs=[data_comps["params_json"]],
+            outputs=fit_inputs_list,
+        )
 
         # LSQRT run - immediately switch tab, then run computation
         lsqrt_btn.click(

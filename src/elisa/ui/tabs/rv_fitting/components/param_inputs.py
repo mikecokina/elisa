@@ -116,7 +116,7 @@ def build(
         with gr.Column(scale=2, min_width=100):
             gr.Markdown("**Max**")
 
-    for idx, (name, (label, def_val, def_fixed, def_min, def_max, _unit)) in enumerate(_PARAM_SPEC.items()):
+    for _, (name, (label, def_val, def_fixed, def_min, def_max, _unit)) in enumerate(_PARAM_SPEC.items()):
         # Add separator before MCMC nuisance parameters
         if name == "ln_f":
             gr.Markdown("---")

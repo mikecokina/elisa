@@ -17,15 +17,15 @@ def build() -> dict[str, gr.Component]:
     """Render the RV data upload section and return a component mapping.
 
     Creates two side-by-side upload areas (primary required, secondary
-    optional) plus a shared x-axis unit selector.  A small preview table
-    for each file is included so the user can verify the loaded data
-    before running a fit.
+    optional) plus a shared x-axis unit selector and a JSON file upload
+    for loading initial parameters from a previous fit.
 
     :returns: Dict with keys:
 
         - ``"primary_file"`` - file upload for the primary component RV data
         - ``"secondary_file"`` - file upload for the secondary component RV data
         - ``"x_unit"`` - dropdown for the x-axis unit
+        - ``"params_json"`` - file upload for restoring parameters from a previous fit
 
     :rtype: dict[str, gr.Component]
     """
@@ -60,6 +60,18 @@ def build() -> dict[str, gr.Component]:
             info="Unit of the independent variable column in the uploaded files.",
             scale=1,
         )
+
+    with gr.Accordion("Load Parameters from Previous Fit", open=False):
+        gr.Markdown(
+            "Upload a result JSON saved by a previous LSQRT or MCMC run to restore "
+            "all parameter values, bounds, and fixed flags into the form below.",
+        )
+        with gr.Row():
+            components["params_json"] = gr.File(
+                label="Result JSON",
+                file_types=[".json"],
+                scale=1,
+            )
 
     return components
 

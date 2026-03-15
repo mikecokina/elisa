@@ -199,24 +199,16 @@ def result_to_dataframe(result: dict) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def _save_result_json(result: dict) -> str:
-    """Write *result* to a timestamped JSON file in the system temp directory.
+def _result_temp_path(prefix: str) -> Path:
+    """Return a timestamped temp-file path for a fit result JSON.
 
-    Uses the same format as ELISa's native ``save_result()`` method to ensure
-    compatibility with ``load_result()``.
-
-    :param result: Fit result dict to serialize.
-    :type result: dict
-    :returns: Absolute path of the written file.
-    :rtype: str
+    :param prefix: Short label embedded in the filename, e.g. ``"lsqrt"`` or ``"mcmc"``.
+    :type prefix: str
+    :returns: Path inside the system temp directory.
+    :rtype: Path
     """
     ts = datetime.now(UTC).strftime("%Y-%m-%d_%H-%M-%S")
-    path = Path(tempfile.gettempdir()) / f"elisa_rv_result_{ts}.json"
-    path.write_text(
-        json.dumps(result, separators=(",", ": "), indent=4, default=str),
-        encoding="utf-8",
-    )
-    return str(path)
+    return Path(tempfile.gettempdir()) / f"elisa_rv_{prefix}_{ts}.json"
 
 
 # ---------------------------------------------------------------------------
@@ -271,9 +263,11 @@ def run_lsqrt(
 
     model_fig: Figure = task.plot.model(return_figure_instance=True)
     df = result_to_dataframe(task.fit_cls.flat_result)
-    json_path = _save_result_json(result)
 
-    return result, model_fig, df, json_path
+    json_path = _result_temp_path("lsqrt")
+    task.save_result(str(json_path))
+
+    return result, model_fig, df, str(json_path)
 
 
 def run_mcmc(
@@ -354,9 +348,62 @@ def run_mcmc(
     traces_fig: Figure | None = traces_captured[0] if traces_captured else None
 
     df = result_to_dataframe(task.fit_cls.flat_result)
-    json_path = _save_result_json(result)
 
-    return result, model_fig, corner_fig, traces_fig, df, json_path
+    json_path = _result_temp_path("mcmc")
+    task.save_result(str(json_path))
+
+    return result, model_fig, corner_fig, traces_fig, df, str(json_path)
+
+
+def _gamma_ms_to_kms(value: Float | None) -> Float | None:
+    """Convert a gamma velocity value from m/s to km/s.
+
+    Returns ``None`` when *value* is ``None``, enabling safe conversion of
+    optional bound values without extra guard clauses at the call site.
+
+    :param value: Velocity in m/s, or ``None``.
+    :type value: Float | None
+    :returns: Velocity in km/s, or ``None`` if *value* is ``None``.
+    :rtype: Float | None
+    """
+    if value is None:
+        return None
+    return (value * u.m / u.s).to(u.km / u.s).value
+
+
+def _param_meta_to_flat(name: str, meta: dict) -> dict[str, object]:
+    """Convert a single parameter metadata dict to flat form entries.
+
+    Reads ``value``, ``fixed``, ``min``, and ``max`` from *meta* and maps
+    them to ``"{name}_value"``, ``"{name}_fixed"``, ``"{name}_min"``, and
+    ``"{name}_max"`` keys. Applies m/s to km/s conversion for ``gamma``.
+
+    :param name: Parameter name (e.g. ``"gamma"``, ``"asini"``).
+    :type name: str
+    :param meta: Metadata dict for one parameter as stored in the JSON result.
+    :type meta: dict
+    :returns: Flat dict entries for this parameter.
+    :rtype: dict[str, object]
+    """
+    value = meta.get("value")
+    fixed = bool(meta.get("fixed", False))
+    unit_str = meta.get("unit") or ""
+    min_val = meta.get("min")
+    max_val = meta.get("max")
+
+    if name == "gamma" and unit_str == "m / s":
+        value = _gamma_ms_to_kms(value)
+        min_val = _gamma_ms_to_kms(min_val)
+        max_val = _gamma_ms_to_kms(max_val)
+
+    entry: dict[str, object] = {f"{name}_fixed": fixed}
+    if value is not None:
+        entry[f"{name}_value"] = value
+    if min_val is not None:
+        entry[f"{name}_min"] = min_val
+    if max_val is not None:
+        entry[f"{name}_max"] = max_val
+    return entry
 
 
 def extract_values_for_transfer(result: dict) -> dict[str, object]:
@@ -365,16 +412,16 @@ def extract_values_for_transfer(result: dict) -> dict[str, object]:
     Maps the nested ``result["system"][param]["value"]`` and
     ``result["nuisance"][param]["value"]`` entries to the flat
     ``"{name}_value"`` keys used by the parameter form.
-
     Performs unit conversion where the result's default unit differs from
     the UI's expected unit:
-    - ``gamma``: m/s (ELISa default) → km/s (UI form)
+
+    - ``gamma``: m/s (ELISa default) -> km/s (UI form)
 
     :param result: Nested fit result dict as returned by
         :class:`~elisa.analytics.RVBinaryAnalyticsTask`.
     :type result: dict
     :returns: Flat dict with ``"{name}_value"`` keys suitable for passing as
-        *defaults* to
+        defaults to
         :func:`~elisa.ui.tabs.rv_fitting.components.param_inputs.build`.
     :rtype: dict[str, object]
     """
@@ -385,12 +432,45 @@ def extract_values_for_transfer(result: dict) -> dict[str, object]:
             if isinstance(meta, dict) and "value" in meta:
                 value = meta["value"]
                 unit_str = meta.get("unit")
-
-                # Convert gamma from m/s (ELISa default) to km/s (UI form)
                 if name == "gamma" and unit_str == "m / s":
-                    value_with_unit = value * u.m / u.s
-                    value = value_with_unit.to(u.km / u.s).value
-
+                    value = _gamma_ms_to_kms(value)
                 out[f"{name}_value"] = value
     return out
 
+
+def load_params_from_json(path: str) -> dict[str, object]:
+    """Load parameter values, bounds and fixed flags from a saved result JSON.
+
+    Parses the ``system`` and ``nuisance`` sections written by
+    :meth:`~elisa.analytics.RVBinaryAnalyticsTask.save_result` and returns a
+    flat dict compatible with the parameter form.
+    Unit conversion applied where ELISa internal unit differs from the UI:
+
+    - ``gamma``: stored as ``m / s`` -> converted to ``km/s`` (value and bounds).
+
+    Fixed parameters have no ``min``/``max`` in the file - those keys are
+    omitted from the return dict so the form keeps its existing bound values.
+
+    :param path: Absolute path to the JSON file produced by ``save_result()``.
+    :type path: str
+    :returns: Flat dict with ``"{name}_value"``, ``"{name}_fixed"`` and,
+        when present, ``"{name}_min"`` and ``"{name}_max"`` keys.
+    :rtype: dict[str, object]
+    :raises ValueError: If the file cannot be read or does not contain a
+        recognised ``system`` section.
+    """
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except Exception as exc:
+        msg = f"Cannot read result file: {exc}"
+        raise ValueError(msg) from exc
+    if "system" not in data:
+        msg = "File does not look like an ELISa RV result - missing 'system' key."
+        raise ValueError(msg)
+    out: dict[str, object] = {}
+    for section in ("system", "nuisance"):
+        for name, meta in (data.get(section) or {}).items():
+            if not isinstance(meta, dict):
+                continue
+            out.update(_param_meta_to_flat(name, meta))
+    return out
