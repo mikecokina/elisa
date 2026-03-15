@@ -30,7 +30,6 @@ from typing import TYPE_CHECKING, Any, Literal
 import gradio as gr
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
 
     from elisa.types import Float
 
@@ -193,47 +192,38 @@ FIELD_ORDER: tuple[str, ...] = _build_field_order("community")
 # ---------------------------------------------------------------------------
 
 
-def _make_mode_change_handler() -> Callable[[str], tuple[Any, Any, Any]]:
-    """Create a Gradio update handler for parameter mode changes.
+def _mode_handler(mode: str) -> tuple[Any, Any, Any]:
+    """Handle mode radio change for any parameter row.
 
-    Returns a callable that takes mode string and returns tuple of update
-    objects for (constraint, min, max) components.
+    Controls which secondary fields are editable based on the selected mode:
 
-    :returns: Callable that takes mode string and returns tuple of gr.update()s.
-    :rtype: Callable[[str], tuple[Any, Any, Any]]
+    - **free** - min and max are editable, constraint is greyed out.
+    - **fixed** - min, max, and constraint are all greyed out.
+    - **constrained** - constraint is editable, min and max are greyed out.
+
+    :param mode: Selected mode value (``"free"``, ``"fixed"``, or ``"constrained"``).
+    :type mode: str
+    :returns: Tuple of ``gr.update`` objects for (constraint, min, max).
+    :rtype: tuple[Any, Any, Any]
     """
-    def handler(mode: str) -> tuple[Any, Any, Any]:
-        """Handle mode change for a parameter.
-
-        - **free**: show min/max, hide constraint
-        - **fixed**: hide min/max and constraint
-        - **constrained**: show constraint, hide min/max
-
-        :param mode: New mode value ("free", "fixed", or "constrained").
-        :type mode: str
-        :returns: Tuple of updates for constraint, min, max components.
-        :rtype: tuple[Any, Any, Any]
-        """
-        if mode == "free":
-            return (
-                gr.update(visible=False),
-                gr.update(visible=True),
-                gr.update(visible=True),
-            )
-        if mode == "fixed":
-            return (
-                gr.update(visible=False),
-                gr.update(visible=False),
-                gr.update(visible=False),
-            )
-        # constrained
+    if mode == "free":
         return (
-            gr.update(visible=True),
-            gr.update(visible=False),
-            gr.update(visible=False),
+            gr.update(interactive=False),
+            gr.update(interactive=True),
+            gr.update(interactive=True),
         )
-
-    return handler
+    if mode == "fixed":
+        return (
+            gr.update(interactive=False),
+            gr.update(interactive=False),
+            gr.update(interactive=False),
+        )
+    # constrained
+    return (
+        gr.update(interactive=True),
+        gr.update(interactive=False),
+        gr.update(interactive=False),
+    )
 
 
 def _param_row(
@@ -249,8 +239,10 @@ def _param_row(
 ) -> None:
     """Render one parameter row with mode selector (free/fixed/constrained).
 
-    Uses the clean semi_major_axis UI pattern: two rows with mode selector,
-    conditional constraint field, and interactive min/max bounds.
+    All secondary fields (constraint, min, max) are always visible.
+    Interactivity is toggled by the mode radio so Gradio never needs to
+    insert or remove DOM elements, which avoids the loading-spinner bug
+    that affects ``gr.update(visible=...)`` inside nested Tabs/Accordions.
 
     :param components: Mutable dict that receives the new components.
     :type components: dict[str, gr.Component]
@@ -271,7 +263,6 @@ def _param_row(
     :param constraint: Initial constraint expression (if provided).
     :type constraint: str | None
     """
-    # Determine mode from constraint/fixed
     if constraint:
         mode = "constrained"
     elif bool(fixed):
@@ -283,9 +274,8 @@ def _param_row(
     flo: float | None = float(lo) if lo is not None else None  # type: ignore[arg-type]
     fhi: float | None = float(hi) if hi is not None else None  # type: ignore[arg-type]
 
-    # Set initial visibility based on mode
-    show_constraint = mode == "constrained"
-    show_min_max = mode == "free"
+    constraint_active = mode == "constrained"
+    bounds_active = mode == "free"
 
     with gr.Row():
         with gr.Column(scale=3, min_width=200):
@@ -309,37 +299,32 @@ def _param_row(
         constraint_comp = gr.Textbox(
             value=str(constraint) if constraint else "",
             label="Constraint expression",
-            info='Expression evaluated after each step, e.g. "16.5 / sin(radians(system@inclination))".',
-            scale=6,
-            visible=show_constraint,
-            interactive=True,
+            placeholder='e.g. "11.2 / sin(radians(system@inclination))"',
+            scale=4,
+            interactive=constraint_active,
             container=True,
         )
         min_comp = gr.Number(
             value=flo,
             label="Min",
             scale=2,
-            visible=show_min_max,
-            interactive=True,
+            interactive=bounds_active,
             container=True,
         )
         max_comp = gr.Number(
             value=fhi,
             label="Max",
             scale=2,
-            visible=show_min_max,
-            interactive=True,
+            interactive=bounds_active,
             container=True,
         )
 
-    # Wire the mode change handler BEFORE storing in dict
     mode_comp.change(
-        fn=_make_mode_change_handler(),
+        fn=_mode_handler,
         inputs=[mode_comp],
         outputs=[constraint_comp, min_comp, max_comp],
     )
 
-    # Now store in components dict
     components[f"{section}_{name}_value"] = value_comp
     components[f"{section}_{name}_mode"] = mode_comp
     components[f"{section}_{name}_constraint"] = constraint_comp

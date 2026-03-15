@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")
 
-from elisa.ui.app import build_app
+from elisa.ui.app import APP_CSS, build_app
 
 __all__ = ["build_app", "launch"]
 
@@ -55,6 +55,7 @@ def launch(
     import gradio as gr  # noqa: PLC0415
 
     kwargs.setdefault("theme", gr.themes.Default())
+    kwargs.setdefault("css", APP_CSS)
 
     # Use official Gradio workaround: force theme via __theme URL parameter
     if theme_mode in ("light", "dark"):

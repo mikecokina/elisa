@@ -15,6 +15,17 @@ from elisa.ui.tabs.system_visualization import tab as sys_viz_tab
 
 _LOGO_PATH = Path(__file__).parent / "assets" / "logo.png"
 
+APP_CSS = """
+input:disabled,
+textarea:disabled {
+    opacity: 0.4 !important;
+    background-color: var(--input-background-fill) !important;
+    cursor: not-allowed !important;
+    color: var(--body-text-color) !important;
+    filter: grayscale(40%) !important;
+}
+"""
+
 
 def _get_logo_base64() -> str | None:
     """Load logo image and convert to base64 data URI.
