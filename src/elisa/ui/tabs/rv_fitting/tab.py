@@ -14,7 +14,7 @@ the least-squares (LSQRT) or MCMC method:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import gradio as gr
 import pandas as pd  # noqa: TC002 - needed at runtime for Gradio type hints
@@ -25,6 +25,13 @@ from elisa.ui.tabs.rv_fitting.logic import compute
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+# ---------------------------------------------------------------------------
+# Tab ID constants - must match id= on gr.Tab definitions
+# ---------------------------------------------------------------------------
+
+_TAB_LSQRT = "rv_lsqrt_results"
+_TAB_MCMC = "rv_mcmc_results"
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -52,7 +59,7 @@ def _collect_param_values(
 def _lsqrt_handler(
     data_keys: tuple[str, ...],
     fit_keys: tuple[str, ...],
-) -> Callable[..., tuple[dict, Figure, pd.DataFrame, Any]]:
+) -> Callable[..., tuple[dict, Figure, pd.DataFrame, gr.DownloadButton]]:
     """Return the LSQRT Gradio event-handler bound to the given key tuples.
 
     :param data_keys: Keys for data-input components in order.
@@ -93,7 +100,7 @@ def _mcmc_handler(
     data_keys: tuple[str, ...],
     fit_keys: tuple[str, ...],
     mcmc_keys: tuple[str, ...],
-) -> Callable[..., tuple[dict, Figure, Any, Any, pd.DataFrame, Any]]:
+) -> Callable[..., tuple[dict, Figure, Figure | None, Figure | None, pd.DataFrame, gr.DownloadButton]]:
     """Return the MCMC Gradio event-handler bound to the given key tuples.
 
     :param data_keys: Keys for data-input components in order.
@@ -308,12 +315,12 @@ def build() -> None:
         # ------------------------------------------------------------------ #
         # Section 5 - Results                                                  #
         # ------------------------------------------------------------------ #
-        with gr.Tabs():
-            with gr.Tab("LSQRT Results"):
+        with gr.Tabs() as results_tabs:
+            with gr.Tab("LSQRT Results", id=_TAB_LSQRT):
                 lsqrt_model_plot, lsqrt_table, lsqrt_download = (
                     _build_lsqrt_results()
                 )
-            with gr.Tab("MCMC Results"):
+            with gr.Tab("MCMC Results", id=_TAB_MCMC):
                 mcmc_model_plot, mcmc_table, corner_plot, traces_plot, mcmc_download = (
                     _build_mcmc_results()
                 )
@@ -339,8 +346,11 @@ def build() -> None:
         lsqrt_all_inputs = data_inputs_list + fit_inputs_list
         mcmc_all_inputs = data_inputs_list + fit_inputs_list + mcmc_inputs_list
 
-        # LSQRT run
+        # LSQRT run - immediately switch tab, then run computation
         lsqrt_btn.click(
+            fn=lambda: gr.update(selected=_TAB_LSQRT),
+            outputs=[results_tabs],
+        ).then(
             fn=_lsqrt_handler(data_keys, fit_keys),
             inputs=lsqrt_all_inputs,
             outputs=[
@@ -382,8 +392,11 @@ def build() -> None:
             outputs=value_outputs,
         )
 
-        # MCMC run
+        # MCMC run - immediately switch tab, then run computation
         mcmc_btn.click(
+            fn=lambda: gr.update(selected=_TAB_MCMC),
+            outputs=[results_tabs],
+        ).then(
             fn=_mcmc_handler(data_keys, fit_keys, mcmc_keys),
             inputs=mcmc_all_inputs,
             outputs=[
@@ -396,4 +409,3 @@ def build() -> None:
             ],
             show_progress="full",
         )
-

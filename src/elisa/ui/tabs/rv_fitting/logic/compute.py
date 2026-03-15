@@ -202,14 +202,20 @@ def result_to_dataframe(result: dict) -> pd.DataFrame:
 def _save_result_json(result: dict) -> str:
     """Write *result* to a timestamped JSON file in the system temp directory.
 
-    :param result: Fit result dict to serialise.
+    Uses the same format as ELISa's native ``save_result()`` method to ensure
+    compatibility with ``load_result()``.
+
+    :param result: Fit result dict to serialize.
     :type result: dict
     :returns: Absolute path of the written file.
     :rtype: str
     """
     ts = datetime.now(UTC).strftime("%Y-%m-%d_%H-%M-%S")
     path = Path(tempfile.gettempdir()) / f"elisa_rv_result_{ts}.json"
-    path.write_text(json.dumps(result, indent=4, default=str))
+    path.write_text(
+        json.dumps(result, separators=(",", ": "), indent=4, default=str),
+        encoding="utf-8",
+    )
     return str(path)
 
 
