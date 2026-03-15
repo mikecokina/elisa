@@ -26,6 +26,8 @@ from elisa.ui.tabs.rv_fitting.logic import compute
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from elisa.ui.tabs.rv_fitting.components.data_inputs import DataInputComponents
+
 # ---------------------------------------------------------------------------
 # Tab ID constants - must match id= on gr.Tab definitions
 # ---------------------------------------------------------------------------
@@ -36,6 +38,7 @@ _TAB_MCMC = "rv_mcmc_results"
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _collect_param_values(
     param_keys: tuple[str, ...],
@@ -68,6 +71,7 @@ def _lsqrt_handler(
     :type fit_keys: tuple[str, ...]
     :returns: Gradio-compatible handler function.
     """
+
     def handler(
         *values: object,
     ) -> tuple[dict, Figure, pd.DataFrame, gr.DownloadButton]:
@@ -75,17 +79,16 @@ def _lsqrt_handler(
         data_vals = _collect_param_values(data_keys, values, 0)
         fit_vals = _collect_param_values(fit_keys, values, n_data)
 
-        primary_path: str | None = (
-            getattr(data_vals.get("primary_file"), "name", None)
-        )
-        secondary_path: str | None = (
-            getattr(data_vals.get("secondary_file"), "name", None)
-        )
+        primary_path: str | None = getattr(data_vals.get("primary_file"), "name", None)
+        secondary_path: str | None = getattr(data_vals.get("secondary_file"), "name", None)
         x_unit_str: str = str(data_vals.get("x_unit", "Julian days (JD)"))
 
         try:
             result, fig, df, json_path = compute.run_lsqrt(
-                primary_path, secondary_path, x_unit_str, fit_vals,
+                primary_path,
+                secondary_path,
+                x_unit_str,
+                fit_vals,
             )
         except Exception as exc:
             msg = str(exc)
@@ -111,6 +114,7 @@ def _mcmc_handler(
     :type mcmc_keys: tuple[str, ...]
     :returns: Gradio-compatible handler function.
     """
+
     def handler(
         *values: object,
     ) -> tuple[dict, Figure, Figure | None, Figure | None, pd.DataFrame, gr.DownloadButton]:
@@ -120,12 +124,8 @@ def _mcmc_handler(
         fit_vals = _collect_param_values(fit_keys, values, n_data)
         mcmc_vals = _collect_param_values(mcmc_keys, values, n_data + n_fit)
 
-        primary_path: str | None = (
-            getattr(data_vals.get("primary_file"), "name", None)
-        )
-        secondary_path: str | None = (
-            getattr(data_vals.get("secondary_file"), "name", None)
-        )
+        primary_path: str | None = getattr(data_vals.get("primary_file"), "name", None)
+        secondary_path: str | None = getattr(data_vals.get("secondary_file"), "name", None)
         x_unit_str: str = str(data_vals.get("x_unit", "Julian days (JD)"))
 
         nwalkers = int(mcmc_vals.get("nwalkers") or 50)
@@ -135,11 +135,16 @@ def _mcmc_handler(
         save = bool(mcmc_vals.get("save_chain", True))
 
         try:
-            result, model_fig, corner_fig, traces_fig, df, json_path = (
-                compute.run_mcmc(
-                    primary_path, secondary_path, x_unit_str, fit_vals,
-                    nwalkers, nsteps, burn_in, fit_id, save=save,
-                )
+            result, model_fig, corner_fig, traces_fig, df, json_path = compute.run_mcmc(
+                primary_path,
+                secondary_path,
+                x_unit_str,
+                fit_vals,
+                nwalkers,
+                nsteps,
+                burn_in,
+                fit_id,
+                save=save,
             )
         except Exception as exc:
             msg = str(exc)
@@ -177,9 +182,7 @@ def _build_lsqrt_results() -> tuple[gr.Plot, gr.DataFrame, gr.DownloadButton]:
     return model_plot, table, download
 
 
-def _build_mcmc_results() -> (
-    tuple[gr.Plot, gr.DataFrame, gr.Plot, gr.Plot, gr.DownloadButton]
-):
+def _build_mcmc_results() -> tuple[gr.Plot, gr.DataFrame, gr.Plot, gr.Plot, gr.DownloadButton]:
     """Render the MCMC results sub-tab content and return output components.
 
     :returns: Tuple of
@@ -199,7 +202,7 @@ def _build_mcmc_results() -> (
     return model_plot, table, corner_plot, traces_plot, download
 
 
-def build() -> None:
+def build() -> None:  # noqa: PLR0915
     """Build the RV Fitting tab inside the active ``gr.Blocks`` context.
 
     Must be called from within a ``gr.Blocks`` context manager.  Wires all
@@ -234,13 +237,24 @@ def build() -> None:
         # Section 1 - Data upload                                              #
         # ------------------------------------------------------------------ #
         with gr.Accordion("1 · Observational data", open=True):
-            data_comps = data_inputs.build()
+            data_comps: DataInputComponents = data_inputs.build()
 
         # ------------------------------------------------------------------ #
         # Section 2 - Initial parameters                                       #
         # ------------------------------------------------------------------ #
         with gr.Accordion("2 · Initial parameters", open=True):
             fit_comps = param_inputs.build()
+            with gr.Accordion("Load Parameters from Previous Fit", open=False):
+                gr.Markdown(
+                    "Upload a result JSON saved by a previous LSQRT or MCMC run to restore "
+                    "all parameter values, bounds, and fixed flags into the form below.",
+                )
+                with gr.Row():
+                    params_json_comp = gr.File(
+                        label="Result JSON",
+                        file_types=[".json"],
+                        scale=1,
+                    )
 
         # ------------------------------------------------------------------ #
         # Section 3 - MCMC settings                                            #
@@ -317,13 +331,9 @@ def build() -> None:
         # ------------------------------------------------------------------ #
         with gr.Tabs() as results_tabs:
             with gr.Tab("LSQRT Results", id=_TAB_LSQRT):
-                lsqrt_model_plot, lsqrt_table, lsqrt_download = (
-                    _build_lsqrt_results()
-                )
+                lsqrt_model_plot, lsqrt_table, lsqrt_download = _build_lsqrt_results()
             with gr.Tab("MCMC Results", id=_TAB_MCMC):
-                mcmc_model_plot, mcmc_table, corner_plot, traces_plot, mcmc_download = (
-                    _build_mcmc_results()
-                )
+                mcmc_model_plot, mcmc_table, corner_plot, traces_plot, mcmc_download = _build_mcmc_results()
 
         # ------------------------------------------------------------------ #
         # Event wiring                                                         #
@@ -333,7 +343,8 @@ def build() -> None:
         mcmc_keys = ("nwalkers", "nsteps", "burn_in", "fit_id", "save_chain")
 
         # Build flat input lists for each button
-        data_inputs_list = [data_comps[k] for k in data_keys]
+        # data_comps is a TypedDict (subclass of dict) - values() gives components in insertion order
+        data_inputs_list: list[gr.Component] = list(data_comps.values())  # type: ignore[arg-type]
         fit_inputs_list = [fit_comps[k] for k in fit_keys]
         mcmc_inputs_list = [
             nwalkers_comp,
@@ -379,7 +390,7 @@ def build() -> None:
                     updates.append(
                         gr.update(interactive=not is_fixed)
                         if val is None
-                        else gr.update(value=val, interactive=not is_fixed)
+                        else gr.update(value=val, interactive=not is_fixed),
                     )
                 elif key in params:
                     updates.append(gr.update(value=params[key]))
@@ -387,9 +398,9 @@ def build() -> None:
                     updates.append(gr.update())
             return updates
 
-        data_comps["params_json"].upload(
+        params_json_comp.upload(
             fn=_load_json_handler,
-            inputs=[data_comps["params_json"]],
+            inputs=[params_json_comp],
             outputs=fit_inputs_list,
         )
 
@@ -425,10 +436,9 @@ def build() -> None:
             values = compute.extract_values_for_transfer(result)
             # Return updates only for the _value components (every 4th in FIELD_ORDER)
             from elisa.ui.tabs.rv_fitting.components.param_inputs import PARAMS  # noqa: PLC0415
+
             return [
-                gr.update(value=values[f"{name}_value"])
-                if f"{name}_value" in values
-                else gr.update()
+                gr.update(value=values[f"{name}_value"]) if f"{name}_value" in values else gr.update()
                 for name in PARAMS
             ]
 

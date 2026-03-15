@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TypedDict
+
 import gradio as gr
 
 # x-axis unit choices exposed to the user
@@ -13,23 +15,34 @@ COL_PRIMARY = "_col_primary"
 COL_SECONDARY = "_col_secondary"
 
 
-def build() -> dict[str, gr.Component]:
+class DataInputComponents(TypedDict):
+    """Typed mapping returned by :func:`build`.
+
+    :cvar primary_file: File upload for the primary component RV data.
+    :cvar secondary_file: File upload for the secondary component RV data.
+    :cvar x_unit: Dropdown for the x-axis unit.
+    """
+
+    primary_file: gr.File
+    secondary_file: gr.File
+    x_unit: gr.Dropdown
+
+
+def build() -> DataInputComponents:
     """Render the RV data upload section and return a component mapping.
 
     Creates two side-by-side upload areas (primary required, secondary
-    optional) plus a shared x-axis unit selector and a JSON file upload
-    for loading initial parameters from a previous fit.
+    optional) plus a shared x-axis unit selector.
 
-    :returns: Dict with keys:
+    :returns: Typed dict with keys:
 
         - ``"primary_file"`` - file upload for the primary component RV data
         - ``"secondary_file"`` - file upload for the secondary component RV data
         - ``"x_unit"`` - dropdown for the x-axis unit
-        - ``"params_json"`` - file upload for restoring parameters from a previous fit
 
-    :rtype: dict[str, gr.Component]
+    :rtype: DataInputComponents
     """
-    components: dict[str, gr.Component] = {}
+    components: DataInputComponents = {}  # type: ignore[typeddict-item]
 
     gr.Markdown("### Observational Data")
     gr.Markdown(
@@ -61,17 +74,4 @@ def build() -> dict[str, gr.Component]:
             scale=1,
         )
 
-    with gr.Accordion("Load Parameters from Previous Fit", open=False):
-        gr.Markdown(
-            "Upload a result JSON saved by a previous LSQRT or MCMC run to restore "
-            "all parameter values, bounds, and fixed flags into the form below.",
-        )
-        with gr.Row():
-            components["params_json"] = gr.File(
-                label="Result JSON",
-                file_types=[".json"],
-                scale=1,
-            )
-
     return components
-
