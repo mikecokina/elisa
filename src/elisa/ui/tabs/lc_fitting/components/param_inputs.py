@@ -1,41 +1,37 @@
 """Gradio component builder for LC fitting initial parameters.
 
+Supports two fitting approaches:
+
+- **Community** - uses ``semi_major_axis`` and ``mass_ratio`` instead of individual masses.
+- **Standard** - uses individual component masses.
+
 Three sections are rendered:
 
-- **System** - orbital and geometric parameters; ``semi_major_axis`` has
-  a special three-mode selector (free / fixed / constrained).
+- **System** - orbital and geometric parameters.
 - **Primary** - primary component physical parameters.
 - **Secondary** - secondary component physical parameters (same fields).
 - **Nuisance** - ``ln_f`` log-noise term used by MCMC.
 
-Each regular parameter exposes four controls::
+Each regular parameter exposes five controls::
 
-    {section}_{name}_value   - initial / central value
-    {section}_{name}_fixed   - hold parameter fixed during fitting
-    {section}_{name}_min     - lower bound (ignored when fixed)
-    {section}_{name}_max     - upper bound (ignored when fixed)
-
-``semi_major_axis`` exposes five controls::
-
-    system_semi_major_axis_value      - initial value
-    system_semi_major_axis_mode       - "free" | "fixed" | "constrained"
-    system_semi_major_axis_min        - lower bound (active when mode="free")
-    system_semi_major_axis_max        - upper bound (active when mode="free")
-    system_semi_major_axis_constraint - expression string (visible when mode="constrained")
-
-:data:`SYSTEM_REGULAR_PARAMS`, :data:`COMPONENT_PARAMS` are exported so
-``tab.py`` can iterate over them when wiring the fixed-checkbox handlers.
+    {section}_{name}_value      - initial / central value
+    {section}_{name}_mode       - "free" | "fixed" | "constrained"
+    {section}_{name}_constraint - expression string (visible when mode="constrained")
+    {section}_{name}_min        - lower bound (active when mode="free")
+    {section}_{name}_max        - upper bound (active when mode="free")
 
 :data:`FIELD_ORDER` is the canonical flat tuple used as Gradio input ordering.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Literal
 
 import gradio as gr
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from elisa.types import Float
 
 # ---------------------------------------------------------------------------
@@ -45,7 +41,8 @@ if TYPE_CHECKING:
 # (label, default_value, default_fixed, default_min, default_max, unit_hint)
 _Spec = tuple[str, float, bool, float | None, float | None, str | None]
 
-_SYSTEM_SPEC: dict[str, _Spec] = {
+# Common system parameters for both approaches
+_SYSTEM_COMMON_SPEC: dict[str, _Spec] = {
     "inclination": (
         "**Inclination**  i  [deg]",
         85.0, False, 80.0, 90.0, "deg",
@@ -57,10 +54,6 @@ _SYSTEM_SPEC: dict[str, _Spec] = {
     "argument_of_periastron": (
         "**Arg. of periastron**  ω  [deg]",
         0.0, True, 0.0, 360.0, "deg",
-    ),
-    "mass_ratio": (
-        "**Mass ratio**  q = M₂/M₁",
-        0.5, True, 0.1, 2.0, None,
     ),
     "period": (
         "**Orbital period**  P  [d]",
@@ -80,13 +73,20 @@ _SYSTEM_SPEC: dict[str, _Spec] = {
     ),
 }
 
-_SMA_DEFAULT_VALUE: float = 16.515
-_SMA_DEFAULT_MODE: str = "constrained"
-_SMA_DEFAULT_MIN: float = 10.0
-_SMA_DEFAULT_MAX: float = 30.0
-_SMA_DEFAULT_CONSTRAINT: str = "16.515 / sin(radians(system@inclination))"
+# Community-specific system parameters
+_SYSTEM_COMMUNITY_SPEC: dict[str, _Spec] = {
+    "semi_major_axis": (
+        "**Semi-major axis**  a  [R☉]",
+        16.515, False, 10.0, 30.0, "R☉",
+    ),
+    "mass_ratio": (
+        "**Mass ratio**  q = M₂/M₁",
+        0.5, True, 0.1, 2.0, None,
+    ),
+}
 
-_COMPONENT_SPEC: dict[str, _Spec] = {
+# Component parameters common to both approaches
+_COMPONENT_COMMON_SPEC: dict[str, _Spec] = {
     "t_eff": (
         "**Effective temperature**  T_eff  [K]",
         8307.0, False, 7800.0, 8800.0, "K",
@@ -113,47 +113,127 @@ _COMPONENT_SPEC: dict[str, _Spec] = {
     ),
 }
 
+# Standard-specific component parameter
+_COMPONENT_STANDARD_SPEC: dict[str, _Spec] = {
+    "mass": (
+        "**Mass**  M  [M☉]",
+        2.0, False, 0.1, 100.0, "M☉",
+    ),
+}
+
 # ---------------------------------------------------------------------------
 # Exported name tuples
 # ---------------------------------------------------------------------------
 
-#: Regular system param names (excluding semi_major_axis).
-SYSTEM_REGULAR_PARAMS: tuple[str, ...] = tuple(_SYSTEM_SPEC.keys())
-
-#: All system param names (includes semi_major_axis).
-SYSTEM_PARAMS: tuple[str, ...] = (*SYSTEM_REGULAR_PARAMS, "semi_major_axis")
-
-#: Per-component param names (identical for primary and secondary).
-COMPONENT_PARAMS: tuple[str, ...] = tuple(_COMPONENT_SPEC.keys())
-
-# Flat Gradio input ordering - each param has mode, value, constraint, min, max.
-FIELD_ORDER: tuple[str, ...] = (
-    *(
-        f"system_{name}_{sub}"
-        for name in SYSTEM_PARAMS
-        for sub in ("value", "mode", "constraint", "min", "max")
-    ),
-    *(
-        f"primary_{name}_{sub}"
-        for name in COMPONENT_PARAMS
-        for sub in ("value", "mode", "constraint", "min", "max")
-    ),
-    *(
-        f"secondary_{name}_{sub}"
-        for name in COMPONENT_PARAMS
-        for sub in ("value", "mode", "constraint", "min", "max")
-    ),
-    "nuisance_ln_f_value",
-    "nuisance_ln_f_mode",
-    "nuisance_ln_f_constraint",
-    "nuisance_ln_f_min",
-    "nuisance_ln_f_max",
+#: System params for community approach (common + semi_major_axis + mass_ratio).
+SYSTEM_PARAMS_COMMUNITY: tuple[str, ...] = (
+    *tuple(_SYSTEM_COMMON_SPEC.keys()),
+    *tuple(_SYSTEM_COMMUNITY_SPEC.keys()),
 )
+
+#: System params for standard approach (common only, no semi_major_axis or mass_ratio).
+SYSTEM_PARAMS_STANDARD: tuple[str, ...] = tuple(_SYSTEM_COMMON_SPEC.keys())
+
+#: Component params for community approach (no mass).
+COMPONENT_PARAMS_COMMUNITY: tuple[str, ...] = tuple(_COMPONENT_COMMON_SPEC.keys())
+
+#: Component params for standard approach (mass + common).
+COMPONENT_PARAMS_STANDARD: tuple[str, ...] = (
+    *tuple(_COMPONENT_STANDARD_SPEC.keys()),
+    *tuple(_COMPONENT_COMMON_SPEC.keys()),
+)
+
+# Backward compatibility exports - default to community approach
+SYSTEM_PARAMS: tuple[str, ...] = SYSTEM_PARAMS_COMMUNITY
+SYSTEM_REGULAR_PARAMS: tuple[str, ...] = tuple(_SYSTEM_COMMON_SPEC.keys())
+COMPONENT_PARAMS: tuple[str, ...] = COMPONENT_PARAMS_COMMUNITY
+
+
+def _build_field_order(approach: Literal["community", "standard"]) -> tuple[str, ...]:
+    """Build FIELD_ORDER dynamically based on the approach.
+
+    :param approach: Fitting approach ("community" or "standard").
+    :type approach: Literal["community", "standard"]
+    :returns: Tuple of field names in canonical order.
+    :rtype: tuple[str, ...]
+    """
+    system_params = SYSTEM_PARAMS_COMMUNITY if approach == "community" else SYSTEM_PARAMS_STANDARD
+    component_params = COMPONENT_PARAMS_COMMUNITY if approach == "community" else COMPONENT_PARAMS_STANDARD
+
+    return (
+        *(
+            f"system_{name}_{sub}"
+            for name in system_params
+            for sub in ("value", "mode", "constraint", "min", "max")
+        ),
+        *(
+            f"primary_{name}_{sub}"
+            for name in component_params
+            for sub in ("value", "mode", "constraint", "min", "max")
+        ),
+        *(
+            f"secondary_{name}_{sub}"
+            for name in component_params
+            for sub in ("value", "mode", "constraint", "min", "max")
+        ),
+        "nuisance_ln_f_value",
+        "nuisance_ln_f_mode",
+        "nuisance_ln_f_constraint",
+        "nuisance_ln_f_min",
+        "nuisance_ln_f_max",
+    )
+
+
+# Default to community approach for backward compatibility
+FIELD_ORDER: tuple[str, ...] = _build_field_order("community")
 
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+
+def _make_mode_change_handler() -> Callable[[str], tuple[Any, Any, Any]]:
+    """Create a Gradio update handler for parameter mode changes.
+
+    Returns a callable that takes mode string and returns tuple of update
+    objects for (constraint, min, max) components.
+
+    :returns: Callable that takes mode string and returns tuple of gr.update()s.
+    :rtype: Callable[[str], tuple[Any, Any, Any]]
+    """
+    def handler(mode: str) -> tuple[Any, Any, Any]:
+        """Handle mode change for a parameter.
+
+        - **free**: show min/max, hide constraint
+        - **fixed**: hide min/max and constraint
+        - **constrained**: show constraint, hide min/max
+
+        :param mode: New mode value ("free", "fixed", or "constrained").
+        :type mode: str
+        :returns: Tuple of updates for constraint, min, max components.
+        :rtype: tuple[Any, Any, Any]
+        """
+        if mode == "free":
+            return (
+                gr.update(visible=False),
+                gr.update(visible=True),
+                gr.update(visible=True),
+            )
+        if mode == "fixed":
+            return (
+                gr.update(visible=False),
+                gr.update(visible=False),
+                gr.update(visible=False),
+            )
+        # constrained
+        return (
+            gr.update(visible=True),
+            gr.update(visible=False),
+            gr.update(visible=False),
+        )
+
+    return handler
 
 
 def _param_row(
@@ -203,54 +283,74 @@ def _param_row(
     flo: float | None = float(lo) if lo is not None else None  # type: ignore[arg-type]
     fhi: float | None = float(hi) if hi is not None else None  # type: ignore[arg-type]
 
-    is_free = mode == "free"
-    is_constrained = mode == "constrained"
+    # Set initial visibility based on mode
+    show_constraint = mode == "constrained"
+    show_min_max = mode == "free"
 
     with gr.Row():
         with gr.Column(scale=3, min_width=200):
             gr.Markdown(label)
-        components[f"{section}_{name}_value"] = gr.Number(
+        value_comp = gr.Number(
             value=fv,
             label="Initial value",
             scale=2,
+            interactive=True,
             container=True,
         )
-        components[f"{section}_{name}_mode"] = gr.Radio(
+        mode_comp = gr.Radio(
             choices=["free", "fixed", "constrained"],
             value=mode,
             label="Mode",
             scale=3,
+            interactive=True,
         )
 
     with gr.Row():
-        components[f"{section}_{name}_constraint"] = gr.Textbox(
+        constraint_comp = gr.Textbox(
             value=str(constraint) if constraint else "",
             label="Constraint expression",
             info='Expression evaluated after each step, e.g. "16.5 / sin(radians(system@inclination))".',
             scale=6,
-            visible=is_constrained,
+            visible=show_constraint,
+            interactive=True,
             container=True,
         )
-        components[f"{section}_{name}_min"] = gr.Number(
+        min_comp = gr.Number(
             value=flo,
             label="Min",
             scale=2,
-            interactive=is_free,
+            visible=show_min_max,
+            interactive=True,
             container=True,
         )
-        components[f"{section}_{name}_max"] = gr.Number(
+        max_comp = gr.Number(
             value=fhi,
             label="Max",
             scale=2,
-            interactive=is_free,
+            visible=show_min_max,
+            interactive=True,
             container=True,
         )
+
+    # Wire the mode change handler BEFORE storing in dict
+    mode_comp.change(
+        fn=_make_mode_change_handler(),
+        inputs=[mode_comp],
+        outputs=[constraint_comp, min_comp, max_comp],
+    )
+
+    # Now store in components dict
+    components[f"{section}_{name}_value"] = value_comp
+    components[f"{section}_{name}_mode"] = mode_comp
+    components[f"{section}_{name}_constraint"] = constraint_comp
+    components[f"{section}_{name}_min"] = min_comp
+    components[f"{section}_{name}_max"] = max_comp
 
 
 def _build_component_section(
     components: dict[str, gr.Component],
     section: str,
-    spec: dict[str, _Spec],
+    approach: Literal["community", "standard"],
     defaults: dict[str, Float | bool | str | None],
     value_overrides: dict[str, tuple[float, float, float]] | None = None,
 ) -> None:
@@ -260,15 +360,21 @@ def _build_component_section(
     :type components: dict[str, gr.Component]
     :param section: Section prefix (``"primary"`` or ``"secondary"``).
     :type section: str
-    :param spec: Parameter spec dict (label, default_val, default_fixed, min, max, unit).
-    :type spec: dict[str, _Spec]
+    :param approach: Fitting approach (``"community"`` or ``"standard"``).
+    :type approach: Literal["community", "standard"]
     :param defaults: User-supplied defaults override dict.
     :type defaults: dict[str, Float | bool | str | None]
     :param value_overrides: Optional per-name ``(value, min, max)`` overrides used
         for the secondary component whose default values differ from the primary.
     :type value_overrides: dict[str, tuple[float, float, float]] | None
     """
-    for name, (label, def_val, def_fixed, def_min, def_max, _unit) in spec.items():
+    # Build combined spec based on approach
+    if approach == "standard":
+        combined_spec = {**_COMPONENT_STANDARD_SPEC, **_COMPONENT_COMMON_SPEC}
+    else:
+        combined_spec = _COMPONENT_COMMON_SPEC
+
+    for name, (label, def_val, def_fixed, def_min, def_max, _unit) in combined_spec.items():
         if value_overrides and name in value_overrides:
             sec_dv, sec_dlo, sec_dhi = value_overrides[name]
             val = defaults.get(f"{section}_{name}_value", sec_dv)
@@ -294,23 +400,15 @@ def build(
 ) -> dict[str, gr.Component]:
     """Render the initial-parameters form and return a component mapping.
 
-    Creates three labelled sections (System, Primary, Secondary) plus a
-    nuisance row for MCMC.  An optional *defaults* dict overrides the
+    Creates two tabs (Community and Standard) with different parameter sets.
+    Each approach has three labelled sections (System, Primary, Secondary)
+    plus a nuisance row for MCMC.  An optional *defaults* dict overrides the
     built-in starting values; unrecognised keys are silently ignored.
 
-    The ``semi_major_axis`` row exposes a three-way mode radio
-    (``"free"`` / ``"fixed"`` / ``"constrained"``).  When the mode is
-    ``"constrained"`` a constraint-expression textbox is shown; when
-    ``"free"`` the min/max fields are interactive.  Visibility and
-    interactivity toggling is wired in ``tab.py`` via the
-    ``system_semi_major_axis_mode`` component.
-
     :param defaults: Flat mapping of ``"{section}_{name}_{sub}"`` keys
-        to override default values.  For ``semi_major_axis``, additional
-        keys ``system_semi_major_axis_mode`` and
-        ``system_semi_major_axis_constraint`` are recognised.
+        to override default values.
     :type defaults: dict[str, Float | bool | str | None] | None
-    :returns: Dict keyed by every entry in :data:`FIELD_ORDER`.
+    :returns: Dict keyed by field names from both approaches.
     :rtype: dict[str, gr.Component]
     """
     if defaults is None:
@@ -318,11 +416,49 @@ def build(
 
     components: dict[str, gr.Component] = {}
 
+
+    with gr.Tabs():
+        # ============================================================== #
+        # Community Approach Tab                                          #
+        # ============================================================== #
+        with gr.Tab("Community"):
+            _build_approach_params(components, "community", defaults)
+
+        # ============================================================== #
+        # Standard Approach Tab                                           #
+        # ============================================================== #
+        with gr.Tab("Standard"):
+            _build_approach_params(components, "standard", defaults)
+
+    return components
+
+
+def _build_approach_params(
+    components: dict[str, gr.Component],
+    approach: Literal["community", "standard"],
+    defaults: dict[str, Float | bool | str | None],
+) -> None:
+    """Build parameter inputs for a specific approach.
+
+    :param components: Mutable dict that receives the new components.
+    :type components: dict[str, gr.Component]
+    :param approach: Fitting approach (``"community"`` or ``"standard"``).
+    :type approach: Literal["community", "standard"]
+    :param defaults: User-supplied defaults override dict.
+    :type defaults: dict[str, Float | bool | str | None]
+    """
+    # Determine which parameter sets to use
+    system_params = SYSTEM_PARAMS_COMMUNITY if approach == "community" else SYSTEM_PARAMS_STANDARD
+
+    # Build combined system spec
+    system_spec = {**_SYSTEM_COMMON_SPEC, **_SYSTEM_COMMUNITY_SPEC} if approach == "community" else _SYSTEM_COMMON_SPEC
+
     # ------------------------------------------------------------------ #
     # Section: System                                                       #
     # ------------------------------------------------------------------ #
     with gr.Accordion("System Parameters", open=True):
-        for name, (label, def_val, def_fixed, def_min, def_max, _unit) in _SYSTEM_SPEC.items():
+        for name in system_params:
+            label, def_val, def_fixed, def_min, def_max, _unit = system_spec[name]
             val = defaults.get(f"system_{name}_value", def_val)
             fixed = defaults.get(f"system_{name}_fixed", def_fixed)
             lo = defaults.get(f"system_{name}_min", def_min)
@@ -330,32 +466,18 @@ def build(
             constraint = defaults.get(f"system_{name}_constraint")
             _param_row(components, "system", name, label, val, fixed, lo, hi, constraint)
 
-        # -- semi_major_axis (now uses same pattern as other params) --
-        sma_val = defaults.get("system_semi_major_axis_value", _SMA_DEFAULT_VALUE)
-        sma_mode_str = defaults.get("system_semi_major_axis_mode", _SMA_DEFAULT_MODE)
-        sma_fixed = sma_mode_str == "fixed" if isinstance(sma_mode_str, str) else False
-        sma_lo = defaults.get("system_semi_major_axis_min", _SMA_DEFAULT_MIN)
-        sma_hi = defaults.get("system_semi_major_axis_max", _SMA_DEFAULT_MAX)
-        sma_constraint = defaults.get("system_semi_major_axis_constraint", _SMA_DEFAULT_CONSTRAINT)
-        sma_constraint = (sma_constraint or _SMA_DEFAULT_CONSTRAINT) if sma_mode_str == "constrained" else None
-
-        _param_row(
-            components, "system", "semi_major_axis",
-            "**Semi-major axis**  a  [R☉]",
-            sma_val, sma_fixed, sma_lo, sma_hi, sma_constraint,
-        )
-
     # ------------------------------------------------------------------ #
     # Section: Primary                                                      #
     # ------------------------------------------------------------------ #
     with gr.Accordion("Primary Component Parameters", open=False):
-        _build_component_section(components, "primary", _COMPONENT_SPEC, defaults)
+        _build_component_section(components, "primary", approach, defaults)
 
     # ------------------------------------------------------------------ #
     # Section: Secondary                                                    #
     # ------------------------------------------------------------------ #
     with gr.Accordion("Secondary Component Parameters", open=False):
         _secondary_value_overrides: dict[str, tuple[float, float, float]] = {
+            "mass": (1.0, 0.1, 100.0),
             "t_eff": (4000.0, 4000.0, 7000.0),
             "surface_potential": (5.0, 5.0, 7.0),
             "gravity_darkening": (0.32, 0.0, 1.0),
@@ -364,7 +486,7 @@ def build(
             "metallicity": (0.0, -2.0, 1.0),
         }
         _build_component_section(
-            components, "secondary", _COMPONENT_SPEC, defaults,
+            components, "secondary", approach, defaults,
             value_overrides=_secondary_value_overrides,
         )
 
@@ -386,5 +508,4 @@ def build(
             ln_f_val, ln_f_fixed, ln_f_lo, ln_f_hi, ln_f_constraint,
         )
 
-    return components
 
