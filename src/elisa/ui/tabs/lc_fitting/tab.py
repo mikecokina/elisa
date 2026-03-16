@@ -218,11 +218,12 @@ def _mcmc_handler(
         burn_in = int(mcmc_vals.get("burn_in") or 50)
         fit_id = str(mcmc_vals.get("fit_id") or "mcmc_lc_fit")
         save = bool(mcmc_vals.get("save_chain", True))
+        progress = bool(mcmc_vals.get("progress", True))
 
         try:
             result, model_fig, corner_fig, traces_fig, df, json_path = compute.run_mcmc(
                 lc_rows, x_unit_str, fit_vals, morphology,
-                nwalkers, nsteps, burn_in, fit_id, save=save,
+                nwalkers, nsteps, burn_in, fit_id, save=save, progress=progress,
             )
         except Exception as exc:
             msg = str(exc)
@@ -480,11 +481,11 @@ def _build_param_accordion() -> tuple[dict[str, gr.Component], gr.Radio, gr.File
     return fit_comps, morphology_comp, params_json_comp
 
 
-def _build_mcmc_accordion() -> tuple[gr.Number, gr.Number, gr.Number, gr.Textbox, gr.Checkbox]:
+def _build_mcmc_accordion() -> tuple[gr.Number, gr.Number, gr.Number, gr.Textbox, gr.Checkbox, gr.Checkbox]:
     """Render accordion 3 (MCMC settings) and return all control components.
 
-    :returns: Tuple of ``(nwalkers, nsteps, burn_in, fit_id, save_chain)``.
-    :rtype: tuple[gr.Number, gr.Number, gr.Number, gr.Textbox, gr.Checkbox]
+    :returns: Tuple of ``(nwalkers, nsteps, burn_in, fit_id, save_chain, progress)``.
+    :rtype: tuple[gr.Number, gr.Number, gr.Number, gr.Textbox, gr.Checkbox, gr.Checkbox]
     """
     with gr.Accordion("3 · MCMC settings", open=False):
         gr.Markdown(
@@ -519,7 +520,10 @@ def _build_mcmc_accordion() -> tuple[gr.Number, gr.Number, gr.Number, gr.Textbox
             save_chain_comp = gr.Checkbox(
                 value=True, label="Save chain to disk", scale=1,
             )
-    return nwalkers_comp, nsteps_comp, burn_in_comp, fit_id_comp, save_chain_comp
+            progress_comp = gr.Checkbox(
+                value=True, label="Show progress bar", scale=1,
+            )
+    return nwalkers_comp, nsteps_comp, burn_in_comp, fit_id_comp, save_chain_comp, progress_comp
 
 
 def _build_action_buttons() -> tuple[gr.Button, gr.Button, gr.Button]:
@@ -598,7 +602,7 @@ def build() -> None:
         lsqrt_result_state: gr.State = gr.State(value=None)
         data_comps = _build_data_accordion()
         fit_comps, morphology_comp, params_json_comp = _build_param_accordion()
-        nwalkers_comp, nsteps_comp, burn_in_comp, fit_id_comp, save_chain_comp = (
+        nwalkers_comp, nsteps_comp, burn_in_comp, fit_id_comp, save_chain_comp, progress_comp = (
             _build_mcmc_accordion()
         )
         lsqrt_btn, transfer_btn, mcmc_btn = _build_action_buttons()
@@ -609,7 +613,7 @@ def build() -> None:
         ) = _build_results_section()
 
         fit_keys = FIELD_ORDER
-        mcmc_keys: tuple[str, ...] = ("nwalkers", "nsteps", "burn_in", "fit_id", "save_chain")
+        mcmc_keys: tuple[str, ...] = ("nwalkers", "nsteps", "burn_in", "fit_id", "save_chain", "progress")
 
         pb_outputs = [data_comps.passband_count, *data_comps.row_groups]
         data_comps.add_btn.click(fn=_add_passband, inputs=[data_comps.passband_count], outputs=pb_outputs)  # type: ignore[union-attr]
@@ -635,7 +639,7 @@ def build() -> None:
             + [morphology_comp]
         )
         mcmc_inputs_list: list[gr.Component] = [
-            nwalkers_comp, nsteps_comp, burn_in_comp, fit_id_comp, save_chain_comp,
+            nwalkers_comp, nsteps_comp, burn_in_comp, fit_id_comp, save_chain_comp, progress_comp,
         ]
         lsqrt_all_inputs = lc_data_inputs_list + fit_inputs_list
         mcmc_all_inputs = lc_data_inputs_list + fit_inputs_list + mcmc_inputs_list

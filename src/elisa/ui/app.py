@@ -7,6 +7,8 @@ from pathlib import Path
 
 import gradio as gr
 
+from elisa.ui.shared.logger import UILogger
+from elisa.ui.shared.terminal import build_auto_refresh_terminal_output, setup_terminal_refresh
 from elisa.ui.tabs.lc_fitting import tab as lc_fit_tab
 from elisa.ui.tabs.lc_modeling import tab as lc_tab
 from elisa.ui.tabs.rv_fitting import tab as rv_fit_tab
@@ -50,6 +52,10 @@ def build_app() -> gr.Blocks:
     :returns: Fully configured ``gr.Blocks`` application ready to launch.
     :rtype: gr.Blocks
     """
+    # Initialize logging to capture INFO+ output to buffer
+    import logging
+    UILogger.setup_logging(include_timestamp=True, level=logging.INFO)
+
     with gr.Blocks(
         title="ELISa - Binary Star System Modeler",
         analytics_enabled=False,
@@ -75,5 +81,10 @@ def build_app() -> gr.Blocks:
         rv_fit_tab.build()
         lc_fit_tab.build()
         sys_viz_tab.build()
+
+        # Add terminal output at the bottom that auto-refreshes every 2 seconds
+        with gr.Accordion("📋 Terminal Output", open=True):
+            terminal_output = build_auto_refresh_terminal_output()
+            setup_terminal_refresh(terminal_output, every_seconds=2)
 
     return demo

@@ -286,6 +286,7 @@ def run_mcmc(
     fit_id: str,
     *,
     save: bool = True,
+    progress: bool = True,
 ) -> tuple[dict, Figure, Figure, Figure, pd.DataFrame, str]:
     """Run an MCMC RV fit and return all displayable artefacts.
 
@@ -311,6 +312,8 @@ def run_mcmc(
     :type fit_id: str
     :param save: Whether to save the chain to disk.
     :type save: bool
+    :param progress: Whether to show progress bar during MCMC sampling.
+    :type progress: bool
     :returns: Tuple of
         ``(result_dict, model_figure, corner_figure, traces_figure,
         results_dataframe, json_path)``.
@@ -339,7 +342,7 @@ def run_mcmc(
         burn_in=burn_in,
         save=save,
         fit_id=fit_id,
-        progress=False,
+        progress=progress,
     )
 
     model_fig: Figure = task.plot.model(return_figure_instance=True)

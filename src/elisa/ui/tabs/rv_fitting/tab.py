@@ -133,6 +133,7 @@ def _mcmc_handler(
         burn_in = int(mcmc_vals.get("burn_in") or 50)
         fit_id = str(mcmc_vals.get("fit_id") or "mcmc_rv_fit")
         save = bool(mcmc_vals.get("save_chain", True))
+        progress = bool(mcmc_vals.get("progress", True))
 
         try:
             result, model_fig, corner_fig, traces_fig, df, json_path = compute.run_mcmc(
@@ -145,6 +146,7 @@ def _mcmc_handler(
                 burn_in,
                 fit_id,
                 save=save,
+                progress=progress,
             )
         except Exception as exc:
             msg = str(exc)
@@ -305,6 +307,11 @@ def build() -> None:  # noqa: PLR0915
                     label="Save chain to disk",
                     scale=1,
                 )
+                progress_comp = gr.Checkbox(
+                    value=True,
+                    label="Show progress bar",
+                    scale=1,
+                )
 
         # ------------------------------------------------------------------ #
         # Section 4 - Action buttons                                           #
@@ -340,7 +347,7 @@ def build() -> None:  # noqa: PLR0915
         # ------------------------------------------------------------------ #
         data_keys = tuple(data_comps.keys())
         fit_keys = param_inputs.FIELD_ORDER
-        mcmc_keys = ("nwalkers", "nsteps", "burn_in", "fit_id", "save_chain")
+        mcmc_keys = ("nwalkers", "nsteps", "burn_in", "fit_id", "save_chain", "progress")
 
         # Build flat input lists for each button
         # data_comps is a TypedDict (subclass of dict) - values() gives components in insertion order
@@ -352,6 +359,7 @@ def build() -> None:  # noqa: PLR0915
             burn_in_comp,
             fit_id_comp,
             save_chain_comp,
+            progress_comp,
         ]
 
         lsqrt_all_inputs = data_inputs_list + fit_inputs_list

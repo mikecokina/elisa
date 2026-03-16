@@ -557,8 +557,9 @@ def run_mcmc(
     fit_id: str,
     *,
     save: bool = True,
+    progress: bool = True,
 ) -> tuple[dict, Figure, Figure | None, Figure | None, pd.DataFrame, str]:
-    """Run an MCMC LC fit and return all displayable artefacts.
+    """Run an MCMC LC fit and return all displayable artifacts.
 
     Loads LC data, constructs parameters, runs the MCMC sampler, and captures
     the model plot, corner plot, and traces plot as ``Figure`` instances by
@@ -583,6 +584,8 @@ def run_mcmc(
     :type fit_id: str
     :param save: Whether to save the chain to disk.
     :type save: bool
+    :param progress: Whether to show progress bar during MCMC sampling.
+    :type progress: bool
     :returns: Tuple of
         ``(result_dict, model_figure, corner_figure, traces_figure,
         results_dataframe, json_path)``.
@@ -622,7 +625,7 @@ def run_mcmc(
         burn_in=burn_in,
         save=save,
         fit_id=fit_id,
-        progress=False,
+        progress=progress,
     )
 
     model_fig: Figure = task.plot.model(return_figure_instance=True)
