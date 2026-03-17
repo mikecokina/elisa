@@ -202,7 +202,13 @@ def _build_regular_param_entry(
     prefix: str,
     unit_str: str | None,
 ) -> dict[str, object]:
-    """Build one regular (non-constrained) parameter entry for the x0 dict.
+    """Build one regular parameter entry for the x0 dict.
+
+    Supports three parameter modes via the ``{prefix}_mode`` key:
+
+    - ``"free"`` - fitted freely with ``min`` / ``max`` bounds.
+    - ``"fixed"`` - held at its initial value.
+    - ``"constrained"`` - value determined by expression from ``{prefix}_constraint``.
 
     :param param_values: Flat UI parameter dict.
     :type param_values: dict[str, object]
@@ -214,12 +220,19 @@ def _build_regular_param_entry(
     :returns: Per-parameter entry dict ready for ``BinaryInitialParameters``.
     :rtype: dict[str, object]
     """
+    mode = str(param_values.get(f"{prefix}_mode", "free"))
     value = _opt_float(param_values.get(f"{prefix}_value"))
-    fixed = bool(param_values.get(f"{prefix}_fixed", False))
-    entry: dict[str, object] = {"value": value, "fixed": fixed}
-    if not fixed:
+    entry: dict[str, object] = {"value": value}
+
+    if mode == "constrained":
+        entry["constraint"] = str(param_values.get(f"{prefix}_constraint", ""))
+    elif mode == "fixed":
+        entry["fixed"] = True
+    else:  # free
+        entry["fixed"] = False
         entry["min"] = _opt_float(param_values.get(f"{prefix}_min"))
         entry["max"] = _opt_float(param_values.get(f"{prefix}_max"))
+
     if unit_str is not None:
         entry["unit"] = unit_str
     return entry
@@ -254,24 +267,28 @@ def _build_sma_entry(param_values: dict[str, object]) -> dict[str, object]:
     return entry
 
 
-def build_x0(param_values: dict[str, object]) -> dict:
+def build_x0(param_values: dict[str, object], *, include_nuisance: bool = False) -> dict:
     """Build the ``BinaryInitialParameters`` input dict from flat UI values.
 
     Constructs the nested
-    ``{"system": {...}, "primary": {...}, "secondary": {...}, "nuisance": {...}}``
-    structure expected by :class:`~elisa.analytics.LCBinaryAnalyticsTask`.
+    ``{"system": {...}, "primary": {...}, "secondary": {...}}`` structure
+    expected by :class:`~elisa.analytics.LCBinaryAnalyticsTask`. Optionally
+    includes nuisance parameters required for MCMC fitting.
 
-    The ``semi_major_axis`` entry is handled according to the value of
-    ``"system_semi_major_axis_mode"``:
+    Parameters are built from the flat UI dict using the ``{section}_{name}_mode``
+    key to determine the mode (free, fixed, or constrained):
 
-    - ``"free"`` - ``{"value": ..., "fixed": False, "min": ..., "max": ..., "unit": "solRad"}``
-    - ``"fixed"`` - ``{"value": ..., "fixed": True, "unit": "solRad"}``
-    - ``"constrained"`` - ``{"value": ..., "constraint": "...", "unit": "solRad"}``
+    - ``"free"`` - ``{"value": ..., "fixed": False, "min": ..., "max": ..., ...}``
+    - ``"fixed"`` - ``{"value": ..., "fixed": True, ...}``
+    - ``"constrained"`` - ``{"value": ..., "constraint": "...", ...}``
 
     :param param_values: Flat dict keyed by
         :data:`~elisa.ui.tabs.lc_fitting.components.param_inputs.FIELD_ORDER`
         entries.
     :type param_values: dict[str, object]
+    :param include_nuisance: Whether to include nuisance parameters (used only for MCMC).
+        Defaults to False (LSQRT fitting).
+    :type include_nuisance: bool
     :returns: Nested initial-parameter dict suitable for
         ``LCBinaryAnalyticsTask.fit(x0=...)``.
     :rtype: dict
@@ -281,14 +298,26 @@ def build_x0(param_values: dict[str, object]) -> dict:
         SYSTEM_REGULAR_PARAMS,
     )
 
+    # Build all regular system parameters (common to both standard and community)
     system: dict[str, dict] = {
         name: _build_regular_param_entry(
             param_values, f"system_{name}", _SYSTEM_PARAM_UNITS.get(name),
         )
         for name in SYSTEM_REGULAR_PARAMS
     }
-    system["semi_major_axis"] = _build_sma_entry(param_values)
 
+    # Add optional system parameters if they're present in the UI
+    # (semi_major_axis: both approaches; mass_ratio: community only)
+    for optional_param in ("semi_major_axis", "mass_ratio"):
+        if f"system_{optional_param}_value" in param_values:
+            if optional_param == "semi_major_axis":
+                system[optional_param] = _build_sma_entry(param_values)
+            else:
+                system[optional_param] = _build_regular_param_entry(
+                    param_values, f"system_{optional_param}", _SYSTEM_PARAM_UNITS.get(optional_param),
+                )
+
+    # Build component parameters (primary and secondary)
     primary: dict[str, dict] = {
         name: _build_regular_param_entry(
             param_values, f"primary_{name}", _COMPONENT_PARAM_UNITS.get(name),
@@ -302,21 +331,34 @@ def build_x0(param_values: dict[str, object]) -> dict:
         for name in COMPONENT_PARAMS
     }
 
-    ln_f_fixed = bool(param_values.get("ln_f_fixed", False))
-    nuisance_entry: dict[str, object] = {
-        "value": _opt_float(param_values.get("ln_f_value")),
-        "fixed": ln_f_fixed,
-    }
-    if not ln_f_fixed:
-        nuisance_entry["min"] = _opt_float(param_values.get("ln_f_min"))
-        nuisance_entry["max"] = _opt_float(param_values.get("ln_f_max"))
-
-    return {
+    result: dict[str, dict] = {
         "system": system,
         "primary": primary,
         "secondary": secondary,
-        "nuisance": {"ln_f": nuisance_entry},
     }
+
+    if include_nuisance:
+        ln_f_mode = str(param_values.get("nuisance_ln_f_mode", "fixed"))
+        nuisance_entry: dict[str, object] = {
+            "value": _opt_float(param_values.get("nuisance_ln_f_value")),
+        }
+        if ln_f_mode == "constrained":
+            nuisance_entry["constraint"] = str(
+                param_values.get("nuisance_ln_f_constraint", ""),
+            )
+        elif ln_f_mode == "fixed":
+            nuisance_entry["fixed"] = True
+        else:  # free
+            nuisance_entry["fixed"] = False
+            ln_f_min = _opt_float(param_values.get("nuisance_ln_f_min"))
+            ln_f_max = _opt_float(param_values.get("nuisance_ln_f_max"))
+            if ln_f_min is not None:
+                nuisance_entry["min"] = ln_f_min
+            if ln_f_max is not None:
+                nuisance_entry["max"] = ln_f_max
+        result["nuisance"] = {"ln_f": nuisance_entry}
+
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -528,7 +570,7 @@ def run_lsqrt(
         msg = "At least one light curve with a valid data file must be provided."
         raise ValueError(msg)
 
-    x0_dict = build_x0(param_values)
+    x0_dict = build_x0(param_values, include_nuisance=False)
     x0 = BinaryInitialParameters(**x0_dict)
 
     plt.close("all")
@@ -611,7 +653,7 @@ def run_mcmc(
         msg = "At least one light curve with a valid data file must be provided."
         raise ValueError(msg)
 
-    x0_dict = build_x0(param_values)
+    x0_dict = build_x0(param_values, include_nuisance=True)
     x0 = BinaryInitialParameters(**x0_dict)
 
     plt.close("all")

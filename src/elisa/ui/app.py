@@ -53,7 +53,8 @@ def build_app() -> gr.Blocks:
     :rtype: gr.Blocks
     """
     # Initialize logging to capture INFO+ output to buffer
-    import logging
+    import logging  # noqa: PLC0415
+
     UILogger.setup_logging(include_timestamp=True, level=logging.INFO)
 
     with gr.Blocks(
@@ -85,6 +86,6 @@ def build_app() -> gr.Blocks:
         # Add terminal output at the bottom that auto-refreshes every 2 seconds
         with gr.Accordion("📋 Terminal Output", open=True):
             terminal_output = build_auto_refresh_terminal_output()
-            setup_terminal_refresh(terminal_output, every_seconds=2)
+            setup_terminal_refresh(terminal_output, every_seconds=1)
 
     return demo

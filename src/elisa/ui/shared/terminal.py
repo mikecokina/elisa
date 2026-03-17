@@ -47,7 +47,8 @@ def build_terminal_output() -> tuple[gr.Code, gr.Button, gr.Button]:
         )
 
         # Set up clear handler
-        def clear_and_refresh():
+        def clear_and_refresh() -> str:
+            """Clear the buffer and return the updated output."""
             UILogger.clear_output()
             return UILogger.get_output()
 

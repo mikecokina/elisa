@@ -48,7 +48,7 @@ _SYSTEM_COMMON_SPEC: dict[str, _Spec] = {
     ),
     "eccentricity": (
         "**Eccentricity**  e",
-        0.0, True, 0.0, 1.0, None,
+        0.0, True, 0.0, 0.5, None,
     ),
     "argument_of_periastron": (
         "**Arg. of periastron**  ω  [deg]",
@@ -60,7 +60,7 @@ _SYSTEM_COMMON_SPEC: dict[str, _Spec] = {
     ),
     "primary_minimum_time": (
         "**Primary minimum time**  T₀  [d]",
-        54953.9, True, 2400000.0, 2500000.0, "d",
+        54953.5388437, True, 50000.0, 60000.0, "d",
     ),
     "additional_light": (
         "**Additional light**  l₃",
