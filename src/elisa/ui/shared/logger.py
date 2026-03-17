@@ -65,18 +65,87 @@ class CircularBuffer(StringIO):
         self.lines.clear()
 
 
-class GradioLoggingHandler(logging.Handler):
-    """Custom logging handler that writes to a circular buffer.
+class DualOutputBuffer(StringIO):
+    """A buffer that writes to both a circular buffer and the original output stream.
 
-    This handler captures all log records and stores them in a
-    CircularBuffer for display in Gradio components.
+    This ensures logs and prints appear in both the UI and the actual terminal.
     """
 
-    def __init__(self, buffer: CircularBuffer, *, include_timestamp: bool = True) -> None:
+    def __init__(
+        self,
+        circular_buffer: CircularBuffer,
+        original_stream: StringIO,
+    ) -> None:
+        """Initialize the dual output buffer.
+
+        :param circular_buffer: CircularBuffer instance to write logs to.
+        :type circular_buffer: CircularBuffer
+        :param original_stream: Original stdout or stderr stream.
+        :type original_stream: StringIO
+        :returns: ``None``
+        :rtype: None
+        """
+        super().__init__()
+        self.circular_buffer = circular_buffer
+        self.original_stream = original_stream
+
+    def write(self, s: str) -> int:
+        """Write string to both buffer and original stream.
+
+        :param s: String to write.
+        :type s: str
+        :returns: Number of characters written.
+        :rtype: int
+        """
+        if not s:
+            return 0
+
+        # Write to circular buffer for UI display
+        self.circular_buffer.write(s)
+
+        # Also write to original stream for terminal visibility
+        self.original_stream.write(s)
+        self.original_stream.flush()
+
+        return len(s)
+
+    def flush(self) -> None:
+        """Flush both streams.
+
+        :returns: ``None``
+        :rtype: None
+        """
+        self.original_stream.flush()
+
+    def isatty(self) -> bool:
+        """Check if original stream is a TTY.
+
+        :returns: TTY status of original stream.
+        :rtype: bool
+        """
+        return hasattr(self.original_stream, "isatty") and self.original_stream.isatty()
+
+
+class DualLoggingHandler(logging.Handler):
+    """Custom logging handler that writes to buffer and original stderr.
+
+    This handler captures log records for the UI while also writing to
+    the original stderr so logs appear in the terminal.
+    """
+
+    def __init__(
+        self,
+        buffer: CircularBuffer,
+        original_stderr: StringIO,
+        *,
+        include_timestamp: bool = True,
+    ) -> None:
         """Initialize the handler.
 
         :param buffer: CircularBuffer instance to write logs to.
         :type buffer: CircularBuffer
+        :param original_stderr: Original stderr stream for terminal output.
+        :type original_stderr: StringIO
         :param include_timestamp: Whether to include timestamp in log output.
         :type include_timestamp: bool
         :returns: ``None``
@@ -84,6 +153,7 @@ class GradioLoggingHandler(logging.Handler):
         """
         super().__init__()
         self.buffer = buffer
+        self.original_stderr = original_stderr
         self.include_timestamp = include_timestamp
         if include_timestamp:
             self.setFormatter(
@@ -96,16 +166,21 @@ class GradioLoggingHandler(logging.Handler):
             self.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
 
     def emit(self, record: logging.LogRecord) -> None:
-        """Emit a log record to the buffer.
+        """Emit a log record to both buffer and original stderr.
 
         :param record: The log record to emit.
         :type record: logging.LogRecord
         :returns: ``None``
         :rtype: None
         """
+        # noinspection PyBroadException
         try:
             msg = self.format(record)
+            # Write to UI buffer
             self.buffer.write(msg + "\n")
+            # Also write to original stderr for terminal visibility
+            self.original_stderr.write(msg + "\n")
+            self.original_stderr.flush()
         except Exception:  # noqa: BLE001
             self.handleError(record)
 
@@ -155,7 +230,9 @@ class UILogger:
     """
 
     _buffer: CircularBuffer | None = None
-    _handler: GradioLoggingHandler | None = None
+    _handler: DualLoggingHandler | None = None
+    _original_stdout: StringIO | None = None
+    _original_stderr: StringIO | None = None
 
     @classmethod
     def get_buffer(cls) -> CircularBuffer:
@@ -188,11 +265,12 @@ class UILogger:
 
     @classmethod
     def setup_logging(cls, *, include_timestamp: bool = True, level: int = logging.INFO) -> None:
-        """Set up logging to capture to the buffer.
+        """Set up logging to capture to the buffer and original terminal.
 
-        Adds a GradioLoggingHandler to the root logger and all
-        elisa.* loggers. Also redirects stdout and stderr to capture
-        print() statements.
+        Adds a DualLoggingHandler to the root logger and all elisa.* loggers,
+        ensuring logs appear in both the UI and the terminal. Also wraps
+        stdout and stderr with DualOutputBuffer to capture print statements
+        while maintaining terminal visibility.
 
         :param include_timestamp: Whether to include timestamp in log output.
         :type include_timestamp: bool
@@ -205,9 +283,19 @@ class UILogger:
 
         buffer = cls.get_buffer()
 
-        # Create handler if needed
+        # Save original streams before any wrapping
+        if cls._original_stdout is None:
+            cls._original_stdout = sys.stdout
+        if cls._original_stderr is None:
+            cls._original_stderr = sys.stderr
+
+        # Create dual handler if needed (writes to both buffer and original stderr)
         if cls._handler is None:
-            cls._handler = GradioLoggingHandler(buffer, include_timestamp=include_timestamp)
+            cls._handler = DualLoggingHandler(
+                buffer,
+                cls._original_stderr,
+                include_timestamp=include_timestamp,
+            )
             cls._handler.setLevel(level)
 
         # Add to root logger
@@ -220,11 +308,12 @@ class UILogger:
         if cls._handler not in elisa_logger.handlers:
             elisa_logger.addHandler(cls._handler)
 
-        # Redirect stdout and stderr to capture print statements
-        if not isinstance(sys.stdout, CircularBuffer):
-            sys.stdout = buffer  # type: ignore[assignment]
-        if not isinstance(sys.stderr, CircularBuffer):
-            sys.stderr = buffer  # type: ignore[assignment]
+        # Wrap stdout and stderr with DualOutputBuffer
+        # (unless already wrapped to avoid double-wrapping)
+        if not isinstance(sys.stdout, DualOutputBuffer):
+            sys.stdout = DualOutputBuffer(buffer, cls._original_stdout)  # type: ignore[assignment]
+        if not isinstance(sys.stderr, DualOutputBuffer):
+            sys.stderr = DualOutputBuffer(buffer, cls._original_stderr)  # type: ignore[assignment]
 
     @classmethod
     def get_capture_context(cls) -> TerminalCapture:
