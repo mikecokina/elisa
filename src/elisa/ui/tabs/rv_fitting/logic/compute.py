@@ -24,6 +24,7 @@ import pandas as pd
 
 from elisa import units as u
 from elisa.analytics import RVBinaryAnalyticsTask, RVData
+from elisa.ui.shared.logging_config import fit_logging
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -263,8 +264,10 @@ def run_lsqrt(
     x0 = build_x0(param_values)
 
     plt.close("all")
-    task = RVBinaryAnalyticsTask(data=data, method="least_squares")
-    result = task.fit(x0=x0)
+    # noinspection PyTypeChecker
+    with fit_logging():
+        task = RVBinaryAnalyticsTask(data=data, method="least_squares")
+        result = task.fit(x0=x0)
 
     model_fig: Figure = task.plot.model(return_figure_instance=True)
     df = result_to_dataframe(task.fit_cls.flat_result)
@@ -334,16 +337,18 @@ def run_mcmc(
     x0 = build_x0(param_values)
 
     plt.close("all")
-    task = RVBinaryAnalyticsTask(data=data, method="mcmc")
-    result = task.fit(
-        x0=x0,
-        nwalkers=nwalkers,
-        nsteps=nsteps,
-        burn_in=burn_in,
-        save=save,
-        fit_id=fit_id,
-        progress=progress,
-    )
+    # noinspection PyTypeChecker
+    with fit_logging():
+        task = RVBinaryAnalyticsTask(data=data, method="mcmc")
+        result = task.fit(
+            x0=x0,
+            nwalkers=nwalkers,
+            nsteps=nsteps,
+            burn_in=burn_in,
+            save=save,
+            fit_id=fit_id,
+            progress=progress,
+        )
 
     model_fig: Figure = task.plot.model(return_figure_instance=True)
 
