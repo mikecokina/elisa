@@ -426,7 +426,7 @@ def extract_values_for_transfer(result: dict) -> dict[str, object]:
                 out[f"{section}_{name}_value"] = meta["value"]
     for name, meta in (result.get("nuisance") or {}).items():
         if isinstance(meta, dict) and "value" in meta:
-            out[f"{name}_value"] = meta["value"]
+            out[f"nuisance_{name}_value"] = meta["value"]
     return out
 
 

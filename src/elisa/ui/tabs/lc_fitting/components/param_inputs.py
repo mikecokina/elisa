@@ -385,15 +385,16 @@ def build(
 ) -> dict[str, gr.Component]:
     """Render the initial-parameters form and return a component mapping.
 
-    Creates two tabs (Community and Standard) with different parameter sets.
-    Each approach has three labelled sections (System, Primary, Secondary)
-    plus a nuisance row for MCMC.  An optional *defaults* dict overrides the
-    built-in starting values; unrecognised keys are silently ignored.
+    Currently builds only the Community approach parameters (System, Primary,
+    Secondary) plus a nuisance row for MCMC. An optional *defaults* dict
+    overrides the built-in starting values; unrecognised keys are silently ignored.
+
+    TODO: Add Community/Standard toggle once transfer functionality is working.
 
     :param defaults: Flat mapping of ``"{section}_{name}_{sub}"`` keys
         to override default values.
     :type defaults: dict[str, Float | bool | str | None] | None
-    :returns: Dict keyed by field names from both approaches.
+    :returns: Dict keyed by field names from the Community approach.
     :rtype: dict[str, gr.Component]
     """
     if defaults is None:
@@ -401,19 +402,9 @@ def build(
 
     components: dict[str, gr.Component] = {}
 
+    # Build Community approach only (to avoid component duplication issues)
+    _build_approach_params(components, "community", defaults)
 
-    with gr.Tabs():
-        # ============================================================== #
-        # Community Approach Tab                                          #
-        # ============================================================== #
-        with gr.Tab("Community"):
-            _build_approach_params(components, "community", defaults)
-
-        # ============================================================== #
-        # Standard Approach Tab                                           #
-        # ============================================================== #
-        with gr.Tab("Standard"):
-            _build_approach_params(components, "standard", defaults)
 
     return components
 

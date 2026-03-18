@@ -258,21 +258,22 @@ def _make_transfer_handler() -> Callable[[dict | None], list[object]]:
         if result is None:
             msg = "No LSQRT result available yet - run Least Squares first."
             raise gr.Error(msg)
+
         values = compute.extract_values_for_transfer(result)
 
         def _upd(key: str) -> object:
-            return gr.update(value=values[key]) if key in values else gr.update()
+            if key in values:
+                return gr.update(value=values[key])
+            return gr.update()
 
-        updates: list[object] = [
-            _upd(f"system_{name}_value") for name in SYSTEM_REGULAR_PARAMS
-        ]
-        updates.append(_upd("system_semi_major_axis_value"))
-        updates.extend(
-            _upd(f"{section}_{name}_value")
-            for section in ("primary", "secondary")
-            for name in COMPONENT_PARAMS
+        updates: list[object] = (
+            [_upd(f"system_{name}_value") for name in SYSTEM_REGULAR_PARAMS]
+            + [_upd("system_semi_major_axis_value")]
+            + [_upd("system_mass_ratio_value")]  # Community-specific parameter
+            + [_upd(f"{section}_{name}_value") for section in ("primary", "secondary") for name in COMPONENT_PARAMS]
+            + [_upd("nuisance_ln_f_value")]
         )
-        updates.append(_upd("nuisance_ln_f_value"))
+
         return updates
 
     return _transfer
@@ -657,10 +658,12 @@ def build() -> None:
         _value_outputs: list[gr.Component] = (
             [fit_comps[f"system_{n}_value"] for n in SYSTEM_REGULAR_PARAMS]
             + [fit_comps["system_semi_major_axis_value"]]
+            + [fit_comps["system_mass_ratio_value"]]  # Community-specific parameter
             + [fit_comps[f"primary_{n}_value"] for n in COMPONENT_PARAMS]
             + [fit_comps[f"secondary_{n}_value"] for n in COMPONENT_PARAMS]
             + [fit_comps["nuisance_ln_f_value"]]
         )
+
         transfer_btn.click(
             fn=_make_transfer_handler(),
             inputs=[lsqrt_result_state],
