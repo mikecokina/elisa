@@ -22,38 +22,28 @@
             "handlers": ["console"],
             "propagate": 0
         },
-        "BinarySystem": {
+        "observer": {
             "level": "WARNING",
             "handlers": ["console"],
             "propagate": 0
         },
-        "observer.observer": {
+        "binary_system": {
             "level": "WARNING",
             "handlers": ["console"],
             "propagate": 0
         },
-        "binary_system.system": {
+        "elisa.atm": {
             "level": "WARNING",
             "handlers": ["console"],
             "propagate": 0
         },
-        "observer.mp": {
-            "level": "WARNING",
-            "handlers": ["console"],
-            "propagate": 0
-        },
-        "binary_system.curves.lc": {
+        "limbdarkening": {
             "level": "WARNING",
             "handlers": ["console"],
             "propagate": 0
         },
         "analytics.binary_fit.plot": {
             "level": "DEBUG",
-            "handlers": ["console"],
-            "propagate": 0
-        },
-        "binary_system.curves.curves": {
-            "level": "WARNING",
             "handlers": ["console"],
             "propagate": 0
         }

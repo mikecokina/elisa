@@ -52,7 +52,6 @@ elisa.single\_system.surface.temperature module
    :undoc-members:
    :show-inheritance:
 
-
 Module contents
 ---------------
 

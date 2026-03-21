@@ -121,7 +121,7 @@ class BinaryRadialCurvesTestCase(ElisaTestCase):
 class BinaryRadialCurvesConsistencyTestCase(ElisaTestCase):
     def setUp(self):
         super(BinaryRadialCurvesConsistencyTestCase, self).setUp()
-        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
+        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves")
         settings.configure(**{
             "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
             "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
@@ -178,7 +178,7 @@ class BinaryRadialCurvesConsistencyTestCase(ElisaTestCase):
 class ComputeRadiometricRVTestCase(ElisaTestCase):
     def setUp(self):
         super(ComputeRadiometricRVTestCase, self).setUp()
-        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
+        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves")
 
         settings.configure(**{
             "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
@@ -302,8 +302,8 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
 class CompareSingleVsMultiprocess(ElisaTestCase):
     def setUp(self):
         super(CompareSingleVsMultiprocess, self).setUp()
-        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
-        self.base_path = op.join(op.dirname(op.abspath(__file__)), "data", "radial_curves")
+        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves")
+        self.base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "radial_curves")
 
         settings.configure(**{
             "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
@@ -407,8 +407,8 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
 class CompareApproxVsExact(ElisaTestCase):
     def setUp(self):
         super(CompareApproxVsExact, self).setUp()
-        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
-        self.base_path = op.join(op.dirname(op.abspath(__file__)), "data", "radial_curves")
+        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves")
+        self.base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "radial_curves")
 
         settings.configure(**{
             "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),

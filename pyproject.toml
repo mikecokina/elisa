@@ -1,0 +1,140 @@
+[build-system]
+requires = ["setuptools>=82.0.0", "wheel>=0.46.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "elisa"
+dynamic = ["version"]
+description = "Eclipsing Binary Modeling Software"
+readme = { file = "README.rst", content-type = "text/x-rst" }
+requires-python = ">=3.10"
+license = { text = "GPLv3" }
+authors = [
+    { name = "Michal Cokina", email = "mikecokina@gmail.com" },
+    { name = "Miroslav Fedurco", email = "mirofedurco@gmail.com" },
+]
+keywords = ["eclipsing binaries", "astronomy", "analysis", "analytics", "physic"]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+
+dependencies = [
+    # Python 3.10 compatible floors
+    'astropy>=6.1.7; python_version < "3.11"',
+    'numpy>=2.2.0; python_version < "3.11"',
+    'pandas>=2.2.3; python_version < "3.11"',
+    'scipy>=1.15.0; python_version < "3.11"',
+    # Python 3.11+ floors
+    'astropy>=7.2.0; python_version >= "3.11"',
+    'numpy>=2.4.2; python_version >= "3.11"',
+    'pandas>=3.0.1; python_version >= "3.11"',
+    'scipy>=1.17.1; python_version >= "3.11"',
+    # Common deps
+    "corner>=2.2.1",
+    "emcee>=3.0.1",
+    "jsonschema>=3.2.0",
+    "matplotlib>=3.3.2",
+    "packaging>=20.0",
+    "python-dateutil>=2.6.1",
+    "tqdm>=4.43.0",
+    "parameterized>=0.7.4",
+    "numba>=0.51.2",
+    "requests>=2.26.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "setuptools>=82.0.0",
+    "wheel>=0.46.3",
+    "build",
+    "twine",
+    "ruff"
+]
+test = [
+    "coverage",
+    "pytest>=9.0.2",
+    "parameterized>=0.7.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/mikecokina/elisa"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+elisa = [
+    "passband/**",
+    "conf/**",
+    "schema_registry/**",
+    "data/**",
+]
+
+[tool.setuptools.dynamic]
+# This expects `__version__ = "x.y.z"` in src/elisa/__init__.py
+version = { attr = "elisa.__version__" }
+
+
+[tool.ruff]
+exclude = ["unittests"]
+
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "ALL",
+    "A", # flake8-builtins
+    "ARG", # flake8-unused-arguments
+    "B", # flake8-bugbear
+    "C", # mccabe
+    "DTZ", # flake8-datetimez
+    "E", # pycodestyle errors
+    "EM", # flake8-errmsg
+    "F", # pyflakes
+    "FBT", # flake8-boolean-trap
+    "I", # isort
+    "ICN", # flake8-import-conventions
+    "ISC", # flake8-implicit-str-concat
+    "N", # pep8-naming
+    "PLC", # pylint convention
+    "PLE", # pylint errors
+    "PLR", # pylint refactor
+    "PLW", # pylint warnings
+    "Q", # flake8-quotes
+    "RUF", # ruff-specific rules
+    "S", # flake8-bandit (security)
+    "T", # flake8-debugger
+    "TID", # tidy imports
+    "UP", # pyupgrade
+    "W", # pycodestyle warnings
+    "YTT", # flake8-2020
+]
+ignore = [
+    "PLR0913", # to many arguments
+    "F405", # os import
+    "D100", # Missing docstring in public module
+    "D101", # missing docstring
+    "D107", # missing docstring in `__init__`
+    "D102", # Missing docstring in public method
+    "D103", # Missing docstring in public function
+    "D104", # Missing docstring in public package
+    "D105", # Missing docstring in magic method
+    "ERA001", # Found commented-out code
+    "ANN002", # Missing type annotation for `*args`
+    "ANN003", # Missing type annotation for `**kwargs`
+    "ANN401", # Any type annotation
+    "EXE002"# Shebang is missing executable file
+]

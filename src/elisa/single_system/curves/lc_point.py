@@ -1,30 +1,61 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from elisa.base.curves import utils as crv_utils
 
+# TYPE_CHECKING block at the end of import header
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
-def _calculate_lc_point(band, system):
-    """
-    Calculates point on the light curve for given band.
+    from elisa.single_system.container import SinglePositionContainer  # pragma: no cover
+    from elisa.types import Float, Int  # pragma: no cover
 
-    :param band: str; name of the photometric band compatible with supported names in config
-    :param system: elisa.binary_system.container.OrbitalPositionContainer;
-    :return: float;
+
+def _calculate_lc_point(band: str, system: SinglePositionContainer) -> Float:
+    """Calculate a single point on the light curve for a given band.
+
+    :param band: Name of the photometric band compatible with supported
+        names in configuration.
+    :type band: str
+    :param system: System container at a given orbital position.
+    :type system: elisa.single_system.container.SinglePositionContainer
+
+    :returns: Flux value corresponding to the provided band for this system
+              position.
+    :rtype: elisa.types.Float
     """
-    star = getattr(system, 'star')
+    star = system.star
     return crv_utils.flux_from_star_container(band, star)
 
 
-def compute_lc_on_pos(band_curves, pos_idx, crv_labels, system):
-    """
-    Calculates lc points for given orbital position.
+def compute_lc_on_pos(
+    band_curves: dict[str, NDArray[Float]],
+    pos_idx: Int,
+    crv_labels: list[str],
+    system: SinglePositionContainer,
+) -> dict[str, NDArray[Float]]:
+    """Calculate light-curve points for a given orbital position.
 
-    :param band_curves: Dict; {str; passband : numpy.array; light curve, ...} result will be written to the
-                              corresponding `pos_idx` position
-    :param pos_idx: int; position in `band_curves` to which calculated lc points will be assigned
-    :param crv_labels: List; list of passbands
-    :param system: elisa.binary_system.container.OrbitalPositionContainer;
-    :return: Dict; updated {str; passband : numpy.array; light curve, ...}
+    The function writes computed fluxes into the pre-allocated arrays in
+    ``band_curves`` at index ``pos_idx`` for each passband listed in
+    ``crv_labels`` and returns the updated mapping.
+
+    :param band_curves: Mapping from passband name to numpy arrays that hold
+        the light curve values. Arrays are modified in-place.
+    :type band_curves: dict[str, numpy.ndarray]
+    :param pos_idx: Index in the arrays corresponding to the current orbital
+        position.
+    :type pos_idx: elisa.types.Int
+    :param crv_labels: Ordered list of passband names to iterate.
+    :type crv_labels: list[str]
+    :param system: System container at a given orbital position.
+    :type system: elisa.single_system.container.SinglePositionContainer
+
+    :returns: The same ``band_curves`` mapping with updated values at
+              ``pos_idx``.
+    :rtype: dict[str, numpy.ndarray]
     """
-    # integrating resulting flux
     for band in crv_labels:
         band_curves[band][pos_idx] = _calculate_lc_point(band, system)
     return band_curves

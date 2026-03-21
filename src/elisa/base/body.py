@@ -1,80 +1,97 @@
+from __future__ import annotations
+
+from abc import ABCMeta, abstractmethod
+from copy import copy
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
 
-from typing import Dict
-from copy import copy
-from abc import (
-    ABCMeta,
-    abstractmethod
-)
+from elisa import settings
+from elisa import umpy as up
+from elisa.base.spot import Spot
+from elisa.logger import getLogger
+from elisa.utils import is_empty
 
-from .. utils import is_empty
-from .. base.spot import Spot
-from .. logger import getLogger
-from .. import (
-    umpy as up
-)
-from .. import settings
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
-logger = getLogger('base.body')
+logger = getLogger("base.body")
 
 
 class Body(metaclass=ABCMeta):
-    """
-    Abstract class that defines bodies modelled by this package.
+    """Abstract base class for physical bodies modelled by ELISa.
+
+    The :class:`Body` class defines the minimal interface and shared
+    attributes used by concrete bodies (for example :class:`Star`). It
+    stores common parameters such as mass, temperature and spot
+    definitions and provides helpers to manage and normalise spot
+    instances.
     """
 
     ID = 1
-    MANDATORY_KWARGS = []
-    OPTIONAL_KWARGS = []
+    MANDATORY_KWARGS = ()
+    OPTIONAL_KWARGS = ()
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    def __init__(self, name: str, **kwargs):
-        """
-        Properties of abstract class Body.
+    def __init__(self, name: str | None, **kwargs: Any) -> None:
+        """Initialise common body properties.
+
+        :param name: Optional instance name; when ``None`` a numeric id is
+            assigned automatically.
+        :param kwargs: Arbitrary keyword arguments saved in ``self.kwargs``.
+        :type kwargs: dict
+        :returns: None
+        :rtype: None
         """
         # initial kwargs
-        self.kwargs: Dict = copy(kwargs)
+        self.kwargs: dict[str, Any] = copy(kwargs)
 
         if is_empty(name):
             self.name = str(Body.ID)
-            logger.debug(f"name of class instance {self.__class__.__name__} set to {self.name}")
+            logger.debug("name of class instance %s set to %s", self.__class__.__name__, self.name)
             Body.ID += 1
         else:
             self.name = str(name)
 
-        # initializing paramas to default values
+        # initializing parameters to default values
         self.synchronicity: float = np.nan
         self.mass: float = np.nan
         self.albedo: float = np.nan
-        self.discretization_factor: float = np.float64(up.radians(settings.DEFAULT_DISCRETIZATION_FACTOR))
+        self.discretization_factor: float = float(up.radians(settings.DEFAULT_DISCRETIZATION_FACTOR))
         self.t_eff: float = np.nan
         self.polar_radius: float = np.nan
-        self._spots: Dict = dict()
+        self._spots: dict[int, Spot] = {}
         self.equatorial_radius: float = np.nan
         self.atmosphere: str = ""
+        self.limb_darkening_coefficients: dict[str, dict[str, Any]] | None = None
 
     @abstractmethod
-    def init(self):
-        pass
+    def init(self) -> None:
+        """Perform any post-construction initialisation required by the body."""
 
     @abstractmethod
-    def transform_input(self, *args, **kwargs):
-        pass
+    def transform_input(self, *args, **kwargs) -> dict:
+        """Transform and validate input keyword arguments.
+
+        Implementations should return a mapping with transformed values.
+        """
 
     @property
-    def spots(self):
-        """
-        :return: Dict[int, elisa.base.spot.Spot]
+    def spots(self) -> dict[int, Spot]:
+        """Return the spot collection attached to this body.
+
+        :returns: Mapping spot_index → :class:`Spot` instances.
+        :rtype: dict[int, elisa.base.spot.Spot]
         """
         return self._spots
 
     @spots.setter
-    def spots(self, spots):
-        """
-        Order in which the spots are defined will determine the layering of the spots (spot defined as first will lay
-        bellow any subsequently defined overlapping spot). Example of defined spots
+    def spots(self, spots: Iterable[dict]) -> None:
+        """Set the spots collection from an iterable of spot definitions.
 
-        ::
+        The order of definitions determines layering: the first spot in
+        the iterable will be drawn below subsequently defined overlapping
+        spots.
 
             [
                  {"longitude": 90,
@@ -93,46 +110,62 @@ class Body(metaclass=ABCMeta):
 
         :param spots: Iterable[Dict]; definition of spots for given object
         """
-        self._spots = {idx: Spot(**spot_meta) for idx, spot_meta in enumerate(spots)} if not is_empty(spots) else dict()
+        self._spots = {idx: Spot(**spot_meta) for idx, spot_meta in enumerate(spots)} if not is_empty(spots) else {}
         for spot_idx, spot_instance in self.spots.items():
             self.setup_spot_instance_discretization_factor(spot_instance, spot_idx)
 
-    def has_spots(self):
-        """
-        Find whether object has defined spots.
-
-        :return: bool;
-        """
+    def has_spots(self) -> bool:
+        """Return True when at least one spot is defined for this body."""
         return len(self._spots) > 0
 
-    def remove_spot(self, spot_index: int):
-        """
-        Remove n-th spot index of object.
+    @abstractmethod
+    def has_pulsations(self) -> bool:
+        ...
 
-        :param spot_index: int;
+    def remove_spot(self, spot_index: int) -> None:
+        """Remove the spot with the given index.
+
+        :param spot_index: Index of the spot to remove.
+        :type spot_index: int
+        :returns: None
+        :rtype: None
         """
         del self._spots[spot_index]
 
-    def setup_spot_instance_discretization_factor(self, spot_instance, spot_index):
-        """
-        Setup discretization factor for given spot instance based on defined rules.
+    def setup_spot_instance_discretization_factor(self, spot_instance: Spot, spot_index: int) -> Spot:
+        """Apply discretization-factor rules to a spot instance.
 
-        - use value of the parent star if the spot discretization factor is not defined
-        - if spot_instance.discretization_factor > 0.5 * spot_instance.angular_diameter then factor is set to
-                      0.5 * spot_instance.angular_diameter
+        Rules applied:
 
-        :param spot_instance: elisa.base.spot.Spot;
-        :param spot_index: int; spot index (has no affect on process, used for logging)
-        :return: elisa.base.spot.Spot;
+        - If the spot does not define its own discretization factor, the
+          parent's (body) discretization factor is used (scaled by 0.9).
+        - If the spot's discretization factor exceeds its angular radius,
+          it is clamped to the angular radius.
+
+        :param spot_instance: Spot instance to adjust.
+        :type spot_instance: elisa.base.spot.Spot.
+        :param spot_index: Spot index (used for logging only).
+        :type spot_index: int
+        :returns: The adjusted :class:`Spot` instance.
+        :rtype: elisa.base.spot.Spot
         """
         if is_empty(spot_instance.discretization_factor):
-            logger.debug(f'angular density of the spot {spot_index} on {self.name} component was not supplied '
-                         f'and discretization factor of star {self.discretization_factor} was used.')
+            logger.debug(
+                "angular density of the spot %s on %s component was not supplied "
+                "and discretization factor of body %s was used.",
+                spot_index,
+                self.name,
+                self.discretization_factor,
+            )
             spot_instance.discretization_factor = 0.9 * self.discretization_factor
         if spot_instance.discretization_factor > spot_instance.angular_radius:
-            logger.debug(f'angular density {self.discretization_factor} of the spot {spot_index} on {self.name} '
-                         f'component was larger than its angular radius. Therefore value of angular density was '
-                         f'set to be equal to 0.5 * angular diameter')
+            logger.debug(
+                "angular density %s of the spot %s on %s component was larger than "
+                "its angular radius; setting to angular radius",
+                self.discretization_factor,
+                spot_index,
+                self.name,
+            )
             spot_instance.discretization_factor = spot_instance.angular_radius
 
         return spot_instance

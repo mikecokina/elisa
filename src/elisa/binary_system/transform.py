@@ -1,100 +1,123 @@
+from __future__ import annotations
+
+from typing import Any
+
 import numpy as np
 
-from .. import units, const
-from .. base.types import INT, FLOAT
-from .. units import DefaultBinarySystemInputUnits
-from .. base.transform import SystemProperties, WHEN_FLOAT64, quantity_transform
+from elisa import const, units
+from elisa.base.transform import WHEN_FLOAT64, SystemProperties, quantity_transform
+from elisa.base.types import FLOAT, INT
+from elisa.units import DefaultBinarySystemInputUnits
 
 
 class BinarySystemProperties(SystemProperties):
     @staticmethod
-    def eccentricity(value):
-        """
-        Transform and validate eccentricity.
+    def eccentricity(value: Any) -> float:
+        """Validate and transform eccentricity.
 
-        :param value: Union[(numpy.)int, (numpy.)float]
-        :return: float;
+        :param value: Numeric eccentricity value.
+        :returns: Eccentricity as float.
         """
         if not isinstance(value, (int, INT, float, FLOAT)):
-            raise TypeError('Input of variable `eccentricity` is not (numpy.)int or (numpy.)float.')
+            msg = "Input of variable `eccentricity` is not (numpy.)int or (numpy.)float."
+            raise TypeError(msg)
         if value < 0 or value >= 1:
-            raise ValueError('Input of variable `eccentricity` is out of boundaries [0, 1)')
-        return np.float64(value)
+            msg = "Input of variable `eccentricity` is out of boundaries [0, 1)."
+            raise ValueError(msg)
+        return float(np.float64(value))
 
     @staticmethod
-    def argument_of_periastron(value):
-        """
-        Transform and validate argument of periastron, if unit is not supplied, value in degrees is assumed.
+    def argument_of_periastron(value: Any) -> float:
+        """Validate and transform argument of periastron.
 
-        :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
-        :return: float;
+        If no unit is supplied, degrees are assumed.
+
+        :param value: Numeric value or astropy Quantity.
+        :returns: Argument of periastron as float.
         """
         if isinstance(value, (units.Quantity, str)):
             value = units.Quantity(value) if isinstance(value, str) else value
             value = np.float64(value.to(units.DefaultBinarySystemUnits.system.argument_of_periastron))
         elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64((value * DefaultBinarySystemInputUnits.system.argument_of_periastron).to(
-                units.DefaultBinarySystemUnits.system.argument_of_periastron)
+            value = np.float64(
+                (value * DefaultBinarySystemInputUnits.system.argument_of_periastron).to(
+                    units.DefaultBinarySystemUnits.system.argument_of_periastron,
+                ),
             )
         else:
-            raise TypeError('Input of variable `argument_of_periastron` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
+            msg = (
+                "Input of variable `argument_of_periastron` is not (numpy.)int or (numpy.)float "
+                "nor astropy.unit.quantity.Quantity instance."
+            )
+            raise TypeError(msg)
         if not 0 <= value <= const.FULL_ARC:
             value %= const.FULL_ARC
-        return value
+        return float(value)
 
     @staticmethod
-    def phase_shift(value):
-        """
-        Returns phase shift of the primary eclipse minimum with respect to ephemeris
-        true_phase is used during calculations, where: true_phase = phase + phase_shift.
+    def phase_shift(value: Any) -> float:
+        """Return phase shift of the primary eclipse minimum.
 
-        :param value: float;
-        :return: float;
+        The phase shift is used during calculations where:
+        true_phase = phase + phase_shift.
+
+        :param value: Phase shift value.
+        :returns: Phase shift as float.
         """
-        return np.float64(value)
+        return float(np.float64(value))
 
     @staticmethod
-    def primary_minimum_time(value):
-        """
-        Transform and validity check for time of primary minima.
+    def primary_minimum_time(value: Any) -> float:
+        """Transform and validate time of primary minimum.
 
-        :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
-        :return: float;
+        :param value: Numeric value or astropy Quantity.
+        :returns: Time of primary minimum as float.
         """
-        return quantity_transform(value, units.DefaultBinarySystemUnits.system.primary_minimum_time, WHEN_FLOAT64,
-                                  units.DefaultBinarySystemInputUnits.system.primary_minimum_time)
+        return quantity_transform(
+            value,
+            units.DefaultBinarySystemUnits.system.primary_minimum_time,
+            WHEN_FLOAT64,
+            units.DefaultBinarySystemInputUnits.system.primary_minimum_time,
+        )
 
     @classmethod
-    def t0(cls, value):
+    def t0(cls, value: Any) -> float:
+        """Alias for primary_minimum_time.
+
+        :param value: Time value.
+        :returns: Time of primary minimum as float.
+        """
         return cls.primary_minimum_time(value)
 
 
 class RadialVelocityObserverProperties(SystemProperties):
+    """Properties for radial velocity observer calculations."""
+
     eccentricity = BinarySystemProperties.eccentricity
     argument_of_periastron = BinarySystemProperties.argument_of_periastron
     period = BinarySystemProperties.period
     gamma = SystemProperties.gamma
 
     @staticmethod
-    def mass_ratio(value):
-        """
-        Validate mass ratio.
+    def mass_ratio(value: Any) -> float:
+        """Validate mass ratio.
 
-        :param value: float;
-        :return: float;
+        :param value: Mass ratio value (must be > 0).
+        :returns: Mass ratio as float.
         """
         if not value > 0:
-            raise ValueError(f"Invalid value of property `mass_ratio`. Expected > 0, given {value}")
-        return FLOAT(value)
+            msg = f"Invalid value of property `mass_ratio`. Expected > 0, given {value}."
+            raise ValueError(msg)
+        return float(np.float64(value))
 
     @staticmethod
-    def asini(value):
-        """
-        Transform and validate asini. If value is supplied without unit then default unit is assumed to be solar radii.
+    def asini(value: Any) -> float:
+        """Transform and validate asini parameter.
 
-        :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
-        :return: float;
+        If no unit is supplied, solar radii are assumed as default.
+
+        :param value: Numeric value or astropy Quantity.
+        :returns: asini value as float.
         """
         if isinstance(value, (units.Quantity, str)):
             value = units.Quantity(value) if isinstance(value, str) else value
@@ -102,8 +125,12 @@ class RadialVelocityObserverProperties(SystemProperties):
         elif isinstance(value, WHEN_FLOAT64):
             value = np.float64(value)
         else:
-            raise TypeError('Input of variable `asini` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
+            msg = (
+                "Input of variable `asini` is not (numpy.)int or (numpy.)float "
+                "nor astropy.unit.quantity.Quantity instance."
+            )
+            raise TypeError(msg)
         if value < 0:
-            raise ValueError('Value of `asini` cannot be negative.')
-        return value
+            msg = "Value of `asini` cannot be negative."
+            raise ValueError(msg)
+        return float(value)

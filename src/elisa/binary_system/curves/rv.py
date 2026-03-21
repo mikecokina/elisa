@@ -1,159 +1,275 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
 
-from ... base.curves import rv_point
-from . import c_router
-from .. orbit.orbit import distance_to_center_of_mass
-from ... import settings
-from ... import (
-    umpy as up,
-    units as u
-)
+from elisa import settings
+from elisa import umpy as up
+from elisa import units as u
+from elisa.base.curves import rv_point
+from elisa.binary_system.curves import c_router
+from elisa.binary_system.orbit.orbit import distance_to_center_of_mass
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+    from elisa.binary_system.system import BinarySystem
+    from elisa.types import Float
 
 
-def _radial_velocity(semi_major_axis, inclination, eccentricity, argument_of_periastron, period, true_anomaly):
+def _radial_velocity(
+    semi_major_axis: Float,
+    inclination: Float,
+    eccentricity: Float,
+    argument_of_periastron: Float,
+    period: Float,
+    true_anomaly: NDArray,
+) -> NDArray[Float]:
+    """Compute radial velocity for the given parameters.
+
+    :param semi_major_axis: Semi-major axis.
+    :type semi_major_axis: Float
+    :param inclination: Orbital inclination.
+    :type inclination: Float
+    :param eccentricity: Orbital eccentricity.
+    :type eccentricity: Float
+    :param argument_of_periastron: Argument of periastron.
+    :type argument_of_periastron: Float
+    :param period: Orbital period.
+    :type period: Float
+    :param true_anomaly: True anomaly value or values.
+    :type true_anomaly: NDArray
+    :return: Radial velocity values.
+    :rtype: NDArray[Float]
     """
-    Compute radial velocity for given paramters.
-
-    :param semi_major_axis: float;
-    :param inclination: float;
-    :param eccentricity: float;
-    :param argument_of_periastron: float;
-    :param true_anomaly: float or numpy.array;
-    :param period: float;
-    :return: Union[float, numpy.array];
-    """
-    a = 2.0 * up.pi * semi_major_axis * up.sin(inclination)
-    b = period * up.sqrt(1.0 - up.power(eccentricity, 2))
-    c = up.cos(true_anomaly + argument_of_periastron) + (eccentricity * up.cos(argument_of_periastron))
-    return - a * c / b
+    true_anomaly_array = np.asarray(true_anomaly, dtype=np.float64)
+    a_term = 2.0 * up.pi * semi_major_axis * up.sin(inclination)
+    b_term = period * up.sqrt(1.0 - up.power(eccentricity, 2))
+    c_term = up.cos(true_anomaly_array + argument_of_periastron) + (
+        eccentricity * up.cos(argument_of_periastron)
+    )
+    return -a_term * c_term / b_term
 
 
-def kinematic_radial_velocity(binary, **kwargs):
-    """
-    Calculates radial velocity curves of the `binary` system using radial velocities of centres of masses.
+def kinematic_radial_velocity(
+    binary: BinarySystem,
+    **kwargs: Any,
+) -> dict[str, NDArray[Float]]:
+    """Calculate radial-velocity curves from component centres of mass.
 
-    :param binary: elisa.binary_system.system.BinarySystem; binary system instance
-    :param kwargs: Dict;
-    :**kwargs options**:
-        * **position_method** * -- function that is used to calculate orbital motion
-        * **phases** * -- phases in which to calculate
+    :param binary: Binary system instance.
+    :type binary: BinarySystem
+    :param kwargs: Additional keyword arguments.
 
-    :return: Dict[str, Unionp[float, numpy.array]; index of values are related to index of phases
+        Supported options include:
+
+        - ``position_method`` - function used to calculate orbital motion
+        - ``phases`` - phases at which to calculate
+    :type kwargs: Any
+    :return: Radial velocity values for each component. Indices correspond to
+        indices of the input phases.
+    :rtype: dict[str, NDArray[Float]]
     """
     position_method = kwargs.pop("position_method")
     phases = kwargs.pop("phases")
-    orbital_motion = position_method(input_argument=phases, return_nparray=True, calculate_from='phase')
+    orbital_motion = position_method(
+        input_argument=phases,
+        return_nparray=True,
+        calculate_from="phase",
+    )
 
-    sma_primary, sma_secondary = distance_to_center_of_mass(binary.primary.mass, binary.secondary.mass, 1.0)
+    sma_primary, sma_secondary = distance_to_center_of_mass(
+        binary.primary.mass,
+        binary.secondary.mass,
+        1.0,
+    )
 
     # in base SI units
     sma_primary *= binary.semi_major_axis
     sma_secondary *= binary.semi_major_axis
-    period = np.float64((binary.period * u.DefaultBinarySystemUnits.system.period).to(u.TIME_UNIT))
+    period = np.float64(
+        (binary.period * u.DefaultBinarySystemUnits.system.period).to(u.TIME_UNIT),
+    )
 
-    rv_primary = _radial_velocity(sma_primary, binary.inclination, binary.eccentricity,
-                                  binary.argument_of_periastron, period, orbital_motion[:, 3]) * -1.0
+    rv_primary = _radial_velocity(
+        sma_primary,
+        binary.inclination,
+        binary.eccentricity,
+        binary.argument_of_periastron,
+        period,
+        orbital_motion[:, 3],
+    ) * -1.0
 
-    rv_secondary = _radial_velocity(sma_secondary, binary.inclination, binary.eccentricity,
-                                    binary.argument_of_periastron, period, orbital_motion[:, 3])
+    rv_secondary = _radial_velocity(
+        sma_secondary,
+        binary.inclination,
+        binary.eccentricity,
+        binary.argument_of_periastron,
+        period,
+        orbital_motion[:, 3],
+    )
 
-    rvs = {'primary': rv_primary + binary.gamma, 'secondary': rv_secondary + binary.gamma}
-    return rvs
+    return {
+        "primary": rv_primary + binary.gamma,
+        "secondary": rv_secondary + binary.gamma,
+    }
 
 
-def compute_circular_synchronous_rv_curve(binary, **kwargs):
-    """
-    Compute radial velocity curve for synchronous circular binary system.
+def compute_circular_synchronous_rv_curve(
+    binary: BinarySystem,
+    **kwargs: Any,
+) -> dict[str, NDArray[Float]]:
+    """Compute radial-velocity curve for a synchronous circular binary system.
 
-    :param binary: elisa.binary_system.system.BinarySystem;
-    :param kwargs: Dict;
-            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-            * ** left_bandwidth ** * - float
-            * ** right_bandwidth ** * - float
-            * ** position_method** * - function definition; to evaluate orbital positions
-            * ** phases ** * - numpy.array
+    :param binary: Binary system instance.
+    :type binary: BinarySystem
+    :param kwargs: Additional keyword arguments.
 
-    :return: Dict[str, numpy.array];
+        Supported options include:
+
+        - ``passband`` - ``dict[str, elisa.observer.PassbandContainer]``
+        - ``left_bandwidth`` - ``Float``
+        - ``right_bandwidth`` - ``Float``
+        - ``position_method`` - function definition to evaluate orbital positions
+        - ``phases`` - ``numpy.array``
+    :type kwargs: Any
+    :return: Radial-velocity curves for each component.
+    :rtype: dict[str, NDArray[Float]]
     """
     initial_system = c_router.prep_initial_system(binary)
     rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
-    args = (binary, initial_system, kwargs.pop("phases"), rv_point.compute_rv_at_pos, rv_labels)
+    args = (
+        binary,
+        initial_system,
+        kwargs.pop("phases"),
+        rv_point.compute_rv_at_pos,
+        rv_labels,
+    )
     return c_router.produce_circular_sync_curves(*args, **kwargs)
 
 
-def compute_circular_spotty_asynchronous_rv_curve(binary, **kwargs):
-    """
-    Function returns rv curve of asynchronous systems with circular orbits and spots.
+def compute_circular_spotty_asynchronous_rv_curve(
+    binary: BinarySystem,
+    **kwargs: Any,
+) -> dict[str, NDArray[Float]]:
+    """Return RV curve of asynchronous systems with circular orbits and spots.
 
-    :param binary: elisa.binary_system.system.BinarySystem;
-    :param kwargs: Dict;
-    :**kwargs options**:
-        * ** passband ** - Dict[str, elisa.observer.PassbandContainer]
-        * ** left_bandwidth ** - float
-        * ** right_bandwidth ** - float
-        * ** atlas ** - str
+    :param binary: Binary system instance.
+    :type binary: BinarySystem
+    :param kwargs: Additional keyword arguments.
 
-    :return: Dict; rv for each component
+        Supported options include:
+
+        - ``passband`` - ``dict[str, elisa.observer.PassbandContainer]``
+        - ``left_bandwidth`` - ``Float``
+        - ``right_bandwidth`` - ``Float``
+        - ``atlas`` - ``str``
+    :type kwargs: Any
+    :return: Radial-velocity curves for each component.
+    :rtype: dict[str, NDArray[Float]]
     """
     rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
-    return c_router.produce_circular_spotty_async_curves(binary, rv_point.compute_rv_at_pos, rv_labels, **kwargs)
+    return c_router.produce_circular_spotty_async_curves(
+        binary,
+        rv_point.compute_rv_at_pos,
+        rv_labels,
+        **kwargs,
+    )
 
 
-def compute_circular_pulsating_rv_curve(binary, **kwargs):
+def compute_circular_pulsating_rv_curve(
+    binary: BinarySystem,
+    **kwargs: Any,
+) -> dict[str, NDArray[Float]]:
+    """Return RV curve of pulsating systems with circular orbits.
+
+    :param binary: Binary system instance.
+    :type binary: BinarySystem
+    :param kwargs: Additional keyword arguments.
+
+        Supported options include:
+
+        - ``passband`` - ``dict[str, elisa.observer.PassbandContainer]``
+        - ``left_bandwidth`` - ``Float``
+        - ``right_bandwidth`` - ``Float``
+        - ``atlas`` - ``str``
+        - ``phases`` - ``numpy.array``
+    :type kwargs: Any
+    :return: Radial-velocity curves for each component.
+    :rtype: dict[str, NDArray[Float]]
     """
-    Function returns rv curve of pulsating systems with circular orbits.
-
-    :param binary: elisa.binary_system.system.BinarySystem;
-    :param kwargs: Dict;
-    :**kwargs options**:
-        * ** passband ** - Dict[str, elisa.observer.PassbandContainer]
-        * ** left_bandwidth ** - float
-        * ** right_bandwidth ** - float
-        * ** atlas ** - str
-        * ** phases ** * - numpy.array
-
-    :return: Dict; rv for each component
-    """
-    initial_system = c_router.prep_initial_system(binary, **dict(build_pulsations=False))
+    initial_system = c_router.prep_initial_system(
+        binary,
+        build_pulsations=False,
+    )
     rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
-    args = (binary, initial_system, kwargs.pop("phases"), rv_point.compute_rv_at_pos, rv_labels)
+    args = (
+        binary,
+        initial_system,
+        kwargs.pop("phases"),
+        rv_point.compute_rv_at_pos,
+        rv_labels,
+    )
     return c_router.produce_circular_pulsating_curves(*args, **kwargs)
 
 
-def compute_eccentric_rv_curve_no_spots(binary, **kwargs):
-    """
-    General function for generating rv curves of binaries with eccentric orbit and no spots.
+def compute_eccentric_rv_curve_no_spots(
+    binary: BinarySystem,
+    **kwargs: Any,
+) -> dict[str, NDArray[Float]]:
+    """Generate RV curves of binaries with eccentric orbit and no spots.
 
-    :param binary: elisa.binary_system.system.BinarySystem;
-    :param kwargs: Dict;
-    :**kwargs options**:
-        * ** passband ** - Dict[str, elisa.observer.PassbandContainer]
-        * ** left_bandwidth ** - float
-        * ** right_bandwidth ** - float
-        * ** atlas ** - str
+    :param binary: Binary system instance.
+    :type binary: BinarySystem
+    :param kwargs: Additional keyword arguments.
 
-    :return: Dict; rv for each component
-    """
-    rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
-    return c_router.produce_ecc_curves_no_spots(binary, rv_point.compute_rv_at_pos, rv_labels, **kwargs)
+        Supported options include:
 
-
-def compute_eccentric_spotty_rv_curve(binary, **kwargs):
-    """
-    General function for generating rv curves of binaries with eccentric orbit and spots.
-
-    :param binary: elisa.binary_system.system.BinarySystem;
-    :param kwargs: Dict;
-    :**kwargs options**:
-        * ** passband ** - Dict[str, elisa.observer.PassbandContainer]
-        * ** left_bandwidth ** - float
-        * ** right_bandwidth ** - float
-        * ** atlas ** - str
-
-    :return: Dict; rv for each component
+        - ``passband`` - ``dict[str, elisa.observer.PassbandContainer]``
+        - ``left_bandwidth`` - ``Float``
+        - ``right_bandwidth`` - ``Float``
+        - ``atlas`` - ``str``
+    :type kwargs: Any
+    :return: Radial-velocity curves for each component.
+    :rtype: dict[str, NDArray[Float]]
     """
     rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
-    return c_router.produce_ecc_curves_with_spots(binary, rv_point.compute_rv_at_pos, rv_labels, **kwargs)
+    return c_router.produce_ecc_curves_no_spots(
+        binary,
+        rv_point.compute_rv_at_pos,
+        rv_labels,
+        **kwargs,
+    )
+
+
+def compute_eccentric_spotty_rv_curve(
+    binary: BinarySystem,
+    **kwargs: Any,
+) -> dict[str, NDArray[Float]]:
+    """Generate RV curves of binaries with eccentric orbit and spots.
+
+    :param binary: Binary system instance.
+    :type binary: BinarySystem
+    :param kwargs: Additional keyword arguments.
+
+        Supported options include:
+
+        - ``passband`` - ``dict[str, elisa.observer.PassbandContainer]``
+        - ``left_bandwidth`` - ``Float``
+        - ``right_bandwidth`` - ``Float``
+        - ``atlas`` - ``str``
+    :type kwargs: Any
+    :return: Radial-velocity curves for each component.
+    :rtype: dict[str, NDArray[Float]]
+    """
+    rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
+    return c_router.produce_ecc_curves_with_spots(
+        binary,
+        rv_point.compute_rv_at_pos,
+        rv_labels,
+        **kwargs,
+    )
 
 
 def compute_circular_synchronous_lsf_curve(binary, **kwargs):
@@ -287,4 +403,10 @@ def compute_eccentric_spotty_lsf_curve(binary, **kwargs):
         rv_point.compute_lsf_at_pos,
         rv_labels,
         **kwargs
+    )
+    return c_router.produce_ecc_curves_with_spots(
+        binary,
+        rv_point.compute_rv_at_pos,
+        rv_labels,
+        **kwargs,
     )

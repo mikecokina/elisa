@@ -12,7 +12,6 @@ elisa.tensor.etensor module
    :undoc-members:
    :show-inheritance:
 
-
 Module contents
 ---------------
 

@@ -2,21 +2,21 @@ import datetime
 
 import numpy as np
 
-from ... import units as u
-from ... atm import atm_file_prefix_to_quantity_list
-from ... import settings
-from ... utils import jd_from_datetime
+from elisa import settings
+from elisa import units as u
+from elisa.atm import atm_file_prefix_to_quantity_list
+from elisa.utils import jd_from_datetime
 
-PARAM_PARSER = '@'
-NUISANCE_PARSER = 'nuisance'
+PARAM_PARSER = "@"
+NUISANCE_PARSER = "nuisance"
 
 TEMPERATURES = atm_file_prefix_to_quantity_list("temperature", settings.ATM_ATLAS)
 METALLICITY = atm_file_prefix_to_quantity_list("metallicity", settings.ATM_ATLAS)
 
 
 COMPOSITE_FLAT_PARAMS = [
-    'spot',
-    'pulsation'
+    "spot",
+    "pulsation",
 ]
 
 DEFAULT_NORMALIZATION_SPOT = {
@@ -37,7 +37,7 @@ DEFAULT_NORMALIZATION_PULSATION = {
     "frequency": (0.01, 40),
     "start_phase": (0, 360),
     "mode_axis_theta": (0, 180),
-    "mode_axis_phi": (0, 360)
+    "mode_axis_phi": (0, 360),
 }
 
 DEFAULT_NORMALIZATION_STAR = {
@@ -50,7 +50,7 @@ DEFAULT_NORMALIZATION_STAR = {
     "synchronicity": (0.01, 10),
 }
 
-CURRENT_TIME_JD = jd_from_datetime(datetime.datetime.now())
+CURRENT_TIME_JD = jd_from_datetime(datetime.datetime.now(tz=datetime.UTC))
 
 DEFAULT_NORMALIZATION_SYSTEM = {
     "inclination": (0, 180),
@@ -66,89 +66,89 @@ DEFAULT_NORMALIZATION_SYSTEM = {
     "primary_minimum_time": (CURRENT_TIME_JD - 365.0, CURRENT_TIME_JD),
 }
 
-SPOTS_PARAMETERS = ['longitude', 'latitude', 'angular_radius', 'temperature_factor', 'angular_radius']
-PULSATIONS_PARAMETERS = ['l', 'm', 'amplitude', 'frequency', 'start_phase', 'mode_axis_phi', 'mode_axis_theta']
+SPOTS_PARAMETERS = ["longitude", "latitude", "angular_radius", "temperature_factor", "angular_radius"]
+PULSATIONS_PARAMETERS = ["l", "m", "amplitude", "frequency", "start_phase", "mode_axis_phi", "mode_axis_theta"]
 
 DEFAULT_FLOAT_ANGULAR_UNIT = u.deg
 DEFAULT_FLOAT_MASS_UNIT = u.solMass
 
 DEFAULT_FLOAT_UNITS = {
-    'inclination': u.DefaultSystemInputUnits.inclination,
-    'eccentricity': u.DefaultBinarySystemInputUnits.system.eccentricity,
-    'argument_of_periastron': u.DefaultBinarySystemInputUnits.system.argument_of_periastron,
-    'gamma': u.DefaultSystemInputUnits.gamma,
-    'mass': u.DefaultStarInputUnits.mass,
-    't_eff': u.DefaultStarInputUnits.t_eff,
-    'metallicity': u.DefaultStarInputUnits.metallicity,
-    'surface_potential': u.DefaultBinarySystemInputUnits.component.surface_potential,
-    'albedo': u.DefaultStarUnits.albedo,
-    'gravity_darkening': u.DefaultStarInputUnits.gravity_darkening,
-    'synchronicity': u.DefaultBinarySystemInputUnits.component.synchronicity,
-    'mass_ratio': u.DefaultBinarySystemInputUnits.system.mass_ratio,
-    'semi_major_axis': u.DefaultBinarySystemInputUnits.system.semi_major_axis,
-    'asini': u.solRad,
-    'period': u.DefaultBinarySystemInputUnits.system.period,
-    'primary_minimum_time': u.DefaultBinarySystemInputUnits.system.primary_minimum_time,
-    'additional_light': u.DefaultSystemInputUnits.additional_light,
-    'phase_shift': u.DefaultSystemInputUnits.phase_shift,
+    "inclination": u.DefaultSystemInputUnits.inclination,
+    "eccentricity": u.DefaultBinarySystemInputUnits.system.eccentricity,
+    "argument_of_periastron": u.DefaultBinarySystemInputUnits.system.argument_of_periastron,
+    "gamma": u.DefaultSystemInputUnits.gamma,
+    "mass": u.DefaultStarInputUnits.mass,
+    "t_eff": u.DefaultStarInputUnits.t_eff,
+    "metallicity": u.DefaultStarInputUnits.metallicity,
+    "surface_potential": u.DefaultBinarySystemInputUnits.component.surface_potential,
+    "albedo": u.DefaultStarUnits.albedo,
+    "gravity_darkening": u.DefaultStarInputUnits.gravity_darkening,
+    "synchronicity": u.DefaultBinarySystemInputUnits.component.synchronicity,
+    "mass_ratio": u.DefaultBinarySystemInputUnits.system.mass_ratio,
+    "semi_major_axis": u.DefaultBinarySystemInputUnits.system.semi_major_axis,
+    "asini": u.solRad,
+    "period": u.DefaultBinarySystemInputUnits.system.period,
+    "primary_minimum_time": u.DefaultBinarySystemInputUnits.system.primary_minimum_time,
+    "additional_light": u.DefaultSystemInputUnits.additional_light,
+    "phase_shift": u.DefaultSystemInputUnits.phase_shift,
     # SPOTS
-    'latitude': u.DefaultSpotInputUnits.latitude,
-    'longitude': u.DefaultSpotInputUnits.longitude,
-    'angular_radius': u.DefaultSpotInputUnits.angular_radius,
-    'temperature_factor': u.DefaultSpotInputUnits.temperature_factor,
+    "latitude": u.DefaultSpotInputUnits.latitude,
+    "longitude": u.DefaultSpotInputUnits.longitude,
+    "angular_radius": u.DefaultSpotInputUnits.angular_radius,
+    "temperature_factor": u.DefaultSpotInputUnits.temperature_factor,
     # PULSATIONS
-    'l': u.DefaultPulsationsInputUnits.l,
-    'm': u.DefaultPulsationsInputUnits.m,
-    'amplitude': u.DefaultPulsationsInputUnits.amplitude,
-    'frequency': u.DefaultPulsationsInputUnits.frequency,
-    'start_phase': u.DefaultPulsationsInputUnits.start_phase,
-    'mode_axis_theta': u.DefaultPulsationsInputUnits.mode_axis_theta,
-    'mode_axis_phi': u.DefaultPulsationsInputUnits.mode_axis_phi,
+    "l": u.DefaultPulsationsInputUnits.l,
+    "m": u.DefaultPulsationsInputUnits.m,
+    "amplitude": u.DefaultPulsationsInputUnits.amplitude,
+    "frequency": u.DefaultPulsationsInputUnits.frequency,
+    "start_phase": u.DefaultPulsationsInputUnits.start_phase,
+    "mode_axis_theta": u.DefaultPulsationsInputUnits.mode_axis_theta,
+    "mode_axis_phi": u.DefaultPulsationsInputUnits.mode_axis_phi,
     # NUISANCE
-    'ln_f': None
+    "ln_f": None,
 }
 
 PARAMS_KEY_TEX_MAP = {
-    'system@argument_of_periastron': '$\\omega$',
-    'system@inclination': '$i$',
-    'system@eccentricity': '$e$',
-    'system@gamma': '$\\gamma$',
-    'system@mass_ratio': '$q$',
-    'system@semi_major_axis': '$a$',
-    'primary@mass': '$M_1$',
-    'primary@t_eff': '$T_1^{eff}$',
-    'primary@surface_potential': '$\\Omega_1$',
-    'primary@gravity_darkening': '$\\beta_1$',
-    'primary@albedo': '$A_1$',
-    'primary@metallicity': '$M/H_1$',
-    'primary@synchronicity': '$F_1$',
+    "system@argument_of_periastron": "$\\omega$",
+    "system@inclination": "$i$",
+    "system@eccentricity": "$e$",
+    "system@gamma": "$\\gamma$",
+    "system@mass_ratio": "$q$",
+    "system@semi_major_axis": "$a$",
+    "primary@mass": "$M_1$",
+    "primary@t_eff": "$T_1^{eff}$",
+    "primary@surface_potential": "$\\Omega_1$",
+    "primary@gravity_darkening": "$\\beta_1$",
+    "primary@albedo": "$A_1$",
+    "primary@metallicity": "$M/H_1$",
+    "primary@synchronicity": "$F_1$",
 
-    'secondary@mass': '$M_2$',
-    'secondary@t_eff': '$T_2^{eff}$',
-    'secondary@surface_potential': '$\\Omega_2$',
-    'secondary@gravity_darkening': '$\\beta_2$',
-    'secondary@albedo': '$A_2$',
-    'secondary@metallicity': '$M/H_2$',
-    'secondary@synchronicity': '$F_2$',
+    "secondary@mass": "$M_2$",
+    "secondary@t_eff": "$T_2^{eff}$",
+    "secondary@surface_potential": "$\\Omega_2$",
+    "secondary@gravity_darkening": "$\\beta_2$",
+    "secondary@albedo": "$A_2$",
+    "secondary@metallicity": "$M/H_2$",
+    "secondary@synchronicity": "$F_2$",
 
-    'system@asini': 'a$sin$(i)',
-    'system@period': '$period$',
-    'system@primary_minimum_time': '$T_0$',
-    'system@additional_light': '$l_{add}$',
-    'system@phase_shift': 'phase shift$',
+    "system@asini": "a$sin$(i)",
+    "system@period": "$period$",
+    "system@primary_minimum_time": "$T_0$",
+    "system@additional_light": "$l_{add}$",
+    "system@phase_shift": "phase shift$",
     # SPOTS
-    'longitude': '$\\varphi$',
-    'latitude': '$\\vartheta$',
-    'angular_radius': '$R_{spot}$',
-    'temperature_factor': '$T_{spot}/T_{eff}$',
+    "longitude": "$\\varphi$",
+    "latitude": "$\\vartheta$",
+    "angular_radius": "$R_{spot}$",
+    "temperature_factor": "$T_{spot}/T_{eff}$",
     # PULSATIONS
-    'l': '$\\ell$',
-    'm': '$m$',
-    'amplitude': '$A$',
-    'frequency': '$f$',
-    'start_phase': '$\\Phi_0$',
-    'mode_axis_phi': '$\\phi_{mode}$',
-    'mode_axis_theta': '$\\theta_{mode}$',
+    "l": "$\\ell$",
+    "m": "$m$",
+    "amplitude": "$A$",
+    "frequency": "$f$",
+    "start_phase": "$\\Phi_0$",
+    "mode_axis_phi": "$\\phi_{mode}$",
+    "mode_axis_theta": "$\\theta_{mode}$",
     # NUISANCE
-    'nuisance@ln_f': "$ln(f)$"
+    "nuisance@ln_f": "$ln(f)$",
 }

@@ -1,6 +1,6 @@
 Limbdarkening models
 ====================
-    Download `Van Hamme Transformer 2019 <https://mega.nz/file/WIdG0Qga#S3dMVROhlUSwhOj-b70vdaPFd1imWVQOaNsNrUsuD7w>`_.
+    Download `Van Hamme Transformer 2019 <https://github.com/mikecokina/elisa-assets/blob/main/limbdarkening/ld_vh19.tar.gz>`_.
 
     Contain limb darkening models for given limbdarkening models, passbands and metalicities
     Extract content of ``limbdarkening.tar`` archive to any directory and setup ``support.ld_tables``

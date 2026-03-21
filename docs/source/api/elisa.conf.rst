@@ -5,11 +5,20 @@ Subpackages
 -----------
 
 .. toctree::
+   :maxdepth: 4
 
    elisa.conf.logging_schemas
 
 Submodules
 ----------
+
+elisa.conf.parsers module
+-------------------------
+
+.. automodule:: elisa.conf.parsers
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 elisa.conf.settings module
 --------------------------
@@ -18,7 +27,6 @@ elisa.conf.settings module
    :members:
    :undoc-members:
    :show-inheritance:
-
 
 Module contents
 ---------------

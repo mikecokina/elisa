@@ -131,7 +131,7 @@ class MockSelf(object):
 
 class SupportMethodsTestCase(ElisaTestCase):
     def setUp(self):
-        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
+        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves")
 
     def test_compute_filling_factor(self):
         potential, l_points = 100.0, [2.4078, 2.8758, 2.5772]
@@ -366,7 +366,7 @@ class SupportMethodsTestCase(ElisaTestCase):
 class ComputeLightCurvesTestCase(ElisaTestCase):
     def setUp(self):
         super(ComputeLightCurvesTestCase, self).setUp()
-        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
+        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves")
         settings.configure(**{
             "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
             "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
@@ -466,7 +466,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 class CompareSingleVsMultiprocess(ElisaTestCase):
     def setUp(self):
         super(CompareSingleVsMultiprocess, self).setUp()
-        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
+        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves")
 
         settings.configure(**{
             "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
@@ -563,7 +563,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
 class CompareApproxVsExact(ElisaTestCase):
     def setUp(self):
         super(CompareApproxVsExact, self).setUp()
-        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
+        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves")
         settings.configure(**{
             "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
             "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")

@@ -1,91 +1,131 @@
+from __future__ import annotations
+
 import gc
+from copy import copy
+from typing import TYPE_CHECKING
+
 import numpy as np
 
-from copy import copy
-from ... import umpy as up
+from elisa import umpy as up
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+    from elisa.base.container import StarContainer
+    from elisa.types import Float, Int
 
 
-def initialize_model_container(vertices_map):
+def initialize_model_container(vertices_map: list[dict[str, int | str]]) -> tuple[dict, dict]:
+    """Initialize containers used to group faces by origin (star or spots).
+
+    The function inspects ``vertices_map`` to discover spot instance indices
+    and returns two containers: ``model`` which will hold lists of face
+    index triplets for the star and for each spot, and ``spot_candidates``
+    which is initialized to collect candidate faces for later resolution.
+
+    :param vertices_map: Sequence mapping each vertex index to its owning
+        object (fields ``"enum"`` and ``"type"`` are expected).
+    :type vertices_map: list[dict[str, int | str]]
+    :returns: Tuple containing ``model`` and ``spot_candidates``.
+    :rtype: tuple[dict, dict]
     """
-    Initializes basic data structure `model` objects that will contain faces sorted by its origin (star or spots)
-    and data structure containing spot candidates with its index and center point.
-    Structure is based on input `verties_map`.
-    Example of return Tuple
+    model: dict = {"object": [], "spots": {}}
+    spot_candidates: dict = {"com": [], "ix": []}
 
-    ::
-
-        (<class 'dict'>: {'object': [], 'spots': {0: []}}, <class 'dict'>: {'com': [], 'ix': []})
-
-    :param vertices_map: List or ndarray; map which define refrences of index in
-                         given Iterable to object (spot or Star).
-                         For more info, see docstring for `incorporate_spots_mesh` method.
-    :return: Tuple[Dict, Dict];
-    """
-    model = {"object": list(), "spots": dict()}
-    spot_candidates = {"com": list(), "ix": list()}
-
-    spots_instance_indices = list(set([vertices_map[ix]["enum"] for ix, _ in enumerate(vertices_map)
-                                       if vertices_map[ix]["enum"] >= 0]))
+    spots_instance_indices = {entry["enum"] for entry in vertices_map if entry["enum"] >= 0}
     for spot_index in spots_instance_indices:
-        model["spots"][spot_index] = list()
+        model["spots"][spot_index] = []
     return model, spot_candidates
 
 
-def split_spots_and_component_faces(star, points, faces, model, spot_candidates, vmap, component_com):
-    """
-    Function that sorts faces to model data structure by distinguishing if it belongs to star or spots.
+def split_spots_and_component_faces(
+        star: StarContainer,
+        points: NDArray[Float],
+        faces: NDArray[Int],
+        model: dict,
+        spot_candidates: dict,
+        vmap: list[dict[str, int | str]],
+        component_com: Float,
+) -> dict:
+    """Sort faces into the ``model`` structure, separating star faces and spots.
 
-    :param star: elisa.base.container.StarContainer;
-    :param component_com: float; center of mass of component
-    :param points: numpy.array; (N_points * 3) - all points of surface
-    :param faces: numpy.array; (N_faces * 3) - all faces of the surface
-    :param model: Dict; data structure for faces sorting (more in docstring of method `initialize_model_container`)
-    :param spot_candidates: Dict; initialised data structure for spot candidates
-    :param vmap: vertice map, for more info, see docstring for `incorporate_spots_mesh` method
-    :return: Dict; same as param `model`
+    Faces that are clearly owned by a single object are placed directly into
+    ``model``; mixed faces are collected into ``spot_candidates`` and later
+    resolved by proximity to spot centres.
+
+    :param star: StarContainer instance containing spot definitions.
+    :type star: elisa.base.container.StarContainer
+    :param points: Array of 3D points describing the surface.
+    :type points: numpy.typing.NDArray
+    :param faces: Array of triangular faces (indices into ``points``).
+    :type faces: numpy.typing.NDArray
+    :param model: Pre-initialised model container returned by
+        :func:`initialize_model_container`.
+    :type model: dict
+    :param spot_candidates: Candidate structure for mixed faces.
+    :type spot_candidates: dict
+    :param vmap: Vertices map describing ownership of vertices.
+    :type vmap: list[dict[str, int | str]]
+    :param component_com: X coordinate of the component centre of mass.
+    :type component_com: elisa.types.Float
+    :returns: The populated ``model`` mapping with arrays instead of lists.
+    :rtype: dict
     """
     model, spot_candidates = resolve_obvious_spots(points, faces, model, spot_candidates, vmap)
     model = resolve_spot_candidates(star, model, spot_candidates, faces, component_com=component_com)
-    # converting lists in model to numpy arrays
-    model['object'] = np.array(model['object'])
-    for spot_ix in star.spots:
-        model['spots'][spot_ix] = np.array(model['spots'][spot_ix])
+
+    # convert lists to numpy arrays for downstream consumers
+    if len(model["object"]) > 0:
+        model["object"] = np.array(model["object"])
+    else:
+        model["object"] = np.array([], dtype=int).reshape(0, 3)
+
+    for spot_ix in list(model["spots"].keys()):
+        if len(model["spots"][spot_ix]) > 0:
+            model["spots"][spot_ix] = np.array(model["spots"][spot_ix])
+        else:
+            model["spots"][spot_ix] = np.array([], dtype=int).reshape(0, 3)
+
     return model
 
 
-def resolve_spot_candidates(star, model, spot_candidates, faces, component_com):
+def resolve_spot_candidates(
+        star: StarContainer,
+        model: dict,
+        spot_candidates: dict,
+        faces: NDArray[Int],
+        component_com: Float,
+) -> dict:
+    """Assign mixed faces (candidates) to the correct spot or to the object.
+
+    The assignment is based on angular distance between face centres and
+    spot centres; for layered spots the topmost matching spot gets the
+    face.
+
+    :param star: StarContainer instance with spot metadata (``angular_radius`` and ``center``).
+    :type star: elisa.base.container.StarContainer
+    :param model: Current model dictionary being filled.
+    :type model: dict
+    :param spot_candidates: Structure containing candidate face centres and indices.
+    :type spot_candidates: dict
+    :param faces: All faces array used to fetch face indices for assignment.
+    :type faces: numpy.typing.NDArray
+    :param component_com: X coordinate of the component centre of mass.
+    :type component_com: elisa.types.Float
+    :returns: Updated ``model`` dictionary with faces appended to appropriate lists.
+    :rtype: dict
     """
-    Resolves spot face candidates by comparing angular distances of face cantres and spot centres.
-    In case of multiple layered spots, face is assigned to the top layer.
-
-    :param star: elisa.base.container.StarContainer;
-    :param model: Dict; initialised dictionary with placeholders which will describe object with spots as one entity
-    :param spot_candidates: Dict; contain indices and center of mass of each
-                                  face that is candodate to be a face of spot
-    :param faces: ndarray; array of indices which defines faces from points;
-    :param component_com: float; center of mass of given component
-    :return: Dict; filled model from input of following structure
-
-
-    ::
-
-        {
-            "object": ndarray[[point_idx_i, point_idx_j, point_idx_k], ...],
-            "spots": {
-                spot_index: ndarray[[point_idx_u, point_idx_v, point_idx_w], ...]
-            }
-        }
-    """
-    # checking each candidate one at a time trough all spots
     com = np.array(spot_candidates["com"]) - np.array([component_com, 0.0, 0.0])
     cos_max_angle = {idx: up.cos(_spot.angular_radius) for idx, _spot in star.spots.items()}
     center = {idx: _spot.center - np.array([component_com, 0.0, 0.0]) for idx, _spot in star.spots.items()}
-    for idx, _ in enumerate(spot_candidates["com"]):
+
+    for idx in range(len(spot_candidates["com"])):
         spot_idx_to_assign = -1
         simplex_ix = spot_candidates["ix"][idx]
         for spot_ix in star.spots:
-            cos_angle_com = up.inner(center[spot_ix], com[idx]) / \
-                            (np.linalg.norm(center[spot_ix]) * np.linalg.norm(com[idx]))
+            # compute cosine of angle between two vectors
+            denom = np.linalg.norm(center[spot_ix]) * np.linalg.norm(com[idx])
+            cos_angle_com = up.inner(center[spot_ix], com[idx]) / denom if denom != 0 else -1.0
             if cos_angle_com > cos_max_angle[spot_ix]:
                 spot_idx_to_assign = spot_ix
 
@@ -98,23 +138,39 @@ def resolve_spot_candidates(star, model, spot_candidates, faces, component_com):
     return model
 
 
-def resolve_obvious_spots(points, faces, model, spot_candidates, vmap):
-    """
-    Resolve those Spots/Star faces, where all tree vertices belongs to given object.
-    If there are mixed vertices of any face, append it to spot candidate List.
+def resolve_obvious_spots(
+        points: NDArray[Float],
+        faces: NDArray[Int],
+        model: dict,
+        spot_candidates: dict,
+        vmap: list[dict[str, int | str]],
+) -> tuple[dict, dict]:
+    """Classify faces that clearly belong to a single object (star or spot).
 
-    :param points: numpy.array; array of all points
-    :param faces: numpy.array; array of all faces
-    :param model: Dict; dictionary which describe object with spots as one entity
-    :param spot_candidates:
-    :param vmap: vertices map; for more info, see docstring for `incorporate_spots_mesh` method
-    :return: Tuple[Dict, Dict]
+    Faces whose three vertices all map to the same owning entity are
+    appended directly to the corresponding ``model`` list. Mixed faces
+    are recorded into ``spot_candidates`` for later resolution.
+
+    :param points: Array of 3D points describing the surface.
+    :type points: numpy.typing.NDArray
+    :param faces: Array of triangular faces (indices into ``points``).
+    :type faces: numpy.typing.NDArray
+    :param model: Model dictionary to append classified faces to.
+    :type model: dict
+    :param spot_candidates: Candidate structure to collect mixed faces.
+    :type spot_candidates: dict
+    :param vmap: Vertices map describing ownership of vertices.
+    :type vmap: list[dict[str, int | str]]
+    :returns: Tuple containing updated (model, spot_candidates).
+    :rtype: tuple[dict, dict]
     """
-    for simplex, face_points, ix in list(zip(faces, points[faces], range(faces.shape[0]))):
-        # if each point belongs to the same spot, then it is for sure face of that spot
-        condition1 = vmap[simplex[0]]["enum"] == vmap[simplex[1]]["enum"] == vmap[simplex[2]]["enum"]
-        if condition1:
-            if 'spot' == vmap[simplex[0]]["type"]:
+    for ix, simplex in enumerate(faces):
+        face_points = points[simplex]
+        same_owner = (
+                vmap[simplex[0]]["enum"] == vmap[simplex[1]]["enum"] == vmap[simplex[2]]["enum"]
+        )
+        if same_owner:
+            if vmap[simplex[0]]["type"] == "spot":
                 model["spots"][vmap[simplex[0]]["enum"]].append(np.array(simplex))
             else:
                 model["object"].append(np.array(simplex))
@@ -126,77 +182,97 @@ def resolve_obvious_spots(points, faces, model, spot_candidates, vmap):
     return model, spot_candidates
 
 
-def set_all_surface_centres(star):
-    """
-    Calculates all surface centres for given body(including spots) and assign to object as `face_centers` property
+def set_all_surface_centres(star: StarContainer) -> StarContainer:
+    """Compute face centres for the star and its spots (if present).
+
+    The function assigns the computed face centres to ``star.face_centres``
+    and to ``spot_instance.face_centres`` for each spot.
+
+    :param star: StarContainer whose face centres are to be updated.
+    :type star: elisa.base.container.StarContainer
+    :returns: The same ``star`` instance with updated face centre attributes.
+    :rtype: elisa.base.container.StarContainer
     """
     star.face_centres = calculate_surface_centres(star.points, star.faces)
     if star.has_spots() and not star.is_flat():
-        for spot_index, spot_instance in star.spots.items():
+        for spot_instance in star.spots.values():
             spot_instance.face_centres = calculate_surface_centres(spot_instance.points, spot_instance.faces)
     return star
 
 
-def calculate_surface_centres(points, faces):
-    """
-    Returns centers of every surface face.
+def calculate_surface_centres(points: NDArray[Float], faces: NDArray[Int]) -> NDArray[Float]:
+    """Return centroids of triangular faces.
 
-    :return: numpy.array;
-
-    ::
-
-        numpy.array([[center_x1, center_y1, center_z1],
-                     [center_x2, center_y2, center_z2],
-                      ...
-                     [center_xn, center_yn, center_zn]])
+    :param points: Array of 3D points.
+    :type points: numpy.typing.NDArray
+    :param faces: Array of triangle indices.
+    :type faces: numpy.typing.NDArray
+    :returns: Array of face centroids (N_faces x 3).
+    :rtype: numpy.typing.NDArray
     """
     return np.average(points[faces], axis=1)
 
 
 # noinspection PyUnreachableCode
-def calculate_normals(points, faces, centres, com):
+def calculate_normals(
+        points: NDArray[Float],
+        faces: NDArray[Int],
+        centres: NDArray[Float],
+        com: Float,
+) -> NDArray[Float]:
+    """Compute outward unit normals for triangular faces.
+
+    The orientation of normals is adjusted so that they point outwards
+    from the object centre.
+
+    :param points: Array of 3D points.
+    :type points: numpy.typing.NDArray
+    :param faces: Array of triangle indices.
+    :type faces: numpy.typing.NDArray
+    :param centres: Array of precomputed face centres.
+    :type centres: numpy.typing.NDArray
+    :param com: X coordinate of object centre-of-mass.
+    :type com: elisa.types.Float
+    :returns: Unit normal vectors for each face.
+    :rtype: numpy.typing.NDArray
     """
-    Returns outward facing normal unit vector for each face of stellar surface.
-
-    :param points: numpy.array;
-    :param faces: numpy.array;
-    :param centres: numpy.array;
-    :param com: numpy.array;
-    :return: numpy.array;
-
-    ::
-
-        numpy.array([[normal_x1, normal_y1, normal_z1],
-                     [normal_x2, normal_y2, normal_z2],
-                      ...
-                     [normal_xn, normal_yn, normal_zn]])
-    """
-    # vectors defining triangle ABC, a = B - A, b = C - A
     a = points[faces[:, 1]] - points[faces[:, 0]]
     b = points[faces[:, 2]] - points[faces[:, 0]]
     normals = np.cross(a, b)
     normals /= np.linalg.norm(normals, axis=1)[:, None]
     corr_centres = copy(centres) - np.array([com, 0, 0])[None, :]
 
-    # making sure that normals are properly oriented near the axial planes
-    sgn = up.sign(np.sum(up.multiply(normals, corr_centres), axis=1))
-    return normals * sgn[:, None]
+    # sign array is integer (-1, 0, 1). Cast it to a floating dtype before
+    # multiplying with `normals` so the multiplication yields a floating
+    # array; this also satisfies static type checkers which expect floats.
+    sgn: NDArray[Int] = up.sign(np.sum(up.multiply(normals, corr_centres), axis=1))
+    sgn_f: NDArray[Float] = sgn.astype(np.float64)
+    # make sure `normals` is a floating dtype (some linters/type-checkers
+    # may infer integer dtypes from upstream operations); cast explicitly
+    # so the multiplication yields a floating ndarray.
+    normals_f: NDArray[Float] = normals.astype(np.float64)
+    result: NDArray[Float] = normals_f * sgn_f[:, None]
+    return result
 
 
-def correct_face_orientation(star_container, com=0):
+def correct_face_orientation(star_container: StarContainer, com: Float = 0) -> StarContainer:
+    """Ensure face indices are ordered consistent with outward normals.
+
+    The function flips faces where the computed sign of dot(normals, centres)
+    is negative so that normals point outwards.
+
+    :param star_container: StarContainer or spot instance.
+    :type star_container: elisa.base.container.StarContainer
+    :param com: X coordinate of centre-of-mass to use for orientation.
+    :type com: elisa.types.Float
+    :returns: The same container with possibly modified face ordering.
+    :rtype: elisa.base.container.StarContainer
     """
-    Function corrects order if face indices in order to be consistent with outward facing normals.
 
-    :param star_container: elisa.base.container.StarContainer;
-    :param com: float; centre of mass x-position
-    :return:
-    """
-
-    # noinspection PyUnreachableCode,PyUnusedLocal
-    def correct_orientation(obj):
-        points = getattr(obj, 'points')
-        faces = getattr(obj, 'faces')
-        centres = getattr(obj, 'face_centres')
+    def _correct_orientation(obj: StarContainer) -> None:
+        points = obj.points
+        faces = obj.faces
+        centres = obj.face_centres
 
         a = points[faces[:, 1]] - points[faces[:, 0]]
         b = points[faces[:, 2]] - points[faces[:, 0]]
@@ -204,50 +280,59 @@ def correct_face_orientation(star_container, com=0):
 
         corr_centres = copy(centres) - np.array([com, 0, 0])[None, :]
 
-        sgn = up.sign(up.sum(up.multiply(normals, corr_centres), axis=1))
+        sgn = up.sign(np.sum(up.multiply(normals, corr_centres), axis=1))
         negative_sgn = sgn < 0
         faces[negative_sgn] = faces[negative_sgn][:, [1, 0, 2]]
 
-    correct_orientation(star_container)
+    _correct_orientation(star_container)
     if star_container.has_spots():
         for spot in star_container.spots.values():
-            correct_orientation(spot)
+            _correct_orientation(spot)
 
     return star_container
 
 
-def mirror_triangulation(q_triangles, inverse_point_symmetry_matrix):
-    """
-    This function enables for the triangulation of symmetrical part of the surface to be mirrored to the rest of
-    the surface.
+def mirror_triangulation(
+        q_triangles: NDArray[Int],
+        inverse_point_symmetry_matrix: NDArray[Int],
+) -> NDArray[Int]:
+    """Mirror triangulation from base symmetry portion to the full mesh.
 
-    :param q_triangles: numpy.array; triangles of base symmetry portion of the surface
-    :param inverse_point_symmetry_matrix: numpy.array; row-wise - array that map base symmetry portion of the surface
-                                                       points to the rest of the surface (quadrants or octants)
-    :return: numpy.array; triangulation covering the whole star
+    :param q_triangles: Triangles of the base symmetric portion.
+    :type q_triangles: numpy.typing.NDArray
+    :param inverse_point_symmetry_matrix: Array of index mappings per symmetry block.
+    :type inverse_point_symmetry_matrix: numpy.typing.NDArray
+    :returns: Concatenated triangulation covering the full surface.
+    :rtype: numpy.typing.NDArray
     """
     all_triangles = [inv[q_triangles] for inv in inverse_point_symmetry_matrix]
     return np.concatenate(all_triangles, axis=0)
 
 
-def mirror_face_values(values, face_symmetry_vector):
-    """
-    Mirroring the array values on symmetrical faces to the rest of the surface.
+def mirror_face_values(
+        values: NDArray[Float],
+        face_symmetry_vector: NDArray[Int],
+) -> NDArray[Float]:
+    """Map face-local values from the base symmetry block to the full surface.
 
-    :param values: numpy.array; surface parameter values corresponding to the base symmetry part of the surface
-    :param face_symmetry_vector: numpy.array; array that remaps `values` to the rest of the surface
-    :return: numpy.array; remapped array
+    :param values: Values defined on the base symmetric faces.
+    :type values: numpy.typing.NDArray
+    :param face_symmetry_vector: Index map to expand values to full mesh.
+    :type face_symmetry_vector: numpy.typing.NDArray
+    :returns: Remapped values for the full surface.
+    :rtype: numpy.typing.NDArray
     """
     return values[face_symmetry_vector]
 
 
-def symmetry_face_reduction(values, base_symmetry_faces_number):
-    """
-    Reducing the surface distribution of surface `values` array to the symmetrical component.
+def symmetry_face_reduction(values: NDArray[Float], base_symmetry_faces_number: int) -> NDArray[Float]:
+    """Reduce a full-surface distribution to its base-symmetry subset.
 
-    :param values: numpy.array; surface parameter distribution
-    :param base_symmetry_faces_number: int; number of the first `base_symmetry_faces_numbe` from the symmetrical
-                                            component
-    :return: numpy.array; reduced surface distribution array
+    :param values: Full-surface parameter distribution.
+    :type values: numpy.typing.NDArray
+    :param base_symmetry_faces_number: Number of faces in the base symmetry block.
+    :type base_symmetry_faces_number: int
+    :returns: Reduced distribution limited to the base symmetry faces.
+    :rtype: numpy.typing.NDArray
     """
     return values[:base_symmetry_faces_number]

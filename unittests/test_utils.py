@@ -177,7 +177,7 @@ class TestElisaEngineUtils(ElisaTestCase):
         points1 = np.array([[0.0, 0.0, 0.0], [0.0, 1.5, 0.0], [1.3, -1.2, 0.0]])
         points2 = np.array([[1.5, 0.0, 0.0], [0.0, 0.3, 0.0]])
 
-        v, d = utils.calculate_distance_matrix(points1, points2, False)
+        v, d = utils.calculate_distance_matrix(points1, points2, return_join_vector_matrix=False)
         expected = [[1.5, 0.3],
                     [2.1213, 1.2],
                     [1.2166, 1.9849]]
@@ -185,7 +185,7 @@ class TestElisaEngineUtils(ElisaTestCase):
         assert_array_equal(expected, obtained)
         self.assertIsNone(d)
 
-        _, d = utils.calculate_distance_matrix(points1, points2, True)
+        _, d = utils.calculate_distance_matrix(points1, points2, return_join_vector_matrix=True)
         d = np.round(d, 4)
         expected = [
             [[1., 0., 0.0], [0., 1., 0.0]],
@@ -429,3 +429,320 @@ class TestElisaEngineUtils(ElisaTestCase):
         precision = 7
         assert_array_equal(np.round(phis, precision), np.round(new_phis, precision))
         assert_array_equal(np.round(thetas, precision), np.round(new_thetas, precision))
+
+    # ========== NEW COMPREHENSIVE TESTS FOR TOP 10 IMPORTANT FUNCTIONS ==========
+
+    def test_rotate_item_basic_happy_path(self):
+        """Test rotate_item with basic vector rotation to observer frame.
+
+        Tests the fundamental coordinate transformation from corotating frame to observer frame.
+        """
+        vector = np.array([1.0, 0.0, 0.0])
+        position = const.Position(idx=0, distance=1.0, azimuth=0.0, true_anomaly=0.0, phase=0.0)
+        inclination = const.HALF_PI
+
+        result = utils.rotate_item(vector, position, inclination)
+
+        # Result should be a valid 3D vector
+        self.assertEqual(result.shape, (3,))
+        # Should not contain NaN values
+        self.assertFalse(np.any(np.isnan(result)))
+
+    def test_rotate_item_array_vectors(self):
+        """Test rotate_item with array of vectors.
+
+        Verify that multiple vectors can be rotated simultaneously.
+        """
+        vectors = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+        position = const.Position(idx=0, distance=1.0, azimuth=const.PI/4, true_anomaly=0.0, phase=0.0)
+        inclination = np.pi / 6  # 30 degrees
+
+        result = utils.rotate_item(vectors, position, inclination)
+
+        # Result should have same shape as input
+        self.assertEqual(result.shape, vectors.shape)
+        # Should not contain NaN values
+        self.assertFalse(np.any(np.isnan(result)))
+
+    def test_around_axis_rotation_z_axis_90_degrees(self):
+        """Test rotation around Z-axis by 90 degrees.
+
+        Happy path: rotate a unit vector along x-axis 90 degrees around z-axis.
+        """
+        vector = np.array([1.0, 0.0, 0.0])
+        angle = const.PI / 2  # 90 degrees in radians
+
+        result = utils.around_axis_rotation(angle, vector, "z", inverse=False, degrees=False)
+
+        # Vector should rotate from x-axis to y-axis
+        expected = np.array([0.0, 1.0, 0.0])
+        assert_array_equal(np.round(result, 5), np.round(expected, 5))
+
+    def test_around_axis_rotation_degrees_input(self):
+        """Test rotation with degrees instead of radians.
+
+        Verify that degrees=True parameter works correctly.
+        """
+        vector = np.array([1.0, 0.0, 0.0])
+        angle = 90  # degrees
+
+        result = utils.around_axis_rotation(angle, vector, "y", inverse=False, degrees=True)
+
+        # Vector rotated 90 degrees around y-axis should point along -z
+        expected = np.array([0.0, 0.0, -1.0])
+        assert_array_equal(np.round(result, 5), np.round(expected, 5))
+
+    def test_calculate_cos_theta_single_vector(self):
+        """Test cosine calculation between normal and line of sight vector.
+
+        Happy path: simple case with orthogonal vectors.
+        """
+        normals = np.array([[1.0, 0.0, 0.0]])
+        los_vector = np.array([1.0, 0.0, 0.0])
+
+        result = utils.calculate_cos_theta(normals, los_vector)
+
+        # Cosine of angle between parallel vectors should be 1
+        self.assertEqual(result[0], 1.0)
+
+    def test_calculate_cos_theta_multiple_vectors(self):
+        """Test cosine calculation with multiple normals.
+
+        Verify matrix multiplication of normals with line of sight vector.
+        """
+        normals = np.array([
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0]
+        ])
+        los_vector = np.array([1.0, 0.0, 0.0])
+
+        result = utils.calculate_cos_theta(normals, los_vector)
+
+        # First normal parallel to los -> 1, others perpendicular -> 0
+        expected = np.array([1.0, 0.0, 0.0])
+        assert_array_equal(result, expected)
+
+    def test_find_nearest_value_happy_path(self):
+        """Test finding nearest value in array.
+
+        Happy path: simple ascending array with clear nearest value.
+        """
+        look_in = np.array([1.0, 3.0, 5.0, 7.0, 9.0])
+        look_for = 4.0
+
+        value, idx = utils.find_nearest_value(look_in, look_for)
+
+        # Nearest to 4.0 in the array is 3.0 or 5.0, idx should be valid
+        self.assertIn(idx, [1, 2])
+        self.assertIn(value, [3.0, 5.0])
+
+    def test_find_nearest_value_exact_match(self):
+        """Test finding exact value in array.
+
+        Verify behavior when exact match exists.
+        """
+        look_in = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+        look_for = 3.0
+
+        value, idx = utils.find_nearest_value(look_in, look_for)
+
+        # Should find exact match
+        self.assertEqual(value, 3.0)
+        self.assertEqual(idx, 2)
+
+    def test_plane_projection_xy_plane(self):
+        """Test projection onto XY plane.
+
+        Happy path: project 3D points onto xy plane.
+        """
+        points = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
+
+        result = utils.plane_projection(points, "xy", keep_3d=False)
+
+        # Should keep x and y, drop z
+        expected = np.array([[1.0, 2.0], [4.0, 5.0], [7.0, 8.0]])
+        assert_array_equal(result, expected)
+
+    def test_plane_projection_keep_3d(self):
+        """Test projection with 3D preservation.
+
+        Verify keep_3d=True sets dropped coordinate to zero.
+        """
+        points = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+
+        result = utils.plane_projection(points, "yz", keep_3d=True)
+
+        # Should keep y and z, set x to zero
+        expected = np.array([[0.0, 2.0, 3.0], [0.0, 5.0, 6.0]])
+        assert_array_equal(result, expected)
+
+    def test_rotation_in_spherical_basic(self):
+        """Test rotation of spherical coordinates.
+
+        Happy path: rotate phi and theta by small angles.
+        """
+        phi = np.array([0.0])
+        theta = np.array([const.PI / 2])
+        phi_rotation = 0.0
+        theta_rotation = 0.0
+
+        phi_new, theta_new = utils.rotation_in_spherical(phi, theta, phi_rotation, theta_rotation)
+
+        # No rotation should preserve coordinates
+        assert_array_equal(np.round(phi_new, 5), np.round(phi, 5))
+        assert_array_equal(np.round(theta_new, 5), np.round(theta, 5))
+
+    def test_rotation_in_spherical_with_rotation(self):
+        """Test spherical rotation with non-zero rotation angles.
+
+        Verify coordinate transformation with actual rotation.
+        """
+        phi = np.linspace(0.1, const.FULL_ARC - 0.1, 10)
+        theta = np.full(10, const.PI / 4)
+        phi_rotation = const.PI / 6
+        theta_rotation = const.PI / 12
+
+        phi_new, theta_new = utils.rotation_in_spherical(phi, theta, phi_rotation, theta_rotation)
+
+        # Results should be valid spherical coordinates
+        self.assertEqual(len(phi_new), len(phi))
+        self.assertEqual(len(theta_new), len(theta))
+        # No NaN values
+        self.assertFalse(np.any(np.isnan(phi_new)))
+        self.assertFalse(np.any(np.isnan(theta_new)))
+
+    def test_calculate_distance_matrix_single_points(self):
+        """Test distance matrix calculation between point sets.
+
+        Happy path: simple distance calculation.
+        """
+        points1 = np.array([[0.0, 0.0, 0.0]])
+        points2 = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+
+        distance_matrix, vector_matrix = utils.calculate_distance_matrix(points1, points2, return_join_vector_matrix=False)
+
+        # Distance from origin to (1,0,0) should be 1
+        # Distance from origin to (0,1,0) should be 1
+        expected = np.array([[1.0, 1.0]])
+        assert_array_equal(np.round(distance_matrix, 5), np.round(expected, 5))
+        # vector_matrix should be None when not requested
+        self.assertIsNone(vector_matrix)
+
+    def test_calculate_distance_matrix_with_vectors(self):
+        """Test distance matrix with join vectors.
+
+        Verify return_join_vector_matrix=True returns normalized direction vectors.
+        """
+        points1 = np.array([[0.0, 0.0, 0.0]])
+        points2 = np.array([[1.0, 0.0, 0.0], [0.0, 2.0, 0.0]])
+
+        distance_matrix, vector_matrix = utils.calculate_distance_matrix(
+            points1, points2, return_join_vector_matrix=True
+        )
+
+        # Should return both distances and vectors
+        self.assertEqual(distance_matrix.shape, (1, 2))
+        self.assertEqual(vector_matrix.shape, (1, 2, 3))
+        # Vectors should be normalized (magnitude ~ 1)
+        magnitudes = np.linalg.norm(vector_matrix, axis=2)
+        assert_array_equal(np.round(magnitudes, 5), np.round(np.ones_like(magnitudes), 5))
+
+    def test_cosine_similarity_parallel_vectors(self):
+        """Test cosine similarity for parallel vectors.
+
+        Happy path: identical vectors should have similarity = 1.
+        """
+        a = np.array([1.0, 2.0, 3.0])
+        b = np.array([1.0, 2.0, 3.0])
+
+        similarity = utils.cosine_similarity(a, b)
+
+        # Parallel vectors should have cosine similarity of 1
+        self.assertAlmostEqual(similarity, 1.0, places=5)
+
+    def test_cosine_similarity_perpendicular_vectors(self):
+        """Test cosine similarity for perpendicular vectors.
+
+        Verify orthogonal vectors have similarity close to 0.
+        """
+        a = np.array([1.0, 0.0, 0.0])
+        b = np.array([0.0, 1.0, 0.0])
+
+        similarity = utils.cosine_similarity(a, b)
+
+        # Perpendicular vectors should have similarity close to 0
+        self.assertAlmostEqual(similarity, 0.0, places=5)
+
+    def test_is_empty_with_none(self):
+        """Test is_empty function with None value.
+
+        Happy path: None should be considered empty.
+        """
+        result = utils.is_empty(None)
+        self.assertTrue(result)
+
+    def test_is_empty_with_empty_list(self):
+        """Test is_empty with empty list.
+
+        Verify empty collections are detected.
+        """
+        result = utils.is_empty([])
+        self.assertTrue(result)
+
+    def test_is_empty_with_nonempty_list(self):
+        """Test is_empty with non-empty list.
+
+        Verify non-empty collections are not flagged as empty.
+        """
+        result = utils.is_empty([1, 2, 3])
+        self.assertFalse(result)
+
+    def test_is_empty_with_nan(self):
+        """Test is_empty with numpy NaN.
+
+        Verify NaN values are detected as empty.
+        """
+        result = utils.is_empty(np.nan)
+        self.assertTrue(result)
+
+    def test_random_sign_returns_valid_sign(self):
+        """Test random_sign returns either -1 or 1.
+
+        Happy path: verify output is always a valid sign.
+        """
+        for _ in range(100):
+            result = utils.random_sign()
+            self.assertIn(result, [-1, 1])
+
+    def test_magnitude_to_flux_conversion(self):
+        """Test magnitude to flux conversion.
+
+        Happy path: convert magnitude values to flux.
+        """
+        magnitude = np.array([10.0, 11.0, 12.0])
+        zero_point = 10.0
+
+        flux = utils.magnitude_to_flux(magnitude, zero_point)
+
+        # Flux should be positive for valid magnitudes
+        self.assertTrue(np.all(flux > 0))
+        # Brighter (lower magnitude) should have higher flux
+        self.assertTrue(flux[0] > flux[1] > flux[2])
+
+    def test_jd_to_phase_conversion(self):
+        """Test Julian Date to phase conversion.
+
+        Happy path: convert JD to orbital phase.
+        """
+        times = np.array([2450000.0, 2450001.0, 2450002.0])
+        period = 1.5
+        t0 = 2450000.0
+
+        phases = utils.jd_to_phase(times, period, t0, centre=0.5)
+
+        # Phases should be in range [0, 1] when centre=0.5
+        self.assertTrue(np.all(phases >= 0.0))
+        self.assertTrue(np.all(phases <= 1.0))
+
+

@@ -1,28 +1,26 @@
 # keep it first
 # due to stupid astropy units/constants implementation
-from unittests import set_astropy_units
-
+import os
 import random
 import sys
-import os
-import numpy as np
-import pandas as pd
-
 from os.path import dirname
 from os.path import join as pjoin
 
+import numpy as np
+import pandas as pd
 from numpy.testing import assert_array_equal, assert_equal
 from pandas.testing import assert_frame_equal
 
-from elisa.binary_system.system import BinarySystem
-from elisa.single_system.system import SingleSystem
 from elisa import settings
 from elisa import umpy as up
+from elisa.binary_system.system import BinarySystem
 from elisa.observer.observer import Observer
-from elisa.observer.passband import PassbandContainer
-from elisa.observer.passband import bolometric
+from elisa.observer.passband import PassbandContainer, bolometric
+from elisa.observer.plot import Plot
 from elisa.observer.utils import convert_to_magnitudes
 from elisa.photometric_standards.standards_handlers import load_standard
+from elisa.single_system.system import SingleSystem
+from unittests import set_astropy_units
 from unittests.utils import ElisaTestCase
 
 set_astropy_units()
@@ -30,10 +28,10 @@ set_astropy_units()
 
 class TestPassbandContainer(ElisaTestCase):
     def setUp(self):
-        super(TestPassbandContainer, self).setUp()
+        super().setUp()
         self._data_path = pjoin(dirname(os.path.abspath(__file__)), "data", "passband")
-        self._bessel_v_df = pd.read_csv(pjoin(self._data_path, 'Generic.Bessell.V.csv'))
-        self.pb = PassbandContainer(self._bessel_v_df, 'Generic.Bessell.V')
+        self._bessel_v_df = pd.read_csv(pjoin(self._data_path, "Generic.Bessell.V.csv"))
+        self.pb = PassbandContainer(self._bessel_v_df, "Generic.Bessell.V")
 
     def test_table_setter_bandwidth(self):
         miw, maw = min(self._bessel_v_df["wavelength"]), max(self._bessel_v_df["wavelength"])
@@ -82,11 +80,11 @@ class TestPassbandContainer(ElisaTestCase):
 
 class TestObserver(ElisaTestCase):
     def setUp(self):
-        super(TestObserver, self).setUp()
+        super().setUp()
         self._data_path = pjoin(dirname(os.path.abspath(__file__)), "data", "passband")
-        self._passband = 'Generic.Bessell.V'
-        self._bessel_v_df = pd.read_csv(pjoin(self._data_path, f'{self._passband}.csv'))
-        settings.configure(**{"PASSBAND_TABLES": self._data_path})
+        self._passband = "Generic.Bessell.V"
+        self._bessel_v_df = pd.read_csv(pjoin(self._data_path, f"{self._passband}.csv"))
+        settings.configure(PASSBAND_TABLES=self._data_path)
 
     def test_bolometric(self):
         r = random.randrange
@@ -96,7 +94,7 @@ class TestObserver(ElisaTestCase):
 
             bolometric(r(m)),
             bolometric([r(m) for _ in range(3)]),
-            bolometric(np.array([r(m) for _ in range(3)]))
+            bolometric(np.array([r(m) for _ in range(3)])),
         ]
 
         for e, o in zip(expected, obtained):
@@ -122,7 +120,7 @@ class TestObserver(ElisaTestCase):
         assert_frame_equal(expected, obtained)
 
     def test_setup_bandwidth(self):
-        passbands = ['Generic.Bessell.V', 'SLOAN.SDSS.g']
+        passbands = ["Generic.Bessell.V", "SLOAN.SDSS.g"]
         s = BinarySystemMock()
         o = Observer(passbands, s)
         expected = [3700.0, 7500.0]
@@ -130,7 +128,7 @@ class TestObserver(ElisaTestCase):
         assert_array_equal(expected, obtained)
 
     def test_setup_bandwidth_bolometric_in(self):
-        passbands = ['Generic.Bessell.V', 'SLOAN.SDSS.g', 'bolometric']
+        passbands = ["Generic.Bessell.V", "SLOAN.SDSS.g", "bolometric"]
         s = BinarySystemMock()
         o = Observer(passbands, s)
         expected = [0.0, sys.float_info.max]
@@ -247,19 +245,72 @@ class TestObserver(ElisaTestCase):
         assert_array_equal(np.round(expected_phases, 2), np.round(obtained_phases2, 2))
 
     def test_convert_to_magnitudes(self):
-        for system in ['vega', 'ab', 'st']:
+        for system in ["vega", "ab", "st"]:
             zero_points = load_standard(system)
             input_curves = dict()
-            for passband, zp in zero_points['fluxes'].items():
-                input_curves[passband] = np.array([zp, ])
+            for passband, zp in zero_points["fluxes"].items():
+                input_curves[passband] = np.array([zp ])
 
             mags = convert_to_magnitudes(input_curves, zero_points)
-            for passband, zm in zero_points['reference_magnitudes'].items():
+            for passband, zm in zero_points["reference_magnitudes"].items():
                 assert_equal(mags[passband][0], zm)
 
+    def test_system_cls_property(self):
+        """Test Observer.system_cls property getter and setter."""
+        s = BinarySystemMock()
+        o = Observer(self._passband, s)
+        self.assertEqual(o.system_cls, BinarySystemMock)
+        o.system_cls = SingleSystemMock
+        self.assertEqual(o.system_cls, SingleSystemMock)
 
-class BinarySystemMock(object):
-    class Star(object):
+    def test_flux_unit_property(self):
+        """Test Observer.flux_unit property getter and setter."""
+        s = BinarySystemMock()
+        o = Observer(self._passband, s)
+        self.assertEqual(o.flux_unit, o._flux_unit)
+        o.flux_unit = "W/m2"
+        self.assertEqual(str(o.flux_unit), "W / m2")
+
+    def test_lc_invalid_flux_unit(self):
+        """Test Observer.lc raises ValueError for invalid flux_unit."""
+        s = BinarySystemMock()
+        o = Observer(self._passband, s)
+        with self.assertRaises(ValueError):
+            # noinspection PyTypeChecker
+            o.lc(flux_unit="invalid_unit")
+
+    def test_plot_and_observe_attributes(self):
+        """Test Observer.plot and Observer.observe attributes exist and are correct type."""
+        s = BinarySystemMock()
+        o = Observer(self._passband, s)
+        self.assertIsNotNone(o.plot)
+        self.assertIsNotNone(o.observe)
+        self.assertIsInstance(o.plot, Plot)
+        self.assertTrue(hasattr(o.observe, "lc"))
+        self.assertTrue(hasattr(o.observe, "rv"))
+
+    def test_manage_time_series_phase_and_time(self):
+        """Test Observer.manage_time_series for phase and time domain input and error cases."""
+        s = BinarySystemMock()
+        o = Observer(self._passband, s)
+        # Phase domain
+        phases = o.manage_time_series(from_phase=0.0, to_phase=1.0, phase_step=0.1)
+        self.assertTrue(np.allclose(phases + o._system.phase_shift, np.arange(0.0, 1.0, 0.1)))
+        # Time domain
+        times = np.arange(0.0, 1.0, 0.1)
+        phases_time = o.manage_time_series(from_time=0.0, to_time=1.0, time_step=0.1, times=times)
+        self.assertEqual(len(phases_time), len(times))
+        # Error: both phase and time domain
+        with self.assertRaises(ValueError):
+            o.manage_time_series(from_phase=0.0, to_phase=1.0, phase_step=0.1, from_time=0.0, to_time=1.0,
+                                 time_step=0.1)
+        # Error: missing arguments
+        with self.assertRaises(ValueError):
+            o.manage_time_series()
+
+
+class BinarySystemMock:
+    class Star:
         def __init__(self, p=False):
             self.p = p
             self._synchronicity = 1.0
@@ -278,10 +329,13 @@ class BinarySystemMock(object):
     def __init__(self, pp=False, sp=False):
         self.primary = self.Star(pp)
         self.secondary = self.Star(sp)
+        self.phase_shift = 0.0
+        self.period = 1.0
+        self.t0 = 0.0
 
 
-class SingleSystemMock(object):
-    class Star(object):
+class SingleSystemMock:
+    class Star:
         def __init__(self, p=False, s=False):
             self.p = p
             self.s = s
@@ -294,3 +348,6 @@ class SingleSystemMock(object):
 
     def __init__(self, p=False, s=False):
         self.star = self.Star(p, s)
+        self.phase_shift = 0.0
+        self.period = 1.0
+        self.t0 = 0.0

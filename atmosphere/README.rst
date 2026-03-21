@@ -6,7 +6,7 @@ Contain model of stellar atmospheres
 Castelli-Kurucz 2004
 ~~~~~~~~~~~~~~~~~~~~
 
-    **url:** https://mega.nz/#!rQc0FQKL!IiygAjuAA-Ea3u2lRHJNpkiY3y-RqHohkUC9g2FOGiA
+    **url:** https://github.com/mikecokina/elisa-assets/blob/main/atmosphere/ck04.tar.gz
 
     Extract content of ``ck04.tar`` archive to any directory and setup ``support.castelli_kurucz_04_atm_tables``
     in ``elisa_config.ini``.
@@ -65,4 +65,4 @@ Flux is stored in ``flam`` units and ``wave`` in Angstromes.
 Kurucz 1993
 ~~~~~~~~~~~
 
-    **url:** https://mega.nz/#!vQFi2YbD!0k8uZ_44HJGqlZ9XkDk2JuOTrgZ8JkY_4mu9ygDcUA0
+    **url:** https://github.com/mikecokina/elisa-assets/blob/main/atmosphere/k93.tar.gz

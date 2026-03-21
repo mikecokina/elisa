@@ -56,7 +56,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
     def setUp(self):
         super(ComputeLightCurvesTestCase, self).setUp()
-        self.base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
+        self.base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves")
 
         settings.configure(**{
             "LD_TABLES": op.join(self.base_path, "limbdarkening"),

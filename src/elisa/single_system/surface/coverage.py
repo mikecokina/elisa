@@ -1,22 +1,38 @@
-from ... import utils
-from ... base.surface.coverage import surface_area_coverage
-from ... logger import getLogger
+from __future__ import annotations
 
-logger = getLogger('single_system.surface.coverage')
+from typing import TYPE_CHECKING
+
+from elisa import utils
+from elisa.base.surface.coverage import surface_area_coverage
+from elisa.logger import getLogger
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+    from elisa.single_system.container import SinglePositionContainer
+    from elisa.types import Float
 
 
-def compute_surface_coverage(system):
+logger = getLogger("single_system.surface.coverage")
+
+
+def compute_surface_coverage(system: SinglePositionContainer) -> dict[str, NDArray[Float]]:
+    """Compute surface coverage of faces for a given rotational position.
+
+    The function computes visible-triangle areas for faces that are visible
+    in the supplied ``system`` container and expands them to a full per-face
+    coverage distribution using :func:`elisa.base.surface.coverage.surface_area_coverage`.
+
+    :param system: Single-position container describing the system and star.
+    :type system: elisa.single_system.container.SinglePositionContainer
+    :returns: Mapping with key ``'star'`` and value equal to per-face coverage array.
+    :rtype: dict[str, numpy.typing.NDArray[elisa.types.Float]]
     """
-    Compute surface coverage of faces for given rotational position
-    defined by container/SystemContainer.
+    logger.debug("computing surface coverage for %s", system.position)
+    star = system.star
 
-    :param system:
-    :return:
-    """
-    logger.debug(f"computing surface coverage for {system.position}")
-    star = getattr(system, 'star')
+    visible_face_points = star.points[star.faces[star.indices]]
+    coverage_visible = utils.poly_areas(visible_face_points)
+    coverage_full = surface_area_coverage(len(star.faces), star.indices, coverage_visible)
 
-    coverage = utils.poly_areas(star.points[star.faces[star.indices]])
-    coverage = surface_area_coverage(len(star.faces), star.indices, coverage)
-
-    return {'star': coverage, }
+    return {"star": coverage_full}

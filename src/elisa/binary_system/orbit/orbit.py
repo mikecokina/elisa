@@ -1,23 +1,36 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, ClassVar
+
 import numpy as np
+import scipy.optimize as _sci_opt
 
-from ... import (
-    utils,
-    const,
-    umpy as up
-)
-from ... base.types import INT, FLOAT
-from ... logger import getLogger
-from ... binary_system.orbit.transform import OrbitProperties
-from ... base.orbit.orbit import AbstractOrbit
+from elisa import const, utils
+from elisa import umpy as up
+from elisa.base.orbit.orbit import AbstractOrbit
+from elisa.base.types import FLOAT, INT
+from elisa.binary_system.orbit.transform import OrbitProperties
+from elisa.logger import getLogger
 
-logger = getLogger('binary_system.orbit.orbit')
+logger = getLogger("binary_system.orbit.orbit")
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+    from elisa.base.container import StarContainer
+    from elisa.binary_system.container import OrbitalPositionContainer
+    from elisa.types import Float
 
 
-def angular_velocity(period, eccentricity, distance):
-    """
-    Compute angular velocity for given components distance.
-    This can be derived from facts that::
+def angular_velocity(
+        period: Float | NDArray,
+        eccentricity: Float | NDArray,
+        distance: Float | NDArray,
+) -> NDArray[np.floating] | Float:
+    """Compute angular velocity for a given component distance.
 
+    The formula is derived from the relation between orbital period, ellipse
+    geometry and angular motion::
 
         w = dp/dt
 
@@ -25,170 +38,215 @@ def angular_velocity(period, eccentricity, distance):
 
         e = sqrt(1 - (b/a)^2)
 
-    where a, b are respectively semi major and semi minor axis, P is period and e is eccentricity.
-
-
-    :param period: float;
-    :param eccentricity: float;
-    :param distance: float;
-    :return: float;
+    :param period: Orbital period in days.
+    :type period: elisa.types.Float | numpy.typing.NDArray
+    :param eccentricity: Orbital eccentricity.
+    :type eccentricity: elisa.types.Float | numpy.typing.NDArray
+    :param distance: Radial distance (in semi-major axis units).
+    :type distance: elisa.types.Float | numpy.typing.NDArray
+    :returns: Angular velocity in radians per second.
+    :rtype: numpy.ndarray | elisa.types.Float
     """
     return ((2.0 * up.pi) / (period * 86400.0 * (distance ** 2))) * up.sqrt(
-        (1.0 - eccentricity) * (1.0 + eccentricity))  # $\rad.sec^{-1}$
+        (1.0 - eccentricity) * (1.0 + eccentricity),
+    )
 
 
-def primary_orbital_speed(m1, m2, a_red, components_distance):
-    """
-    Returns orbital speed of primary component with respect to the system centre of mass.
+def primary_orbital_speed(
+        m1: Float,
+        m2: Float,
+        a_red: Float,
+        components_distance: Float,
+) -> Float:
+    """Return orbital speed of the primary component about the system centre.
 
-    :param m1: float; primary mass
-    :param m2: float; secondary mass
-    :param a_red: float; semi major axis of the primary component with respect to the system centre of mass
-    :param components_distance: float;
-    :return: float;
+    :param m1: Primary mass.
+    :type m1: elisa.types.Float
+    :param m2: Secondary mass.
+    :type m2: elisa.types.Float
+    :param a_red: Reduced semi-major axis of the primary.
+    :type a_red: elisa.types.Float
+    :param components_distance: Distance between components (same units as a_red).
+    :type components_distance: elisa.types.Float
+    :returns: Orbital speed of the primary component.
+    :rtype: elisa.types.Float
     """
     m = m1 + m2
     return m2 * np.sqrt((const.G / m) * ((2 / components_distance) - (m2 / (a_red * m))))
 
 
-def velocity_vector_angle(eccentricity, true_anomaly):
-    """
-    Returns sine and cosine of angle between velocity vector and join vector.
+def velocity_vector_angle(
+        eccentricity: Float | NDArray,
+        true_anomaly: Float | NDArray,
+) -> tuple[NDArray[np.floating] | Float, NDArray[np.floating] | Float]:
+    """Return sine and cosine of angle between velocity vector and join vector.
 
-    :param eccentricity: float;
-    :param true_anomaly: float;
-    :return: Tuple;
+    :param eccentricity: Orbital eccentricity.
+    :type eccentricity: elisa.types.Float | numpy.typing.NDArray
+    :param true_anomaly: True anomaly (radians).
+    :type true_anomaly: elisa.types.Float | numpy.typing.NDArray
+    :returns: Tuple of (sin, cos) of the angle.
+    :rtype: tuple[numpy.ndarray | elisa.types.Float, numpy.ndarray | elisa.types.Float]
     """
-    den = np.sqrt(1 + eccentricity**2 + 2 * eccentricity * np.cos(true_anomaly))
-    sin = (1 + eccentricity * np.cos(true_anomaly)) / den
-    cos = - (eccentricity * np.sin(true_anomaly)) / den
+    den = up.sqrt(1 + eccentricity ** 2 + 2 * eccentricity * up.cos(true_anomaly))
+    sin = (1 + eccentricity * up.cos(true_anomaly)) / den
+    cos = - (eccentricity * up.sin(true_anomaly)) / den
     return sin, cos
 
 
-def create_orb_vel_vectors(system, components_distance):
-    """
-    Returns orbital velocity vectors for both components in reference frame of centre of mass.
+def create_orb_vel_vectors(
+        system: OrbitalPositionContainer,
+        components_distance: Float,
+) -> dict[str, NDArray[np.floating]]:
+    """Return orbital velocity vectors for both components in centre-of-mass frame.
 
-    :param system: elisa.binary_system.container;
-    :param components_distance: float;
-    :return: float;
+    :param system: OrbitalPositionContainer instance.
+    :type system: elisa.binary_system.container.OrbitalPositionContainer
+    :param components_distance: Distance between components in SMA units.
+    :type components_distance: elisa.types.Float
+    :returns: Mapping with "primary" and "secondary" velocity vectors.
+    :rtype: dict[str, numpy.ndarray]
     """
     a_red = system.semi_major_axis * system.mass_ratio / (1 + system.mass_ratio)
-
-    speed = primary_orbital_speed(system.primary.mass, system.secondary.mass, a_red,
-                                  system.semi_major_axis * components_distance)
+    primary: StarContainer = system.primary
+    secondary: StarContainer = system.secondary
+    speed = primary_orbital_speed(
+        primary.mass,
+        secondary.mass,
+        a_red,
+        system.semi_major_axis * components_distance,
+    )
 
     sin, cos = velocity_vector_angle(system.eccentricity, system.position.true_anomaly)
 
-    velocity = {'primary': np.array([cos * speed, -sin * speed, 0])}
-    velocity['secondary'] = - velocity['primary'] / system.mass_ratio
+    velocity: dict[str, NDArray[np.floating]] = {
+        "primary": np.array([cos * speed, -sin * speed, 0]),
+    }
+    velocity["secondary"] = -velocity["primary"] / system.mass_ratio
 
     return velocity
 
 
-def distance_to_center_of_mass(primary_mass, secondary_mass, distance):
-    """
-    Return distance from primary and from secondary component to center of mass.
+def distance_to_center_of_mass(
+        primary_mass: Float,
+        secondary_mass: Float,
+        distance: Float,
+) -> tuple[Float, Float]:
+    """Return distances from primary and secondary components to center of mass.
 
-    :param primary_mass: float
-    :param secondary_mass: float
-    :param distance: Union[float, numpy.array]
-    :return: Tuple[Union[float, numpy.array]];
+    :param primary_mass: Primary mass.
+    :type primary_mass: elisa.types.Float
+    :param secondary_mass: Secondary mass.
+    :type secondary_mass: elisa.types.Float
+    :param distance: Separation between components.
+    :type distance: elisa.types.Float
+    :returns: Tuple (distance_from_primary, distance_from_secondary).
+    :rtype: tuple[elisa.types.Float, elisa.types.Float]
     """
     mass = primary_mass + secondary_mass
     com_from_primary = (distance * secondary_mass) / mass
     return com_from_primary, distance - com_from_primary
 
 
-def orbital_semi_major_axes(r, eccentricity, true_anomaly):
-    """
-    Return orbital semi major axis from component distance, eccentricity and true anomaly.
+def orbital_semi_major_axes(
+        r: Float | NDArray,
+        eccentricity: Float | NDArray,
+        true_anomaly: Float | NDArray,
+) -> NDArray[np.floating] | Float:
+    """Return orbital semi-major axis from component distance and anomaly.
 
-    :param r: float or numpy.array; distance from center of mass to object
-    :param eccentricity: float or numpy.array; orbital eccentricity
-    :param true_anomaly: float or numpy.array; true anomaly of orbital motion
-    :return: Union[float, numpy.array]
+    :param r: Distance from center of mass to object.
+    :type r: elisa.types.Float | numpy.typing.NDArray
+    :param eccentricity: Orbital eccentricity.
+    :type eccentricity: elisa.types.Float | numpy.typing.NDArray
+    :param true_anomaly: True anomaly.
+    :type true_anomaly: elisa.types.Float | numpy.typing.NDArray
+    :returns: Semi-major axis (same shape as inputs).
+    :rtype: numpy.ndarray | elisa.types.Float
     """
     return r * (1.0 + eccentricity * up.cos(true_anomaly)) / (1.0 - up.power(eccentricity, 2))
 
 
-def component_distance_from_mean_anomaly(eccentricity, true_anomaly):
-    """
-    Return component distance in SMA from semi-major axis, eccentricity and true anomaly.
+def component_distance_from_mean_anomaly(
+        eccentricity: Float | NDArray,
+        true_anomaly: Float | NDArray,
+) -> NDArray[np.floating] | Float:
+    """Return component distance from mean anomaly-related quantities.
 
-    :param r: float or numpy.array; distance from center of mass to object
-    :param eccentricity: float or numpy.array; orbital eccentricity
-    :param true_anomaly: float or numpy.array; true anomaly of orbital motion
-    :return: Union[float, numpy.array]
+    :param eccentricity: Orbital eccentricity.
+    :type eccentricity: elisa.types.Float | numpy.typing.NDArray
+    :param true_anomaly: True anomaly.
+    :type true_anomaly: elisa.types.Float | numpy.typing.NDArray
+    :returns: Component distance in SMA units.
+    :rtype: numpy.ndarray | elisa.types.Float
     """
     return (1.0 - up.power(eccentricity, 2)) / (1.0 + eccentricity * up.cos(true_anomaly))
 
 
-def get_approx_ecl_angular_width(forward_radius1, forward_radius2, components_distance, inclination):
-    """
-    Returns angular width of the eclipse assuming spherical components.
+def get_approx_ecl_angular_width(
+        forward_radius1: Float,
+        forward_radius2: Float,
+        components_distance: Float,
+        inclination: Float,
+) -> tuple[Float, Float]:
+    """Return approximate angular half-widths of an eclipse for spherical components.
 
-    :param forward_radius1: float;
-    :param forward_radius2: float;
-    :param components_distance: float; in SMA
-    :param inclination: float; in radians
-    :return: tuple; angular half-width of the eclipse and the inner plateau
+    :param forward_radius1: Apparent radius of component 1.
+    :type forward_radius1: elisa.types.Float
+    :param forward_radius2: Apparent radius of component 2.
+    :type forward_radius2: elisa.types.Float
+    :param components_distance: Distance between components (SMA units).
+    :type components_distance: elisa.types.Float
+    :param inclination: Orbital inclination in radians.
+    :type inclination: elisa.types.Float
+    :returns: Tuple of (outer_half_width, inner_half_width).
+    :rtype: tuple[elisa.types.Float, elisa.types.Float]
     """
     # tilt of the orbital plane and z-axis in the observer reference frame
     tilt = np.abs(const.HALF_PI - inclination)
     # maximum apparent distance between components where eclipse is possible
     r_outer = forward_radius1 + forward_radius2
     r_inner = np.abs(forward_radius1 - forward_radius2)
-    # closest aparent distances of component centres
+    # closest apparent distances of component centres
     r_close = components_distance * np.sin(tilt)
 
     # checking if eclipses occur
-
-    nu_outer = 0.0 if r_close >= r_outer else \
-        np.arcsin(np.sqrt(
-            np.power(r_outer/components_distance, 2) - np.power(np.sin(tilt), 2)
-        ))
-    nu_inner = 0.0 if r_close >= r_inner else \
-        np.arcsin(np.sqrt(
-            np.power(r_inner / components_distance, 2) - np.power(np.sin(tilt), 2)
-        ))
+    nu_outer = 0.0 if r_close >= r_outer else (
+        np.arcsin(np.sqrt(np.power(r_outer / components_distance, 2) - np.power(np.sin(tilt), 2)))
+    )
+    nu_inner = 0.0 if r_close >= r_inner else (
+        np.arcsin(np.sqrt(np.power(r_inner / components_distance, 2) - np.power(np.sin(tilt), 2)))
+    )
 
     return nu_outer, nu_inner
 
 
 class Orbit(AbstractOrbit):
-    """
-    Object representing orbit of a binary system. Accessible as an attribute of an BinarySystem object
+    """Represent the orbit of a binary system.
 
-    Input parameters:
-
-    :param period: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]; Orbital period of binary
-                   star system. If unit is not specified, default period unit is assumed (days).
-    :param inclination: ; Union[float, astropy.units.Quantity]; If unitless values is supplied, default unit
-                          suppose to be radians.
-    :param eccentricity: Union[(numpy.)int, (numpy.)float];
-    :param argument_of_periastron: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]; If unit is
-                                   not supplied, value in radians is assumed.
-    :param phase_shift: float;
-
-    Output parameters:
-
-    :periastron_distance: float; Distance in periastron (in unit of semi major axis (a = a1 + a2) of relative motion)
-    :periastron_phase: float; true (not photometric but computed from mean anomaly) phase of periastron.
+    Parameters accepted via :class:`OrbitProperties.transform_input` are used to
+    initialise instance attributes. See transform utilities for supported
+    keyword names and conversions.
     """
 
-    MANDATORY_KWARGS = ['period', 'inclination', 'eccentricity', 'argument_of_periastron']
-    OPTIONAL_KWARGS = ['phase_shift']
-    ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
+    MANDATORY_KWARGS: ClassVar[tuple[str, ...]] = ("period", "inclination", "eccentricity", "argument_of_periastron")
+    OPTIONAL_KWARGS: ClassVar[tuple[str, ...]] = ("phase_shift",)
+    ALL_KWARGS: ClassVar[tuple[str, ...]] = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    def __init__(self, **kwargs):
-        utils.invalid_kwarg_checker(kwargs, Orbit.ALL_KWARGS, Orbit)
-        utils.check_missing_kwargs(self.__class__.MANDATORY_KWARGS, kwargs, instance_of=self.__class__)
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize an Orbit instance.
+
+        :param kwargs: Orbit parameters; mandatory and optional names are
+            validated against :pyattr:`~Orbit.ALL_KWARGS`.
+        :type kwargs: dict
+        """
+        utils.invalid_kwarg_checker(kwargs, list(Orbit.ALL_KWARGS), Orbit)
+        utils.check_missing_kwargs(list(self.__class__.MANDATORY_KWARGS), kwargs, instance_of=self.__class__)
         kwargs = OrbitProperties.transform_input(**kwargs)
 
-        super(Orbit, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
-        # default valeus of properties
+        # default values of properties
         self.period = np.nan
         self.eccentricity = np.nan
         self.argument_of_periastron = np.nan
@@ -200,155 +258,160 @@ class Orbit(AbstractOrbit):
         self.phase_shift = 0.0
 
         # values of properties
-        logger.debug(f"setting properties of orbit")
+        logger.debug("setting properties of orbit")
         for kwarg in kwargs:
             setattr(self, kwarg, kwargs[kwarg])
 
         self.periastron_distance = self.compute_periastron_distance()
         self.conjunctions = self.get_conjuction()
-        self.periastron_phase = - self.conjunctions["primary_eclipse"]["true_phase"] % 1
+        self.periastron_phase = -self.conjunctions["primary_eclipse"]["true_phase"] % 1
 
     @classmethod
-    def phase_to_mean_anomaly(cls, phase):
-        """
-        returns mean anomaly of points on orbit as a function of phase
+    def phase_to_mean_anomaly(cls, phase: Float | NDArray) -> NDArray[np.floating] | Float:
+        """Return mean anomaly corresponding to photometric phase.
 
-        :param phase: Union[numpy.array, float];
-        :return: Union[numpy.array, float];
+        :param phase: Photometric phase(s).
+        :type phase: elisa.types.Float | numpy.typing.NDArray
+        :returns: Mean anomaly in radians (same shape as input).
+        :rtype: numpy.ndarray | elisa.types.Float
         """
         return const.FULL_ARC * phase
 
     @classmethod
-    def mean_anomaly_to_phase(cls, mean_anomaly):
-        """
-        returns phase of points on orbit as a function of mean anomaly
+    def mean_anomaly_to_phase(cls, mean_anomaly: Float | NDArray) -> NDArray[np.floating] | Float:
+        """Return photometric phase from mean anomaly.
 
-        :param mean_anomaly: Union[numpy.array, float];
-        :return:  Union[numpy.array, float];
+        :param mean_anomaly: Mean anomaly in radians.
+        :type mean_anomaly: elisa.types.Float | numpy.typing.NDArray
+        :returns: Photometric phase(s).
+        :rtype: numpy.ndarray | elisa.types.Float
         """
         return mean_anomaly / const.FULL_ARC
 
-    def mean_anomaly_fn(self, eccentric_anomaly: float, *args) -> float:
-        """
-        Definition of Kepler equation for scipy _solver in Orbit.eccentric_anomaly.
+    def mean_anomaly_fn(self, eccentric_anomaly: Float, *args: Any) -> Float:
+        """Kepler's equation residual used by solvers.
 
-        :param eccentric_anomaly: float;
-        :param args: Tuple; (mean_anomaly, )
-        :return: float;
+        :param eccentric_anomaly: Eccentric anomaly value for the residual.
+        :param args: Additional arguments (mean_anomaly,).
+        :returns: Residual of Kepler's equation.
+        :rtype: elisa.types.Float
         """
         mean_anomaly, = args
         return eccentric_anomaly - self.eccentricity * up.sin(eccentric_anomaly) - mean_anomaly
 
-    def mean_anomaly_to_eccentric_anomaly(self, mean_anomaly: float) -> float:
-        """
-        Solves Kepler equation for eccentric anomaly via mean anomaly.
+    def mean_anomaly_to_eccentric_anomaly(self, mean_anomaly: Float) -> Float | bool:
+        """Solve Kepler's equation for the eccentric anomaly.
 
-        :param mean_anomaly: float;
-        :return: float;
+        Returns the eccentric anomaly or ``False`` on failure.
+
+        :param mean_anomaly: Mean anomaly in radians.
+        :type mean_anomaly: elisa.types.Float
+        :returns: Eccentric anomaly or ``False`` if solver fails.
+        :rtype: elisa.types.Float | bool
         """
-        import scipy.optimize
         try:
-            solution = scipy.optimize.newton(self.mean_anomaly_fn, 1.0, args=(mean_anomaly, ), tol=1e-10)
+            solution = _sci_opt.newton(
+                self.mean_anomaly_fn,
+                1.0,
+                args=(mean_anomaly,),
+                tol=1e-10,
+            )
             if not up.isnan(solution):
                 if solution < 0:
                     solution += const.FULL_ARC
                 return solution
-            else:
-                return False
-        except Exception as e:
-            logger.debug(f"solver scipy.optimize.newton in function Orbit.eccentric_anomaly did not provide "
-                         f"solution.\n Reason: {e}")
+        except Exception as err:  # noqa: BLE001
+            logger.debug(
+                "scipy.optimize.newton failed to provide solution for Orbit.mean_anomaly_to_eccentric_anomaly: %s",
+                err,
+            )
+            return False
+        else:
             return False
 
-    def eccentric_anomaly_to_mean_anomaly(self, eccentric_anomaly):
-        """
-        Returns mean anomaly as a function of eccentric anomaly calculated using Kepler equation.
+    def eccentric_anomaly_to_mean_anomaly(self, eccentric_anomaly: Float | NDArray) -> NDArray[np.floating] | Float:
+        """Return mean anomaly from eccentric anomaly using Kepler's equation.
 
-        :param eccentric_anomaly: numpy.array;
-        :return: numpy.array
+        :param eccentric_anomaly: Eccentric anomaly value(s).
+        :type eccentric_anomaly: elisa.types.Float | numpy.typing.NDArray
+        :returns: Mean anomaly in radians.
+        :rtype: numpy.ndarray | elisa.types.Float
         """
         return (eccentric_anomaly - self.eccentricity * up.sin(eccentric_anomaly)) % const.FULL_ARC
 
-    def eccentric_anomaly_to_true_anomaly(self, eccentric_anomaly):
-        """
-        Returns true anomaly as a function of eccentric anomaly and eccentricity.
+    def eccentric_anomaly_to_true_anomaly(self, eccentric_anomaly: Float | NDArray) -> NDArray[np.floating] | Float:
+        """Return true anomaly from eccentric anomaly and eccentricity.
 
-        :param eccentric_anomaly: Union[numpy.array, float]
-        :return: Union[numpy.array, float]
+        :param eccentric_anomaly: Eccentric anomaly value(s).
+        :type eccentric_anomaly: elisa.types.Float | numpy.typing.NDArray
+        :returns: True anomaly in radians.
+        :rtype: numpy.ndarray | elisa.types.Float
         """
         true_anomaly = 2.0 * up.arctan(
-            up.sqrt((1.0 + self.eccentricity) / (1.0 - self.eccentricity)) * up.tan(eccentric_anomaly / 2.0))
+            up.sqrt((1.0 + self.eccentricity) / (1.0 - self.eccentricity)) * up.tan(eccentric_anomaly / 2.0),
+        )
         true_anomaly[true_anomaly < 0] += const.FULL_ARC
         return true_anomaly
 
-    def true_anomaly_to_eccentric_anomaly(self, true_anomaly):
-        """
-        Returns eccentric anomaly as a function of true anomaly and eccentricity.
+    def true_anomaly_to_eccentric_anomaly(self, true_anomaly: Float | NDArray) -> NDArray[np.floating] | Float:
+        """Return eccentric anomaly from true anomaly and eccentricity.
 
-        :param true_anomaly: Union[numpy.array, float];
-        :return: Union[numpy.array, float];
+        :param true_anomaly: True anomaly value(s).
+        :type true_anomaly: elisa.types.Float | numpy.typing.NDArray
+        :returns: Eccentric anomaly in radians.
+        :rtype: numpy.ndarray | elisa.types.Float
         """
-        eccentric_anomaly = \
-            2.0 * up.arctan(up.sqrt((1.0 - self.eccentricity) / (1.0 + self.eccentricity)) * up.tan(true_anomaly / 2.0))
+        eccentric_anomaly = 2.0 * up.arctan(
+            up.sqrt((1.0 - self.eccentricity) / (1.0 + self.eccentricity)) * up.tan(true_anomaly / 2.0),
+        )
         eccentric_anomaly[eccentric_anomaly < 0] += const.FULL_ARC
         return eccentric_anomaly
 
-    def relative_radius(self, true_anomaly):
-        """
-        Calculates the length of radius vector of elipse where a=1.
+    def relative_radius(self, true_anomaly: Float | NDArray) -> NDArray[np.floating] | Float:
+        """Return radius vector length of ellipse with a=1 for given true anomaly.
 
-        :param true_anomaly: Union[numpy.array, float];
-        :return: Union[numpy.array, float];
+        :param true_anomaly: True anomaly value(s).
+        :type true_anomaly: elisa.types.Float | numpy.typing.NDArray
+        :returns: Radius vector (same shape as input).
+        :rtype: numpy.ndarray | elisa.types.Float
         """
         return (1.0 - self.eccentricity ** 2) / (1.0 + self.eccentricity * up.cos(true_anomaly))
 
-    def true_anomaly_to_azimuth(self, true_anomaly):
-        """
-        Convert true anomaly angle to azimuth angle measured from y axis in 2D plane.
+    def true_anomaly_to_azimuth(self, true_anomaly: Float | NDArray) -> NDArray[np.floating] | Float:
+        """Convert true anomaly to azimuth measured from the y-axis.
 
-        ::
-
-            azimuth 0 alligns with y axis
-                     | 0
-                pi/2 |
-                -----------
-                     |
-                     |
-
-        :param true_anomaly: Union[numpy.array, float];
-        :return: Union[numpy.array, float];
+        :param true_anomaly: True anomaly value(s).
+        :type true_anomaly: elisa.types.Float | numpy.typing.NDArray
+        :returns: Azimuth angle(s) in radians.
+        :rtype: numpy.ndarray | elisa.types.Float
         """
         return (true_anomaly + self.argument_of_periastron) % const.FULL_ARC
 
-    def azimuth_to_true_anomaly(self, azimuth):
-        """
-        Calculates the azimuth form given true anomaly
+    def azimuth_to_true_anomaly(self, azimuth: Float | NDArray) -> NDArray[np.floating] | Float:
+        """Return true anomaly corresponding to an azimuth.
 
-        :param azimuth: Union[numpy.array, float]
-        :return: Union[numpy.array, float]
+        :param azimuth: Azimuth angle(s) in radians.
+        :type azimuth: elisa.types.Float | numpy.typing.NDArray
+        :returns: True anomaly value(s).
+        :rtype: numpy.ndarray | elisa.types.Float
         """
         return (azimuth - self.argument_of_periastron) % const.FULL_ARC
 
-    def orbital_motion(self, phase):
-        """
-        Function takes photometric phase of the binary system as input and calculates positions of the secondary
-        component in the frame of reference of primary component.
+    def orbital_motion(self, phase: Float | NDArray) -> NDArray[np.floating] | Float:
+        """Compute orbital motion for given photometric phase(s).
 
-        :param phase: Union[numpy.array, float]; photometric phases
-        :return: numpy.array; matrix consisting of column stacked vectors distance, azimut angle, true anomaly and phase
+        Returns columns: (distance, azimuth, true_anomaly, phase).
 
-        ::
-
-            numpy.array((r1, az1, nu1, phs1),
-                        (r2, az2, nu2, phs2),
-                         ...       
-                        (rN, azN, nuN, phsN))
+        :param phase: Photometric phase(s) as scalar or array-like.
+        :type phase: elisa.types.Float | numpy.typing.NDArray
+        :returns: 2D array with per-row (r, az, nu, phs).
+        :rtype: numpy.ndarray
         """
         # ability to accept scalar as input
         if isinstance(phase, (int, INT, float, FLOAT)):
             phase = np.array([FLOAT(phase)])
         # photometric phase to phase measured from periastron
-        true_phase = self.true_phase(phase=phase, phase_shift=self.conjunctions['primary_eclipse']['true_phase'])
+        true_phase = self.true_phase(phase=phase, phase_shift=self.conjunctions["primary_eclipse"]["true_phase"])
 
         mean_anomaly = self.phase_to_mean_anomaly(phase=true_phase)
         eccentric_anomaly = np.array([self.mean_anomaly_to_eccentric_anomaly(mean_anomaly=xx)
@@ -359,93 +422,83 @@ class Orbit(AbstractOrbit):
 
         return np.column_stack((distance, azimut_angle, true_anomaly, phase))
 
-    def orbital_motion_from_azimuths(self, azimuth):
-        """
-        Function takes azimuths of the binary system (angle between ascending node (y) as input and calculates
-        positions of the secondary component in the frame of reference of primary component.
+    def orbital_motion_from_azimuths(self, azimuth: Float | NDArray) -> NDArray[np.floating] | Float:
+        """Compute orbital motion when azimuth(s) are provided.
 
-        :param azimuth: Union[numpy.array, float];
-        :return: numpy.array; matrix consisting of column stacked vectors distance,
-                              azimut angle, true anomaly and phase
+        Returns columns: (distance, azimuth, true_anomaly, phase).
 
-        ::
-
-               numpy.array((r1, az1, ni1, phs1),
-                           (r2, az2, ni2, phs2),
-                            ...
-                           (rN, azN, niN, phsN))
-
+        :param azimuth: Azimuth angle(s) as scalar or array-like.
+        :type azimuth: elisa.types.Float | numpy.typing.NDArray
+        :returns: 2D array with per-row (r, az, nu, phs).
+        :rtype: numpy.ndarray
         """
         true_anomaly = self.azimuth_to_true_anomaly(azimuth)
         distance = self.relative_radius(true_anomaly=true_anomaly)
         eccentric_anomaly = self.true_anomaly_to_eccentric_anomaly(true_anomaly)
         mean_anomaly = self.eccentric_anomaly_to_mean_anomaly(eccentric_anomaly)
         true_phase = self.mean_anomaly_to_phase(mean_anomaly)
-        phase = self.phase(true_phase, phase_shift=self.conjunctions['primary_eclipse']['true_phase'])
+        phase = self.phase(true_phase, phase_shift=self.conjunctions["primary_eclipse"]["true_phase"])
         return np.column_stack((distance, azimuth, true_anomaly, phase))
 
-    def get_conjuction(self):
-        """
-        Compute and return photometric phase of conjunction (eclipses).
-        We assume that primary component is placed in center of coo system and observation unit vector is [1, 0, 0]
+    def get_conjuction(self) -> dict[str, dict[str, Float]]:
+        """Compute photometric phases and anomalies of conjunctions (eclipses).
 
-        return dictionary is in shape::
+        The return dictionary has entries for "primary_eclipse" and
+        "secondary_eclipse" each containing true_phase, true_anomaly,
+        mean_anomaly and eccentric_anomaly.
 
-            {
-                type_of_eclipse <`primary_eclipse` or `secondary_eclipse`>: {
-                    'true_phase': float,
-                    'true_anomaly': float,
-                    'mean_anomaly': float,
-                    'eccentric_anomaly'float:
-                },
-                ...
-            }
-
-        :return: Dict;
+        :returns: Mapping of eclipse types to their orbital quantities.
+        :rtype: dict[str, dict]
         """
         # determining order of eclipses
-        conjuction_arc_list = []
+        conjunction_arc_list: list[float] = []
         try:
             if 0 <= self.inclination <= const.PI / 2.0:
-                conjuction_arc_list = [const.PI / 2.0, 3.0 * const.PI / 2.0]
+                conjunction_arc_list = [const.PI / 2.0, 3.0 * const.PI / 2.0]
             elif const.PI / 2.0 < self.inclination <= const.PI:
-                conjuction_arc_list = [3.0 * const.PI / 2.0, const.PI / 2.0]
-        except Exception as e:
-            raise TypeError(f'Invalid type of {self.__class__.__name__}.inclination - {str(e)}.')
+                conjunction_arc_list = [3.0 * const.PI / 2.0, const.PI / 2.0]
+        except TypeError as err:
+            msg = f"Invalid type of {self.__class__.__name__}.inclination - {err}."
+            raise TypeError(msg) from err
 
-        conjunction_quantities = dict()
-        for alpha, idx in list(zip(conjuction_arc_list, ['primary_eclipse', 'secondary_eclipse'])):
+        conjunction_quantities: dict[str, dict[str, Float]] = {}
+        for alpha, idx in zip(conjunction_arc_list, ("primary_eclipse", "secondary_eclipse"), strict=True):
             # true anomaly of conjunction (measured from periastron counter-clokwise)
-            true_anomaly_of_conjuction = self.azimuth_to_true_anomaly(alpha)  # \nu_{con}
+            true_anomaly_of_conjunction = self.azimuth_to_true_anomaly(alpha)  # \nu_{con}
 
             # eccentric anomaly of conjunction (measured from apse line)
             eccentric_anomaly_of_conjunction = (2.0 * up.arctan(
-                up.sqrt((1.0 - self.eccentricity) / (1.0 + self.eccentricity)) *
-                up.tan(true_anomaly_of_conjuction / 2.0))) % const.FULL_ARC
+                up.sqrt((1.0 - self.eccentricity) / (1.0 + self.eccentricity))
+                * up.tan(true_anomaly_of_conjunction / 2.0),
+            )) % const.FULL_ARC
 
             # mean anomaly of conjunction (measured from apse line)
-            mean_anomaly_of_conjunction = (eccentric_anomaly_of_conjunction -
-                                           self.eccentricity *
-                                           up.sin(eccentric_anomaly_of_conjunction)) % const.FULL_ARC
+            mean_anomaly_of_conjunction = (eccentric_anomaly_of_conjunction - self.eccentricity
+                                           * up.sin(eccentric_anomaly_of_conjunction)
+                                           ) % const.FULL_ARC
 
             # true phase of conjunction (measured from apse line)
             true_phase_of_conjunction = (mean_anomaly_of_conjunction / const.FULL_ARC) % 1.0
 
-            conjunction_quantities[idx] = dict()
-            conjunction_quantities[idx]["true_anomaly"] = true_anomaly_of_conjuction
-            conjunction_quantities[idx]["eccentric_anomaly"] = eccentric_anomaly_of_conjunction
-            conjunction_quantities[idx]["mean_anomaly"] = mean_anomaly_of_conjunction
-            conjunction_quantities[idx]["true_phase"] = true_phase_of_conjunction
+            conjunction_quantities[idx] = {
+                "true_anomaly": true_anomaly_of_conjunction,
+                "eccentric_anomaly": eccentric_anomaly_of_conjunction,
+                "mean_anomaly": mean_anomaly_of_conjunction,
+                "true_phase": true_phase_of_conjunction,
+            }
 
         return conjunction_quantities
 
-    def compute_periastron_distance(self):
-        """
-        Calculates relative periastron distance in SMA units.
+    def compute_periastron_distance(self) -> Float:
+        """Calculate relative periastron distance in SMA units.
 
-        :return: float;
+        :returns: Periastron distance.
+        :rtype: elisa.types.Float
         """
         periastron_distance = self.relative_radius(true_anomaly=np.array([0])[0])
-        logger.debug(f"setting property periastron_distance "
-                     f"of class instance {self.__class__.__name__} to {periastron_distance}")
+        logger.debug(
+            "setting property periastron_distance of class instance %s to %s",
+            self.__class__.__name__,
+            periastron_distance,
+        )
         return periastron_distance

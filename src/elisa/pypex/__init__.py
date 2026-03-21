@@ -1,3 +1,3 @@
-from .. pypex.poly2d.polygon import Point, Polygon
-from .. pypex.poly2d.line import Line
-from .. pypex.poly2d import projection
+from elisa.pypex.poly2d import projection  # noqa: F401
+from elisa.pypex.poly2d.line import Line  # noqa: F401
+from elisa.pypex.poly2d.polygon import Point, Polygon  # noqa: F401

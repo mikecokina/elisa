@@ -76,7 +76,6 @@ elisa.analytics.binary\_fit.summary module
    :undoc-members:
    :show-inheritance:
 
-
 Module contents
 ---------------
 

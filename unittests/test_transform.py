@@ -57,6 +57,73 @@ class TransformBinarySystemPropertiesTestCase(ElisaTestCase):
     def test_primary_minimum_time_raise(self):
         generate_raise_test(self, "92", BinarySystemProperties.primary_minimum_time, "not convertible")
 
+    @staticmethod
+    def test_argument_of_periastron_wrap():
+        """Ensure values larger than a full arc are wrapped into [0, FULL_ARC)."""
+        # 720 degrees should wrap to 0 radians
+        wrap_values = [720.0, 1080.0 * 1.0]  # 720 deg and 1080 deg
+        expected = [0.0, 0.0]
+        generate_test(wrap_values, BinarySystemProperties.argument_of_periastron, expected, 4)
+
+    @staticmethod
+    def test_t0_alias():
+        """Verify that t0 delegates to primary_minimum_time."""
+        values = [1.0, 180.0 * u.PERIOD_UNIT]
+        expected = [1.0, 180.0]
+        obtained_t0 = [BinarySystemProperties.t0(v) for v in values]
+        obtained_pmt = [BinarySystemProperties.primary_minimum_time(v) for v in values]
+        assert_array_equal(np.array(obtained_t0), np.array(obtained_pmt))
+
+    def test_eccentricity_boundary_values(self):
+        """Test eccentricity at boundary values."""
+        # Test at lower boundary (0.0)
+        result = BinarySystemProperties.eccentricity(0.0)
+        self.assertEqual(result, 0.0)
+
+        # Test near upper boundary (just below 1.0)
+        result = BinarySystemProperties.eccentricity(0.9999)
+        self.assertAlmostEqual(result, 0.9999, places=4)
+
+    def test_eccentricity_negative_raise(self):
+        """Test eccentricity raises for negative values."""
+        generate_raise_test(self, -0.1, BinarySystemProperties.eccentricity, "out of boundaries")
+
+    def test_argument_of_periastron_with_astropy_quantity(self):
+        """Test argument_of_periastron with astropy Quantity input."""
+        # Test with radians
+        result = BinarySystemProperties.argument_of_periastron(const.PI * u.rad)
+        self.assertAlmostEqual(result, const.PI, places=4)
+
+        # Test with degrees
+        result = BinarySystemProperties.argument_of_periastron(90.0 * u.deg)
+        expected = (90.0 * u.deg).to(u.rad).value
+        self.assertAlmostEqual(result, expected, places=4)
+
+    def test_argument_of_periastron_type_raise(self):
+        """Test argument_of_periastron raises for invalid types."""
+        generate_raise_test(self, {"invalid": "dict"}, BinarySystemProperties.argument_of_periastron, "not")
+
+    def test_phase_shift_various_values(self):
+        """Test phase_shift with various input values."""
+        test_values = [0.0, 0.5, 1.0, -0.5, 10.5]
+        for val in test_values:
+            result = BinarySystemProperties.phase_shift(val)
+            self.assertEqual(float(result), float(val))
+
+    def test_primary_minimum_time_with_various_units(self):
+        """Test primary_minimum_time with different unit representations."""
+        # Test with days (default)
+        result = BinarySystemProperties.primary_minimum_time(2.5)
+        self.assertAlmostEqual(result, 2.5, places=4)
+
+        # Test with seconds
+        result = BinarySystemProperties.primary_minimum_time(86400.0 * u.s)
+        self.assertAlmostEqual(result, 1.0, places=4)  # 1 day in default units
+
+    def test_primary_minimum_time_invalid_unit_raise(self):
+        """Test primary_minimum_time raises for incompatible units."""
+        generate_raise_test(self, 1.0 * u.kg, BinarySystemProperties.primary_minimum_time, "not convertible")
+
 
 class TransformSystemPropertiesTestCase(ElisaTestCase):
     @staticmethod

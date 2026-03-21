@@ -5,16 +5,20 @@ Subpackages
 -----------
 
 .. toctree::
+   :maxdepth: 4
 
    elisa.analytics
    elisa.base
    elisa.binary_system
    elisa.conf
    elisa.graphic
+   elisa.managers
    elisa.numba_functions
    elisa.observer
    elisa.opt
+   elisa.photometric_standards
    elisa.pulse
+   elisa.pypex
    elisa.schema_registry
    elisa.single_system
    elisa.tensor
@@ -62,6 +66,14 @@ elisa.logger module
    :undoc-members:
    :show-inheritance:
 
+elisa.types module
+------------------
+
+.. automodule:: elisa.types
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 elisa.umpy module
 -----------------
 
@@ -85,7 +97,6 @@ elisa.utils module
    :members:
    :undoc-members:
    :show-inheritance:
-
 
 Module contents
 ---------------
