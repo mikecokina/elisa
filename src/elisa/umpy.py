@@ -24,6 +24,13 @@ if TYPE_CHECKING:
     from elisa.types import Float
 
 # numpy
+
+floor = np.floor
+max = np.max
+min = np.min
+median = np.median
+clip = np.clip
+
 degrees = np.degrees
 radians = np.radians
 
