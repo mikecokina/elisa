@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
     from elisa.base.container import StarContainer
     from elisa.binary_system.container import OrbitalPositionContainer
-    from elisa.types import Float, Int
+    from elisa.types import NP_BOOL_, Float, Int
 
 logger = getLogger("binary_system.surface.faces")
 
@@ -46,7 +46,7 @@ def visibility_test(
     centres: NDArray[np.float64],
     xlim: Float,
     component: SurfaceComponent,
-) -> NDArray[np.bool]:
+) -> NDArray[NP_BOOL_]:
     """Test whether faces are visible from the other star.
 
     :param centres: Face centres.
@@ -68,7 +68,7 @@ def get_visibility_tests(
     morphology: str,
     *,
     q_test: bool,
-) -> tuple[NDArray[np.bool], NDArray[np.bool] | None]:
+) -> tuple[NDArray[NP_BOOL_], NDArray[NP_BOOL_] | None]:
     """Calculate visibility tests for illumination from the companion.
 
     Used in reflection-effect calculations.

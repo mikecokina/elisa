@@ -22,9 +22,9 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from elisa.single_system.system import SingleSystem
+    from elisa.types import NP_BOOL_, Float
     from elisa.types import AstropyQuantity as Quantity
     from elisa.types import AstropyUnit as Unit
-    from elisa.types import Float
 
 
 class Plot:
@@ -107,8 +107,9 @@ class Plot:
         single_mesh_kwargs: dict = {}
 
         inclination = (
-            transform.deg_transform(inclination, u.deg, transform.WHEN_FLOAT64,
-                                     u.DefaultSingleSystemInputUnits.system.inclination)
+            transform.deg_transform(
+                inclination, u.deg, transform.WHEN_FLOAT64, u.DefaultSingleSystemInputUnits.system.inclination,
+            )
             if inclination is not None
             else up.degrees(self.single.inclination)
         )
@@ -130,8 +131,7 @@ class Plot:
         denominator = 1 * axis_unit.to(u.DefaultSingleSystemUnits.star.equivalent_radius)
         mesh /= denominator
         equatorial_radius = (
-            position_container.star.equatorial_radius
-            * u.DefaultSingleSystemUnits.star.equivalent_radius.to(axis_unit)
+            position_container.star.equatorial_radius * u.DefaultSingleSystemUnits.star.equivalent_radius.to(axis_unit)
         )
 
         single_mesh_kwargs.update(
@@ -181,8 +181,9 @@ class Plot:
         wireframe_kwargs: dict = {}
 
         inclination = (
-            transform.deg_transform(inclination, u.deg, transform.WHEN_FLOAT64,
-                                     u.DefaultSingleSystemInputUnits.system.inclination)
+            transform.deg_transform(
+                inclination, u.deg, transform.WHEN_FLOAT64, u.DefaultSingleSystemInputUnits.system.inclination,
+            )
             if inclination is not None
             else up.degrees(self.single.inclination)
         )
@@ -204,8 +205,7 @@ class Plot:
         denominator = 1 * axis_unit.to(u.DefaultSingleSystemUnits.star.equivalent_radius)
         points /= denominator
         equatorial_radius = (
-            position_container.star.equatorial_radius
-            * u.DefaultSingleSystemUnits.star.equivalent_radius.to(axis_unit)
+            position_container.star.equatorial_radius * u.DefaultSingleSystemUnits.star.equivalent_radius.to(axis_unit)
         )
 
         wireframe_kwargs.update(
@@ -228,7 +228,7 @@ class Plot:
         self,
         phase: Float = 0.0,
         colormap: str | None = None,
-        face_mask: NDArray[np.bool] | None = None,
+        face_mask: NDArray[NP_BOOL_] | None = None,
         elevation: Quantity | Float | None = None,
         azimuth: Quantity | Float | None = None,
         colorbar_unit: str = "default",
@@ -301,16 +301,15 @@ class Plot:
             else 0
         )
         azimuth = (
-            transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64)
-            if azimuth is not None
-            else 180
+            transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) if azimuth is not None else 180
         )
 
         single_position = self.single.orbit.rotational_motion(phase=phase)[0]
         single_position = Position(0, np.nan, single_position[0], single_position[1], single_position[2])
 
         position_container: SinglePositionContainer = SinglePositionContainer.from_single_system(
-            self.single, self.defpos,
+            self.single,
+            self.defpos,
         )
         position_container.set_on_position_params(single_position)
         position_container.set_time()
@@ -365,8 +364,8 @@ class Plot:
             surface_kwargs["centres"] *= unit_mult
 
         equatorial_radius = (
-            star_container.equatorial_radius * u.DefaultSingleSystemUnits.star.equivalent_radius
-        ).to(axis_unit).value
+            (star_container.equatorial_radius * u.DefaultSingleSystemUnits.star.equivalent_radius).to(axis_unit).value
+        )
 
         surface_kwargs.update(
             {

@@ -13,6 +13,8 @@ from elisa.pypex.utils import det_2d, multiple_determinants
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
+    from elisa.types import NP_BOOL_
+
 # Return helpers:
 # - Segment intersection flag is typically bool, but some legacy paths use np.nan
 #   to represent "unknown".
@@ -178,8 +180,8 @@ def intersections(  # noqa: PLR0915
         tol: float = PRECISION,
         round_tol: int = ROUND_PRECISION,
 ) -> tuple[
-    NDArray[np.bool],
-    NDArray[np.bool],
+    NDArray[NP_BOOL_],
+    NDArray[NP_BOOL_],
     NDArray[np.floating],
     NDArray[np.floating],
     NDArray[np.bytes_],

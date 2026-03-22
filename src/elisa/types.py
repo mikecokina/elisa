@@ -13,6 +13,10 @@ Int: TypeAlias = int | np.int32 | np.int64 | np.integer
 Number: TypeAlias = Float | Int
 NumpyBool: TypeAlias = bool | np.bool_
 
+# Dynamic boolean dtype alias that handles NumPy version compatibility.
+# In NumPy 1.24+, np.bool was removed. Use np.bool_ for NDArray type hints.
+NP_BOOL_: TypeAlias = np.bool_
+
 UnitType: TypeAlias = Unit
 
 ComponentName: TypeAlias = Literal["primary", "secondary"]

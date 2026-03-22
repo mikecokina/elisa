@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
     from elisa.base.container import StarContainer
     from elisa.binary_system.container import OrbitalPositionContainer
-    from elisa.types import ComponentName, Float, Int, NumpyBool
+    from elisa.types import NP_BOOL_, ComponentName, Float, Int, NumpyBool
 
 logger = getLogger("binary_system.surface.coverage")
 
@@ -158,7 +158,7 @@ def test_size_similarity(
 
 def visibility_out_of_eclipse(
     undercover_object: StarContainer,
-) -> tuple[NDArray[np.bool], NDArray[np.bool], NDArray[np.bool]]:
+) -> tuple[NDArray[NP_BOOL_], NDArray[NP_BOOL_], NDArray[NP_BOOL_]]:
     """Determine visible near-side faces outside eclipse.
 
     :param undercover_object: Eclipsed component.
@@ -179,7 +179,7 @@ def visibility_similar_objects(
     undercover_object: StarContainer,
     undercover_visible_point_indices: NDArray[Int],
     cover_outline: mpltpath.Path,
-) -> tuple[NDArray[np.bool], NDArray[np.bool], NDArray[np.bool]]:
+) -> tuple[NDArray[NP_BOOL_], NDArray[NP_BOOL_], NDArray[NP_BOOL_]]:
     """Determine face visibility during eclipse for similarly sized objects.
 
     This branch is used when the eclipsing component is much larger than a
@@ -225,7 +225,7 @@ def visibility_disimilar_objects(
     undercover_object: StarContainer,
     undercover_visible_point_indices: NDArray[Int],
     cover_outline: mpltpath.Path,
-) -> tuple[NDArray[np.bool], NDArray[np.bool], NDArray[np.bool]]:
+) -> tuple[NDArray[NP_BOOL_], NDArray[NP_BOOL_], NDArray[NP_BOOL_]]:
     """Determine face visibility during eclipse for dissimilar-sized objects.
 
     This branch is used when the eclipsing component is comparable to or
