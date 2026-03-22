@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from elisa import BinarySystem, Star
 from elisa import units as u
 from elisa.ui.tabs.lc_modeling.components.pulsation_inputs import parse_pulsation_modes
+from elisa.ui.tabs.lc_modeling.components.spot_inputs import parse_spots
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
@@ -128,6 +129,8 @@ def run_visualization(
     observer_params: dict,
     primary_pulsation_params: dict | None = None,
     secondary_pulsation_params: dict | None = None,
+    primary_spot_params: dict | None = None,
+    secondary_spot_params: dict | None = None,
 ) -> tuple[Figure | None, Figure | None, Figure | None, Figure | None]:
     """Generate mesh, orbit, equipotential, and/or surface visualizations for a binary system.
 
@@ -152,6 +155,10 @@ def run_visualization(
     :type primary_pulsation_params: dict | None
     :param secondary_pulsation_params: Secondary star pulsation parameters.
     :type secondary_pulsation_params: dict | None
+    :param primary_spot_params: Primary star spot parameters.
+    :type primary_spot_params: dict | None
+    :param secondary_spot_params: Secondary star spot parameters.
+    :type secondary_spot_params: dict | None
     """
     primary_params = _filter_none(_convert_params(primary_params))
     secondary_params = _filter_none(_convert_params(secondary_params))
@@ -159,6 +166,8 @@ def run_visualization(
 
     primary_pulsation_modes = parse_pulsation_modes(primary_pulsation_params)
     secondary_pulsation_modes = parse_pulsation_modes(secondary_pulsation_params)
+    primary_spots = parse_spots(primary_spot_params)
+    secondary_spots = parse_spots(secondary_spot_params)
 
     # Close figures left open by the previous call - Gradio serialises them
     # before the next request arrives, so they are safe to discard here.
@@ -177,8 +186,16 @@ def run_visualization(
         msg = "No visualization mode selected. Please choose one from the 'What to plot' dropdown."
         raise ValueError(msg)
 
-    primary = Star(**primary_params, pulsations=primary_pulsation_modes or None)
-    secondary = Star(**secondary_params, pulsations=secondary_pulsation_modes or None)
+    primary = Star(
+        **primary_params,
+        pulsations=primary_pulsation_modes or None,
+        spots=primary_spots or None,
+    )
+    secondary = Star(
+        **secondary_params,
+        pulsations=secondary_pulsation_modes or None,
+        spots=secondary_spots or None,
+    )
     binary = BinarySystem(primary=primary, secondary=secondary, **system_params)
 
     mesh_fig = None

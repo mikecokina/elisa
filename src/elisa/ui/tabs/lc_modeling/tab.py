@@ -17,7 +17,7 @@ from matplotlib.figure import Figure  # noqa: TC002  - same reason
 from elisa.ui.components import star_inputs, system_inputs
 from elisa.ui.shared.const import ATMOSPHERE_CHOICES
 from elisa.ui.shared.fit_json import make_json_load_handler
-from elisa.ui.tabs.lc_modeling.components import observer_inputs, pulsation_inputs
+from elisa.ui.tabs.lc_modeling.components import observer_inputs, pulsation_inputs, spot_inputs
 from elisa.ui.tabs.lc_modeling.logic import compute
 
 if TYPE_CHECKING:
@@ -182,10 +182,12 @@ def build() -> None:
             with gr.Column(scale=1):
                 prim_comps = star_inputs.build("Primary Star", defaults=_PRIMARY_DEFAULTS)
                 prim_puls_comps = pulsation_inputs.build("Primary")
+                prim_spot_comps = spot_inputs.build("Primary")
 
             with gr.Column(scale=1):
                 sec_comps = star_inputs.build("Secondary Star", defaults=_SECONDARY_DEFAULTS)
                 sec_puls_comps = pulsation_inputs.build("Secondary")
+                sec_spot_comps = spot_inputs.build("Secondary")
 
             with gr.Column(scale=1):
                 sys_comps = system_inputs.build(defaults=_SYSTEM_DEFAULTS)
@@ -229,6 +231,8 @@ def build() -> None:
             + list(obs_comps.values())
             + [prim_puls_comps[k] for k in puls_keys]
             + [sec_puls_comps[k] for k in puls_keys]
+            + [prim_spot_comps[k] for k in spot_inputs.FIELD_ORDER]
+            + [sec_spot_comps[k] for k in spot_inputs.FIELD_ORDER]
         )
 
         compute_btn.click(

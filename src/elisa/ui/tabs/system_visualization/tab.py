@@ -15,7 +15,7 @@ import gradio as gr
 from elisa.ui.components import star_inputs, system_inputs
 from elisa.ui.shared.const import ATMOSPHERE_CHOICES
 from elisa.ui.shared.fit_json import make_json_load_handler
-from elisa.ui.tabs.lc_modeling.components import pulsation_inputs
+from elisa.ui.tabs.lc_modeling.components import pulsation_inputs, spot_inputs
 from elisa.ui.tabs.system_visualization.components import observer_inputs
 from elisa.ui.tabs.system_visualization.logic import compute
 
@@ -78,6 +78,7 @@ def _make_handler(
     sys_keys: tuple[str, ...],
     obs_keys: tuple[str, ...],
     puls_keys: tuple[str, ...],
+    spot_keys: tuple[str, ...],
 ) -> Callable[..., tuple[dict, dict, dict, dict]]:
     """Return a Gradio event-handler function bound to the given key sequences.
 
@@ -100,6 +101,8 @@ def _make_handler(
     :type obs_keys: tuple[str, ...]
     :param puls_keys: Ordered keys for per-component pulsation parameters.
     :type puls_keys: tuple[str, ...]
+    :param spot_keys: Ordered keys for per-component spot parameters.
+    :type spot_keys: tuple[str, ...]
     :returns: A callable suitable for ``gr.Button.click(fn=...)``.
     :rtype: Callable[..., tuple[dict, dict, dict, dict]]
     """
@@ -110,6 +113,7 @@ def _make_handler(
         n_sec = len(sec_keys)
         n_sys = len(sys_keys)
         n_puls = len(puls_keys)
+        n_spot = len(spot_keys)
 
         primary_params = dict(zip(prim_keys, values[idx : idx + n_prim], strict=True))
         idx += n_prim
@@ -121,6 +125,10 @@ def _make_handler(
         idx += n_puls
         secondary_puls_params = dict(zip(puls_keys, values[idx : idx + n_puls], strict=True))
         idx += n_puls
+        primary_spot_params = dict(zip(spot_keys, values[idx : idx + n_spot], strict=True))
+        idx += n_spot
+        secondary_spot_params = dict(zip(spot_keys, values[idx : idx + n_spot], strict=True))
+        idx += n_spot
         observer_params = dict(zip(obs_keys, values[idx:], strict=True))
 
         try:
@@ -131,6 +139,8 @@ def _make_handler(
                 observer_params,
                 primary_puls_params,
                 secondary_puls_params,
+                primary_spot_params,
+                secondary_spot_params,
             )
         except Exception as exc:
             msg = str(exc)
@@ -198,10 +208,12 @@ def build() -> None:
             with gr.Column(scale=1):
                 prim_comps = star_inputs.build("Primary Star", defaults=_PRIMARY_DEFAULTS)
                 prim_puls_comps = pulsation_inputs.build("Primary")
+                prim_spot_comps = spot_inputs.build("Primary")
 
             with gr.Column(scale=1):
                 sec_comps = star_inputs.build("Secondary Star", defaults=_SECONDARY_DEFAULTS)
                 sec_puls_comps = pulsation_inputs.build("Secondary")
+                sec_spot_comps = spot_inputs.build("Secondary")
 
             with gr.Column(scale=1):
                 sys_comps = system_inputs.build(defaults=_SYSTEM_DEFAULTS)
@@ -233,6 +245,7 @@ def build() -> None:
         sys_keys = system_inputs.FIELD_ORDER
         obs_keys = observer_inputs.FIELD_ORDER
         puls_keys = pulsation_inputs.FIELD_ORDER
+        spot_keys = spot_inputs.FIELD_ORDER
 
         all_inputs: list[gr.Component] = (
             [prim_comps[k] for k in prim_keys]
@@ -240,11 +253,13 @@ def build() -> None:
             + [sys_comps[k] for k in sys_keys]
             + [prim_puls_comps[k] for k in puls_keys]
             + [sec_puls_comps[k] for k in puls_keys]
+            + [prim_spot_comps[k] for k in spot_keys]
+            + [sec_spot_comps[k] for k in spot_keys]
             + [obs_comps[k] for k in obs_keys]
         )
 
         visualize_btn.click(
-            fn=_make_handler(prim_keys, sec_keys, sys_keys, obs_keys, puls_keys),
+            fn=_make_handler(prim_keys, sec_keys, sys_keys, obs_keys, puls_keys, spot_keys),
             inputs=all_inputs,
             outputs=[mesh_plot, orbit_plot, equipotential_plot, surface_plot],
         )

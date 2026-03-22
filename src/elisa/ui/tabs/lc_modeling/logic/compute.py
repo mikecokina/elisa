@@ -152,6 +152,7 @@ def _build_star(
     *,
     label: str,
     pulsations: list[dict[str, object]] | None = None,
+    spots: list[dict[str, object]] | None = None,
 ) -> Star:
     """Construct a :class:`~elisa.base.star.Star` from a flat parameter dict.
 
@@ -231,6 +232,8 @@ def _build_star(
         kwargs["atmosphere"] = atmosphere
     if pulsations:
         kwargs["pulsations"] = pulsations
+    if spots:
+        kwargs["spots"] = spots
 
     return Star(**kwargs)
 
@@ -367,6 +370,8 @@ def run_lc(
     observer_params: dict[str, object],
     primary_pulsation_params: dict[str, object] | None = None,
     secondary_pulsation_params: dict[str, object] | None = None,
+    primary_spot_params: dict[str, object] | None = None,
+    secondary_spot_params: dict[str, object] | None = None,
 ) -> tuple[Figure, pd.DataFrame, str]:
     """Compute a synthetic light curve and return a figure and a data table.
 
@@ -420,8 +425,23 @@ def run_lc(
     prim_pulsations = parse_pulsation_modes(primary_pulsation_params)
     sec_pulsations = parse_pulsation_modes(secondary_pulsation_params)
 
-    primary = _build_star(primary_params, label="primary", pulsations=prim_pulsations or None)
-    secondary = _build_star(secondary_params, label="secondary", pulsations=sec_pulsations or None)
+    from elisa.ui.tabs.lc_modeling.components.spot_inputs import parse_spots  # noqa: PLC0415
+
+    prim_spots = parse_spots(primary_spot_params)
+    sec_spots = parse_spots(secondary_spot_params)
+
+    primary = _build_star(
+        primary_params,
+        label="primary",
+        pulsations=prim_pulsations or None,
+        spots=prim_spots or None,
+    )
+    secondary = _build_star(
+        secondary_params,
+        label="secondary",
+        pulsations=sec_pulsations or None,
+        spots=sec_spots or None,
+    )
     bs = _build_system(primary, secondary, system_params)
     observer = Observer(passband=passbands, system=bs)
 
