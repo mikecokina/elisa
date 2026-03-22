@@ -291,7 +291,7 @@ class Plot:
             edges: bool = False,
             colorbar: bool = True,
             plot_axis: bool = True,
-            separate_colormaps: bool = False,
+            separate_colormaps: bool | None = None,
             return_figure_instance: bool = False,
             subtract_equilibrium: bool = False,
     ) -> Figure | None:
