@@ -723,7 +723,7 @@ def build() -> None:  # noqa: C901, PLR0915
     """
     # DEBUG: Try to load a pre-computed result for testing
     debug_result_state = None
-    debug_json_path = "/home/mike/Work/projects/elisa/lc_least_squares_community.json"
+    debug_json_path = "/home/mike/Work/projects/elisa/lc_least_squares_standard.json"
     with contextlib.suppress(FileNotFoundError, json.JSONDecodeError):
         debug_result_state = json.loads(Path(debug_json_path).read_text(encoding="utf-8"))
 
@@ -881,17 +881,17 @@ def build() -> None:  # noqa: C901, PLR0915
             return result, fig, df, gr.DownloadButton(value=json_path, visible=True)
 
         # Create transfer handlers for each approach
-        def _make_community_transfer() -> Callable[[dict | None], list[object]]:
-            def _transfer(result: dict | None) -> list[object]:
+        def _make_community_transfer() -> Callable[[dict | None, str], list[object]]:
+            def _transfer(result: dict | None, approach: str) -> list[object]:
+                if approach != "Community":
+                    return [gr.update() for _ in community_value_outputs]
                 if result is None:
                     msg = "No LSQRT result available yet - run Least Squares first."
                     raise gr.Error(msg)
                 values = compute.extract_values_for_transfer(result)
 
                 def _upd(key: str) -> object:
-                    if key in values:
-                        return gr.update(value=values[key])
-                    return gr.update()
+                    return gr.update(value=values[key]) if key in values else gr.update()
 
                 return (
                     [_upd(f"system_{name}_value") for name in SYSTEM_REGULAR_PARAMS]
@@ -904,17 +904,17 @@ def build() -> None:  # noqa: C901, PLR0915
 
             return _transfer
 
-        def _make_standard_transfer() -> Callable[[dict | None], list[object]]:
-            def _transfer(result: dict | None) -> list[object]:
+        def _make_standard_transfer() -> Callable[[dict | None, str], list[object]]:
+            def _transfer(result: dict | None, approach: str) -> list[object]:
+                if approach != "Standard":
+                    return [gr.update() for _ in standard_value_outputs]
                 if result is None:
                     msg = "No LSQRT result available yet - run Least Squares first."
                     raise gr.Error(msg)
                 values = compute.extract_values_for_transfer(result)
 
                 def _upd(key: str) -> object:
-                    if key in values:
-                        return gr.update(value=values[key])
-                    return gr.update()
+                    return gr.update(value=values[key]) if key in values else gr.update()
 
                 return (
                     [_upd(f"system_{name}_value") for name in SYSTEM_REGULAR_PARAMS]
@@ -966,8 +966,12 @@ def build() -> None:  # noqa: C901, PLR0915
 
         transfer_btn.click(
             fn=_make_community_transfer(),
-            inputs=[lsqrt_result_state],
+            inputs=[lsqrt_result_state, approach_comp],
             outputs=community_value_outputs,
+        ).then(
+            fn=_make_standard_transfer(),
+            inputs=[lsqrt_result_state, approach_comp],
+            outputs=standard_value_outputs,
         )
 
         mcmc_all_inputs = community_lc_data_inputs + community_fit_inputs + mcmc_inputs_list
