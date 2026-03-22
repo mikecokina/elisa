@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import logging
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
@@ -35,6 +36,8 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
     from elisa.types import Float
+
+_logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Unit maps
@@ -645,6 +648,12 @@ def run_lsqrt(
     x0_dict = build_x0(param_values, include_nuisance=False)
     x0 = BinaryInitialParameters(**x0_dict)
 
+    _logger.debug(
+        "run_lsqrt: starting fit | method=least_squares | morphology=%s\nx0:\n%s",
+        morphology,
+        json.dumps(x0_dict, indent=2, default=str),
+    )
+
     plt.close("all")
     # noinspection PyTypeChecker
     with fit_logging():
@@ -729,6 +738,15 @@ def run_mcmc(
 
     x0_dict = build_x0(param_values, include_nuisance=True)
     x0 = BinaryInitialParameters(**x0_dict)
+
+    _logger.debug(
+        "run_mcmc: starting fit | method=mcmc | morphology=%s | nwalkers=%d | nsteps=%d | burn_in=%d\nx0:\n%s",
+        morphology,
+        nwalkers,
+        nsteps,
+        burn_in,
+        json.dumps(x0_dict, indent=2, default=str),
+    )
 
     plt.close("all")
     # noinspection PyTypeChecker
