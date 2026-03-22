@@ -65,6 +65,7 @@ _SYSTEM_PARAM_UNITS: dict[str, str | None] = {
 }
 
 _COMPONENT_PARAM_UNITS: dict[str, str | None] = {
+    "mass": "solMass",
     "t_eff": "K",
     "surface_potential": None,
     "gravity_darkening": None,
@@ -268,6 +269,67 @@ def _build_sma_entry(param_values: dict[str, object]) -> dict[str, object]:
     return entry
 
 
+def _build_component_params(
+    param_values: dict[str, object],
+    section: str,
+    base_params: tuple[str, ...],
+) -> dict[str, dict]:
+    """Build one component section (primary or secondary) for the x0 dict.
+
+    Iterates over *base_params* (community component params without mass),
+    then appends the optional ``mass`` entry when present in *param_values*
+    (standard approach).
+
+    :param param_values: Flat UI parameter dict.
+    :type param_values: dict[str, object]
+    :param section: Component section prefix (``"primary"`` or ``"secondary"``).
+    :type section: str
+    :param base_params: Ordered names of the common component parameters.
+    :type base_params: tuple[str, ...]
+    :returns: Per-component parameter dict ready for ``BinaryInitialParameters``.
+    :rtype: dict[str, dict]
+    """
+    result: dict[str, dict] = {
+        name: _build_regular_param_entry(
+            param_values, f"{section}_{name}", _COMPONENT_PARAM_UNITS.get(name),
+        )
+        for name in base_params
+    }
+    # Optional: mass present only in the standard approach.
+    if f"{section}_mass_value" in param_values:
+        result["mass"] = _build_regular_param_entry(
+            param_values, f"{section}_mass", _COMPONENT_PARAM_UNITS.get("mass"),
+        )
+    return result
+
+
+def _build_nuisance_entry(param_values: dict[str, object]) -> dict[str, object]:
+    """Build the ``ln_f`` nuisance parameter entry for the x0 dict.
+
+    :param param_values: Flat UI parameter dict.
+    :type param_values: dict[str, object]
+    :returns: ``ln_f`` entry dict.
+    :rtype: dict[str, object]
+    """
+    ln_f_mode = str(param_values.get("nuisance_ln_f_mode", "fixed"))
+    entry: dict[str, object] = {
+        "value": _opt_float(param_values.get("nuisance_ln_f_value")),
+    }
+    if ln_f_mode == "constrained":
+        entry["constraint"] = str(param_values.get("nuisance_ln_f_constraint", ""))
+    elif ln_f_mode == "fixed":
+        entry["fixed"] = True
+    else:  # free
+        entry["fixed"] = False
+        ln_f_min = _opt_float(param_values.get("nuisance_ln_f_min"))
+        ln_f_max = _opt_float(param_values.get("nuisance_ln_f_max"))
+        if ln_f_min is not None:
+            entry["min"] = ln_f_min
+        if ln_f_max is not None:
+            entry["max"] = ln_f_max
+    return entry
+
+
 def build_x0(param_values: dict[str, object], *, include_nuisance: bool = False) -> dict:
     """Build the ``BinaryInitialParameters`` input dict from flat UI values.
 
@@ -307,8 +369,8 @@ def build_x0(param_values: dict[str, object], *, include_nuisance: bool = False)
         for name in SYSTEM_REGULAR_PARAMS
     }
 
-    # Add optional system parameters if they're present in the UI
-    # (semi_major_axis: both approaches; mass_ratio: community only)
+    # Add optional system parameters if present
+    # (semi_major_axis + mass_ratio: community; semi_major_axis: both)
     for optional_param in ("semi_major_axis", "mass_ratio"):
         if f"system_{optional_param}_value" in param_values:
             if optional_param == "semi_major_axis":
@@ -318,46 +380,14 @@ def build_x0(param_values: dict[str, object], *, include_nuisance: bool = False)
                     param_values, f"system_{optional_param}", _SYSTEM_PARAM_UNITS.get(optional_param),
                 )
 
-    # Build component parameters (primary and secondary)
-    primary: dict[str, dict] = {
-        name: _build_regular_param_entry(
-            param_values, f"primary_{name}", _COMPONENT_PARAM_UNITS.get(name),
-        )
-        for name in COMPONENT_PARAMS
-    }
-    secondary: dict[str, dict] = {
-        name: _build_regular_param_entry(
-            param_values, f"secondary_{name}", _COMPONENT_PARAM_UNITS.get(name),
-        )
-        for name in COMPONENT_PARAMS
-    }
-
     result: dict[str, dict] = {
         "system": system,
-        "primary": primary,
-        "secondary": secondary,
+        "primary": _build_component_params(param_values, "primary", COMPONENT_PARAMS),
+        "secondary": _build_component_params(param_values, "secondary", COMPONENT_PARAMS),
     }
 
     if include_nuisance:
-        ln_f_mode = str(param_values.get("nuisance_ln_f_mode", "fixed"))
-        nuisance_entry: dict[str, object] = {
-            "value": _opt_float(param_values.get("nuisance_ln_f_value")),
-        }
-        if ln_f_mode == "constrained":
-            nuisance_entry["constraint"] = str(
-                param_values.get("nuisance_ln_f_constraint", ""),
-            )
-        elif ln_f_mode == "fixed":
-            nuisance_entry["fixed"] = True
-        else:  # free
-            nuisance_entry["fixed"] = False
-            ln_f_min = _opt_float(param_values.get("nuisance_ln_f_min"))
-            ln_f_max = _opt_float(param_values.get("nuisance_ln_f_max"))
-            if ln_f_min is not None:
-                nuisance_entry["min"] = ln_f_min
-            if ln_f_max is not None:
-                nuisance_entry["max"] = ln_f_max
-        result["nuisance"] = {"ln_f": nuisance_entry}
+        result["nuisance"] = {"ln_f": _build_nuisance_entry(param_values)}
 
     return result
 
@@ -455,32 +485,73 @@ def _param_meta_to_flat(
     min_val = meta.get("min")
     max_val = meta.get("max")
 
-    prefix = name if section == "nuisance" else f"{section}_{name}"
+    # Always use the full "{section}_{name}" prefix so keys match the UI
+    # component dict (e.g. "nuisance_ln_f_value", not "ln_f_value").
+    prefix = f"{section}_{name}"
 
     out: dict[str, object] = {}
     if value is not None:
         out[f"{prefix}_value"] = value
 
-    if name == "semi_major_axis" and section == "system":
-        if constraint:
-            out["system_semi_major_axis_mode"] = "constrained"
-            out["system_semi_major_axis_constraint"] = constraint
-        elif fixed:
-            out["system_semi_major_axis_mode"] = "fixed"
-        else:
-            out["system_semi_major_axis_mode"] = "free"
-        if min_val is not None:
-            out["system_semi_major_axis_min"] = min_val
-        if max_val is not None:
-            out["system_semi_major_axis_max"] = max_val
+    # Derive mode uniformly for all params.
+    if constraint:
+        out[f"{prefix}_mode"] = "constrained"
+        out[f"{prefix}_constraint"] = constraint
+    elif fixed:
+        out[f"{prefix}_mode"] = "fixed"
     else:
-        out[f"{prefix}_fixed"] = fixed
-        if min_val is not None:
-            out[f"{prefix}_min"] = min_val
-        if max_val is not None:
-            out[f"{prefix}_max"] = max_val
+        out[f"{prefix}_mode"] = "free"
+
+    if min_val is not None:
+        out[f"{prefix}_min"] = min_val
+    if max_val is not None:
+        out[f"{prefix}_max"] = max_val
 
     return out
+
+
+def detect_approach_from_json(path: str) -> str:
+    """Detect whether a saved LC result JSON uses Community or Standard approach.
+
+    Uses :func:`~elisa.binary_system.utils.resolve_json_kind` to inspect
+    the ``system``, ``primary``, and ``secondary`` sections and determine
+    whether the file was produced by a Community fit (``mass_ratio`` +
+    ``semi_major_axis``) or a Standard fit (individual component masses).
+
+    :param path: Absolute path to the JSON file produced by ``save_result()``.
+    :type path: str
+    :returns: ``"Community"`` or ``"Standard"``.
+    :rtype: str
+    :raises ValueError: If the file cannot be read or the approach cannot be determined.
+    """
+    from elisa.binary_system.utils import resolve_json_kind  # noqa: PLC0415
+
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except Exception as exc:
+        msg = f"Cannot read result file: {exc}"
+        raise ValueError(msg) from exc
+
+    # resolve_json_kind expects plain values, not the fitting meta-dicts.
+    # Extract just the first-level keys per section so it can check presence.
+    def _extract_keys(section_data: object) -> dict:
+        if not isinstance(section_data, dict):
+            return {}
+        return {name: meta.get("value") for name, meta in section_data.items() if isinstance(meta, dict)}
+
+    plain = {
+        "system": _extract_keys(data.get("system")),
+        "primary": _extract_keys(data.get("primary")),
+        "secondary": _extract_keys(data.get("secondary")),
+    }
+
+    try:
+        kind = resolve_json_kind(plain)
+    except LookupError as exc:
+        msg = f"Cannot determine fitting approach from JSON: {exc}"
+        raise ValueError(msg) from exc
+
+    return "Community" if kind == "community" else "Standard"
 
 
 def load_params_from_json(path: str) -> dict[str, object]:

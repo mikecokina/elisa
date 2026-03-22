@@ -21,14 +21,9 @@ The ``semi_major_axis`` parameter supports a three-way mode selector:
 
 from __future__ import annotations
 
-import contextlib
-import json
-from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import gradio as gr
-import pandas as pd  # noqa: TC002 - needed at runtime for Gradio type hints
-from matplotlib.figure import Figure  # noqa: TC002 - same reason
 
 from elisa.ui.tabs.lc_fitting.components import data_inputs, param_inputs
 from elisa.ui.tabs.lc_fitting.components.data_inputs import MAX_PASSBAND_ROWS
@@ -36,7 +31,6 @@ from elisa.ui.tabs.lc_fitting.components.param_inputs import (
     COMPONENT_PARAMS,
     FIELD_ORDER_COMMUNITY,
     FIELD_ORDER_STANDARD,
-    SYSTEM_PARAMS,
     SYSTEM_REGULAR_PARAMS,
 )
 from elisa.ui.tabs.lc_fitting.logic import compute
@@ -116,53 +110,6 @@ def _collect_param_values(
     return dict(zip(param_keys, values[offset : offset + len(param_keys)], strict=True))
 
 
-def _parse_lc_inputs(
-    values: tuple[object, ...],
-    n_rows: int,
-) -> tuple[str, list[compute.LCRowData], str, str, int]:
-    """Parse the flat input tuple from a fit handler into structured data.
-
-    Expects inputs in the order laid out by :func:`build`:
-    ``[x_unit, passband_count, row_0_pb, row_0_file, row_0_yu, row_0_rm, ..., morphology, approach, ...]``
-
-    :param values: Flat Gradio values tuple.
-    :type values: tuple[object, ...]
-    :param n_rows: Pre-rendered row count (``MAX_PASSBAND_ROWS``).
-    :type n_rows: int
-    :returns: Tuple of ``(x_unit_str, active_lc_rows, morphology, approach, fit_offset)``.
-    :rtype: tuple[str, list[compute.LCRowData], str, str, int]
-    """
-    x_unit_str = str(values[0])
-    passband_count = int(values[1])  # type: ignore[arg-type]
-    offset = 2
-    lc_rows: list[compute.LCRowData] = []
-
-    for i in range(n_rows):
-        row_offset = offset + i * 4
-        passband = str(values[row_offset]) if values[row_offset] else ""
-        file_obj = values[row_offset + 1]
-        y_unit = str(values[row_offset + 2]) if values[row_offset + 2] else "Flux (dimensionless)"
-        ref_mag_raw = values[row_offset + 3]
-        ref_mag: compute.Float | None = (
-            float(ref_mag_raw) if ref_mag_raw is not None else None  # type: ignore[arg-type]
-        )
-        if i < passband_count:
-            lc_rows.append(
-                compute.LCRowData(
-                    passband=passband,
-                    file_path=getattr(file_obj, "name", None),
-                    y_unit=y_unit,
-                    reference_magnitude=ref_mag,
-                ),
-            )
-
-    morphology_offset = offset + n_rows * 4
-    morphology = str(values[morphology_offset])
-    approach_offset = morphology_offset + 1
-    approach_str = str(values[approach_offset]).lower()  # Convert to lowercase for consistency
-    fit_offset = approach_offset + 1
-    return x_unit_str, lc_rows, morphology, approach_str, fit_offset
-
 
 def _parse_lc_inputs_simple(
     values: tuple[object, ...],
@@ -210,163 +157,6 @@ def _parse_lc_inputs_simple(
     return x_unit_str, lc_rows, morphology, fit_offset
 
 
-def _lsqrt_handler(
-    n_rows: int,
-    fit_keys: tuple[str, ...],
-) -> Callable[..., tuple[dict, Figure, pd.DataFrame, gr.DownloadButton]]:
-    """Return the LSQRT Gradio event-handler.
-
-    :param n_rows: Total number of pre-rendered passband rows.
-    :type n_rows: int
-    :param fit_keys: Ordered parameter keys (from :data:`FIELD_ORDER_COMMUNITY`).
-    :type fit_keys: tuple[str, ...]
-    :returns: Gradio-compatible handler.
-    :rtype: Callable[..., tuple[dict, Figure, pandas.DataFrame, gr.DownloadButton]]
-    """
-
-    def handler(
-        *values: object,
-    ) -> tuple[dict, Figure, pd.DataFrame, gr.DownloadButton]:
-        x_unit_str, lc_rows, morphology, fit_offset = _parse_lc_inputs_simple(values, n_rows)
-        fit_vals = _collect_param_values(fit_keys, values, fit_offset)
-        try:
-            result, fig, df, json_path = compute.run_lsqrt(
-                lc_rows,
-                x_unit_str,
-                fit_vals,
-                morphology,
-            )
-        except Exception as exc:
-            msg = str(exc)
-            raise gr.Error(msg) from exc
-        return result, fig, df, gr.DownloadButton(value=json_path, visible=True)
-
-    return handler
-
-
-def _mcmc_handler(
-    n_rows: int,
-    fit_keys: tuple[str, ...],
-    mcmc_keys: tuple[str, ...],
-) -> Callable[..., tuple[dict, Figure, Figure | None, Figure | None, pd.DataFrame, gr.DownloadButton]]:
-    """Return the MCMC Gradio event-handler.
-
-    :param n_rows: Total number of pre-rendered passband rows.
-    :type n_rows: int
-    :param fit_keys: Ordered parameter keys (from :data:`FIELD_ORDER_COMMUNITY`).
-    :type fit_keys: tuple[str, ...]
-    :param mcmc_keys: Ordered MCMC control keys.
-    :type mcmc_keys: tuple[str, ...]
-    :returns: Gradio-compatible handler.
-    :rtype: Callable
-    """
-
-    def handler(
-        *values: object,
-    ) -> tuple[dict, Figure, Figure | None, Figure | None, pd.DataFrame, gr.DownloadButton]:
-        n_fit = len(fit_keys)
-        x_unit_str, lc_rows, morphology, fit_offset = _parse_lc_inputs_simple(values, n_rows)
-        fit_vals = _collect_param_values(fit_keys, values, fit_offset)
-        mcmc_vals = _collect_param_values(mcmc_keys, values, fit_offset + n_fit)
-
-        nwalkers = int(mcmc_vals.get("nwalkers") or 50)
-        nsteps = int(mcmc_vals.get("nsteps") or 500)
-        burn_in = int(mcmc_vals.get("burn_in") or 50)
-        fit_id = str(mcmc_vals.get("fit_id") or "mcmc_lc_fit")
-        save = bool(mcmc_vals.get("save_chain", True))
-        progress = bool(mcmc_vals.get("progress", True))
-
-        try:
-            result, model_fig, corner_fig, traces_fig, df, json_path = compute.run_mcmc(
-                lc_rows,
-                x_unit_str,
-                fit_vals,
-                morphology,
-                nwalkers=nwalkers,
-                nsteps=nsteps,
-                burn_in=burn_in,
-                fit_id=fit_id,
-                save=save,
-                progress=progress,
-            )
-        except Exception as exc:
-            msg = str(exc)
-            raise gr.Error(msg) from exc
-
-        return (
-            result,
-            model_fig,
-            corner_fig,
-            traces_fig,
-            df,
-            gr.DownloadButton(value=json_path, visible=True),
-        )
-
-    return handler
-
-
-def _make_transfer_handler() -> Callable[[dict | None, str], list[object]]:
-    """Return a transfer handler that populates value fields from the LSQRT result.
-
-    :returns: Handler function.
-    :rtype: Callable[[dict | None, str], list[object]]
-    """
-
-    def _transfer(result: dict | None, approach: str) -> list[object]:
-        """Populate value fields from the stored LSQRT result.
-
-        Returns updates for all 44 components (22 Community + 22 Standard).
-        Only the active approach gets real values; inactive gets empty updates.
-
-        :param result: Nested fit result dict stored in session state.
-        :type result: dict | None
-        :param approach: Selected fitting approach ("Community" or "Standard").
-        :type approach: str
-        :returns: One ``gr.update`` per component in combined_value_outputs order.
-        :rtype: list[object]
-        """
-        if result is None:
-            msg = "No LSQRT result available yet - run Least Squares first."
-            raise gr.Error(msg)
-
-        values = compute.extract_values_for_transfer(result)
-
-        def _upd(key: str) -> object:
-            if key in values:
-                return gr.update(value=values[key])
-            return gr.update()
-
-        is_community = approach.lower() == "community"
-
-        # Community outputs (22 components)
-        community_updates: list[object] = (
-            [_upd(f"system_{name}_value") for name in SYSTEM_REGULAR_PARAMS]
-            + [_upd("system_semi_major_axis_value")]
-            + [_upd("system_mass_ratio_value")]
-            + [_upd(f"primary_{n}_value") for n in COMPONENT_PARAMS]
-            + [_upd(f"secondary_{n}_value") for n in COMPONENT_PARAMS]
-            + [_upd("nuisance_ln_f_value")]
-        )
-
-        # Standard outputs (22 components)
-        standard_updates: list[object] = (
-            [_upd(f"system_{name}_value") for name in SYSTEM_REGULAR_PARAMS]
-            + [_upd("primary_mass_value")]
-            + [_upd(f"primary_{n}_value") for n in COMPONENT_PARAMS if n != "mass"]
-            + [_upd("secondary_mass_value")]
-            + [_upd(f"secondary_{n}_value") for n in COMPONENT_PARAMS if n != "mass"]
-            + [_upd("nuisance_ln_f_value")]
-        )
-
-        # Return community first, then standard (matching combined_value_outputs order)
-        # For inactive approach, return empty updates so those components don't change
-        if is_community:
-            return community_updates + [gr.update() for _ in standard_updates]
-        return [gr.update() for _ in community_updates] + standard_updates
-
-    return _transfer
-
-
 # ---------------------------------------------------------------------------
 # Results sub-tab builders
 # ---------------------------------------------------------------------------
@@ -412,124 +202,122 @@ def _build_mcmc_results() -> tuple[gr.Plot, gr.DataFrame, gr.Plot, gr.Plot, gr.D
 # ---------------------------------------------------------------------------
 
 
-def _wire_param_mode_changes(fit_comps: dict[str, gr.Component]) -> None:
-    """Wire all param mode radios to toggle constraint/min/max fields.
 
-    :param fit_comps: Component mapping returned by :func:`param_inputs.build`.
-    :type fit_comps: dict[str, gr.Component]
-    """
-    # Wire all system params that exist in this component set
-    for name in SYSTEM_PARAMS:
-        mode_key = f"system_{name}_mode"
-        if mode_key not in fit_comps:
-            continue
-        cast("gr.Radio", fit_comps[mode_key]).change(
-            fn=_sma_mode_changed,
-            inputs=[fit_comps[mode_key]],
-            outputs=[
-                fit_comps[f"system_{name}_constraint"],
-                fit_comps[f"system_{name}_min"],
-                fit_comps[f"system_{name}_max"],
-            ],
-        )
-
-    # Wire primary and secondary params that exist in this component set
-    for section in ("primary", "secondary"):
-        for name in COMPONENT_PARAMS:
-            mode_key = f"{section}_{name}_mode"
-            if mode_key not in fit_comps:
-                continue
-            cast("gr.Radio", fit_comps[mode_key]).change(
-                fn=_sma_mode_changed,
-                inputs=[fit_comps[mode_key]],
-                outputs=[
-                    fit_comps[f"{section}_{name}_constraint"],
-                    fit_comps[f"{section}_{name}_min"],
-                    fit_comps[f"{section}_{name}_max"],
-                ],
-            )
-
-    # Wire nuisance param if it exists
-    if "nuisance_ln_f_mode" in fit_comps:
-        cast("gr.Radio", fit_comps["nuisance_ln_f_mode"]).change(
-            fn=_sma_mode_changed,
-            inputs=[fit_comps["nuisance_ln_f_mode"]],
-            outputs=[
-                fit_comps["nuisance_ln_f_constraint"],
-                fit_comps["nuisance_ln_f_min"],
-                fit_comps["nuisance_ln_f_max"],
-            ],
-        )
-
-
-def _wire_json_loader(
+def _wire_json_loader(  # noqa: C901
     params_json_comp: gr.File,
-    fit_comps: dict[str, gr.Component],
-    fit_keys: tuple[str, ...],
+    community_fit_comps: dict[str, gr.Component],
+    standard_fit_comps: dict[str, gr.Component],
+    community_fit_keys: tuple[str, ...],
+    standard_fit_keys: tuple[str, ...],
+    approach_comp: gr.Radio,
+    community_group: gr.Column,
+    standard_group: gr.Column,
 ) -> None:
-    """Wire the JSON param-loader upload event.
+    """Wire the JSON param-loader upload event with auto-detection of approach.
+
+    Detects Community vs Standard from the uploaded JSON using
+    :func:`~logic.compute.detect_approach_from_json`, switches the approach
+    radio and section visibility, then populates the correct parameter form.
 
     :param params_json_comp: The file upload component for the result JSON.
     :type params_json_comp: gr.File
-    :param fit_comps: Component mapping returned by :func:`param_inputs.build`.
-    :type fit_comps: dict[str, gr.Component]
-    :param fit_keys: Ordered param keys matching ``fit_comps``.
-    :type fit_keys: tuple[str, ...]
+    :param community_fit_comps: Community component mapping.
+    :type community_fit_comps: dict[str, gr.Component]
+    :param standard_fit_comps: Standard component mapping.
+    :type standard_fit_comps: dict[str, gr.Component]
+    :param community_fit_keys: Ordered param keys for Community approach.
+    :type community_fit_keys: tuple[str, ...]
+    :param standard_fit_keys: Ordered param keys for Standard approach.
+    :type standard_fit_keys: tuple[str, ...]
+    :param approach_comp: The approach radio button component.
+    :type approach_comp: gr.Radio
+    :param community_group: The community parameters Column component.
+    :type community_group: gr.Column
+    :param standard_group: The standard parameters Column component.
+    :type standard_group: gr.Column
     """
-    fit_inputs_list: list[gr.Component] = [fit_comps[k] for k in fit_keys]
+    all_outputs: list[gr.Component] = (
+        [approach_comp, community_group, standard_group]
+        + [community_fit_comps[k] for k in community_fit_keys]
+        + [standard_fit_comps[k] for k in standard_fit_keys]
+    )
 
     def _load_json_handler(json_file: object) -> list[object]:
         """Populate the parameter form from an uploaded LC result JSON.
 
+        Auto-detects Community vs Standard, switches the approach selector
+        and section visibility, then loads parameters into the correct form.
+
         :param json_file: Gradio file object from the upload component.
         :type json_file: object
-        :returns: One ``gr.update`` per component in :data:`FIELD_ORDER`.
+        :returns: Updates for approach_comp, both groups, and all param components.
         :rtype: list[object]
         """
         path: str | None = getattr(json_file, "name", None)
         if path is None:
             msg = "No file uploaded."
             raise gr.Error(msg)
+
+        try:
+            approach = compute.detect_approach_from_json(path)
+        except ValueError as exc:
+            raise gr.Error(str(exc)) from exc
+
+        is_community = approach == "Community"
+        fit_keys = community_fit_keys if is_community else standard_fit_keys
+
         try:
             params = compute.load_params_from_json(path)
         except ValueError as exc:
             raise gr.Error(str(exc)) from exc
 
-        updates: list[object] = []
+        # Build updates for the active approach's parameters.
+        # For _constraint keys: set interactive=True only when mode=="constrained".
+        # For _min / _max keys: set interactive=True only when mode=="free".
+        # For all others (_value, _mode): set value if present.
+        active_updates: list[object] = []
         for key in fit_keys:
-            if key == "system_semi_major_axis_constraint":
-                mode = str(params.get("system_semi_major_axis_mode", "constrained"))
+            if key.endswith("_constraint"):
+                base_prefix = key[: -len("_constraint")]
+                mode = str(params.get(f"{base_prefix}_mode", "free"))
                 val = params.get(key)
-                updates.append(
-                    gr.update(visible=mode == "constrained")
-                    if val is None
-                    else gr.update(value=val, visible=mode == "constrained"),
-                )
-            elif key == "system_semi_major_axis_mode":
-                updates.append(gr.update(value=str(params.get(key, "constrained"))))
+                upd: dict[str, object] = {"interactive": mode == "constrained"}
+                if val is not None:
+                    upd["value"] = val
+                active_updates.append(gr.update(**upd))
             elif key.endswith(("_min", "_max")):
-                base = key.rsplit("_", 1)[0]
-                if "semi_major_axis" in key:
-                    mode = str(params.get("system_semi_major_axis_mode", "constrained"))
-                    is_interactive = mode == "free"
-                else:
-                    is_interactive = not bool(params.get(f"{base}_fixed", False))
+                base_prefix = key.rsplit("_", 1)[0]
+                mode = str(params.get(f"{base_prefix}_mode", "free"))
+                is_interactive = mode == "free"
                 val = params.get(key)
-                updates.append(
-                    gr.update(interactive=is_interactive)
-                    if val is None
-                    else gr.update(value=val, interactive=is_interactive),
-                )
+                upd = {"interactive": is_interactive}
+                if val is not None:
+                    upd["value"] = val
+                active_updates.append(gr.update(**upd))
             elif key in params:
-                updates.append(gr.update(value=params[key]))
+                active_updates.append(gr.update(value=params[key]))
             else:
-                updates.append(gr.update())
-        return updates
+                active_updates.append(gr.update())
+
+        # Inactive approach gets empty updates
+        inactive_keys = standard_fit_keys if is_community else community_fit_keys
+        inactive_updates = [gr.update() for _ in inactive_keys]
+
+        community_updates = active_updates if is_community else inactive_updates
+        standard_updates = inactive_updates if is_community else active_updates
+
+        return [
+            gr.update(value=approach),
+            gr.update(visible=is_community),
+            gr.update(visible=not is_community),
+            *community_updates,
+            *standard_updates,
+        ]
 
     params_json_comp.upload(
         fn=_load_json_handler,
         inputs=[params_json_comp],
-        outputs=fit_inputs_list,
+        outputs=all_outputs,
     )
 
 
@@ -548,43 +336,6 @@ def _build_data_accordion() -> data_inputs.LCDataComponents:
         return data_inputs.build()
 
 
-def _build_param_accordion() -> tuple[
-    dict[str, gr.Component], gr.Radio, gr.Radio, gr.File, list[gr.Component], list[gr.Component],
-]:
-    """Render accordion 2 (Initial parameters) with Community and Standard sections.
-
-    :returns: Tuple of ``(fit_comps, morphology_comp, approach_comp, params_json_comp, community_sections, standard_sections)``.
-    :rtype: tuple[dict[str, gr.Component], gr.Radio, gr.Radio, gr.File, list[gr.Component], list[gr.Component]]
-    """
-    with gr.Accordion("2 · Initial parameters", open=True):
-        with gr.Row():
-            morphology_comp = gr.Radio(
-                choices=["detached", "over-contact"],
-                value="detached",
-                label="Binary morphology",
-                info="Expected system morphology - affects valid surface potential ranges.",
-                scale=1,
-            )
-            approach_comp = gr.Radio(
-                choices=["Community", "Standard"],
-                value="Community",
-                label="Fitting approach",
-                info="Community: mass_ratio + semi_major_axis. Standard: individual masses.",
-                scale=1,
-            )
-        fit_comps, community_sections, standard_sections = param_inputs.build()
-        with gr.Accordion("Load Parameters from Previous Fit", open=False):
-            gr.Markdown(
-                "Upload a result JSON saved by a previous LSQRT or MCMC run to restore "
-                "all parameter values, bounds, modes, and constraints into the form below.",
-            )
-            with gr.Row():
-                params_json_comp = gr.File(
-                    label="Result JSON",
-                    file_types=[".json"],
-                    scale=1,
-                )
-    return fit_comps, morphology_comp, approach_comp, params_json_comp, community_sections, standard_sections
 
 
 def _build_mcmc_accordion() -> tuple[gr.Number, gr.Number, gr.Number, gr.Textbox, gr.Checkbox, gr.Checkbox]:
@@ -721,12 +472,6 @@ def build() -> None:  # noqa: C901, PLR0915
     :returns: ``None``
     :rtype: None
     """
-    # DEBUG: Try to load a pre-computed result for testing
-    debug_result_state = None
-    debug_json_path = "/home/mike/Work/projects/elisa/lc_least_squares_standard.json"
-    with contextlib.suppress(FileNotFoundError, json.JSONDecodeError):
-        debug_result_state = json.loads(Path(debug_json_path).read_text(encoding="utf-8"))
-
     with gr.Tab("LC Fitting"):
         gr.Markdown(
             "## Light Curve Fitting\n"
@@ -736,7 +481,7 @@ def build() -> None:  # noqa: C901, PLR0915
             "the LSQRT solution.",
         )
 
-        lsqrt_result_state: gr.State = gr.State(value=debug_result_state)
+        lsqrt_result_state: gr.State = gr.State()
         data_comps = _build_data_accordion()
 
         # Build approach selector
@@ -759,11 +504,11 @@ def build() -> None:  # noqa: C901, PLR0915
 
             # Build Community parameters
             with gr.Column(visible=True) as community_group:
-                community_fit_comps, community_sections = param_inputs.build(approach="community")
+                community_fit_comps, _community_sections = param_inputs.build(approach="community")
 
             # Build Standard parameters
             with gr.Column(visible=False) as standard_group:
-                standard_fit_comps, standard_sections = param_inputs.build(approach="standard")
+                standard_fit_comps, _standard_sections = param_inputs.build(approach="standard")
 
             with gr.Accordion("Load Parameters from Previous Fit", open=False):
                 gr.Markdown(
@@ -819,20 +564,7 @@ def build() -> None:  # noqa: C901, PLR0915
         # Setup for Standard approach
         standard_fit_keys = FIELD_ORDER_STANDARD
         standard_fit_inputs = [standard_fit_comps[k] for k in standard_fit_keys]
-        standard_lc_data_inputs = (
-            [data_comps.x_unit, data_comps.passband_count]
-            + [
-                comp
-                for i in range(MAX_PASSBAND_ROWS)
-                for comp in (
-                    data_comps.row_passbands[i],
-                    data_comps.row_files[i],
-                    data_comps.row_y_units[i],
-                    data_comps.row_ref_mags[i],
-                )
-            ]
-            + [morphology_comp]
-        )
+        # Note: lc_data_inputs are identical for both approaches - reuse community_lc_data_inputs
 
         mcmc_keys: tuple[str, ...] = ("nwalkers", "nsteps", "burn_in", "fit_id", "save_chain", "progress")
 
@@ -840,45 +572,77 @@ def build() -> None:  # noqa: C901, PLR0915
         data_comps.add_btn.click(fn=_add_passband, inputs=[data_comps.passband_count], outputs=pb_outputs)  # type: ignore[union-attr]
         data_comps.remove_btn.click(fn=_remove_passband, inputs=[data_comps.passband_count], outputs=pb_outputs)  # type: ignore[union-attr]
 
-        # Wire mode changes for Community approach
-        _wire_param_mode_changes(community_fit_comps)
-        _wire_json_loader(params_json_comp, community_fit_comps, community_fit_keys)
+        _wire_json_loader(
+            params_json_comp,
+            community_fit_comps,
+            standard_fit_comps,
+            community_fit_keys,
+            standard_fit_keys,
+            approach_comp,
+            community_group,
+            standard_group,
+        )
 
-        # Wire mode changes for Standard approach
-        _wire_param_mode_changes(standard_fit_comps)
 
-        # Community LSQRT handler
-        community_lsqrt_all_inputs = community_lc_data_inputs + community_fit_inputs
-
-        # Standard LSQRT handler
-        standard_lsqrt_all_inputs = standard_lc_data_inputs + standard_fit_inputs
-
-        # Unified LSQRT button - runs appropriate handler based on approach
+        # Unified LSQRT - routes to correct approach based on selection.
+        # Inputs: lc_data + community_fit_inputs + standard_fit_inputs + approach_comp
+        # (lc_data is identical for both approaches - same components)
         def _unified_lsqrt(*values: object) -> tuple:
-            is_community = values[-1] == "Community"  # approach is last in lc_data_inputs
+            n_lc = len(community_lc_data_inputs)
+            n_cf = len(community_fit_keys)
+            approach = str(values[-1])
+            is_community = approach == "Community"
 
+            x_unit_str, lc_rows, morphology, _ = _parse_lc_inputs_simple(
+                values[:n_lc], MAX_PASSBAND_ROWS,
+            )
             if is_community:
-                x_unit_str, lc_rows, morphology, fit_offset = _parse_lc_inputs_simple(
-                    values[: len(community_lc_data_inputs)], MAX_PASSBAND_ROWS,
-                )
-                fit_vals = _collect_param_values(community_fit_keys, values, fit_offset)
+                fit_vals = _collect_param_values(community_fit_keys, values, n_lc)
             else:
-                x_unit_str, lc_rows, morphology, fit_offset = _parse_lc_inputs_simple(
-                    values[: len(standard_lc_data_inputs)], MAX_PASSBAND_ROWS,
-                )
-                fit_vals = _collect_param_values(standard_fit_keys, values, fit_offset)
+                fit_vals = _collect_param_values(standard_fit_keys, values, n_lc + n_cf)
 
             try:
                 result, fig, df, json_path = compute.run_lsqrt(
-                    lc_rows,
-                    x_unit_str,
-                    fit_vals,
-                    morphology,
+                    lc_rows, x_unit_str, fit_vals, morphology,
                 )
             except Exception as exc:
-                msg = str(exc)
-                raise gr.Error(msg) from exc
+                raise gr.Error(str(exc)) from exc
             return result, fig, df, gr.DownloadButton(value=json_path, visible=True)
+
+        # Unified MCMC - same approach
+        def _unified_mcmc(*values: object) -> tuple:
+            n_lc = len(community_lc_data_inputs)
+            n_cf = len(community_fit_keys)
+            n_sf = len(standard_fit_keys)
+            approach = str(values[-1])
+            is_community = approach == "Community"
+
+            x_unit_str, lc_rows, morphology, _ = _parse_lc_inputs_simple(
+                values[:n_lc], MAX_PASSBAND_ROWS,
+            )
+            if is_community:
+                fit_vals = _collect_param_values(community_fit_keys, values, n_lc)
+                mcmc_vals = _collect_param_values(mcmc_keys, values, n_lc + n_cf)
+            else:
+                fit_vals = _collect_param_values(standard_fit_keys, values, n_lc + n_cf)
+                mcmc_vals = _collect_param_values(mcmc_keys, values, n_lc + n_cf + n_sf)
+
+            nwalkers = int(mcmc_vals.get("nwalkers") or 50)
+            nsteps = int(mcmc_vals.get("nsteps") or 500)
+            burn_in = int(mcmc_vals.get("burn_in") or 50)
+            fit_id = str(mcmc_vals.get("fit_id") or "mcmc_lc_fit")
+            save = bool(mcmc_vals.get("save_chain", True))
+            progress = bool(mcmc_vals.get("progress", True))
+
+            try:
+                result, model_fig, corner_fig, traces_fig, df, json_path = compute.run_mcmc(
+                    lc_rows, x_unit_str, fit_vals, morphology,
+                    nwalkers=nwalkers, nsteps=nsteps, burn_in=burn_in,
+                    fit_id=fit_id, save=save, progress=progress,
+                )
+            except Exception as exc:
+                raise gr.Error(str(exc)) from exc
+            return result, model_fig, corner_fig, traces_fig, df, gr.DownloadButton(value=json_path, visible=True)
 
         # Create transfer handlers for each approach
         def _make_community_transfer() -> Callable[[dict | None, str], list[object]]:
@@ -946,20 +710,26 @@ def build() -> None:  # noqa: C901, PLR0915
         )
 
         mcmc_inputs_list: list[gr.Component] = [
-            nwalkers_comp,
-            nsteps_comp,
-            burn_in_comp,
-            fit_id_comp,
-            save_chain_comp,
-            progress_comp,
+            nwalkers_comp, nsteps_comp, burn_in_comp, fit_id_comp, save_chain_comp, progress_comp,
         ]
+
+        # Single combined input list for both unified handlers:
+        # lc_data + community_fit + standard_fit + [approach]
+        # lc_data is identical for both approaches (same component refs)
+        unified_lsqrt_inputs = (
+            community_lc_data_inputs + community_fit_inputs + standard_fit_inputs + [approach_comp]
+        )
+        unified_mcmc_inputs = (
+            community_lc_data_inputs + community_fit_inputs + standard_fit_inputs
+            + mcmc_inputs_list + [approach_comp]
+        )
 
         lsqrt_btn.click(
             fn=lambda: gr.update(selected=_TAB_LSQRT),
             outputs=[results_tabs],
         ).then(
-            fn=_lsqrt_handler(MAX_PASSBAND_ROWS, community_fit_keys),
-            inputs=community_lsqrt_all_inputs,
+            fn=_unified_lsqrt,
+            inputs=unified_lsqrt_inputs,
             outputs=[lsqrt_result_state, lsqrt_model_plot, lsqrt_table, lsqrt_download],
             show_progress="full",
         )
@@ -974,14 +744,12 @@ def build() -> None:  # noqa: C901, PLR0915
             outputs=standard_value_outputs,
         )
 
-        mcmc_all_inputs = community_lc_data_inputs + community_fit_inputs + mcmc_inputs_list
-
         mcmc_btn.click(
             fn=lambda: gr.update(selected=_TAB_MCMC),
             outputs=[results_tabs],
         ).then(
-            fn=_mcmc_handler(MAX_PASSBAND_ROWS, community_fit_keys, mcmc_keys),
-            inputs=mcmc_all_inputs,
+            fn=_unified_mcmc,
+            inputs=unified_mcmc_inputs,
             outputs=[
                 gr.State(),
                 mcmc_model_plot, corner_plot, traces_plot, mcmc_table, mcmc_download,
