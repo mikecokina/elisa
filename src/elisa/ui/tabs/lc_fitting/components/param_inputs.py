@@ -185,6 +185,8 @@ def _build_field_order(approach: Literal["community", "standard"]) -> tuple[str,
 
 # Default to community approach for backward compatibility
 FIELD_ORDER: tuple[str, ...] = _build_field_order("community")
+FIELD_ORDER_COMMUNITY: tuple[str, ...] = _build_field_order("community")
+FIELD_ORDER_STANDARD: tuple[str, ...] = _build_field_order("standard")
 
 
 # ---------------------------------------------------------------------------
@@ -381,32 +383,32 @@ def _build_component_section(
 
 def build(
     *,
+    approach: str = "community",
     defaults: dict[str, Float | bool | str | None] | None = None,
-) -> dict[str, gr.Component]:
-    """Render the initial-parameters form and return a component mapping.
+) -> tuple[dict[str, gr.Component], list[gr.Component]]:
+    """Render initial parameters for a specific approach.
 
-    Currently builds only the Community approach parameters (System, Primary,
-    Secondary) plus a nuisance row for MCMC. An optional *defaults* dict
-    overrides the built-in starting values; unrecognised keys are silently ignored.
+    Builds ONLY the specified approach (Community or Standard). Returns its own
+    field order tuple and the parameter components dict.
 
-    TODO: Add Community/Standard toggle once transfer functionality is working.
-
+    :param approach: Fitting approach (``"community"`` or ``"standard"``).
+    :type approach: str
     :param defaults: Flat mapping of ``"{section}_{name}_{sub}"`` keys
         to override default values.
     :type defaults: dict[str, Float | bool | str | None] | None
-    :returns: Dict keyed by field names from the Community approach.
-    :rtype: dict[str, gr.Component]
+    :returns: Tuple of ``(components_dict, sections_list)``.
+    :rtype: tuple[dict[str, gr.Component], list[gr.Component]]
     """
     if defaults is None:
         defaults = {}
 
     components: dict[str, gr.Component] = {}
+    sections: list[gr.Component] = []
 
-    # Build Community approach only (to avoid component duplication issues)
-    _build_approach_params(components, "community", defaults)
+    # noinspection PyTypeChecker
+    _build_approach_params(components, approach, defaults)
 
-
-    return components
+    return components, sections
 
 
 def _build_approach_params(
