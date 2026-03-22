@@ -14,6 +14,7 @@ import gradio as gr
 
 from elisa.ui.components import star_inputs, system_inputs
 from elisa.ui.shared.const import ATMOSPHERE_CHOICES
+from elisa.ui.shared.fit_json import make_json_load_handler
 from elisa.ui.tabs.system_visualization.components import observer_inputs
 from elisa.ui.tabs.system_visualization.logic import compute
 
@@ -161,6 +162,22 @@ def build() -> None:
         )
 
         # ------------------------------------------------------------------ #
+        # Load from fit-result JSON                                            #
+        # ------------------------------------------------------------------ #
+        with gr.Accordion("Load Parameters from Fit Result JSON", open=False):
+            gr.Markdown(
+                "Upload a result JSON saved by a previous **LSQRT or MCMC** run to "
+                "pre-fill all star and system parameters below.  "
+                "Both **Standard** and **Community** fit JSONs are accepted - "
+                "community parameters (semi-major axis + mass ratio) are automatically "
+                "converted to individual masses via Kepler's third law.",
+            )
+            json_file_input = gr.File(
+                label="Fit result JSON",
+                file_types=[".json"],
+            )
+
+        # ------------------------------------------------------------------ #
         # Input forms - four equal columns                                     #
         # ------------------------------------------------------------------ #
         with gr.Row():
@@ -246,3 +263,15 @@ def build() -> None:
             inputs=None,
             outputs=[mesh_plot, orbit_plot, equipotential_plot, surface_plot],
         )
+
+        all_form_outputs: list[gr.Component] = (
+            [prim_comps[k] for k in prim_keys]
+            + [sec_comps[k] for k in sec_keys]
+            + [sys_comps[k] for k in sys_keys]
+        )
+        json_file_input.upload(
+            fn=make_json_load_handler(prim_keys, sec_keys, sys_keys),
+            inputs=[json_file_input],
+            outputs=all_form_outputs,
+        )
+

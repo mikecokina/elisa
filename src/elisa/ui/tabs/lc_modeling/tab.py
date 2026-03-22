@@ -16,6 +16,7 @@ from matplotlib.figure import Figure  # noqa: TC002  - same reason
 
 from elisa.ui.components import star_inputs, system_inputs
 from elisa.ui.shared.const import ATMOSPHERE_CHOICES
+from elisa.ui.shared.fit_json import make_json_load_handler
 from elisa.ui.tabs.lc_modeling.components import observer_inputs
 from elisa.ui.tabs.lc_modeling.logic import compute
 
@@ -69,6 +70,7 @@ _OBSERVER_DEFAULTS: dict[str, Number | str] = {
 # ---------------------------------------------------------------------------
 # Internal handler
 # ---------------------------------------------------------------------------
+
 
 
 def _make_handler(
@@ -143,6 +145,22 @@ def build() -> None:
         )
 
         # ------------------------------------------------------------------ #
+        # Load from fit-result JSON                                            #
+        # ------------------------------------------------------------------ #
+        with gr.Accordion("Load Parameters from Fit Result JSON", open=False):
+            gr.Markdown(
+                "Upload a result JSON saved by a previous **LSQRT or MCMC** run to "
+                "pre-fill all star and system parameters below.  "
+                "Both **Standard** and **Community** fit JSONs are accepted - "
+                "community parameters (semi-major axis + mass ratio) are automatically "
+                "converted to individual masses via Kepler's third law.",
+            )
+            json_file_input = gr.File(
+                label="Fit result JSON",
+                file_types=[".json"],
+            )
+
+        # ------------------------------------------------------------------ #
         # Input forms - four equal columns                                     #
         # ------------------------------------------------------------------ #
         with gr.Row():
@@ -203,5 +221,16 @@ def build() -> None:
             fn=lambda: (None, None, gr.DownloadButton(visible=False)),
             inputs=None,
             outputs=[lc_plot, lc_table, dl_btn],
+        )
+
+        all_form_outputs: list[gr.Component] = (
+            list(prim_comps.values())
+            + list(sec_comps.values())
+            + list(sys_comps.values())
+        )
+        json_file_input.upload(
+            fn=make_json_load_handler(prim_keys, sec_keys, sys_keys),
+            inputs=[json_file_input],
+            outputs=all_form_outputs,
         )
 

@@ -17,15 +17,18 @@ import pandas as pd
 
 from elisa import BinarySystem, Observer, Star
 from elisa import units as u
+from elisa.ui.shared.fit_json import load_model_params_from_json  # noqa: F401 - re-exported for callers
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
     from elisa.types import Float, Int
 
+
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 def _opt_float(value: Float | str | None) -> Float | None:
     """Return a float if *value* is a non-empty, non-``None`` value.
 
