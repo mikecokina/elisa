@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 
 from elisa import BinarySystem, Star
 from elisa import units as u
+from elisa.ui.tabs.lc_modeling.components.pulsation_inputs import parse_pulsation_modes
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
@@ -125,6 +126,8 @@ def run_visualization(
     secondary_params: dict,
     system_params: dict,
     observer_params: dict,
+    primary_pulsation_params: dict | None = None,
+    secondary_pulsation_params: dict | None = None,
 ) -> tuple[Figure | None, Figure | None, Figure | None, Figure | None]:
     """Generate mesh, orbit, equipotential, and/or surface visualizations for a binary system.
 
@@ -145,15 +148,17 @@ def run_visualization(
     :param observer_params: Visualization parameters (mode, phase, components,
         plane, frame, colormap).
     :type observer_params: dict
-    :returns: Tuple of (mesh_figure, orbit_figure, equipotential_figure,
-        surface_figure) where any element may be ``None`` depending on the
-        visualization mode.
-    :rtype: tuple[Figure | None, Figure | None, Figure | None, Figure | None]
-    :raises ValueError: If parameter values are invalid or binary construction fails.
+    :param primary_pulsation_params: Primary star pulsation parameters.
+    :type primary_pulsation_params: dict | None
+    :param secondary_pulsation_params: Secondary star pulsation parameters.
+    :type secondary_pulsation_params: dict | None
     """
     primary_params = _filter_none(_convert_params(primary_params))
     secondary_params = _filter_none(_convert_params(secondary_params))
     system_params = _filter_none(_convert_params(system_params))
+
+    primary_pulsation_modes = parse_pulsation_modes(primary_pulsation_params)
+    secondary_pulsation_modes = parse_pulsation_modes(secondary_pulsation_params)
 
     # Close figures left open by the previous call - Gradio serialises them
     # before the next request arrives, so they are safe to discard here.
@@ -172,8 +177,8 @@ def run_visualization(
         msg = "No visualization mode selected. Please choose one from the 'What to plot' dropdown."
         raise ValueError(msg)
 
-    primary = Star(**primary_params)
-    secondary = Star(**secondary_params)
+    primary = Star(**primary_params, pulsations=primary_pulsation_modes or None)
+    secondary = Star(**secondary_params, pulsations=secondary_pulsation_modes or None)
     binary = BinarySystem(primary=primary, secondary=secondary, **system_params)
 
     mesh_fig = None

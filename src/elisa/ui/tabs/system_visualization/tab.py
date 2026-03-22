@@ -8,13 +8,14 @@ and registers event handlers. No state is held at module level.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import gradio as gr
 
 from elisa.ui.components import star_inputs, system_inputs
 from elisa.ui.shared.const import ATMOSPHERE_CHOICES
 from elisa.ui.shared.fit_json import make_json_load_handler
+from elisa.ui.tabs.lc_modeling.components import pulsation_inputs
 from elisa.ui.tabs.system_visualization.components import observer_inputs
 from elisa.ui.tabs.system_visualization.logic import compute
 
@@ -76,6 +77,7 @@ def _make_handler(
     sec_keys: tuple[str, ...],
     sys_keys: tuple[str, ...],
     obs_keys: tuple[str, ...],
+    puls_keys: tuple[str, ...],
 ) -> Callable[..., tuple[dict, dict, dict, dict]]:
     """Return a Gradio event-handler function bound to the given key sequences.
 
@@ -96,6 +98,8 @@ def _make_handler(
     :type sys_keys: tuple[str, ...]
     :param obs_keys: Ordered keys for observer parameters.
     :type obs_keys: tuple[str, ...]
+    :param puls_keys: Ordered keys for per-component pulsation parameters.
+    :type puls_keys: tuple[str, ...]
     :returns: A callable suitable for ``gr.Button.click(fn=...)``.
     :rtype: Callable[..., tuple[dict, dict, dict, dict]]
     """
@@ -105,6 +109,7 @@ def _make_handler(
         n_prim = len(prim_keys)
         n_sec = len(sec_keys)
         n_sys = len(sys_keys)
+        n_puls = len(puls_keys)
 
         primary_params = dict(zip(prim_keys, values[idx : idx + n_prim], strict=True))
         idx += n_prim
@@ -112,11 +117,20 @@ def _make_handler(
         idx += n_sec
         system_params = dict(zip(sys_keys, values[idx : idx + n_sys], strict=True))
         idx += n_sys
+        primary_puls_params = dict(zip(puls_keys, values[idx : idx + n_puls], strict=True))
+        idx += n_puls
+        secondary_puls_params = dict(zip(puls_keys, values[idx : idx + n_puls], strict=True))
+        idx += n_puls
         observer_params = dict(zip(obs_keys, values[idx:], strict=True))
 
         try:
             mesh_fig, orbit_fig, equip_fig, surface_fig = compute.run_visualization(
-                primary_params, secondary_params, system_params, observer_params,
+                primary_params,
+                secondary_params,
+                system_params,
+                observer_params,
+                primary_puls_params,
+                secondary_puls_params,
             )
         except Exception as exc:
             msg = str(exc)
@@ -183,9 +197,11 @@ def build() -> None:
         with gr.Row():
             with gr.Column(scale=1):
                 prim_comps = star_inputs.build("Primary Star", defaults=_PRIMARY_DEFAULTS)
+                prim_puls_comps = pulsation_inputs.build("Primary")
 
             with gr.Column(scale=1):
                 sec_comps = star_inputs.build("Secondary Star", defaults=_SECONDARY_DEFAULTS)
+                sec_puls_comps = pulsation_inputs.build("Secondary")
 
             with gr.Column(scale=1):
                 sys_comps = system_inputs.build(defaults=_SYSTEM_DEFAULTS)
@@ -216,44 +232,19 @@ def build() -> None:
         sec_keys = star_inputs.FIELD_ORDER
         sys_keys = system_inputs.FIELD_ORDER
         obs_keys = observer_inputs.FIELD_ORDER
+        puls_keys = pulsation_inputs.FIELD_ORDER
 
-        # Build the flat input list strictly from FIELD_ORDER - obs_comps also
-        # contains column handles that must NOT be included as form inputs.
         all_inputs: list[gr.Component] = (
             [prim_comps[k] for k in prim_keys]
             + [sec_comps[k] for k in sec_keys]
             + [sys_comps[k] for k in sys_keys]
+            + [prim_puls_comps[k] for k in puls_keys]
+            + [sec_puls_comps[k] for k in puls_keys]
             + [obs_comps[k] for k in obs_keys]
         )
 
-        # Column handles from observer_inputs drive visibility on mode change.
-        # All columns start visible (mounted in DOM). The .change() event with
-        # trigger_mode="always_last" fires once on page load AND on every change.
-        # Order matches the 8-tuple returned by observer_inputs.update_ui:
-        # (_col_shared, _col_equip, _col_orbit, _col_surface,
-        #  mesh_plot, orbit_plot, equipotential_plot, surface_plot)
-        _ui_outputs: list[gr.Component] = [
-            obs_comps[observer_inputs.COL_SHARED],
-            obs_comps[observer_inputs.COL_EQUIP],
-            obs_comps[observer_inputs.COL_ORBIT],
-            obs_comps[observer_inputs.COL_SURFACE],
-            mesh_plot,
-            orbit_plot,
-            equipotential_plot,
-            surface_plot,
-        ]
-
-        # Cast to Dropdown so type checker recognizes the .change() method.
-        mode_dropdown = cast("gr.Dropdown", obs_comps["visualization_mode"])
-        mode_dropdown.change(
-            fn=observer_inputs.update_ui,
-            inputs=[mode_dropdown],
-            outputs=_ui_outputs,
-            trigger_mode="always_last",  # Fire once on load + every change
-        )
-
         visualize_btn.click(
-            fn=_make_handler(prim_keys, sec_keys, sys_keys, obs_keys),
+            fn=_make_handler(prim_keys, sec_keys, sys_keys, obs_keys, puls_keys),
             inputs=all_inputs,
             outputs=[mesh_plot, orbit_plot, equipotential_plot, surface_plot],
         )
@@ -274,4 +265,3 @@ def build() -> None:
             inputs=[json_file_input],
             outputs=all_form_outputs,
         )
-

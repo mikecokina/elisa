@@ -15,9 +15,11 @@ Default input units match :data:`elisa.units.DefaultPulsationsInputUnits`:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import gradio as gr
+
+from elisa.ui.shared import build_full_width_button_row
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -36,6 +38,10 @@ _MODE_PARAMS: tuple[str, ...] = (
     "start_phase",
     "mode_axis_theta",
     "mode_axis_phi",
+    "temperature_perturbation_phase_shift",
+    "horizontal_to_radial_amplitude_ratio",
+    "temperature_amplitude_factor",
+    "tidally_locked",
 )
 
 #: Canonical key order for the flat Gradio value list used by the tab handler.
@@ -46,13 +52,20 @@ FIELD_ORDER: tuple[str, ...] = (
 )
 
 _DEFAULTS: dict[str, object] = {
-    "l": 1,
-    "m": 0,
-    "amplitude": 50.0,
-    "frequency": 5.0,
-    "start_phase": 0.0,
-    "mode_axis_theta": 0.0,
-    "mode_axis_phi": 0.0,
+    "l": 6,
+    "m": 3,
+    "amplitude": 500.0,
+    "frequency": 15.0,
+    # leave empty by default so user must explicitly set if desired
+    "start_phase": "",
+    "mode_axis_theta": 25.0,
+    "mode_axis_phi": 90.0,
+    # leave temperature perturbation phase shift empty by default so user must optional
+    "temperature_perturbation_phase_shift": "",
+    # leave H-to-R empty by default so user can optional explicitly
+    "horizontal_to_radial_amplitude_ratio": "",
+    "temperature_amplitude_factor": 0.01,
+    "tidally_locked": False,
 }
 
 
@@ -144,17 +157,11 @@ def build(prefix: str) -> dict[str, gr.Component]:
 
         with gr.Group(visible=False) as puls_section:
             # Global add button for all modes - visually separated from the first mode panel.
-            with gr.Row():
-                add_btn = gr.Button(
-                    "+ Add pulsation mode",
-                    variant="secondary",
-                    size="sm",
-                    scale=1,
-                    elem_classes=["full-width-button"],
-                )
-
-            # Extra spacing under the add button for visual separation from the first mode panel.
-            gr.HTML("<div style='margin-bottom: 0.5rem;'></div>")
+            add_btn = build_full_width_button_row(
+                "+ Add pulsation mode",
+                elem_classes=["full-width-button"],
+                spacer_margin_px=8,
+            )
 
             mode_groups: list[gr.Group] = []
             remove_btns: list[gr.Button] = []
@@ -207,7 +214,11 @@ def build(prefix: str) -> dict[str, gr.Component]:
                     with gr.Row():
                         value_comps[f"mode_{i}_start_phase"] = gr.Number(
                             label="Start phase (rad)",
-                            value=float(_DEFAULTS["start_phase"]),  # type: ignore[arg-type]
+                            value=(
+                                None
+                                if cast("str", _DEFAULTS["start_phase"]) == ""
+                                else float(cast("float", _DEFAULTS["start_phase"]))
+                            ),
                             info="Initial phase offset in radians.",
                         )
                         value_comps[f"mode_{i}_mode_axis_theta"] = gr.Number(
@@ -215,10 +226,62 @@ def build(prefix: str) -> dict[str, gr.Component]:
                             value=float(_DEFAULTS["mode_axis_theta"]),  # type: ignore[arg-type]
                             info="Latitude of mode axis in degrees.",
                         )
+
+                    with gr.Row():
                         value_comps[f"mode_{i}_mode_axis_phi"] = gr.Number(
                             label="Mode axis φ (deg)",
                             value=float(_DEFAULTS["mode_axis_phi"]),  # type: ignore[arg-type]
                             info="Longitude of mode axis in degrees.",
+                        )
+
+                    with gr.Group():
+                        gr.Markdown("**Optional Parameters**")
+
+                    # Each optional parameter on a separate row so empty vs 0 is visually and
+                    # functionally distinct and the layout is easier to read.
+                    with gr.Row():
+                        # Use Textbox so empty string is preserved - user may want to leave unset
+                        value_comps[
+                            f"mode_{i}_temperature_perturbation_phase_shift"
+                        ] = gr.Textbox(
+                            label="Temp. phase shift (rad)",
+                            value=(
+                                ""
+                                if cast("str", _DEFAULTS["temperature_perturbation_phase_shift"]) == ""
+                                else str(cast("float", _DEFAULTS["temperature_perturbation_phase_shift"]))
+                            ),
+                            placeholder="leave empty to use default",
+                            lines=1,
+                            info="Phase lag between temperature and radial displacement.",
+                        )
+
+                    with gr.Row():
+                        value_comps[
+                            f"mode_{i}_horizontal_to_radial_amplitude_ratio"
+                        ] = gr.Textbox(
+                            label="H-to-R amplitude ratio",
+                            value=(
+                                ""
+                                if cast("str", _DEFAULTS["horizontal_to_radial_amplitude_ratio"]) == ""
+                                else str(cast("float", _DEFAULTS["horizontal_to_radial_amplitude_ratio"]))
+                            ),
+                            placeholder="leave empty to use default",
+                            lines=1,
+                            info="Ratio of horizontal to radial amplitude.",
+                        )
+
+                    with gr.Row():
+                        value_comps[f"mode_{i}_temperature_amplitude_factor"] = gr.Number(
+                            label="Temp. amplitude factor",
+                            value=float(cast("float", _DEFAULTS["temperature_amplitude_factor"])),
+                            info="Ratio ΔT/T_eff (temperature amplitude).",
+                        )
+
+                    with gr.Row():
+                        value_comps[f"mode_{i}_tidally_locked"] = gr.Checkbox(
+                            label="Tidally locked",
+                            value=bool(_DEFAULTS["tidally_locked"]),
+                            info="Hold mode axis position relative to companion.",
                         )
 
                 mode_groups.append(grp)
@@ -238,9 +301,7 @@ def build(prefix: str) -> dict[str, gr.Component]:
         )
 
         all_value_comps: list[gr.Component] = [
-            value_comps[f"mode_{i}_{p}"]
-            for i in range(MAX_MODES)
-            for p in _MODE_PARAMS
+            value_comps[f"mode_{i}_{p}"] for i in range(MAX_MODES) for p in _MODE_PARAMS
         ]
 
         for i, rm_btn in enumerate(remove_btns):
@@ -279,21 +340,58 @@ def parse_pulsation_modes(pulsation_params: dict[str, object] | None) -> list[di
 
     modes: list[dict[str, object]] = []
     for i in range(min(mode_count, MAX_MODES)):
+        # Get mandatory parameters with defaults
+        l_val: int | None = pulsation_params.get(f"mode_{i}_l")
+        l_degree: int = l_val if l_val is not None else int(cast("int", _DEFAULTS["l"]))
+
+        m_val: int | None = pulsation_params.get(f"mode_{i}_m")
+        m_order: int = m_val if m_val is not None else int(cast("int", _DEFAULTS["m"]))
+
+        amplitude_val: float | None = pulsation_params.get(f"mode_{i}_amplitude")
+        amplitude: float = amplitude_val if amplitude_val is not None else float(cast("float", _DEFAULTS["amplitude"]))
+
+        frequency_val: float | None = pulsation_params.get(f"mode_{i}_frequency")
+        frequency: float = frequency_val if frequency_val is not None else float(cast("float", _DEFAULTS["frequency"]))
+
         mode: dict[str, object] = {
-            "l": int(pulsation_params.get(f"mode_{i}_l", _DEFAULTS["l"]) or 1),
-            "m": int(pulsation_params.get(f"mode_{i}_m", _DEFAULTS["m"]) or 0),
-            "amplitude": float(
-                pulsation_params.get(f"mode_{i}_amplitude", _DEFAULTS["amplitude"]) or 50.0,
-            ),
-            "frequency": float(
-                pulsation_params.get(f"mode_{i}_frequency", _DEFAULTS["frequency"]) or 5.0,
-            ),
+            "l": l_degree,
+            "m": m_order,
+            "amplitude": amplitude,
+            "frequency": frequency,
         }
 
-        for param in ("start_phase", "mode_axis_theta", "mode_axis_phi"):
-            val = pulsation_params.get(f"mode_{i}_{param}", _DEFAULTS[param])
-            if val is not None:
-                mode[param] = float(str(val))
+        # Handle optional parameters - skip if None or empty
+        for param in (
+            "start_phase",
+            "mode_axis_theta",
+            "mode_axis_phi",
+            "temperature_perturbation_phase_shift",
+            "horizontal_to_radial_amplitude_ratio",
+            "temperature_amplitude_factor",
+        ):
+            raw = pulsation_params.get(f"mode_{i}_{param}")
+            # temperature_perturbation_phase_shift and horizontal_to_radial_amplitude_ratio
+            # are rendered as Textbox to preserve empty vs '0'. Accept strings and numbers.
+            if raw is None:
+                continue
+            if isinstance(raw, str):
+                if raw.strip() == "":
+                    continue
+                try:
+                    parsed = float(raw.strip())
+                except ValueError:
+                    # Non-numeric input - skip and let higher-level validation handle it
+                    continue
+            else:
+                # numeric input (int/float)
+                parsed = float(cast("float | int", raw))
+
+            mode[param] = parsed
+
+        # Handle boolean parameter separately - only include if explicitly set
+        tidally_locked_val: bool | None = pulsation_params.get(f"mode_{i}_tidally_locked")
+        if tidally_locked_val is not None:
+            mode["tidally_locked"] = bool(tidally_locked_val)
 
         modes.append(mode)
 

@@ -44,7 +44,7 @@ def build(prefix: str, *, defaults: dict[str, Number | str] | None = None) -> di
     :param prefix: Human-readable label used in the accordion header,
         e.g. ``"Primary Star"`` or ``"Secondary Star"``.
     :type prefix: str
-    :param defaults: Optional mapping of field name → default value used
+    :param defaults: Optional mapping of field name - default value used
         to pre-populate the inputs.  Unrecognised keys are ignored.
     :type defaults: dict[str, object] | None
     :returns: Ordered dict mapping each field name (see :data:`FIELD_ORDER`)
@@ -118,5 +118,6 @@ def build(prefix: str, *, defaults: dict[str, Number | str] | None = None) -> di
             value=defaults.get("atmosphere", ATMOSPHERE_CHOICES[1]),
             info="Atmosphere model used for intensity integration.",
         )
+
 
     return components
