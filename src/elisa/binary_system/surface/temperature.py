@@ -17,7 +17,7 @@ from elisa.binary_system import utils as bsutils
 from elisa.binary_system.surface import faces as bsfaces
 from elisa.logger import getLogger
 from elisa.numba_functions import reflection_effect as re_numba
-from elisa.types import Float
+from elisa.types import NP_BOOL_, Float
 from elisa.utils import is_empty
 
 if TYPE_CHECKING:
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 logger = getLogger("binary_system.surface.temperature")
 
 SurfaceDataDict: TypeAlias = dict[str, NDArray[Float]]
-VisibilityDict: TypeAlias = dict[str, NDArray[np.bool]]
+VisibilityDict: TypeAlias = dict[str, NDArray[NP_BOOL_]]
 GammaDict: TypeAlias = dict[str, NDArray[Float]]
 
 
@@ -102,7 +102,7 @@ def apply_reflection_effect(  # noqa: C901, PLR0912, PLR0915
 
     # this tests if you can use surface symmetries
     use_quarter_star_test = not system.has_pulsations() and not system.has_spots()
-    vis_test_symmetry: dict[str, NDArray[np.bool] | None] = {}
+    vis_test_symmetry: dict[str, NDArray[NP_BOOL_] | None] = {}
 
     # declaring variables
     centres: SurfaceDataDict = {}
@@ -511,14 +511,14 @@ def include_spot_to_surface_variables(
     spot_areas: NDArray[Float],
     log_g: NDArray[Float],
     spot_log_g: NDArray[Float],
-    vis_test: NDArray[np.bool],
-    vis_test_spot: NDArray[np.bool],
+    vis_test: NDArray[NP_BOOL_],
+    vis_test_spot: NDArray[NP_BOOL_],
 ) -> tuple[
     NDArray[Float],
     NDArray[Float],
     NDArray[Float],
     NDArray[Float],
-    NDArray[np.bool],
+    NDArray[NP_BOOL_],
     NDArray[Float],
 ]:
     """Include spot-face parameters into global reflection-effect arrays.
@@ -566,7 +566,7 @@ def get_symmetrical_distance_matrix(
     shape_reduced: tuple[Int, Int],
     centres: SurfaceDataDict,
     vis_test: VisibilityDict,
-    vis_test_symmetry: dict[str, NDArray[np.bool] | None],
+    vis_test_symmetry: dict[str, NDArray[NP_BOOL_] | None],
 ) -> tuple[NDArray[Float], NDArray[Float]]:
     """Reduce distance-matrix computation by exploiting surface symmetry.
 
@@ -577,9 +577,9 @@ def get_symmetrical_distance_matrix(
     :param centres: Face centres for both components.
     :type centres: dict[str, NDArray[Float]]
     :param vis_test: Visibility masks for both components.
-    :type vis_test: dict[str, NDArray[np.bool]]
+    :type vis_test: dict[str, NDArray[NP_BOOL_]]
     :param vis_test_symmetry: Symmetry visibility masks for both components.
-    :type vis_test_symmetry: dict[str, NDArray[np.bool] | None]
+    :type vis_test_symmetry: dict[str, NDArray[NP_BOOL_] | None]
     :return: Tuple ``(distance, join_vector)``.
     :rtype: tuple[NDArray[Float], NDArray[Float]]
     """
@@ -623,7 +623,7 @@ def get_symmetrical_gammma(
     normals: SurfaceDataDict,
     join_vector: NDArray[Float],
     vis_test: VisibilityDict,
-    vis_test_symmetry: dict[str, NDArray[np.bool] | None],
+    vis_test_symmetry: dict[str, NDArray[NP_BOOL_] | None],
 ) -> GammaDict:
     """Use surface symmetries to compute cosine matrices of visibility angles.
 
@@ -636,9 +636,9 @@ def get_symmetrical_gammma(
     :param join_vector: Join-vector matrix.
     :type join_vector: NDArray[Float]
     :param vis_test: Visibility masks for both components.
-    :type vis_test: dict[str, NDArray[np.bool]]
+    :type vis_test: dict[str, NDArray[NP_BOOL_]]
     :param vis_test_symmetry: Symmetry visibility masks for both components.
-    :type vis_test_symmetry: dict[str, NDArray[np.bool] | None]
+    :type vis_test_symmetry: dict[str, NDArray[NP_BOOL_] | None]
     :return: Cosine matrices ``gamma`` for both components.
     :rtype: dict[str, NDArray[Float]]
     """
@@ -806,7 +806,7 @@ def get_distance_matrix_shape(
     :param system: Orbital position container.
     :type system: OrbitalPositionContainer
     :param vis_test: Visibility masks for both components.
-    :type vis_test: dict[str, NDArray[np.bool]]
+    :type vis_test: dict[str, NDArray[NP_BOOL_]]
     :return: Tuple ``(shape, shape_reduced)``.
     :rtype: tuple[tuple[Int, Int, Int], tuple[Int, Int]]
     """

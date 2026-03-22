@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
     from elisa.binary_system.system import BinarySystem
     from elisa.const import Position
-    from elisa.types import Float
+    from elisa.types import NP_BOOL_, Float
 
 
 def produce_circ_sync_curves_mp(
@@ -561,7 +561,7 @@ def similar_neighbour_approximation_ecc_curve_integration(
     binary: BinarySystem,
     potentials: dict[str, NDArray[Float]],
     motion_batch: NDArray[Float],
-    new_geometry_mask: NDArray[np.bool],
+    new_geometry_mask: NDArray[NP_BOOL_],
     crv_labels: list[str],
     curve_fn: Callable[..., dict[str, NDArray[Float]]],
     kwargs: dict[str, Any],

@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from elisa.binary_system.system import BinarySystem
-    from elisa.types import Float
+    from elisa.types import NP_BOOL_, Float
 
 
 logger = getLogger("binary_system.curves.c_appx_router")
@@ -407,7 +407,7 @@ def eval_similar_neighbours_approximation(
     binary: BinarySystem,
     radii: NDArray[Float],
     all_orbital_pos_arr: NDArray[Float],
-) -> tuple[bool, NDArray[np.bool] | None, NDArray[Float] | None]:
+) -> tuple[bool, NDArray[NP_BOOL_] | None, NDArray[Float] | None]:
     """Evaluate whether similar-neighbours approximation can be used.
 
     This approximation avoids rebuilding surface geometry for neighbouring
@@ -618,7 +618,7 @@ def integrate_eccentric_curve_symmetrical_counterparts_appx(
 def integrate_eccentric_curve_similar_neighbours_appx(
     binary: BinarySystem,
     orbital_positions: NDArray[Float],
-    new_geometry_mask: NDArray[np.bool],
+    new_geometry_mask: NDArray[NP_BOOL_],
     potentials: dict[str, NDArray[Float]],
     crv_labels: Sequence[str],
     curve_fn: Callable[..., dict[str, NDArray[Float]]],

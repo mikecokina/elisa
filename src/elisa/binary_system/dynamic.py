@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
     from elisa.binary_system.container import OrbitalPositionContainer
     from elisa.binary_system.system import BinarySystem
-    from elisa.types import ComponentSelection, Float, Int
+    from elisa.types import NP_BOOL_, ComponentSelection, Float, Int
 
 MID_PHOTOMERIC_PHASE = 0.5
 
@@ -208,7 +208,7 @@ def resolve_object_geometry_update(
     size: int,
     rel_d: NDArray,
     max_allowed_difference: Float | None = None,
-) -> NDArray[np.bool]:
+) -> NDArray[NP_BOOL_]:
     """Evaluate where object geometry must be fully updated.
 
     The decision depends on the cumulative difference of relative radii between
@@ -243,7 +243,7 @@ def resolve_spots_geometry_update(
     size: int,
     pulsations_tests: dict[str, bool],
     max_allowed_difference: Float | None = None,
-) -> tuple[NDArray[np.bool], NDArray[np.bool]]:
+) -> tuple[NDArray[NP_BOOL_], NDArray[NP_BOOL_]]:
     """Evaluate where spot geometry must be fully updated.
 
     The decision depends on the cumulative difference of spot longitudes
@@ -266,7 +266,7 @@ def resolve_spots_geometry_update(
     :return: Geometry update masks for primary and secondary components.
     :rtype: tuple[NDArray[bool], NDArray[bool]]
     """
-    reducer: dict[str, NDArray[np.bool]] = {}
+    reducer: dict[str, NDArray[NP_BOOL_]] = {}
 
     for component in settings.BINARY_COUNTERPARTS:
         if pulsations_tests[component]:
@@ -302,7 +302,7 @@ def _resolve_geometry_update(
     max_allowed_difference: Float,
     *,
     resolve: Literal["object", "spot"] = "object",
-) -> NDArray[np.bool]:
+) -> NDArray[NP_BOOL_]:
     """Evaluate where full geometry updates are required.
 
     The decision is made from cumulative changes between neighboring orbital
@@ -355,7 +355,7 @@ def _resolve_geometry_update(
 def resolve_irrad_update(
     rel_d_irrad: NDArray,
     size: int,
-) -> NDArray[np.bool]:
+) -> NDArray[NP_BOOL_]:
     """Evaluate where irradiation must be recalculated.
 
     :param rel_d_irrad: Change in flux due to variation in mutual irradiation.
@@ -417,7 +417,7 @@ def phase_crv_symmetry(
 def in_eclipse_test(
     azimuths: NDArray,
     ecl_boundaries: NDArray,
-) -> NDArray[np.bool]:
+) -> NDArray[NP_BOOL_]:
     """Test whether eclipse occurs at the given azimuths.
 
     This function works only for circular orbits.

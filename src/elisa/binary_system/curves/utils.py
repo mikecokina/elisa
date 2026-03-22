@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
     from elisa.binary_system.container import OrbitalPositionContainer
     from elisa.binary_system.system import BinarySystem
-    from elisa.types import ComponentSelection, Float
+    from elisa.types import NP_BOOL_, ComponentSelection, Float
 
 
 def get_limbdarkening_cfs(
@@ -253,7 +253,7 @@ def update_surface_params(
 
 def split_orbit_by_apse_line(
     orbital_motion: NDArray[Float],
-    orbital_mask: NDArray[np.bool],
+    orbital_mask: NDArray[NP_BOOL_],
 ) -> tuple[NDArray[Float], NDArray[Float]]:
     """Split orbital positions into two groups separated by the line of apsides.
 
@@ -442,7 +442,7 @@ def prepare_apsidaly_symmetric_orbit(
     binary: BinarySystem,
     azimuths: NDArray,
     phases: NDArray,
-) -> tuple[NDArray[np.int_], NDArray[Float], NDArray[np.bool]]:
+) -> tuple[NDArray[np.int_], NDArray[Float], NDArray[NP_BOOL_]]:
     """Prepare orbital positions symmetrical in terms of surface geometry.
 
     For each pair, the orbital position is mirrored using the apsidal line in

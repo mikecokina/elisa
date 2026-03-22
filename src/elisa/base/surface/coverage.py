@@ -7,10 +7,10 @@ import numpy as np
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from elisa.types import Float
+    from elisa.types import NP_BOOL_, Float
 
 
-def _selector_to_mask(sel: NDArray[np.bool], size: int, name: str) -> tuple[np.ndarray, int]:
+def _selector_to_mask(sel: NDArray[NP_BOOL_], size: int, name: str) -> tuple[np.ndarray, int]:
     """Convert a selector (mask or indices) into a boolean mask of length ``size``.
 
     :param sel: Boolean mask or index array selecting elements.
