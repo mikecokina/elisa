@@ -147,7 +147,12 @@ def _validated_positive_int(value: Float | str | None, *, name: str) -> Int | No
     return parsed
 
 
-def _build_star(params: dict[str, object], *, label: str) -> Star:
+def _build_star(
+    params: dict[str, object],
+    *,
+    label: str,
+    pulsations: list[dict[str, object]] | None = None,
+) -> Star:
     """Construct a :class:`~elisa.base.star.Star` from a flat parameter dict.
 
     The dict is expected to contain keys produced by
@@ -161,6 +166,11 @@ def _build_star(params: dict[str, object], *, label: str) -> Star:
     :param label: Human-readable label used in error messages
         (e.g. ``"primary"`` or ``"secondary"``).
     :type label: str
+    :param pulsations: Optional list of pulsation mode parameter dicts,
+        each with keys ``l``, ``m``, ``amplitude``, ``frequency``, and
+        optional keys accepted by :class:`~elisa.pulse.mode.PulsationMode`.
+        Pass ``None`` or an empty list for no pulsations.
+    :type pulsations: list[dict[str, object]] | None
     :returns: Initialised :class:`~elisa.base.star.Star` instance.
     :rtype: Star
     :raises ValueError: If any mandatory parameter is ``None`` or
@@ -219,6 +229,8 @@ def _build_star(params: dict[str, object], *, label: str) -> Star:
         kwargs["discretization_factor"] = discretization_factor
     if atmosphere:
         kwargs["atmosphere"] = atmosphere
+    if pulsations:
+        kwargs["pulsations"] = pulsations
 
     return Star(**kwargs)
 
@@ -353,6 +365,8 @@ def run_lc(
     secondary_params: dict[str, object],
     system_params: dict[str, object],
     observer_params: dict[str, object],
+    primary_pulsation_params: dict[str, object] | None = None,
+    secondary_pulsation_params: dict[str, object] | None = None,
 ) -> tuple[Figure, pd.DataFrame, str]:
     """Compute a synthetic light curve and return a figure and a data table.
 
@@ -383,6 +397,10 @@ def run_lc(
     :raises ValueError: If required parameters are missing or logically
         invalid (e.g. no passbands selected).
     """
+    from elisa.ui.tabs.lc_modeling.components.pulsation_inputs import (  # noqa: PLC0415
+        parse_pulsation_modes,
+    )
+
     # --- validate observer params early for a clear error message ---
     passbands: list[str] = observer_params.get("passband") or []  # type: ignore[assignment]
     if not passbands:
@@ -399,8 +417,11 @@ def run_lc(
     normalize: bool = bool(observer_params.get("normalize", False))
 
     # --- build ELISa objects ---
-    primary = _build_star(primary_params, label="primary")
-    secondary = _build_star(secondary_params, label="secondary")
+    prim_pulsations = parse_pulsation_modes(primary_pulsation_params)
+    sec_pulsations = parse_pulsation_modes(secondary_pulsation_params)
+
+    primary = _build_star(primary_params, label="primary", pulsations=prim_pulsations or None)
+    secondary = _build_star(secondary_params, label="secondary", pulsations=sec_pulsations or None)
     bs = _build_system(primary, secondary, system_params)
     observer = Observer(passband=passbands, system=bs)
 

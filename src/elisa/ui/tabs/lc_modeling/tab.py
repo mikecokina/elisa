@@ -17,7 +17,7 @@ from matplotlib.figure import Figure  # noqa: TC002  - same reason
 from elisa.ui.components import star_inputs, system_inputs
 from elisa.ui.shared.const import ATMOSPHERE_CHOICES
 from elisa.ui.shared.fit_json import make_json_load_handler
-from elisa.ui.tabs.lc_modeling.components import observer_inputs
+from elisa.ui.tabs.lc_modeling.components import observer_inputs, pulsation_inputs
 from elisa.ui.tabs.lc_modeling.logic import compute
 
 if TYPE_CHECKING:
@@ -78,6 +78,7 @@ def _make_handler(
     sec_keys: tuple[str, ...],
     sys_keys: tuple[str, ...],
     obs_keys: tuple[str, ...],
+    puls_keys: tuple[str, ...],
 ) -> Callable[..., tuple[Figure, pd.DataFrame, gr.DownloadButton]]:
     """Return a Gradio event-handler function bound to the given key sequences.
 
@@ -93,6 +94,9 @@ def _make_handler(
     :type sys_keys: tuple[str, ...]
     :param obs_keys: Ordered keys for observer parameters.
     :type obs_keys: tuple[str, ...]
+    :param puls_keys: Ordered keys for pulsation parameters (same order for
+        both components, applied twice).
+    :type puls_keys: tuple[str, ...]
     :returns: A callable suitable for ``gr.Button.click(fn=...)``.
     :rtype: Callable[..., tuple[Figure, pandas.DataFrame]]
     """
@@ -102,6 +106,8 @@ def _make_handler(
         n_prim = len(prim_keys)
         n_sec = len(sec_keys)
         n_sys = len(sys_keys)
+        n_obs = len(obs_keys)
+        n_puls = len(puls_keys)
 
         primary_params = dict(zip(prim_keys, values[idx : idx + n_prim], strict=True))
         idx += n_prim
@@ -109,11 +115,20 @@ def _make_handler(
         idx += n_sec
         system_params = dict(zip(sys_keys, values[idx : idx + n_sys], strict=True))
         idx += n_sys
-        observer_params = dict(zip(obs_keys, values[idx:], strict=True))
+        observer_params = dict(zip(obs_keys, values[idx : idx + n_obs], strict=True))
+        idx += n_obs
+        primary_pulsation_params = dict(zip(puls_keys, values[idx : idx + n_puls], strict=True))
+        idx += n_puls
+        secondary_pulsation_params = dict(zip(puls_keys, values[idx : idx + n_puls], strict=True))
 
         try:
             fig, df, csv_path = compute.run_lc(
-                primary_params, secondary_params, system_params, observer_params,
+                primary_params,
+                secondary_params,
+                system_params,
+                observer_params,
+                primary_pulsation_params,
+                secondary_pulsation_params,
             )
             return fig, df, gr.DownloadButton(value=csv_path, visible=True)
         except Exception as exc:
@@ -166,9 +181,11 @@ def build() -> None:
         with gr.Row():
             with gr.Column(scale=1):
                 prim_comps = star_inputs.build("Primary Star", defaults=_PRIMARY_DEFAULTS)
+                prim_puls_comps = pulsation_inputs.build("Primary")
 
             with gr.Column(scale=1):
                 sec_comps = star_inputs.build("Secondary Star", defaults=_SECONDARY_DEFAULTS)
+                sec_puls_comps = pulsation_inputs.build("Secondary")
 
             with gr.Column(scale=1):
                 sys_comps = system_inputs.build(defaults=_SYSTEM_DEFAULTS)
@@ -203,16 +220,19 @@ def build() -> None:
         sec_keys = star_inputs.FIELD_ORDER
         sys_keys = system_inputs.FIELD_ORDER
         obs_keys = observer_inputs.FIELD_ORDER
+        puls_keys = pulsation_inputs.FIELD_ORDER
 
         all_inputs: list[gr.Component] = (
             list(prim_comps.values())
             + list(sec_comps.values())
             + list(sys_comps.values())
             + list(obs_comps.values())
+            + [prim_puls_comps[k] for k in puls_keys]
+            + [sec_puls_comps[k] for k in puls_keys]
         )
 
         compute_btn.click(
-            fn=_make_handler(prim_keys, sec_keys, sys_keys, obs_keys),
+            fn=_make_handler(prim_keys, sec_keys, sys_keys, obs_keys, puls_keys),
             inputs=all_inputs,
             outputs=[lc_plot, lc_table, dl_btn],
         )
@@ -233,4 +253,3 @@ def build() -> None:
             inputs=[json_file_input],
             outputs=all_form_outputs,
         )
-
