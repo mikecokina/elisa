@@ -210,8 +210,12 @@ def horizonatal_displacement_cmap(star: StarContainer, *args) -> NDArray:
         error_msg: str = "Horizontal displacement colormap is relevant only for stars with pulsations."
         raise ValueError(error_msg)
 
-    pargs: tuple = (star, 0.0, False, True, True)
-    pkwargs: dict = {"update_container": True, "return_perturbation": False, "spherical_perturbation": False}
+    pargs: tuple = (star, 0.0)
+    pkwargs: dict = {
+        "update_container": False,
+        "return_perturbation": True,
+        "spherical_perturbation": True,
+    }
 
     perturbation: NDArray = container_ops.position_perturbation(*pargs, **pkwargs)
 
