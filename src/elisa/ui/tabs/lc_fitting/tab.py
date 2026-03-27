@@ -348,6 +348,9 @@ def _build_data_accordion() -> tuple[
     with gr.Accordion("1 · Observational data", open=True):
         data_comps = data_inputs.build()
 
+        # Observed data plotting controls header
+        gr.Markdown("#### Observed data plotting controls")
+
         # Allow supplying period and T0 directly in the data section
         with gr.Row():
             # Default period and T0 come from the LC parameter spec defaults.

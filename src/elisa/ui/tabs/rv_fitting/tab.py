@@ -429,6 +429,10 @@ def build() -> None:  # noqa: C901, PLR0915
         # ------------------------------------------------------------------ #
         with gr.Accordion("1 · Observational data", open=True):
             data_comps: DataInputComponents = data_inputs.build()
+
+            # Observed data plotting controls header
+            gr.Markdown("#### Observed data plotting controls")
+
             # T0 input - only used when uploaded data are in Julian days (JD)
             with gr.Row():
                 # Allow supplying period and T0 directly in the data section
