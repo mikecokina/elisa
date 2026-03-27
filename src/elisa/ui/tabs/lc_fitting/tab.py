@@ -21,10 +21,14 @@ The ``semi_major_axis`` parameter supports a three-way mode selector:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, SupportsIndex
 
 import gradio as gr
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.figure import Figure  # noqa: TC002
 
+from elisa.analytics.binary_fit.shared import extend_observations_to_desired_interval
 from elisa.ui.tabs.lc_fitting.components import data_inputs, param_inputs
 from elisa.ui.tabs.lc_fitting.components.data_inputs import MAX_PASSBAND_ROWS
 from elisa.ui.tabs.lc_fitting.components.param_inputs import (
@@ -37,6 +41,7 @@ from elisa.ui.tabs.lc_fitting.logic import compute
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
 
 # ---------------------------------------------------------------------------
 # Tab ID constants
@@ -108,7 +113,6 @@ def _collect_param_values(
     :rtype: dict[str, object]
     """
     return dict(zip(param_keys, values[offset : offset + len(param_keys)], strict=True))
-
 
 
 def _parse_lc_inputs_simple(
@@ -200,7 +204,6 @@ def _build_mcmc_results() -> tuple[gr.Plot, gr.DataFrame, gr.Plot, gr.Plot, gr.D
 # ---------------------------------------------------------------------------
 # Event wiring helpers
 # ---------------------------------------------------------------------------
-
 
 
 def _wire_json_loader(  # noqa: C901
@@ -326,16 +329,98 @@ def _wire_json_loader(  # noqa: C901
 # ---------------------------------------------------------------------------
 
 
-def _build_data_accordion() -> data_inputs.LCDataComponents:
+def _build_data_accordion() -> tuple[
+    data_inputs.LCDataComponents,
+    gr.Number,
+    gr.Number,
+    gr.Number,
+    gr.Number,
+    gr.Number,
+    gr.Button,
+    gr.Plot,
+    gr.Accordion,
+]:
     """Render accordion 1 (Observational data) and return component refs.
 
     :returns: Dataclass with all passband row and control components.
     :rtype: data_inputs.LCDataComponents
     """
     with gr.Accordion("1 · Observational data", open=True):
-        return data_inputs.build()
+        data_comps = data_inputs.build()
 
+        # Allow supplying period and T0 directly in the data section
+        with gr.Row():
+            # Default period and T0 come from the LC parameter spec defaults.
+            # Start as non-interactive because the default X unit is Phases -
+            # they are only needed when the user switches to Julian days (JD).
+            period_comp = gr.Number(
+                value=param_inputs.SYSTEM_COMMON_SPEC.get("period", (None, None))[1],
+                label="Orbital period (P) [d] - used to phase JD data",
+                info="Optional - if set here it will be used instead of the System Period parameter",
+                interactive=False,
+                scale=2,
+            )
+            t0_comp = gr.Number(
+                value=param_inputs.SYSTEM_COMMON_SPEC.get("primary_minimum_time", (None, None))[1],
+                label="Primary minimum time (T0) - used to phase JD data",
+                info="Enable and set when X-axis unit is Julian days (JD)",
+                interactive=False,
+                scale=2,
+            )
 
+            start_phase_comp = gr.Number(
+                value=-0.6,
+                label="Start phase - left boundary for plotted interval",
+                info="Phase interval start, used to expand observations across cycles",
+                interactive=True,
+                scale=2,
+            )
+            stop_phase_comp = gr.Number(
+                value=0.6,
+                label="Stop phase - right boundary for plotted interval",
+                info="Phase interval end, used to expand observations across cycles",
+                interactive=True,
+                scale=2,
+            )
+
+            centre_comp = gr.Number(
+                value=0.0,
+                label="Phase centre - centre used when folding JD to phases",
+                info="Centre value passed to DataSet.convert_to_phases(centre=...)",
+                interactive=True,
+                scale=2,
+            )
+
+            plot_obs_btn = gr.Button("📈 Plot observed data", variant="secondary", scale=1)
+
+        # Toggle period and T0 interactivity based on selected x-unit.
+        # Both are only meaningful when data are in Julian days - they are
+        # not needed (and make no sense) when data are already in phases.
+        def _on_x_unit_change(val: str) -> tuple[object, object]:
+            is_jd = val == "Julian days (JD)"
+            return gr.update(interactive=is_jd), gr.update(interactive=is_jd)
+
+        data_comps.x_unit.change(
+            fn=_on_x_unit_change,
+            inputs=[data_comps.x_unit],
+            outputs=[period_comp, t0_comp],
+        )
+
+        # Collapsible plot area for observed light curves
+        with gr.Accordion("Observed data plot", open=False) as obs_plot_accordion:
+            observed_data_plot = gr.Plot(label="Observed data")
+
+        return (
+            data_comps,
+            period_comp,
+            t0_comp,
+            start_phase_comp,
+            stop_phase_comp,
+            centre_comp,
+            plot_obs_btn,
+            observed_data_plot,
+            obs_plot_accordion,
+        )
 
 
 def _build_mcmc_accordion() -> tuple[gr.Number, gr.Number, gr.Number, gr.Textbox, gr.Checkbox, gr.Checkbox]:
@@ -482,7 +567,17 @@ def build() -> None:  # noqa: C901, PLR0915
         )
 
         lsqrt_result_state: gr.State = gr.State()
-        data_comps = _build_data_accordion()
+        (
+            data_comps,
+            period_comp,
+            t0_comp,
+            start_phase_comp,
+            stop_phase_comp,
+            centre_comp,
+            plot_obs_btn,
+            observed_data_plot,
+            obs_plot_accordion,
+        ) = _build_data_accordion()
 
         # Build approach selector
         with gr.Accordion("2 · Initial parameters", open=True):
@@ -583,7 +678,6 @@ def build() -> None:  # noqa: C901, PLR0915
             standard_group,
         )
 
-
         # Unified LSQRT - routes to correct approach based on selection.
         # Inputs: lc_data + community_fit_inputs + standard_fit_inputs + approach_comp
         # (lc_data is identical for both approaches - same components)
@@ -594,7 +688,8 @@ def build() -> None:  # noqa: C901, PLR0915
             is_community = approach == "Community"
 
             x_unit_str, lc_rows, morphology, _ = _parse_lc_inputs_simple(
-                values[:n_lc], MAX_PASSBAND_ROWS,
+                values[:n_lc],
+                MAX_PASSBAND_ROWS,
             )
             if is_community:
                 fit_vals = _collect_param_values(community_fit_keys, values, n_lc)
@@ -603,7 +698,10 @@ def build() -> None:  # noqa: C901, PLR0915
 
             try:
                 result, fig, df, json_path = compute.run_lsqrt(
-                    lc_rows, x_unit_str, fit_vals, morphology,
+                    lc_rows,
+                    x_unit_str,
+                    fit_vals,
+                    morphology,
                 )
             except Exception as exc:
                 raise gr.Error(str(exc)) from exc
@@ -618,7 +716,8 @@ def build() -> None:  # noqa: C901, PLR0915
             is_community = approach == "Community"
 
             x_unit_str, lc_rows, morphology, _ = _parse_lc_inputs_simple(
-                values[:n_lc], MAX_PASSBAND_ROWS,
+                values[:n_lc],
+                MAX_PASSBAND_ROWS,
             )
             if is_community:
                 fit_vals = _collect_param_values(community_fit_keys, values, n_lc)
@@ -636,9 +735,16 @@ def build() -> None:  # noqa: C901, PLR0915
 
             try:
                 result, model_fig, corner_fig, traces_fig, df, json_path = compute.run_mcmc(
-                    lc_rows, x_unit_str, fit_vals, morphology,
-                    nwalkers=nwalkers, nsteps=nsteps, burn_in=burn_in,
-                    fit_id=fit_id, save=save, progress=progress,
+                    lc_rows,
+                    x_unit_str,
+                    fit_vals,
+                    morphology,
+                    nwalkers=nwalkers,
+                    nsteps=nsteps,
+                    burn_in=burn_in,
+                    fit_id=fit_id,
+                    save=save,
+                    progress=progress,
                 )
             except Exception as exc:
                 raise gr.Error(str(exc)) from exc
@@ -710,18 +816,20 @@ def build() -> None:  # noqa: C901, PLR0915
         )
 
         mcmc_inputs_list: list[gr.Component] = [
-            nwalkers_comp, nsteps_comp, burn_in_comp, fit_id_comp, save_chain_comp, progress_comp,
+            nwalkers_comp,
+            nsteps_comp,
+            burn_in_comp,
+            fit_id_comp,
+            save_chain_comp,
+            progress_comp,
         ]
 
         # Single combined input list for both unified handlers:
         # lc_data + community_fit + standard_fit + [approach]
         # lc_data is identical for both approaches (same component refs)
-        unified_lsqrt_inputs = (
-            community_lc_data_inputs + community_fit_inputs + standard_fit_inputs + [approach_comp]
-        )
+        unified_lsqrt_inputs = community_lc_data_inputs + community_fit_inputs + standard_fit_inputs + [approach_comp]
         unified_mcmc_inputs = (
-            community_lc_data_inputs + community_fit_inputs + standard_fit_inputs
-            + mcmc_inputs_list + [approach_comp]
+            community_lc_data_inputs + community_fit_inputs + standard_fit_inputs + mcmc_inputs_list + [approach_comp]
         )
 
         lsqrt_btn.click(
@@ -732,6 +840,173 @@ def build() -> None:  # noqa: C901, PLR0915
             inputs=unified_lsqrt_inputs,
             outputs=[lsqrt_result_state, lsqrt_model_plot, lsqrt_table, lsqrt_download],
             show_progress="full",
+        )
+
+        # Observed-data plotting handler - plot uploaded LC files (does not run fit)
+        def _plot_loaded_lc_handler(  # noqa: C901, PLR0912, PLR0915
+            *values: SupportsIndex,
+        ) -> tuple[Figure, dict]:
+            # values correspond to community_lc_data_inputs order: x_unit, passband_count, then per-row comps
+            x_unit_str = str(values[0])
+            passband_count = int(values[1])
+
+            # collect active row data into list of dicts (TypedDict)
+            lc_rows: list[dict] = []
+            offset = 2
+            for i in range(MAX_PASSBAND_ROWS):
+                if i >= passband_count:
+                    break
+                base = offset + i * 4
+                pb = str(values[base])
+                file_obj = values[base + 1]
+                yu = str(values[base + 2])
+                rm_raw = values[base + 3]
+                rm = float(rm_raw) if rm_raw is not None else None
+                lc_rows.append(
+                    {
+                        "passband": pb,
+                        "file_path": getattr(file_obj, "name", None),
+                        "y_unit": yu,
+                        "reference_magnitude": rm,
+                    },
+                )
+
+            # Determine indices for tail inputs (period/t0/etc). The prefix length is the number of
+            # lc_data inputs + community and standard fit inputs + approach radio.
+            prefix_len = len(community_lc_data_inputs) + len(community_fit_inputs) + len(standard_fit_inputs) + 1
+            tail = values[prefix_len : prefix_len + 8]
+            period_val = tail[0]
+            fit_period_val = tail[1]
+            fit_t0_val = tail[2]
+            t0_val = tail[3]
+            start_val = tail[4]
+            stop_val = tail[5]
+            centre_val = tail[6]
+            lsqrt_state_val = tail[7]
+
+            if not lc_rows:
+                msg = "No light curve files uploaded"
+                raise gr.Error(msg)
+
+            # Choose ephemeris values - prefer data-section period, then form period, then LSQRT result
+            def _extract_from_lsqr(key: str) -> object | None:
+                if not isinstance(lsqrt_state_val, dict):
+                    return None
+                system = lsqrt_state_val.get("system")
+                if not isinstance(system, dict):
+                    return None
+                meta = system.get(key)
+                if not isinstance(meta, dict):
+                    return None
+                return meta.get("value")
+
+            # final fallback: use parameter defaults from the LC param spec
+            _lc_spec = param_inputs.SYSTEM_COMMON_SPEC
+            param_default_period = _lc_spec.get("period", (None, None))[1]
+            param_default_t0 = _lc_spec.get("primary_minimum_time", (None, None))[1]
+
+            chosen_period = (
+                period_val
+                if period_val is not None
+                else fit_period_val
+                if fit_period_val is not None
+                else _extract_from_lsqr("period") or param_default_period
+            )
+
+            chosen_t0 = (
+                t0_val
+                if t0_val is not None
+                else fit_t0_val
+                if fit_t0_val is not None
+                else _extract_from_lsqr("primary_minimum_time") or param_default_t0
+            )
+
+            use_phases = x_unit_str == "Julian days (JD)"
+            if use_phases and chosen_period is None:
+                msg = "Orbital period is required to phase JD data."
+                raise gr.Error(msg)
+            if use_phases and chosen_t0 is None:
+                msg = "Primary minimum time (T0) is required to phase JD data."
+                raise gr.Error(msg)
+
+            # Build figure and plot all uploaded passbands
+            fig, ax = plt.subplots(figsize=(10, 4))
+            for row in lc_rows:
+                fp = row.get("file_path")
+                pb = row.get("passband")
+                if fp is None:
+                    # skip empty rows
+                    continue
+                try:
+                    lc = compute.load_lc_data(fp, pb, x_unit_str, row.get("y_unit"), row.get("reference_magnitude"))
+                except Exception as exc:
+                    msg = f"Failed to load LC file for passband {pb}: {exc}"
+                    raise gr.Error(msg) from exc
+
+                if use_phases:
+                    centre_arg = float(centre_val) if centre_val is not None else 0.0
+                    try:
+                        lc.convert_to_phases(float(chosen_period), float(chosen_t0), centre=centre_arg)
+                    except Exception as exc:
+                        msg = f"Failed to phase LC data for passband {pb}: {exc}"
+                        raise gr.Error(msg) from exc
+
+                x = np.asarray(lc.x_data)
+                y = np.asarray(lc.y_data)
+                yerr = None if lc.y_err is None else np.asarray(lc.y_err)
+
+                if use_phases and start_val is not None and stop_val is not None:
+                    sp = float(start_val)
+                    ep = float(stop_val)
+                    if sp >= ep:
+                        msg = "Start phase must be less than stop phase"
+                        raise gr.Error(msg)
+                    x_out, y_out, yerr_out = extend_observations_to_desired_interval(
+                        sp, ep, {pb: x}, {pb: y}, {pb: yerr},
+                    )
+                    px = np.asarray(x_out.get(pb, np.empty(0, dtype=float)))
+                    py = np.asarray(y_out.get(pb, np.empty(0, dtype=float)))
+                    perr = yerr_out.get(pb) if isinstance(yerr_out, dict) else None
+                    if perr is not None:
+                        perr = np.asarray(perr)
+                    if px.size:
+                        order = np.argsort(px)
+                        px = px[order]
+                        py = py[order]
+                        perr = None if perr is None else perr[order]
+                else:
+                    px = x
+                    py = y
+                    perr = yerr
+
+                if perr is not None:
+                    ax.errorbar(px, py, yerr=perr, fmt="o", markersize=4, label=pb)
+                else:
+                    ax.plot(px, py, "o", markersize=4, label=pb)
+
+            ax.set_xlabel("Phase" if use_phases else "Time")
+            ax.set_ylabel("Flux")
+            ax.grid(visible=True)
+            ax.legend(loc="best")
+            fig.tight_layout()
+            return fig, gr.update(open=True)
+
+        # Wire observed-data plot button: unified inputs share the same lc_data inputs prefix
+        plot_inputs = [*community_lc_data_inputs, *community_fit_inputs, *standard_fit_inputs, approach_comp]
+        tail_inputs = [
+            period_comp,
+            community_fit_comps.get("system_period_value"),
+            community_fit_comps.get("system_primary_minimum_time_value"),
+            t0_comp,
+            start_phase_comp,
+            stop_phase_comp,
+            centre_comp,
+            lsqrt_result_state,
+        ]
+        plot_obs_btn.click(
+            fn=_plot_loaded_lc_handler,
+            inputs=[*plot_inputs, *tail_inputs],
+            outputs=[observed_data_plot, obs_plot_accordion],
         )
 
         transfer_btn.click(

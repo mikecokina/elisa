@@ -14,7 +14,7 @@ the least-squares (LSQRT) or MCMC method:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import gradio as gr
 import matplotlib.pyplot as plt
@@ -168,7 +168,7 @@ def _mcmc_handler(
     return handler
 
 
-def _plot_loaded_data_handler(_data_keys: tuple[str, ...]) -> Callable[..., Figure]:  # noqa: C901, PLR0915
+def _plot_loaded_data_handler(_data_keys: tuple[str, ...]) -> Callable[..., tuple[Figure, dict[str, Any]]]:  # noqa: C901, PLR0915
     """Return a handler that plots uploaded RV files (observational points).
 
     If the uploaded data are in Julian days, the handler will phase the time
@@ -190,7 +190,7 @@ def _plot_loaded_data_handler(_data_keys: tuple[str, ...]) -> Callable[..., Figu
         stop_phase: float | None,
         centre_value: float | None,
         lsqrt_result: dict | None = None,
-    ) -> Figure:
+    ) -> tuple[Figure, dict[str, Any]]:
         primary_path: str | None = getattr(primary_file, "name", None)
         secondary_path: str | None = getattr(secondary_file, "name", None)
 
@@ -345,7 +345,7 @@ def _plot_loaded_data_handler(_data_keys: tuple[str, ...]) -> Callable[..., Figu
         ax.legend(loc="best")
         fig.tight_layout()
 
-        return fig
+        return fig, gr.update(open=True)
 
     return _plot_loaded_data
 
@@ -479,17 +479,23 @@ def build() -> None:  # noqa: C901, PLR0915
                     variant="secondary",
                     scale=1,
                 )
-            # Toggle T0 interactivity based on selected x-unit
+            # Toggle period and T0 interactivity based on selected x-unit.
+            # Both are only meaningful when data are in Julian days - they are
+            # not needed (and make no sense) when data are already in phases.
+            def _on_x_unit_change(val: str) -> tuple[object, object]:
+                is_jd = val == "Julian days (JD)"
+                return gr.update(interactive=is_jd), gr.update(interactive=is_jd)
+
             data_comps["x_unit"].change(
-                fn=lambda val: gr.update(interactive=(val == "Julian days (JD)")),
+                fn=_on_x_unit_change,
                 inputs=[data_comps["x_unit"]],
-                outputs=[t0_comp],
+                outputs=[period_comp, t0_comp],
             )
 
             # Inline, collapsible plot area for the uploaded observational data -
             # placed inside the data accordion so the plot appears near the inputs.
             # Default to collapsed so the data controls remain the primary focus.
-            with gr.Accordion("Observed data plot", open=False):
+            with gr.Accordion("Observed data plot", open=False) as obs_plot_accordion:
                 observed_data_plot = gr.Plot(label="Observed data")
 
         # ------------------------------------------------------------------ #
@@ -710,7 +716,7 @@ def build() -> None:  # noqa: C901, PLR0915
                 centre_comp,
                 lsqrt_result_state,
             ],
-            outputs=[observed_data_plot],
+            outputs=[observed_data_plot, obs_plot_accordion],
         )
 
         # Transfer LSQRT result values into the param form

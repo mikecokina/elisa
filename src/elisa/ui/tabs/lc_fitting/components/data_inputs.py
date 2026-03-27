@@ -21,7 +21,7 @@ from elisa.conf.settings import settings
 MAX_PASSBAND_ROWS: int = 8
 
 X_UNIT_CHOICES: list[str] = ["Julian days (JD)", "Phases (dimensionless)"]
-X_UNIT_DEFAULT: str = X_UNIT_CHOICES[0]
+X_UNIT_DEFAULT: str = X_UNIT_CHOICES[1]
 
 Y_UNIT_CHOICES: list[str] = ["Flux (dimensionless)", "Magnitude (mag)"]
 Y_UNIT_DEFAULT: str = Y_UNIT_CHOICES[0]

@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 _Spec = tuple[str, float, bool, float | None, float | None, str | None]
 
 # Common system parameters for both approaches
-_SYSTEM_COMMON_SPEC: dict[str, _Spec] = {
+SYSTEM_COMMON_SPEC: dict[str, _Spec] = {
     "inclination": (
         "**Inclination**  i  [deg]",
         85.0, False, 80.0, 90.0, "deg",
@@ -126,12 +126,12 @@ _COMPONENT_STANDARD_SPEC: dict[str, _Spec] = {
 
 #: System params for community approach (common + semi_major_axis + mass_ratio).
 SYSTEM_PARAMS_COMMUNITY: tuple[str, ...] = (
-    *tuple(_SYSTEM_COMMON_SPEC.keys()),
+    *tuple(SYSTEM_COMMON_SPEC.keys()),
     *tuple(_SYSTEM_COMMUNITY_SPEC.keys()),
 )
 
 #: System params for standard approach (common only, no semi_major_axis or mass_ratio).
-SYSTEM_PARAMS_STANDARD: tuple[str, ...] = tuple(_SYSTEM_COMMON_SPEC.keys())
+SYSTEM_PARAMS_STANDARD: tuple[str, ...] = tuple(SYSTEM_COMMON_SPEC.keys())
 
 #: Component params for community approach (no mass).
 COMPONENT_PARAMS_COMMUNITY: tuple[str, ...] = tuple(_COMPONENT_COMMON_SPEC.keys())
@@ -144,7 +144,7 @@ COMPONENT_PARAMS_STANDARD: tuple[str, ...] = (
 
 # Backward compatibility exports - default to community approach
 SYSTEM_PARAMS: tuple[str, ...] = SYSTEM_PARAMS_COMMUNITY
-SYSTEM_REGULAR_PARAMS: tuple[str, ...] = tuple(_SYSTEM_COMMON_SPEC.keys())
+SYSTEM_REGULAR_PARAMS: tuple[str, ...] = tuple(SYSTEM_COMMON_SPEC.keys())
 COMPONENT_PARAMS: tuple[str, ...] = COMPONENT_PARAMS_COMMUNITY
 
 
@@ -429,7 +429,7 @@ def _build_approach_params(
     system_params = SYSTEM_PARAMS_COMMUNITY if approach == "community" else SYSTEM_PARAMS_STANDARD
 
     # Build combined system spec
-    system_spec = {**_SYSTEM_COMMON_SPEC, **_SYSTEM_COMMUNITY_SPEC} if approach == "community" else _SYSTEM_COMMON_SPEC
+    system_spec = {**SYSTEM_COMMON_SPEC, **_SYSTEM_COMMUNITY_SPEC} if approach == "community" else SYSTEM_COMMON_SPEC
 
     # ------------------------------------------------------------------ #
     # Section: System                                                       #
