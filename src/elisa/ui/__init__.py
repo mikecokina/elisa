@@ -38,6 +38,7 @@ _THEME_JS = {
 def launch(
     *,
     theme_mode: Literal["light", "dark", "system"] = "light",
+    port: int | None = None,
     **kwargs: Any,
 ) -> None:
     """Build and launch the ELISa Gradio UI.
@@ -46,8 +47,13 @@ def launch(
         ``"light"`` forces light theme, ``"dark"`` forces dark theme,
         ``"system"`` defers to browser/OS preference.
     :type theme_mode: Literal["light", "dark", "system"]
+    :param port: Optional TCP port to bind the Gradio server to. When set,
+        this value is forwarded to ``gradio.Blocks.launch`` as
+        ``server_port``. If ``None``, the caller may provide ``server_port``
+        via ``**kwargs`` or Gradio will pick a default.
+    :type port: int | None
     :param kwargs: Additional arguments forwarded to ``gr.Blocks.launch``
-        (e.g. ``server_port``, ``share``, ``inbrowser``).
+        (e.g. ``share``, ``inbrowser``).
     :type kwargs: object
     :returns: ``None``
     :rtype: None
@@ -60,5 +66,10 @@ def launch(
     # Use official Gradio workaround: force theme via __theme URL parameter
     if theme_mode in ("light", "dark"):
         kwargs.setdefault("js", _THEME_JS[theme_mode])
+
+    # Allow explicit port override via the `port` parameter. If the caller
+    # already provided `server_port` in kwargs, do not override it.
+    if port is not None:
+        kwargs.setdefault("server_port", int(port))
 
     build_app().launch(**kwargs)
