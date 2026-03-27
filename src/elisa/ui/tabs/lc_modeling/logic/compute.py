@@ -9,7 +9,7 @@ rendered by the UI layer.
 from __future__ import annotations
 
 import tempfile
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -18,6 +18,7 @@ import pandas as pd
 from elisa import BinarySystem, Observer, Star
 from elisa import units as u
 from elisa.ui.shared.fit_json import load_model_params_from_json  # noqa: F401 - re-exported for callers
+from elisa.utc import UTC
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure

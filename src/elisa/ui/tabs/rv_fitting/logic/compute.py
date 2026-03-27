@@ -15,7 +15,7 @@ from __future__ import annotations
 import contextlib
 import json
 import tempfile
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -25,6 +25,7 @@ import pandas as pd
 from elisa import units as u
 from elisa.analytics import RVBinaryAnalyticsTask, RVData
 from elisa.ui.shared.logging_config import fit_logging
+from elisa.utc import UTC
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

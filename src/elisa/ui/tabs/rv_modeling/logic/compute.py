@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import tempfile
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -10,11 +10,14 @@ import pandas as pd
 
 from elisa import Observer
 from elisa.ui.shared.plotting import render_rv_figure
+
+# noinspection PyProtectedMember
 from elisa.ui.tabs.lc_modeling.logic.compute import (
     _build_star,
     _build_system,
     _opt_float,
 )
+from elisa.utc import UTC
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure

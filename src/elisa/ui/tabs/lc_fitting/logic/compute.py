@@ -18,7 +18,7 @@ import contextlib
 import json
 import logging
 import tempfile
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, TypedDict
 
@@ -29,6 +29,7 @@ from elisa import units as u
 from elisa.analytics import LCBinaryAnalyticsTask, LCData
 from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.ui.shared.logging_config import fit_logging
+from elisa.utc import UTC
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

@@ -5,6 +5,7 @@ import numpy as np
 from elisa import settings
 from elisa import units as u
 from elisa.atm import atm_file_prefix_to_quantity_list
+from elisa.utc import UTC
 from elisa.utils import jd_from_datetime
 
 PARAM_PARSER = "@"
@@ -50,7 +51,7 @@ DEFAULT_NORMALIZATION_STAR = {
     "synchronicity": (0.01, 10),
 }
 
-CURRENT_TIME_JD = jd_from_datetime(datetime.datetime.now(tz=datetime.UTC))
+CURRENT_TIME_JD = jd_from_datetime(datetime.datetime.now(tz=UTC))
 
 DEFAULT_NORMALIZATION_SYSTEM = {
     "inclination": (0, 180),
