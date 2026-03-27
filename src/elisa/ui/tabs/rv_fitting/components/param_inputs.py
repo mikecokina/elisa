@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 # (label, default_value, default_fixed, default_min, default_max, unit_hint)
 _Spec = tuple[str, float, bool, float | None, float | None, str]
 
-_PARAM_SPEC: dict[str, _Spec] = {
+PARAM_SPEC: dict[str, _Spec] = {
     "eccentricity": (
         "**Eccentricity**  e",
         0.03, False, 0.0, 0.1, "",
@@ -64,7 +64,7 @@ _PARAM_SPEC: dict[str, _Spec] = {
 }
 
 # Ordered parameter names - defines the row order in the form.
-PARAMS: tuple[str, ...] = tuple(_PARAM_SPEC.keys())
+PARAMS: tuple[str, ...] = tuple(PARAM_SPEC.keys())
 
 # Flat Gradio input ordering: value, mode, constraint, min, max for every parameter.
 FIELD_ORDER: tuple[str, ...] = tuple(
@@ -228,7 +228,7 @@ def build(
     components: dict[str, gr.Component] = {}
 
     with gr.Accordion("System Parameters", open=True):
-        for name, (label, def_val, def_fixed, def_min, def_max, _unit) in _PARAM_SPEC.items():
+        for name, (label, def_val, def_fixed, def_min, def_max, _unit) in PARAM_SPEC.items():
             if name == "ln_f":
                 continue
             mode_str = str(defaults.get(f"{name}_mode", "fixed" if def_fixed else "free"))
@@ -242,7 +242,7 @@ def build(
             "Log noise parameter used in MCMC fitting to account for "
             "underestimated observational uncertainties.",
         )
-        label, def_val, def_fixed, def_min, def_max, _unit = _PARAM_SPEC["ln_f"]
+        label, def_val, def_fixed, def_min, def_max, _unit = PARAM_SPEC["ln_f"]
         mode_str = str(defaults.get("ln_f_mode", "fixed" if def_fixed else "free"))
         val = float(defaults.get("ln_f_value", def_val))  # type: ignore[arg-type]
         lo = defaults.get("ln_f_min", def_min)

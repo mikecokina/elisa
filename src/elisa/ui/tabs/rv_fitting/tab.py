@@ -17,9 +17,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import gradio as gr
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd  # noqa: TC002 - needed at runtime for Gradio type hints
 from matplotlib.figure import Figure  # noqa: TC002 - same reason
 
+from elisa import units as u
+from elisa.analytics.binary_fit.shared import extend_observations_to_desired_interval
 from elisa.ui.tabs.rv_fitting.components import data_inputs, param_inputs
 from elisa.ui.tabs.rv_fitting.logic import compute
 
@@ -164,6 +168,191 @@ def _mcmc_handler(
     return handler
 
 
+def _plot_loaded_data_handler(_data_keys: tuple[str, ...]) -> Callable[..., Figure]:  # noqa: C901, PLR0915
+    """Return a handler that plots uploaded RV files (observational points).
+
+    If the uploaded data are in Julian days, the handler will phase the time
+    series using the supplied orbital *period* and *T0* (primary minimum time).
+    Otherwise, the raw x-axis is used (time/phase as uploaded).
+
+    The function returns a matplotlib Figure showing primary and optional
+    secondary data with error bars.
+    """
+
+    def _plot_loaded_data(  # noqa: C901, PLR0912, PLR0915
+        primary_file: object | None,
+        secondary_file: object | None,
+        x_unit_str: str,
+        data_period: float | None,
+        fit_period: float | None,
+        t0_value: float | None,
+        start_phase: float | None,
+        stop_phase: float | None,
+        centre_value: float | None,
+        lsqrt_result: dict | None = None,
+    ) -> Figure:
+        primary_path: str | None = getattr(primary_file, "name", None)
+        secondary_path: str | None = getattr(secondary_file, "name", None)
+
+        try:
+            rv_primary = compute.load_rv_data(primary_path, x_unit_str)
+            rv_secondary = compute.load_rv_data(secondary_path, x_unit_str)
+        except Exception as exc:
+            msg = str(exc)
+            raise gr.Error(msg) from exc
+
+        if rv_primary is None:
+            msg = "Primary RV data file is required."
+            raise gr.Error(msg)
+
+        # Decide whether to phase JD times
+        use_phases = x_unit_str == "Julian days (JD)"
+        # initialize x arrays so linters don't complain about potential
+        # uninitialized usage later
+        secondary_x = None
+        sp = None
+        ep = None
+
+        if use_phases:
+            # prefer period supplied in data section, otherwise fall back to
+            # the value from the parameter form
+            period_value = data_period if data_period is not None else fit_period
+            # fallback to stored LSQRT result if available
+            if period_value is None and lsqrt_result is not None:
+                try:
+                    period_value = lsqrt_result.get("system", {}).get("period", {}).get("value")
+                except (AttributeError, KeyError, TypeError):
+                    period_value = None
+
+            if period_value is None:
+                msg = (
+                    "Orbital period is required to phase JD data. Provide it in the data section, "
+                    "in System Parameters, or run Least Squares to store a result."
+                )
+                raise gr.Error(msg)
+            if t0_value is None:
+                msg = "Primary minimum time (T0) is required to phase JD data."
+                raise gr.Error(msg)
+
+            # Use the RVData.convert_to_phases method so phasing logic is
+            # consistent with LC phasing (see demo12 example). This updates
+            # the dataset x_data in-place and sets x_unit accordingly.
+            try:
+                centre_arg = float(centre_value) if centre_value is not None else 0.0
+                rv_primary.convert_to_phases(float(period_value), float(t0_value), centre=centre_arg)
+                primary_x = rv_primary.x_data
+            except (ValueError, TypeError) as exc:
+                msg = f"Failed to phase primary data: {exc}"
+                raise gr.Error(msg) from exc
+
+            if rv_secondary is not None:
+                try:
+                    centre_arg = float(centre_value) if centre_value is not None else 0.0
+                    rv_secondary.convert_to_phases(float(period_value), float(t0_value), centre=centre_arg)
+                    secondary_x = rv_secondary.x_data
+                except (ValueError, TypeError):
+                    # if secondary phasing fails, fall back to raw times
+                    secondary_x = rv_secondary.x_data
+        else:
+            primary_x = rv_primary.x_data
+            secondary_x = rv_secondary.x_data if rv_secondary is not None else None
+
+        # Convert velocities to km/s
+        primary_y = (rv_primary.y_data * u.VELOCITY_UNIT).to(u.km / u.s).value
+        primary_yerr = None
+        if rv_primary.y_err is not None:
+            try:
+                primary_yerr = (rv_primary.y_err * u.VELOCITY_UNIT).to(u.km / u.s).value
+            except (ValueError, TypeError):
+                primary_yerr = None
+
+        # If folded to phases and an interval is provided, expand observations
+        if use_phases and start_phase is not None and stop_phase is not None:
+            try:
+                sp = float(start_phase)
+                ep = float(stop_phase)
+            except (TypeError, ValueError) as exc:
+                msg = f"Invalid start/stop phase values: {exc}"
+                raise gr.Error(msg) from exc
+            if sp >= ep:
+                msg = "Start phase must be less than stop phase"
+                raise gr.Error(msg)
+
+            x_out, y_out, yerr_out = extend_observations_to_desired_interval(
+                sp,
+                ep,
+                {"primary": np.asarray(primary_x)},
+                {"primary": np.asarray(primary_y)},
+                {"primary": (np.asarray(primary_yerr) if primary_yerr is not None else None)},
+            )
+            px = np.asarray(x_out.get("primary", np.empty(0, dtype=float)))
+            py = np.asarray(y_out.get("primary", np.empty(0, dtype=float)))
+            perr = yerr_out.get("primary") if isinstance(yerr_out, dict) else None
+            if perr is not None:
+                perr = np.asarray(perr)
+            if px.size:
+                order = np.argsort(px)
+                px = px[order]
+                py = py[order]
+                perr = None if perr is None else perr[order]
+        else:
+            px = np.asarray(primary_x)
+            py = np.asarray(primary_y)
+            perr = None if primary_yerr is None else np.asarray(primary_yerr)
+
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.errorbar(px, py, yerr=perr, fmt="o", label="Primary", markersize=4)
+
+        if rv_secondary is not None:
+            secondary_y = (rv_secondary.y_data * u.VELOCITY_UNIT).to(u.km / u.s).value
+            secondary_yerr = None
+            if rv_secondary.y_err is not None:
+                try:
+                    secondary_yerr = (rv_secondary.y_err * u.VELOCITY_UNIT).to(u.km / u.s).value
+                except (ValueError, TypeError):
+                    secondary_yerr = None
+            # secondary - apply same expansion when phasing and interval provided
+            if use_phases and start_phase is not None and stop_phase is not None:
+                x_out_s, y_out_s, yerr_out_s = extend_observations_to_desired_interval(
+                    sp,
+                    ep,
+                    {"secondary": np.asarray(secondary_x)},
+                    {"secondary": np.asarray(secondary_y)},
+                    {"secondary": (np.asarray(secondary_yerr) if secondary_yerr is not None else None)},
+                )
+                sx = np.asarray(x_out_s.get("secondary", np.empty(0, dtype=float)))
+                sy = np.asarray(y_out_s.get("secondary", np.empty(0, dtype=float)))
+                serr = yerr_out_s.get("secondary") if isinstance(yerr_out_s, dict) else None
+                if serr is not None:
+                    serr = np.asarray(serr)
+                if sx.size:
+                    order = np.argsort(sx)
+                    sx = sx[order]
+                    sy = sy[order]
+                    serr = None if serr is None else serr[order]
+            else:
+                sx = secondary_x if secondary_x is not None else rv_secondary.x_data
+                sy = secondary_y
+                serr = None if secondary_yerr is None else np.asarray(secondary_yerr)
+
+            ax.errorbar(sx, sy, yerr=serr, fmt="o", label="Secondary", markersize=4)
+
+        xlabel = "Phase" if use_phases else "Time"
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(r"Radial velocity  (km s$^{-1}$)")
+        ax.set_title("Observed radial velocity data", pad=10)
+        ax.grid(visible=True)
+        ax.legend(loc="best")
+        fig.tight_layout()
+
+        return fig
+
+    return _plot_loaded_data
+
+
+
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -204,7 +393,7 @@ def _build_mcmc_results() -> tuple[gr.Plot, gr.DataFrame, gr.Plot, gr.Plot, gr.D
     return model_plot, table, corner_plot, traces_plot, download
 
 
-def build() -> None:  # noqa: PLR0915
+def build() -> None:  # noqa: C901, PLR0915
     """Build the RV Fitting tab inside the active ``gr.Blocks`` context.
 
     Must be called from within a ``gr.Blocks`` context manager.  Wires all
@@ -240,6 +429,68 @@ def build() -> None:  # noqa: PLR0915
         # ------------------------------------------------------------------ #
         with gr.Accordion("1 · Observational data", open=True):
             data_comps: DataInputComponents = data_inputs.build()
+            # T0 input - only used when uploaded data are in Julian days (JD)
+            with gr.Row():
+                # Allow supplying period and T0 directly in the data section
+                period_comp = gr.Number(
+                    value=param_inputs.PARAM_SPEC.get("period", (None, None))[1],
+                    label="Orbital period (P) [d] - used to phase JD data",
+                    info="Optional - if set here it will be used instead of the System Period parameter",
+                    interactive=True,
+                    scale=2,
+                )
+
+                # Make T0 interactive by default (JD is the UI default)
+                t0_comp = gr.Number(
+                    value=param_inputs.PARAM_SPEC.get("primary_minimum_time", (None, None))[1],
+                    label="Primary minimum time (T0) - used to phase JD data",
+                    info="Enable and set when X-axis unit is Julian days (JD)",
+                    interactive=True,
+                    scale=2,
+                )
+
+                # Phase window controls - used when plotting phased data
+                start_phase_comp = gr.Number(
+                    value=-0.6,
+                    label="Start phase - left boundary for plotted interval",
+                    info="Phase interval start, used to expand observations across cycles",
+                    interactive=True,
+                    scale=2,
+                )
+                stop_phase_comp = gr.Number(
+                    value=0.6,
+                    label="Stop phase - right boundary for plotted interval",
+                    info="Phase interval end, used to expand observations across cycles",
+                    interactive=True,
+                    scale=2,
+                )
+
+                # Centre used when folding JD to phases
+                centre_comp = gr.Number(
+                    value=0.0,
+                    label="Phase centre - centre used when folding JD to phases",
+                    info="Centre value passed to DataSet.convert_to_phases(centre=...)",
+                    interactive=True,
+                    scale=2,
+                )
+
+                plot_obs_btn = gr.Button(
+                    "📈 Plot observed data",
+                    variant="secondary",
+                    scale=1,
+                )
+            # Toggle T0 interactivity based on selected x-unit
+            data_comps["x_unit"].change(
+                fn=lambda val: gr.update(interactive=(val == "Julian days (JD)")),
+                inputs=[data_comps["x_unit"]],
+                outputs=[t0_comp],
+            )
+
+            # Inline, collapsible plot area for the uploaded observational data -
+            # placed inside the data accordion so the plot appears near the inputs.
+            # Default to collapsed so the data controls remain the primary focus.
+            with gr.Accordion("Observed data plot", open=False):
+                observed_data_plot = gr.Plot(label="Observed data")
 
         # ------------------------------------------------------------------ #
         # Section 2 - Initial parameters                                       #
@@ -416,6 +667,18 @@ def build() -> None:  # noqa: PLR0915
             outputs=fit_inputs_list,
         )
 
+        # Keep the data-section period input in sync with the System Period value
+        # so users who only set the system period don't need to copy it manually.
+        # Ensure the component is seen as a concrete gr.Number so static
+        # analyzers recognize the `.change` method. We assign it to a
+        # local variable with an explicit type annotation and use that.
+        period_value_comp: gr.Number = fit_comps["period_value"]  # type: ignore[assignment]
+        period_value_comp.change(
+            fn=lambda val: gr.update(value=val),
+            inputs=[period_value_comp],
+            outputs=[period_comp],
+        )
+
         # LSQRT run - immediately switch tab, then run computation
         lsqrt_btn.click(
             fn=lambda: gr.update(selected=_TAB_LSQRT),
@@ -430,6 +693,24 @@ def build() -> None:  # noqa: PLR0915
                 lsqrt_download,
             ],
             show_progress="full",
+        )
+
+        # Plot loaded observational data without fitting - include period and T0
+        plot_obs_btn.click(
+            fn=_plot_loaded_data_handler(data_keys),
+            inputs=[
+                data_inputs_list[0],  # primary_file
+                data_inputs_list[1],  # secondary_file
+                data_inputs_list[2],  # x_unit
+                period_comp,          # optional period provided in data section
+                fit_comps["period_value"],
+                t0_comp,
+                start_phase_comp,
+                stop_phase_comp,
+                centre_comp,
+                lsqrt_result_state,
+            ],
+            outputs=[observed_data_plot],
         )
 
         # Transfer LSQRT result values into the param form
