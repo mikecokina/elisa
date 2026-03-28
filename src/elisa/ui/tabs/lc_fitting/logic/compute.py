@@ -363,6 +363,7 @@ def build_x0(param_values: dict[str, object], *, include_nuisance: bool = False)
     from elisa.ui.tabs.lc_fitting.components.param_inputs import (  # noqa: PLC0415
         COMPONENT_PARAMS,
         SYSTEM_REGULAR_PARAMS,
+        parse_spots_fit,
     )
 
     # Build all regular system parameters (common to both standard and community)
@@ -389,6 +390,15 @@ def build_x0(param_values: dict[str, object], *, include_nuisance: bool = False)
         "primary": _build_component_params(param_values, "primary", COMPONENT_PARAMS),
         "secondary": _build_component_params(param_values, "secondary", COMPONENT_PARAMS),
     }
+
+    # Attach spots if present in the flat param_values for primary and secondary
+    primary_spots = parse_spots_fit(param_values, section="primary")
+    if primary_spots:
+        result["primary"]["spots"] = primary_spots
+
+    secondary_spots = parse_spots_fit(param_values, section="secondary")
+    if secondary_spots:
+        result["secondary"]["spots"] = secondary_spots
 
     if include_nuisance:
         result["nuisance"] = {"ln_f": _build_nuisance_entry(param_values)}

@@ -120,6 +120,16 @@ _COMPONENT_STANDARD_SPEC: dict[str, _Spec] = {
     ),
 }
 
+MAX_SPOT_SLOTS = 6
+
+# Unit map for spot parameters
+SPOT_UNITS: dict[str, str] = {
+    "longitude": "deg",
+    "latitude": "deg",
+    "angular_radius": "deg",
+    "temperature_factor": None,  # dimensionless
+}
+
 # ---------------------------------------------------------------------------
 # Exported name tuples
 # ---------------------------------------------------------------------------
@@ -170,10 +180,28 @@ def _build_field_order(approach: Literal["community", "standard"]) -> tuple[str,
             for name in component_params
             for sub in ("value", "mode", "constraint", "min", "max")
         ),
+        # Spots for primary - enabled, count, then per-spot fields
+        "primary_spots_enabled",
+        "primary_spot_count",
+        *(
+            f"primary_spot_{i}_{p}_{s}"
+            for i in range(6)
+            for p in ("longitude", "latitude", "angular_radius", "temperature_factor")
+            for s in ("value", "mode", "constraint", "min", "max")
+        ),
         *(
             f"secondary_{name}_{sub}"
             for name in component_params
             for sub in ("value", "mode", "constraint", "min", "max")
+        ),
+        # Spots for secondary - enabled, count, then per-spot fields
+        "secondary_spots_enabled",
+        "secondary_spot_count",
+        *(
+            f"secondary_spot_{i}_{p}_{s}"
+            for i in range(6)
+            for p in ("longitude", "latitude", "angular_radius", "temperature_factor")
+            for s in ("value", "mode", "constraint", "min", "max")
         ),
         "nuisance_ln_f_value",
         "nuisance_ln_f_mode",
@@ -375,6 +403,164 @@ def _build_component_section(
         constraint = defaults.get(f"{section}_{name}_constraint")
         _param_row(components, section, name, label, val, fixed, lo, hi, constraint)
 
+    # ------------------------------------------------------------------ #
+    # Spots UI for this component                                          #
+    # ------------------------------------------------------------------ #
+    from elisa.ui.shared import build_full_width_button_row
+
+    MAX_SPOTS_LOCAL = 6
+    SPOT_PARAMS: tuple[str, ...] = (
+        "longitude",
+        "latitude",
+        "angular_radius",
+        "temperature_factor",
+    )
+
+    # sensible defaults for new spot rows
+    _SPOT_DEFAULTS: dict[str, tuple[float, float, float]] = {
+        "longitude": (230.0, 180.0, 270.0),
+        "latitude": (45.0, 0.0, 90.0),
+        "angular_radius": (50.0, 45.0, 80.0),
+        "temperature_factor": (0.98, 0.93, 1.0),
+    }
+
+    def _make_spot_add_handler(max_spots: int):
+        def handler(spot_count: int):
+            current = int(spot_count)
+            new_count = min(current + 1, max_spots)
+            return [new_count, *[gr.update(visible=(i < new_count)) for i in range(max_spots)]]
+
+        return handler
+
+    def _make_spot_remove_handler(slot_idx: int, max_spots: int):
+        n_params = len(SPOT_PARAMS)
+        n_sub = 5  # value, mode, constraint, min, max
+        default_row = []
+        for p in SPOT_PARAMS:
+            dv, dlo, dhi = _SPOT_DEFAULTS[p]
+            default_row.extend([dv, "free", "", dlo, dhi])
+
+        def handler(spot_count: int, *flat_values: object) -> list[object]:
+            current = int(spot_count)
+            total_outputs = 1 + max_spots + max_spots * n_params * n_sub
+            if current == 0:
+                return [gr.update()] * total_outputs
+
+            new_count = max(0, current - 1)
+
+            # reconstruct spots array from flat_values
+            slots: list[list[object]] = []
+            idx = 0
+            for k in range(max_spots):
+                slot_vals: list[object] = []
+                for _ in range(n_params * n_sub):
+                    slot_vals.append(flat_values[idx])
+                    idx += 1
+                slots.append(slot_vals)
+
+            # shift left from slot_idx
+            for k in range(slot_idx, max_spots - 1):
+                slots[k] = slots[k + 1]
+            slots[-1] = list(default_row)
+
+            out: list[object] = [new_count]
+            out.extend(gr.update(visible=(k < new_count)) for k in range(max_spots))
+            for k in range(max_spots):
+                for val in slots[k]:
+                    out.append(gr.update(value=val))
+            return out
+
+        return handler
+
+    with gr.Accordion("Spots (optional)", open=False):
+        enabled_comp = gr.Checkbox(
+            label=f"Enable {section.capitalize()} spots",
+            value=False,
+            info="Tick to add surface spots to this component.",
+        )
+        spot_count = gr.State(value=0)
+
+        with gr.Column(visible=False) as spots_section:
+            add_btn = build_full_width_button_row(
+                "+ Add spot",
+                elem_classes=["full-width-button"],
+                spacer_margin_px=8,
+            )
+
+            spot_groups: list[gr.Column] = []
+            remove_btns: list[gr.Button] = []
+
+            for i in range(MAX_SPOTS_LOCAL):
+                with gr.Column(visible=False) as grp:
+                    if i > 0:
+                        gr.HTML("<hr style='margin: 10px 0;'>")
+
+                    gr.Markdown(f"**Spot {i + 1}**", elem_classes=["spot-header"])
+
+                    remove_btn = gr.Button(
+                        "✕ Remove spot",
+                        variant="stop",
+                        size="sm",
+                        scale=1,
+                    )
+
+                    # per-spot parameters - use _param_row to create full control set
+                    for p in SPOT_PARAMS:
+                        lab = {
+                            "longitude": "Longitude (deg)",
+                            "latitude": "Latitude (deg)",
+                            "angular_radius": "Angular radius (deg)",
+                            "temperature_factor": "Temperature factor",
+                        }[p]
+                        # build keys as e.g. primary_spot_0_longitude_value
+                        default_val = _SPOT_DEFAULTS[p][0]
+                        default_lo = _SPOT_DEFAULTS[p][1]
+                        default_hi = _SPOT_DEFAULTS[p][2]
+                        _param_row(
+                            components,
+                            section,
+                            f"spot_{i}_{p}",
+                            f"{lab}",
+                            defaults.get(f"{section}_spot_{i}_{p}_value", default_val),
+                            defaults.get(f"{section}_spot_{i}_{p}_fixed", False),
+                            defaults.get(f"{section}_spot_{i}_{p}_min", default_lo),
+                            defaults.get(f"{section}_spot_{i}_{p}_max", default_hi),
+                            defaults.get(f"{section}_spot_{i}_{p}_constraint"),
+                        )
+
+                spot_groups.append(grp)
+                remove_btns.append(remove_btn)
+
+        enabled_comp.change(
+            fn=lambda v: gr.update(visible=v),
+            inputs=[enabled_comp],
+            outputs=[spots_section],
+        )
+
+        add_btn.click(
+            fn=_make_spot_add_handler(MAX_SPOTS_LOCAL),
+            inputs=[spot_count],
+            outputs=[spot_count, *spot_groups],
+        )
+
+        # prepare list of all flat value components for remove handlers
+        all_spot_value_comps: list[gr.Component] = []
+        for i in range(MAX_SPOTS_LOCAL):
+            for p in SPOT_PARAMS:
+                for sub in ("value", "mode", "constraint", "min", "max"):
+                    all_spot_value_comps.append(components[f"{section}_spot_{i}_{p}_{sub}"])
+
+        for i, rm_btn in enumerate(remove_btns):
+            rm_btn.click(
+                fn=_make_spot_remove_handler(i, MAX_SPOTS_LOCAL),
+                inputs=[spot_count, *all_spot_value_comps],
+                outputs=[spot_count, *spot_groups, *all_spot_value_comps],
+            )
+
+        # register components into mapping so FIELD_ORDER keys exist
+        components[f"{section}_spots_enabled"] = enabled_comp
+        components[f"{section}_spot_count"] = spot_count
+
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -494,3 +680,93 @@ def _build_approach_params(
         )
 
 
+def parse_spots_fit(spot_params: dict[str, object] | None, section: str | None = None) -> list[dict[str, object]]:
+    """Convert flat spot parameters (from the fitting form) into a list of spot dicts.
+
+    Each spot parameter in the form has controls for value/mode/constraint/min/max
+    and this helper extracts the values and constructs the list suitable for
+    serialization in the ELISa fit JSON, matching the SpotInitialParameters format:
+
+    ``[{"label": "spot1", "longitude": {"value": ..., "fixed": ..., "min": ..., "max": ..., "unit": ...}, ...}, ...]``
+
+    :param spot_params: Flat dict produced by the fitting components build.
+    :type spot_params: dict[str, object] | None
+    :param section: Optional section prefix (``"primary"`` / ``"secondary"``) used
+        when keys are namespaced; if provided the function will look for
+        ``"{section}_spot_{i}_{p}_value"`` keys.
+    :type section: str | None
+    :returns: List of spot dicts with label and parameter structure.
+    :rtype: list[dict[str, object]]
+    """
+    from typing import cast
+
+    if not spot_params:
+        return []
+
+    enabled_key = f"{section}_spots_enabled" if section else "spots_enabled"
+    count_key = f"{section}_spot_count" if section else "spot_count"
+    if not bool(spot_params.get(enabled_key, False)):
+        return []
+
+    count = int(spot_params.get(count_key, 0) or 0)
+    if count <= 0:
+        return []
+
+    spots: list[dict[str, object]] = []
+
+    for i in range(min(count, MAX_SPOT_SLOTS)):
+        def get_key(p: str, sub: str) -> str:
+            base = f"{section}_spot_{i}_{p}" if section else f"spot_{i}_{p}"
+            return f"{base}_{sub}"
+
+        # Build the spot dict with label and parameter entries
+        spot: dict[str, object] = {
+            "label": f"spot{i + 1}",
+        }
+
+        # For each spot parameter (longitude, latitude, angular_radius, temperature_factor)
+        for param_name in ("longitude", "latitude", "angular_radius", "temperature_factor"):
+            value = spot_params.get(get_key(param_name, "value"))
+            mode = str(spot_params.get(get_key(param_name, "mode"), "free"))
+            constraint = spot_params.get(get_key(param_name, "constraint"))
+            min_val = spot_params.get(get_key(param_name, "min"))
+            max_val = spot_params.get(get_key(param_name, "max"))
+
+            # Convert value to float
+            fvalue = (
+                float(cast("float | int", value))
+                if value is not None and str(value).strip() != ""
+                else {
+                    "longitude": 230.0,
+                    "latitude": 45.0,
+                    "angular_radius": 50.0,
+                    "temperature_factor": 0.98,
+                }[param_name]
+            )
+
+            # Build parameter entry
+            param_entry: dict[str, object] = {"value": fvalue}
+
+            # Handle mode
+            if mode == "constrained":
+                param_entry["constraint"] = str(constraint or "")
+            elif mode == "fixed":
+                param_entry["fixed"] = True
+            else:  # free
+                param_entry["fixed"] = False
+                # Only include min/max for free mode
+                if min_val is not None and str(min_val).strip() != "":
+                    param_entry["min"] = float(cast("float | int", min_val))
+                if max_val is not None and str(max_val).strip() != "":
+                    param_entry["max"] = float(cast("float | int", max_val))
+
+            # Add unit if applicable
+            unit = SPOT_UNITS.get(param_name)
+            if unit is not None:
+                param_entry["unit"] = unit
+
+            spot[param_name] = param_entry
+
+        spots.append(spot)
+
+    return spots
