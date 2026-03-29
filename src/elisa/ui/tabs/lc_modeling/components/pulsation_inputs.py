@@ -155,7 +155,7 @@ def build(prefix: str) -> dict[str, gr.Component]:
         )
         mode_count = gr.State(value=0)
 
-        with gr.Group(visible=False) as puls_section:
+        with gr.Column(visible=False) as puls_section:
             # Global add button for all modes - visually separated from the first mode panel.
             add_btn = build_full_width_button_row(
                 "+ Add pulsation mode",
@@ -163,17 +163,17 @@ def build(prefix: str) -> dict[str, gr.Component]:
                 spacer_margin_px=8,
             )
 
-            mode_groups: list[gr.Group] = []
+            mode_groups: list[gr.Column] = []
             remove_btns: list[gr.Button] = []
 
-            for i in range(MAX_MODES):
-                with gr.Group(visible=False) as grp:
-                    if i > 0:
+            for puls_mode_idx in range(MAX_MODES):
+                with gr.Column(visible=False) as grp:
+                    if puls_mode_idx > 0:
                         gr.HTML("<hr style='margin: 10px 0;'>")
 
                     # Centered mode label for better visual balance.
                     gr.Markdown(
-                        f"<div style='text-align: center; font-weight: 600;'>Mode {i + 1}</div>",
+                        f"<div style='text-align: center; font-weight: 600;'>Mode {puls_mode_idx + 1}</div>",
                         elem_classes=["pulsation-mode-header"],
                     )
 
@@ -186,13 +186,13 @@ def build(prefix: str) -> dict[str, gr.Component]:
                     )
 
                     with gr.Row():
-                        value_comps[f"mode_{i}_l"] = gr.Number(
+                        value_comps[f"mode_{puls_mode_idx}_l"] = gr.Number(
                             label="l (degree)",
                             value=int(_DEFAULTS["l"]),  # type: ignore[arg-type]
                             precision=0,
                             info="Spherical harmonic degree (≥ 0, integer)",
                         )
-                        value_comps[f"mode_{i}_m"] = gr.Number(
+                        value_comps[f"mode_{puls_mode_idx}_m"] = gr.Number(
                             label="m (order)",
                             value=int(_DEFAULTS["m"]),  # type: ignore[arg-type]
                             precision=0,
@@ -200,19 +200,19 @@ def build(prefix: str) -> dict[str, gr.Component]:
                         )
 
                     with gr.Row():
-                        value_comps[f"mode_{i}_amplitude"] = gr.Number(
+                        value_comps[f"mode_{puls_mode_idx}_amplitude"] = gr.Number(
                             label="Amplitude (m/s)",
                             value=float(_DEFAULTS["amplitude"]),  # type: ignore[arg-type]
                             info="Radial velocity amplitude in m/s.",
                         )
-                        value_comps[f"mode_{i}_frequency"] = gr.Number(
+                        value_comps[f"mode_{puls_mode_idx}_frequency"] = gr.Number(
                             label="Frequency (1/d)",
                             value=float(_DEFAULTS["frequency"]),  # type: ignore[arg-type]
                             info="Pulsation frequency in cycles per day.",
                         )
 
                     with gr.Row():
-                        value_comps[f"mode_{i}_start_phase"] = gr.Number(
+                        value_comps[f"mode_{puls_mode_idx}_start_phase"] = gr.Number(
                             label="Start phase (rad)",
                             value=(
                                 None
@@ -221,14 +221,14 @@ def build(prefix: str) -> dict[str, gr.Component]:
                             ),
                             info="Initial phase offset in radians.",
                         )
-                        value_comps[f"mode_{i}_mode_axis_theta"] = gr.Number(
+                        value_comps[f"mode_{puls_mode_idx}_mode_axis_theta"] = gr.Number(
                             label="Mode axis θ (deg)",
                             value=float(_DEFAULTS["mode_axis_theta"]),  # type: ignore[arg-type]
                             info="Latitude of mode axis in degrees.",
                         )
 
                     with gr.Row():
-                        value_comps[f"mode_{i}_mode_axis_phi"] = gr.Number(
+                        value_comps[f"mode_{puls_mode_idx}_mode_axis_phi"] = gr.Number(
                             label="Mode axis φ (deg)",
                             value=float(_DEFAULTS["mode_axis_phi"]),  # type: ignore[arg-type]
                             info="Longitude of mode axis in degrees.",
@@ -242,7 +242,7 @@ def build(prefix: str) -> dict[str, gr.Component]:
                     with gr.Row():
                         # Use Textbox so empty string is preserved - user may want to leave unset
                         value_comps[
-                            f"mode_{i}_temperature_perturbation_phase_shift"
+                            f"mode_{puls_mode_idx}_temperature_perturbation_phase_shift"
                         ] = gr.Textbox(
                             label="Temp. phase shift (rad)",
                             value=(
@@ -257,7 +257,7 @@ def build(prefix: str) -> dict[str, gr.Component]:
 
                     with gr.Row():
                         value_comps[
-                            f"mode_{i}_horizontal_to_radial_amplitude_ratio"
+                            f"mode_{puls_mode_idx}_horizontal_to_radial_amplitude_ratio"
                         ] = gr.Textbox(
                             label="H-to-R amplitude ratio",
                             value=(
@@ -271,14 +271,14 @@ def build(prefix: str) -> dict[str, gr.Component]:
                         )
 
                     with gr.Row():
-                        value_comps[f"mode_{i}_temperature_amplitude_factor"] = gr.Number(
+                        value_comps[f"mode_{puls_mode_idx}_temperature_amplitude_factor"] = gr.Number(
                             label="Temp. amplitude factor",
                             value=float(cast("float", _DEFAULTS["temperature_amplitude_factor"])),
                             info="Ratio ΔT/T_eff (temperature amplitude).",
                         )
 
                     with gr.Row():
-                        value_comps[f"mode_{i}_tidally_locked"] = gr.Checkbox(
+                        value_comps[f"mode_{puls_mode_idx}_tidally_locked"] = gr.Checkbox(
                             label="Tidally locked",
                             value=bool(_DEFAULTS["tidally_locked"]),
                             info="Hold mode axis position relative to companion.",
@@ -301,12 +301,12 @@ def build(prefix: str) -> dict[str, gr.Component]:
         )
 
         all_value_comps: list[gr.Component] = [
-            value_comps[f"mode_{i}_{p}"] for i in range(MAX_MODES) for p in _MODE_PARAMS
+            value_comps[f"mode_{puls_mode_idx}_{p}"] for puls_mode_idx in range(MAX_MODES) for p in _MODE_PARAMS
         ]
 
-        for i, rm_btn in enumerate(remove_btns):
+        for puls_mode_remove_idx, rm_btn in enumerate(remove_btns):
             rm_btn.click(
-                fn=_make_remove_handler(i, MAX_MODES),
+                fn=_make_remove_handler(puls_mode_remove_idx, MAX_MODES),
                 inputs=[mode_count, *all_value_comps],
                 outputs=[mode_count, *mode_groups, *all_value_comps],
             )
@@ -339,18 +339,18 @@ def parse_pulsation_modes(pulsation_params: dict[str, object] | None) -> list[di
         return []
 
     modes: list[dict[str, object]] = []
-    for i in range(min(mode_count, MAX_MODES)):
+    for puls_mode_parse_idx in range(min(mode_count, MAX_MODES)):
         # Get mandatory parameters with defaults
-        l_val: int | None = pulsation_params.get(f"mode_{i}_l")
+        l_val: int | None = pulsation_params.get(f"mode_{puls_mode_parse_idx}_l")
         l_degree: int = l_val if l_val is not None else int(cast("int", _DEFAULTS["l"]))
 
-        m_val: int | None = pulsation_params.get(f"mode_{i}_m")
+        m_val: int | None = pulsation_params.get(f"mode_{puls_mode_parse_idx}_m")
         m_order: int = m_val if m_val is not None else int(cast("int", _DEFAULTS["m"]))
 
-        amplitude_val: float | None = pulsation_params.get(f"mode_{i}_amplitude")
+        amplitude_val: float | None = pulsation_params.get(f"mode_{puls_mode_parse_idx}_amplitude")
         amplitude: float = amplitude_val if amplitude_val is not None else float(cast("float", _DEFAULTS["amplitude"]))
 
-        frequency_val: float | None = pulsation_params.get(f"mode_{i}_frequency")
+        frequency_val: float | None = pulsation_params.get(f"mode_{puls_mode_parse_idx}_frequency")
         frequency: float = frequency_val if frequency_val is not None else float(cast("float", _DEFAULTS["frequency"]))
 
         mode: dict[str, object] = {
@@ -369,7 +369,7 @@ def parse_pulsation_modes(pulsation_params: dict[str, object] | None) -> list[di
             "horizontal_to_radial_amplitude_ratio",
             "temperature_amplitude_factor",
         ):
-            raw = pulsation_params.get(f"mode_{i}_{param}")
+            raw = pulsation_params.get(f"mode_{puls_mode_parse_idx}_{param}")
             # temperature_perturbation_phase_shift and horizontal_to_radial_amplitude_ratio
             # are rendered as Textbox to preserve empty vs '0'. Accept strings and numbers.
             if raw is None:
@@ -389,7 +389,7 @@ def parse_pulsation_modes(pulsation_params: dict[str, object] | None) -> list[di
             mode[param] = parsed
 
         # Handle boolean parameter separately - only include if explicitly set
-        tidally_locked_val: bool | None = pulsation_params.get(f"mode_{i}_tidally_locked")
+        tidally_locked_val: bool | None = pulsation_params.get(f"mode_{puls_mode_parse_idx}_tidally_locked")
         if tidally_locked_val is not None:
             mode["tidally_locked"] = bool(tidally_locked_val)
 

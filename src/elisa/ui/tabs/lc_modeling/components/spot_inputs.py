@@ -98,22 +98,22 @@ def build(prefix: str) -> dict[str, gr.Component]:
         )
         spot_count = gr.State(value=0)
 
-        with gr.Group(visible=False) as spots_section:
+        with gr.Column(visible=False) as spots_section:
             add_btn = build_full_width_button_row(
                 "+ Add spot",
                 elem_classes=["full-width-button"],
                 spacer_margin_px=8,
             )
 
-            spot_groups: list[gr.Group] = []
+            spot_groups: list[gr.Column] = []
             remove_btns: list[gr.Button] = []
 
-            for i in range(MAX_SPOTS):
-                with gr.Group(visible=False) as grp:
-                    if i > 0:
+            for spot_slot_idx in range(MAX_SPOTS):
+                with gr.Column(visible=False) as grp:
+                    if spot_slot_idx > 0:
                         gr.HTML("<hr style='margin: 10px 0;'>")
 
-                    gr.Markdown(f"**Spot {i + 1}**", elem_classes=["spot-header"])
+                    gr.Markdown(f"**Spot {spot_slot_idx + 1}**", elem_classes=["spot-header"])
 
                     remove_btn_i = gr.Button(
                         "✕ Remove spot",
@@ -123,26 +123,26 @@ def build(prefix: str) -> dict[str, gr.Component]:
                     )
 
                     with gr.Row():
-                        value_comps[f"spot_{i}_longitude"] = gr.Number(
+                        value_comps[f"spot_{spot_slot_idx}_longitude"] = gr.Number(
                             label="Longitude (deg)",
                             value=float(_DEFAULTS["longitude"]),
                             info="Longitude of spot centre in degrees.",
                         )
-                        value_comps[f"spot_{i}_latitude"] = gr.Number(
+                        value_comps[f"spot_{spot_slot_idx}_latitude"] = gr.Number(
                             label="Latitude (deg)",
                             value=float(_DEFAULTS["latitude"]),
                             info="Latitude of spot centre in degrees.",
                         )
 
                     with gr.Row():
-                        value_comps[f"spot_{i}_angular_radius"] = gr.Number(
+                        value_comps[f"spot_{spot_slot_idx}_angular_radius"] = gr.Number(
                             label="Angular radius (deg)",
                             value=float(_DEFAULTS["angular_radius"]),
                             info="Angular radius of the spot in degrees.",
                         )
 
                     with gr.Row():
-                        value_comps[f"spot_{i}_temperature_factor"] = gr.Number(
+                        value_comps[f"spot_{spot_slot_idx}_temperature_factor"] = gr.Number(
                             label="Temperature factor",
                             value=float(_DEFAULTS["temperature_factor"]),
                             info="T_spot / T_local (e.g. 0.98 or 1.05).",
@@ -164,12 +164,12 @@ def build(prefix: str) -> dict[str, gr.Component]:
         )
 
         all_value_comps: list[gr.Component] = [
-            value_comps[f"spot_{i}_{p}"] for i in range(MAX_SPOTS) for p in _SPOT_PARAMS
+            value_comps[f"spot_{spot_slot_idx}_{p}"] for spot_slot_idx in range(MAX_SPOTS) for p in _SPOT_PARAMS
         ]
 
-        for i, rm_btn in enumerate(remove_btns):
+        for spot_remove_idx, rm_btn in enumerate(remove_btns):
             rm_btn.click(
-                fn=_make_remove_handler(i, MAX_SPOTS),
+                fn=_make_remove_handler(spot_remove_idx, MAX_SPOTS),
                 inputs=[spot_count, *all_value_comps],
                 outputs=[spot_count, *spot_groups, *all_value_comps],
             )
@@ -196,11 +196,11 @@ def parse_spots(spot_params: dict[str, object] | None) -> list[dict[str, object]
         return []
 
     spots: list[dict[str, object]] = []
-    for i in range(min(count, MAX_SPOTS)):
-        long: object = spot_params.get(f"spot_{i}_longitude")
-        lat: object = spot_params.get(f"spot_{i}_latitude")
-        radius: object = spot_params.get(f"spot_{i}_angular_radius")
-        tfac: object = spot_params.get(f"spot_{i}_temperature_factor")
+    for parse_spot_idx in range(min(count, MAX_SPOTS)):
+        long: object = spot_params.get(f"spot_{parse_spot_idx}_longitude")
+        lat: object = spot_params.get(f"spot_{parse_spot_idx}_latitude")
+        radius: object = spot_params.get(f"spot_{parse_spot_idx}_angular_radius")
+        tfac: object = spot_params.get(f"spot_{parse_spot_idx}_temperature_factor")
 
         spot: dict[str, object] = {
             "longitude": (
