@@ -68,12 +68,14 @@ _NUISANCE_PARAMS: frozenset[str] = frozenset({"ln_f"})
 def _capture_figure() -> Iterator[list[Figure]]:
     """Replace ``plt.show`` temporarily to capture the figure it would display.
 
-    Yields a list that will contain the captured ``Figure`` after the
-    ``with`` block exits.  Only the figure alive at the moment
-    ``plt.show()`` is called is captured; subsequent calls overwrite it.
+    The context manager intercepts ``plt.show()`` and collects the
+    current :class:`matplotlib.figure.Figure` into a list which is
+    yielded to the caller. Only the figure present at the moment of
+    the ``plt.show()`` call is captured; subsequent calls overwrite the
+    captured value.
 
-    :yields: A list that will hold the captured ``matplotlib.figure.Figure``
-        after the context exits.
+    :yields: A list that will contain the captured
+        :class:`matplotlib.figure.Figure` after the context exits.
     :rtype: list[matplotlib.figure.Figure]
     """
     captured: list[Figure] = []
@@ -92,12 +94,16 @@ def _capture_figure() -> Iterator[list[Figure]]:
 
 
 def _opt_float(value: object) -> Float | None:
-    """Convert *value* to float or return ``None`` for empty/None inputs.
+    """Convert *value* to a floating value or return ``None``.
+
+    Accepts user-supplied values from Gradio number inputs and attempts to
+    coerce them to a numeric type used internally by ELISa.
 
     :param value: Raw value from a Gradio Number component.
     :type value: object
-    :returns: Parsed float or ``None``.
-    :rtype: Float | None
+    :returns: Parsed floating value or ``None`` when the input is empty or
+        cannot be converted.
+    :rtype: elisa.types.Float | None
     """
     if value is None:
         return None
@@ -287,9 +293,9 @@ def run_mcmc(
     secondary_path: str | None,
     x_unit_str: str,
     param_values: dict[str, object],
-    nwalkers: int,
-    nsteps: int,
-    burn_in: int,
+    nwalkers: Int,
+    nsteps: Int,
+    burn_in: Int,
     fit_id: str,
     *,
     save: bool = True,
@@ -310,16 +316,16 @@ def run_mcmc(
     :param param_values: Flat parameter dict from the Gradio form.
     :type param_values: dict[str, object]
     :param nwalkers: Number of MCMC walkers.
-    :type nwalkers: int
+    :type nwalkers: elisa.types.Int
     :param nsteps: Number of MCMC steps.
-    :type nsteps: int
+    :type nsteps: elisa.types.Int
     :param burn_in: Number of burn-in steps to discard.
-    :type burn_in: int
+    :type burn_in: elisa.types.Int
     :param fit_id: Chain file identifier used when *save* is ``True``.
     :type fit_id: str
     :param save: Whether to save the chain to disk.
     :type save: bool
-    :param progress: Whether to show progress bar during MCMC sampling.
+    :param progress: Whether to show a progress indicator during MCMC sampling.
     :type progress: bool
     :returns: Tuple of
         ``(result_dict, model_figure, corner_figure, traces_figure,
@@ -344,6 +350,7 @@ def run_mcmc(
     # noinspection PyTypeChecker
     with fit_logging():
         task = RVBinaryAnalyticsTask(data=data, method="mcmc")
+
         result = task.fit(
             x0=x0,
             nwalkers=nwalkers,
@@ -380,20 +387,28 @@ def load_chain(
 ) -> tuple[dict, str, dict, Figure | None, Figure | None, pd.DataFrame, str]:
     """Load a flattened MCMC chain JSON file and produce diagnostics.
 
-    This simplified loader operates only on a concrete JSON file produced by
-    ELISa's MCMC save routine. It does not attempt to reconstruct a full
-    analytics task or load observational data - it only reads the flat chain
-    and metadata from the file and computes posterior summaries for use in
-    diagnostics (corner, traces) and a result table.
+    The loader expects a JSON file written by ELISa's MCMC save routine and
+    returns the raw JSON (as a :class:`dict`), the JSON string, a resolved
+    posterior summary mapping, optional corner and traces
+    :class:`matplotlib.figure.Figure` objects and a results
+    :class:`pandas.DataFrame`.
 
-    :param chain_file_path: Path to the flattened chain JSON file (uploaded by user).
+    The function does not attempt to reconstruct an ELISa analytics task or
+    construct an initial sampler state for restarting an MCMC run. That
+    behaviour is intentionally disabled because saved flattened chains may
+    omit parameters that were fixed in the original run.
+
+    :param chain_file_path: Path to the flattened chain JSON file.
     :type chain_file_path: str
-    :param discard: Number of initial steps to discard as burn-in (default: 0).
-    :type discard: int
+    :param discard: Number of initial steps to discard as burn-in.
+    :type discard: elisa.types.Int
     :param percentiles: Percentiles used to evaluate confidence intervals.
-    :type percentiles: list[float] | None
-    :returns: Tuple of ``(result_dict, corner_figure, traces_figure, results_dataframe, json_path)``.
-    :rtype: tuple[dict, Figure | None, Figure | None, pandas.DataFrame, str]
+    :type percentiles: list[elisa.types.Float] | None
+    :returns: Tuple ``(raw_json, raw_json_str, result_dict, corner_figure,
+        traces_figure, results_dataframe, json_path)`` where *raw_json* is
+        the parsed JSON dictionary and *result_dict* contains resolved
+        posterior summaries.
+    :rtype: tuple[dict, str, dict, Figure | None, Figure | None, pandas.DataFrame, str]
     """
     from elisa.analytics.params.parameters import ParameterMeta  # noqa: PLC0415
 
@@ -404,7 +419,9 @@ def load_chain(
 
     data = json.loads(path.read_text(encoding="utf-8"))
 
-    flat_chain = (np.array(data.get("flat_chain", [])) if data.get("flat_chain") is not None else np.empty((0, 0)))
+    flat_chain = (
+        np.array(data.get("flat_chain", [])) if data.get("flat_chain") is not None else np.empty((0, 0))
+    )
     if flat_chain.size == 0:
         error_msg = "Loaded chain contains no samples."
         raise ValueError(error_msg)
@@ -482,19 +499,24 @@ def load_chain(
 
     df = result_to_dataframe(result_dict)
 
-    return result_dict, corner_fig, traces_fig, df, str(path)
+    # Return both the raw JSON data dict and its JSON string along with the
+    # computed summary so the UI can persist the raw chain for plotting and
+    # inspection. This loader does not attempt to reconstruct an initial
+    # sampler state for restarting MCMC runs.
+    json_str = json.dumps(data)
+    return data, json_str, result_dict, corner_fig, traces_fig, df, str(path)
 
 
 def _gamma_ms_to_kms(value: Float | None) -> Float | None:
     """Convert a gamma velocity value from m/s to km/s.
 
-    Returns ``None`` when *value* is ``None``, enabling safe conversion of
-    optional bound values without extra guard clauses at the call site.
+    Safely handles ``None`` inputs and returns ``None`` in that case so
+    callers can use the helper without additional guards.
 
     :param value: Velocity in m/s, or ``None``.
-    :type value: Float | None
+    :type value: elisa.types.Float | None
     :returns: Velocity in km/s, or ``None`` if *value* is ``None``.
-    :rtype: Float | None
+    :rtype: elisa.types.Float | None
     """
     if value is None:
         return None

@@ -14,6 +14,7 @@ the least-squares (LSQRT) or MCMC method:
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING, Any
 
 import gradio as gr
@@ -120,7 +121,7 @@ def _mcmc_handler(
     """
 
     def handler(
-        *values: object,
+        *values: tuple[float | str | bool | dict, None, ...],
     ) -> tuple[dict, Figure, Figure | None, Figure | None, pd.DataFrame, gr.DownloadButton]:
         n_data = len(data_keys)
         n_fit = len(fit_keys)
@@ -350,9 +351,6 @@ def _plot_loaded_data_handler(_data_keys: tuple[str, ...]) -> Callable[..., tupl
     return _plot_loaded_data
 
 
-
-
-
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -423,6 +421,11 @@ def build() -> None:  # noqa: C901, PLR0915
         # Session state                                                         #
         # ------------------------------------------------------------------ #
         lsqrt_result_state: gr.State = gr.State(value=None)
+        # State to hold raw loaded flat-chain JSON when user loads a chain
+        mcmc_chain_state: gr.State = gr.State(value=None)
+        # Hidden textbox to persist raw chain JSON string so the MCMC handler
+        # receives a concrete component value when the run is triggered.
+        mcmc_chain_text: gr.Textbox = gr.Textbox(value="", visible=False)
 
         # ------------------------------------------------------------------ #
         # Section 1 - Data upload                                              #
@@ -483,6 +486,7 @@ def build() -> None:  # noqa: C901, PLR0915
                     variant="secondary",
                     scale=1,
                 )
+
             # Toggle period and T0 interactivity based on selected x-unit.
             # Both are only meaningful when data are in Julian days - they are
             # not needed (and make no sense) when data are already in phases.
@@ -630,7 +634,17 @@ def build() -> None:  # noqa: C901, PLR0915
         # ------------------------------------------------------------------ #
         data_keys = tuple(data_comps.keys())
         fit_keys = param_inputs.FIELD_ORDER
-        mcmc_keys = ("nwalkers", "nsteps", "burn_in", "fit_id", "save_chain", "progress")
+        # include the use_chain checkbox and the chain file/discard so the
+        # MCMC handler can optionally load the flat-chain on demand and use it
+        # as an initial_state for the sampler.
+        mcmc_keys = (
+            "nwalkers",
+            "nsteps",
+            "burn_in",
+            "fit_id",
+            "save_chain",
+            "progress",
+        )
 
         # Build flat input lists for each button
         # data_comps is a TypedDict (subclass of dict) - values() gives components in insertion order
@@ -740,7 +754,7 @@ def build() -> None:  # noqa: C901, PLR0915
                 data_inputs_list[0],  # primary_file
                 data_inputs_list[1],  # secondary_file
                 data_inputs_list[2],  # x_unit
-                period_comp,          # optional period provided in data section
+                period_comp,  # optional period provided in data section
                 fit_comps["period_value"],
                 t0_comp,
                 start_phase_comp,
@@ -753,16 +767,17 @@ def build() -> None:  # noqa: C901, PLR0915
 
         # Explicit Load Chain button - user must click to load chain and populate MCMC results
         def _load_chain_click(
-            chain_file: object | None,
+            chain_file: str | None,
             discard: int,
-        ) -> tuple[dict, None, Figure | None, Figure | None, pd.DataFrame, gr.DownloadButton]:
+        ) -> tuple[dict, None, Figure | None, Figure | None, pd.DataFrame, gr.DownloadButton, str]:
             chain_path: str | None = getattr(chain_file, "name", None)
             if chain_path is None:
                 msg = "No chain file uploaded."
                 raise gr.Error(msg)
 
             try:
-                result, corner_fig, traces_fig, df, json_path = compute.load_chain(
+                # compute.load_chain now returns (raw_json, raw_json_str, result_dict, corner, traces, df, path)
+                raw_json, raw_json_str, _, corner_fig, traces_fig, df, json_path = compute.load_chain(
                     chain_path,
                     discard=int(discard or 0),
                 )
@@ -774,25 +789,29 @@ def build() -> None:  # noqa: C901, PLR0915
             # return None for the model plot and populate corner/traces/table.
             model_fig = None
 
+            # prefer the JSON string returned by compute.load_chain when available
+            json_str = raw_json_str if raw_json is not None else json.dumps(raw_json)
             return (
-                result,
+                raw_json,
                 model_fig,
                 corner_fig,
                 traces_fig,
                 df,
                 gr.DownloadButton(value=json_path, visible=True),
+                json_str,
             )
 
         load_chain_btn.click(
             fn=_load_chain_click,
             inputs=list(load_chain_inputs),
             outputs=[
-                gr.State(),  # result - not stored in session here
+                mcmc_chain_state,  # store raw JSON dict into session state
                 mcmc_model_plot,
                 corner_plot,
                 traces_plot,
                 mcmc_table,
                 mcmc_download,
+                mcmc_chain_text,
             ],
         )
 
