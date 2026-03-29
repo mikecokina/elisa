@@ -518,6 +518,28 @@ def build() -> None:  # noqa: C901, PLR0915
                         file_types=[".json"],
                         scale=1,
                     )
+            with gr.Accordion("Load/Resume MCMC chain", open=False):
+                gr.Markdown(
+                    (
+                        "Load a flattened MCMC chain (JSON) produced by a previous "
+                        "MCMC run. Use the Discard field to skip burn-in steps, then "
+                        "click 'Load Chain' to populate MCMC diagnostics and results."
+                    ),
+                )
+                with gr.Row():
+                    chain_file_comp = gr.File(
+                        label="Chain file (JSON)",
+                        file_types=[".json"],
+                        scale=2,
+                    )
+                with gr.Row():
+                    discard_comp = gr.Number(
+                        value=0,
+                        label="Discard (burn-in) steps",
+                        precision=0,
+                        scale=1,
+                    )
+                    load_chain_btn = gr.Button("📂 Load Chain", variant="secondary", scale=1)
 
         # ------------------------------------------------------------------ #
         # Section 3 - MCMC settings                                            #
@@ -623,6 +645,12 @@ def build() -> None:  # noqa: C901, PLR0915
             progress_comp,
         ]
 
+        # Inputs for load_chain action - only the uploaded chain file and discard
+        load_chain_inputs = (
+            chain_file_comp,
+            discard_comp,
+        )
+
         lsqrt_all_inputs = data_inputs_list + fit_inputs_list
         mcmc_all_inputs = data_inputs_list + fit_inputs_list + mcmc_inputs_list
 
@@ -721,6 +749,51 @@ def build() -> None:  # noqa: C901, PLR0915
                 lsqrt_result_state,
             ],
             outputs=[observed_data_plot, obs_plot_accordion],
+        )
+
+        # Explicit Load Chain button - user must click to load chain and populate MCMC results
+        def _load_chain_click(
+            chain_file: object | None,
+            discard: int,
+        ) -> tuple[dict, None, Figure | None, Figure | None, pd.DataFrame, gr.DownloadButton]:
+            chain_path: str | None = getattr(chain_file, "name", None)
+            if chain_path is None:
+                msg = "No chain file uploaded."
+                raise gr.Error(msg)
+
+            try:
+                result, corner_fig, traces_fig, df, json_path = compute.load_chain(
+                    chain_path,
+                    discard=int(discard or 0),
+                )
+            except Exception as exc:
+                msg = str(exc)
+                raise gr.Error(msg) from exc
+
+            # We cannot reconstruct a model figure without observational data;
+            # return None for the model plot and populate corner/traces/table.
+            model_fig = None
+
+            return (
+                result,
+                model_fig,
+                corner_fig,
+                traces_fig,
+                df,
+                gr.DownloadButton(value=json_path, visible=True),
+            )
+
+        load_chain_btn.click(
+            fn=_load_chain_click,
+            inputs=list(load_chain_inputs),
+            outputs=[
+                gr.State(),  # result - not stored in session here
+                mcmc_model_plot,
+                corner_plot,
+                traces_plot,
+                mcmc_table,
+                mcmc_download,
+            ],
         )
 
         # Transfer LSQRT result values into the param form
