@@ -82,7 +82,7 @@ def filter_chain(
 
 
 def load_chain(
-    mcmc_fit_cls: LCFitMCMC | RVFitMCMC,
+    mcmc_fit_instance: LCFitMCMC | RVFitMCMC,
     fit_id: str,
     discard: int = 0,
     percentiles: list[float] | None = None,
@@ -92,8 +92,8 @@ def load_chain(
     Loads MCMC chain and related metadata from JSON file created after MCMC run.
     Automatically handles discarding of burn-in steps.
 
-    :param mcmc_fit_cls: MCMC fitting class instance (e.g., LCFitMCMC, RVFitMCMC).
-    :type mcmc_fit_cls: LCFitMCMC | RVFitMCMC
+    :param mcmc_fit_instance: MCMC fitting class instance (e.g., LCFitMCMC, RVFitMCMC).
+    :type mcmc_fit_instance: LCFitMCMC | RVFitMCMC
     :param fit_id: Chain identifier or filename containing the chain.
     :type fit_id: str
     :param discard: Number of steps to discard from the chain as burn-in (default: 0).
@@ -108,16 +108,16 @@ def load_chain(
     """
     data = MCMCMixin.load_flat_chain(fit_id=fit_id)
 
-    mcmc_fit_cls.flat_chain = np.array(data["flat_chain"])[discard:, :]
-    mcmc_fit_cls.variable_labels = data["fitable_parameters"]
-    mcmc_fit_cls.normalization = data["normalization"]
+    mcmc_fit_instance.flat_chain = np.array(data["flat_chain"])[discard:, :]
+    mcmc_fit_instance.variable_labels = data["fitable_parameters"]
+    mcmc_fit_instance.normalization = data["normalization"]
 
-    update_solution(mcmc_fit_cls, data["fitable"], percentiles)
+    update_solution(mcmc_fit_instance, data["fitable"], percentiles)
 
     return (
-        mcmc_fit_cls.flat_chain,
-        mcmc_fit_cls.variable_labels,
-        mcmc_fit_cls.normalization,
+        mcmc_fit_instance.flat_chain,
+        mcmc_fit_instance.variable_labels,
+        mcmc_fit_instance.normalization,
     )
 
 
