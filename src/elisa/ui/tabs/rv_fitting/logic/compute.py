@@ -17,16 +17,15 @@ import json
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 from elisa import units as u
 from elisa.analytics import RVBinaryAnalyticsTask, RVData
-from elisa.analytics.binary_fit.mixins import MCMCMixin
-from elisa.graphic import mcmc_graphics
+
+# chain-loading plotting helpers removed - analytics layer provides these
 from elisa.ui.shared.logging_config import fit_logging
 from elisa.utc import UTC
 
@@ -81,7 +80,7 @@ def _capture_figure() -> Iterator[list[Figure]]:
     captured: list[Figure] = []
     original_show = plt.show
 
-    def _mock_show(*_args: object, **_kwargs: object) -> None:
+    def _mock_show(*_args: object, **_kwargs: Any) -> None:
         fig = plt.gcf()
         if fig is not None:
             captured.append(fig)
@@ -379,132 +378,9 @@ def run_mcmc(
     return result, model_fig, corner_fig, traces_fig, df, str(json_path)
 
 
-def load_chain(
-    chain_file_path: str,
-    *,
-    discard: Int = 0,
-    percentiles: list[Float] | None = None,
-) -> tuple[dict, str, dict, Figure | None, Figure | None, pd.DataFrame, str]:
-    """Load a flattened MCMC chain JSON file and produce diagnostics.
-
-    The loader expects a JSON file written by ELISa's MCMC save routine and
-    returns the raw JSON (as a :class:`dict`), the JSON string, a resolved
-    posterior summary mapping, optional corner and traces
-    :class:`matplotlib.figure.Figure` objects and a results
-    :class:`pandas.DataFrame`.
-
-    The function does not attempt to reconstruct an ELISa analytics task or
-    construct an initial sampler state for restarting an MCMC run. That
-    behaviour is intentionally disabled because saved flattened chains may
-    omit parameters that were fixed in the original run.
-
-    :param chain_file_path: Path to the flattened chain JSON file.
-    :type chain_file_path: str
-    :param discard: Number of initial steps to discard as burn-in.
-    :type discard: elisa.types.Int
-    :param percentiles: Percentiles used to evaluate confidence intervals.
-    :type percentiles: list[elisa.types.Float] | None
-    :returns: Tuple ``(raw_json, raw_json_str, result_dict, corner_figure,
-        traces_figure, results_dataframe, json_path)`` where *raw_json* is
-        the parsed JSON dictionary and *result_dict* contains resolved
-        posterior summaries.
-    :rtype: tuple[dict, str, dict, Figure | None, Figure | None, pandas.DataFrame, str]
-    """
-    from elisa.analytics.params.parameters import ParameterMeta  # noqa: PLC0415
-
-    path = Path(chain_file_path)
-    if not path.is_file():
-        error_msg = f"Chain file not found: {chain_file_path}"
-        raise FileNotFoundError(error_msg)
-
-    data = json.loads(path.read_text(encoding="utf-8"))
-
-    flat_chain = (
-        np.array(data.get("flat_chain", [])) if data.get("flat_chain") is not None else np.empty((0, 0))
-    )
-    if flat_chain.size == 0:
-        error_msg = "Loaded chain contains no samples."
-        raise ValueError(error_msg)
-
-    # apply discard (burn-in)
-    flat_chain = flat_chain[int(discard) :, :]
-
-    variable_labels: list[str] = data.get("fitable_parameters", [])
-    normalization: dict[str, tuple[float, float]] = data.get("normalization", {})
-
-    # reconstruct fitable metadata
-    fitable_raw = data.get("fitable", {})
-    fitable: dict[str, ParameterMeta] = {key: ParameterMeta(**val) for key, val in fitable_raw.items()}
-
-    # resolve numerical posterior summaries
-    percentiles = [16, 50, 84] if percentiles is None else percentiles
-    result_dict = MCMCMixin.resolve_mcmc_result(flat_chain, fitable, normalization, percentiles)
-
-    # create figures using the plotting helpers
-    labels = variable_labels
-
-    plt.close("all")
-    # The corner and paramtrace plotting calls below are executed on an
-    # arbitrary uploaded flat-chain JSON. In practice the uploaded file may be
-    # malformed, contain unexpected shapes, miss metadata, or be extremely
-    # large which can cause plotting libraries to raise exceptions. The UI
-    # action that triggers this loader is a convenience for users to inspect
-    # previously saved chains - it must therefore be resilient and return the
-    # numeric posterior summaries even when plotting fails.
-    #
-    # Using `contextlib.suppress(Exception)` keeps the loader robust: if a
-    # plotting call raises for any reason we swallow the exception and proceed
-    # to return the computed result table. This avoids crashing the UI on
-    # user-supplied inputs. Note - this is a pragmatic choice for the UI,
-    # not a recommended pattern for library internals where failures should be
-    # explicit and diagnosable.
-    #
-    # Drawbacks of suppressing all exceptions:
-    # - silent failures make debugging harder because errors are not logged
-    #   by default and developers may not notice repeated problems
-    # - coding bugs in plotting helpers would also be swallowed
-    # - users will not get explicit feedback that plotting failed
-    #
-    # Safer alternatives you may prefer in the future:
-    # - catch and log the exception instead of suppressing it entirely, for
-    #   example using the module logger: `logger.warning("plot failed: %s", exc)`
-    # - restrict caught exceptions to expected types (ValueError, IndexError)
-    # - surface a short UI warning string alongside the results so the user
-    #   knows the plot could not be generated
-    #
-    # The demo code does not include this defensive suppression because demo
-    # inputs are controlled and complete - plotting is expected to succeed.
-    # For the UI we prefer resilience and partial results rather than a hard
-    # failure when users upload imperfect files.
-    with _capture_figure() as corner_captured, contextlib.suppress(Exception):
-        mcmc_graphics.Plot.corner(
-            flat_chain=flat_chain,
-            fit_params=result_dict,
-            variable_labels=variable_labels,
-            labels=labels,
-            truths=True,
-        )
-    corner_fig = corner_captured[0] if corner_captured else None
-
-    with _capture_figure() as traces_captured, contextlib.suppress(Exception):
-        mcmc_graphics.Plot.paramtrace(
-            flat_chain=flat_chain,
-            fit_params=result_dict,
-            variable_labels=variable_labels,
-            traces_to_plot=variable_labels,
-            labels=labels,
-            truths=True,
-        )
-    traces_fig = traces_captured[0] if traces_captured else None
-
-    df = result_to_dataframe(result_dict)
-
-    # Return both the raw JSON data dict and its JSON string along with the
-    # computed summary so the UI can persist the raw chain for plotting and
-    # inspection. This loader does not attempt to reconstruct an initial
-    # sampler state for restarting MCMC runs.
-    json_str = json.dumps(data)
-    return data, json_str, result_dict, corner_fig, traces_fig, df, str(path)
+# Chain-loading helpers removed per request. Use the analytics layer
+# (RVBinaryAnalyticsTask.load_result/load_chain) directly in scripts if
+# you need to reconstruct tasks from saved files.
 
 
 def _gamma_ms_to_kms(value: Float | None) -> Float | None:
