@@ -23,6 +23,7 @@ import pandas as pd  # noqa: TC002 - needed at runtime for Gradio type hints
 from matplotlib.figure import Figure  # noqa: TC002 - same reason
 
 from elisa import units as u
+from elisa.analytics import RVBinaryAnalyticsTask, RVData
 from elisa.analytics.binary_fit.shared import extend_observations_to_desired_interval
 from elisa.ui.tabs.rv_fitting.components import data_inputs, param_inputs
 from elisa.ui.tabs.rv_fitting.logic import compute
@@ -87,18 +88,30 @@ def _lsqrt_handler(
         secondary_path: str | None = getattr(data_vals.get("secondary_file"), "name", None)
         x_unit_str: str = str(data_vals.get("x_unit", "Julian days (JD)"))
 
+        # Prepare an RVBinaryAnalyticsTask so the compute layer populates it
+        rv_primary = compute.load_rv_data(primary_path, x_unit_str)
+        rv_secondary = compute.load_rv_data(secondary_path, x_unit_str)
+        data_obj: dict[str, RVData] = {"primary": rv_primary}
+        if rv_secondary is not None:
+            data_obj["secondary"] = rv_secondary
+
+        task_obj = RVBinaryAnalyticsTask(data=data_obj, method="least_squares")
         try:
-            result, fig, df, json_path = compute.run_lsqrt(
+            _, fig, df, json_path = compute.run_lsqrt(
                 primary_path,
                 secondary_path,
                 x_unit_str,
                 fit_vals,
+                task=task_obj,
             )
         except Exception as exc:
             msg = str(exc)
             raise gr.Error(msg) from exc
 
-        return result, fig, df, gr.DownloadButton(value=json_path, visible=True)
+        # The compute.run_lsqrt call populated `task_obj` by running fit on it
+        # so store it in the session state for later reuse.
+        state_obj = {"lsqrt": task_obj}
+        return state_obj, fig, df, gr.DownloadButton(value=json_path, visible=True)
 
     return handler
 
@@ -419,7 +432,9 @@ def build() -> None:  # noqa: C901, PLR0915
         # ------------------------------------------------------------------ #
         # Session state                                                         #
         # ------------------------------------------------------------------ #
-        lsqrt_result_state: gr.State = gr.State(value=None)
+        # Session state holding analytics tasks for different methods.
+        # Keys: 'lsqrt' -> RVBinaryAnalyticsTask, 'mcmc' -> RVBinaryAnalyticsTask
+        tasks_state: gr.State = gr.State(value={})
 
         # ------------------------------------------------------------------ #
         # Section 1 - Data upload                                              #
@@ -709,7 +724,7 @@ def build() -> None:  # noqa: C901, PLR0915
             fn=_lsqrt_handler(data_keys, fit_keys),
             inputs=lsqrt_all_inputs,
             outputs=[
-                lsqrt_result_state,
+                tasks_state,
                 lsqrt_model_plot,
                 lsqrt_table,
                 lsqrt_download,
@@ -730,7 +745,7 @@ def build() -> None:  # noqa: C901, PLR0915
                 start_phase_comp,
                 stop_phase_comp,
                 centre_comp,
-                lsqrt_result_state,
+                tasks_state,
             ],
             outputs=[observed_data_plot, obs_plot_accordion],
         )
@@ -740,18 +755,25 @@ def build() -> None:  # noqa: C901, PLR0915
         # the parameter form to run fresh MCMC sessions.
 
         # Transfer LSQRT result values into the param form
-        def _transfer(result: dict | None) -> list[object]:
+        def _transfer(state: dict | None) -> list[object]:
             """Populate the parameter value fields from the stored LSQRT result.
 
-            :param result: Nested fit result dict stored in session state.
-            :type result: dict | None
             :returns: List of ``gr.update`` calls - one per ``*_value``
                 component in :data:`~components.param_inputs.FIELD_ORDER`.
             :rtype: list[object]
             """
-            if result is None:
+            if not state:
                 msg = "No LSQRT result available yet - run Least Squares first."
                 raise gr.Error(msg)
+            task = state.get("lsqrt") if isinstance(state, dict) else None
+            if task is None:
+                msg = "No LSQRT task stored in session state - run Least Squares first."
+                raise gr.Error(msg)
+            try:
+                result = task.get_result()
+            except Exception as exc:
+                msg = f"Failed to extract LSQRT result from stored task: {exc}"
+                raise gr.Error(msg) from exc
             values = compute.extract_values_for_transfer(result)
             # Return updates only for the _value components (every 4th in FIELD_ORDER)
             from elisa.ui.tabs.rv_fitting.components.param_inputs import PARAMS  # noqa: PLC0415
@@ -764,7 +786,7 @@ def build() -> None:  # noqa: C901, PLR0915
         value_outputs = [fit_comps[f"{name}_value"] for name in param_inputs.PARAMS]
         transfer_btn.click(
             fn=_transfer,
-            inputs=[lsqrt_result_state],
+            inputs=[tasks_state],
             outputs=value_outputs,
         )
 

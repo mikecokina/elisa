@@ -1,7 +1,7 @@
 """Core computation logic for RV fitting - no Gradio dependency.
 
 Translates flat Gradio value dictionaries into ELISa analytics objects,
-runs the LSQRT or MCMC optimisation, and returns plain Python / matplotlib
+runs the LSQRT or MCMC optimization, and returns plain Python / matplotlib
 objects that the UI layer can display.
 
 The module-level :func:`_capture_figure` context manager intercepts
@@ -236,6 +236,8 @@ def run_lsqrt(
     secondary_path: str | None,
     x_unit_str: str,
     param_values: dict[str, object],
+    *,
+    task: RVBinaryAnalyticsTask | None = None,
 ) -> tuple[dict, Figure, pd.DataFrame, str]:
     """Run a least-squares RV fit and return all displayable artefacts.
 
@@ -255,6 +257,11 @@ def run_lsqrt(
     :param param_values: Flat parameter dict from the Gradio form
         (keys follow the :data:`~components.param_inputs.FIELD_ORDER` convention).
     :type param_values: dict[str, object]
+    :param task: Optional pre-constructed :class:`~elisa.analytics.RVBinaryAnalyticsTask`.
+        When supplied the fit will be run on this task instance and it will be
+        populated with the resulting fit state (useful when the caller wants
+        to retain the task object across UI actions).
+    :type task: RVBinaryAnalyticsTask | None
     :returns: Tuple of ``(result_dict, model_figure, results_dataframe, json_path)``.
     :rtype: tuple[dict, Figure, pandas.DataFrame, str]
     :raises ValueError: If no primary data file is provided.
@@ -263,20 +270,31 @@ def run_lsqrt(
         msg = "Primary RV data file is required."
         raise ValueError(msg)
 
-    rv_primary = load_rv_data(primary_path, x_unit_str)
-    rv_secondary = load_rv_data(secondary_path, x_unit_str)
+    # If a pre-constructed task instance is provided, use it; otherwise
+    # construct a new RVBinaryAnalyticsTask from uploaded files.
+    if task is None:
+        rv_primary = load_rv_data(primary_path, x_unit_str)
+        rv_secondary = load_rv_data(secondary_path, x_unit_str)
 
-    data: dict[str, RVData] = {"primary": rv_primary}
-    if rv_secondary is not None:
-        data["secondary"] = rv_secondary
+        data: dict[str, RVData] = {"primary": rv_primary}
+        if rv_secondary is not None:
+            data["secondary"] = rv_secondary
 
-    x0 = build_x0(param_values)
+        x0 = build_x0(param_values)
 
-    plt.close("all")
-    # noinspection PyTypeChecker
-    with fit_logging():
-        task = RVBinaryAnalyticsTask(data=data, method="least_squares")
-        result = task.fit(x0=x0)
+        plt.close("all")
+        # noinspection PyTypeChecker
+        with fit_logging():
+            task = RVBinaryAnalyticsTask(data=data, method="least_squares")
+            result = task.fit(x0=x0)
+    else:
+        # Use the provided task - caller is responsible for creating it and
+        # ensuring its .data attribute is set if necessary.
+        x0 = build_x0(param_values)
+        plt.close("all")
+        # noinspection PyTypeChecker
+        with fit_logging():
+            result = task.fit(x0=x0)
 
     model_fig: Figure = task.plot.model(return_figure_instance=True)
     df = result_to_dataframe(task.fit_cls.flat_result)
@@ -296,9 +314,11 @@ def run_mcmc(
     nsteps: Int,
     burn_in: Int,
     fit_id: str,
+
     *,
     save: bool = True,
     progress: bool = True,
+    task: RVBinaryAnalyticsTask | None = None,
 ) -> tuple[dict, Figure, Figure, Figure, pd.DataFrame, str]:
     """Run an MCMC RV fit and return all displayable artefacts.
 
@@ -326,29 +346,58 @@ def run_mcmc(
     :type save: bool
     :param progress: Whether to show a progress indicator during MCMC sampling.
     :type progress: bool
+    :param task: Optional pre-constructed :class:`~elisa.analytics.RVBinaryAnalyticsTask`.
+        When supplied the MCMC fit will be run on this task instance and it
+        will be populated with the resulting chain and fit state. The caller
+        is responsible for providing appropriate ``data`` on the task.
+    :type task: RVBinaryAnalyticsTask | None
     :returns: Tuple of
         ``(result_dict, model_figure, corner_figure, traces_figure,
         results_dataframe, json_path)``.
     :rtype: tuple[dict, Figure, Figure, Figure, pandas.DataFrame, str]
     :raises ValueError: If no primary data file is provided.
     """
+    # Accept an optional pre-built task so callers (UI) can create the
+    # analytics instance and retain it in session state. If no task is
+    # provided, create a fresh one from uploaded files.
+    #
+    # NOTE: The `task` parameter is accepted as a keyword-only argument.
+    # Callers should pass it like: `run_mcmc(..., task=task_obj)`.
     if primary_path is None:
         msg = "Primary RV data file is required."
         raise ValueError(msg)
 
-    rv_primary = load_rv_data(primary_path, x_unit_str)
-    rv_secondary = load_rv_data(secondary_path, x_unit_str)
-
-    data: dict[str, RVData] = {"primary": rv_primary}
-    if rv_secondary is not None:
-        data["secondary"] = rv_secondary
-
+    # Build x0 from the form values
     x0 = build_x0(param_values)
+
+    # If caller provided a task instance, use it; otherwise build one from files
+    if task is None:
+        rv_primary = load_rv_data(primary_path, x_unit_str)
+        rv_secondary = load_rv_data(secondary_path, x_unit_str)
+
+        data: dict[str, RVData] = {"primary": rv_primary}
+        if rv_secondary is not None:
+            data["secondary"] = rv_secondary
+
+        task = RVBinaryAnalyticsTask(data=data, method="mcmc")
+
+    else:
+        # Ensure task has observational data when possible: prefer existing
+        # data on the task, otherwise load from provided paths.
+        try:
+            has_primary = bool(getattr(task, "data", None) and task.data.get("primary"))
+        except (AttributeError, TypeError):
+            has_primary = False
+        if not has_primary:
+            rv_primary = load_rv_data(primary_path, x_unit_str)
+            rv_secondary = load_rv_data(secondary_path, x_unit_str)
+            task.data = {"primary": rv_primary}
+            if rv_secondary is not None:
+                task.data["secondary"] = rv_secondary
 
     plt.close("all")
     # noinspection PyTypeChecker
     with fit_logging():
-        task = RVBinaryAnalyticsTask(data=data, method="mcmc")
 
         result = task.fit(
             x0=x0,
