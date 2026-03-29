@@ -250,7 +250,7 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
         useful in case of bimodal distribution of the MCMC chain. Allows restricting
         the posterior distribution to specific parameter ranges.
 
-        :param boundaries: Dictionary of param  eter boundaries in format
+        :param boundaries: Dictionary of parameter boundaries in format
                           {param_name: (min_value, max_value), ...}
                           Example: {'primary@t_eff': (5000, 6000), ...}
         :type boundaries: dict
