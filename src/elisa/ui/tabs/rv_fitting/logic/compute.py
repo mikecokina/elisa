@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
     from matplotlib.figure import Figure
 
-    from elisa.types import Float
+    from elisa.types import Float, Int
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -375,9 +375,9 @@ def run_mcmc(
 def load_chain(
     chain_file_path: str,
     *,
-    discard: int = 0,
-    percentiles: list[float] | None = None,
-) -> tuple[dict, Figure | None, Figure | None, pd.DataFrame, str]:
+    discard: Int = 0,
+    percentiles: list[Float] | None = None,
+) -> tuple[dict, str, dict, Figure | None, Figure | None, pd.DataFrame, str]:
     """Load a flattened MCMC chain JSON file and produce diagnostics.
 
     This simplified loader operates only on a concrete JSON file produced by
@@ -591,7 +591,7 @@ def load_params_from_json(path: str) -> dict[str, object]:
     """
     try:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
-    except Exception as exc:
+    except (OSError, ValueError) as exc:
         msg = f"Cannot read result file: {exc}"
         raise ValueError(msg) from exc
     if "system" not in data:

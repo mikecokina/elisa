@@ -31,6 +31,8 @@ import gradio as gr
 
 if TYPE_CHECKING:
 
+    from collections.abc import Callable
+
     from elisa.types import Float
 
 # ---------------------------------------------------------------------------
@@ -121,6 +123,22 @@ _COMPONENT_STANDARD_SPEC: dict[str, _Spec] = {
 }
 
 MAX_SPOT_SLOTS = 6
+MAX_SPOTS_LOCAL = 6
+
+SPOT_PARAMS: tuple[str, ...] = (
+    "longitude",
+    "latitude",
+    "angular_radius",
+    "temperature_factor",
+)
+
+# sensible defaults for new spot rows
+_SPOT_DEFAULTS: dict[str, tuple[float, float, float]] = {
+    "longitude": (230.0, 180.0, 270.0),
+    "latitude": (45.0, 0.0, 90.0),
+    "angular_radius": (50.0, 45.0, 80.0),
+    "temperature_factor": (0.98, 0.93, 1.0),
+}
 
 # Unit map for spot parameters
 SPOT_UNITS: dict[str, str] = {
@@ -261,10 +279,10 @@ def _param_row(
     section: str,
     name: str,
     label: str,
-    value: object,
-    fixed: object,
-    lo: object,
-    hi: object,
+    value: float | str | None ,
+    fixed: bool,  # noqa: FBT001
+    lo: float | str | None,
+    hi: float | str | None,
     constraint: str | None = None,
 ) -> None:
     """Render one parameter row with mode selector (free/fixed/constrained).
@@ -406,23 +424,7 @@ def _build_component_section(
     # ------------------------------------------------------------------ #
     # Spots UI for this component                                          #
     # ------------------------------------------------------------------ #
-    from elisa.ui.shared import build_full_width_button_row
-
-    MAX_SPOTS_LOCAL = 6
-    SPOT_PARAMS: tuple[str, ...] = (
-        "longitude",
-        "latitude",
-        "angular_radius",
-        "temperature_factor",
-    )
-
-    # sensible defaults for new spot rows
-    _SPOT_DEFAULTS: dict[str, tuple[float, float, float]] = {
-        "longitude": (230.0, 180.0, 270.0),
-        "latitude": (45.0, 0.0, 90.0),
-        "angular_radius": (50.0, 45.0, 80.0),
-        "temperature_factor": (0.98, 0.93, 1.0),
-    }
+    from elisa.ui.shared import build_full_width_button_row  # noqa: PLC0415
 
     def _make_spot_add_handler(max_spots: int):
         def handler(spot_count: int):
@@ -432,7 +434,7 @@ def _build_component_section(
 
         return handler
 
-    def _make_spot_remove_handler(slot_idx: int, max_spots: int):
+    def _make_spot_remove_handler(slot_idx: int, max_spots: int) -> Callable:
         n_params = len(SPOT_PARAMS)
         n_sub = 5  # value, mode, constraint, min, max
         default_row = []
@@ -440,8 +442,8 @@ def _build_component_section(
             dv, dlo, dhi = _SPOT_DEFAULTS[p]
             default_row.extend([dv, "free", "", dlo, dhi])
 
-        def handler(spot_count: int, *flat_values: object) -> list[object]:
-            current = int(spot_count)
+        def handler(spot_count_: int, *flat_values: object) -> list[object]:
+            current = int(spot_count_)
             total_outputs = 1 + max_spots + max_spots * n_params * n_sub
             if current == 0:
                 return [gr.update()] * total_outputs
@@ -466,8 +468,8 @@ def _build_component_section(
             out: list[object] = [new_count]
             out.extend(gr.update(visible=(k < new_count)) for k in range(max_spots))
             for k in range(max_spots):
-                for val in slots[k]:
-                    out.append(gr.update(value=val))
+                for val_ in slots[k]:
+                    out.extend([gr.update(value=val_)])
             return out
 
         return handler

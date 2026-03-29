@@ -13,7 +13,7 @@ from elisa.ui.tabs.rv_modeling.logic import compute
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-_PRIMARY_DEFAULTS: dict[str, object] = {
+_PRIMARY_DEFAULTS: dict[str, float | str | None] = {
     "mass": 2.15,
     "t_eff": 10000,
     "surface_potential": 3.6,
@@ -22,7 +22,7 @@ _PRIMARY_DEFAULTS: dict[str, object] = {
     "discretization_factor": 5,
     "atmosphere": "bb",
 }
-_SECONDARY_DEFAULTS: dict[str, object] = {
+_SECONDARY_DEFAULTS: dict[str, float | str | None] = {
     "mass": 1.2,
     "t_eff": 7000,
     "surface_potential": 4.0,
@@ -30,7 +30,7 @@ _SECONDARY_DEFAULTS: dict[str, object] = {
     "metallicity": 0.0,
     "atmosphere": "bb",
 }
-_SYSTEM_DEFAULTS: dict[str, object] = {
+_SYSTEM_DEFAULTS: dict[str, float | str | None] = {
     "inclination": 85.0,
     "period": 2.5,
     "eccentricity": 0.0,
@@ -41,7 +41,7 @@ _SYSTEM_DEFAULTS: dict[str, object] = {
     "primary_minimum_time": 2440000.0,
     "distance": 155.0,
 }
-_OBSERVER_DEFAULTS: dict[str, object] = {
+_OBSERVER_DEFAULTS: dict[str, float | str | None] = {
     "from_phase": -0.6,
     "to_phase": 0.6,
     "phase_step": 0.01,
@@ -54,7 +54,7 @@ def _make_handler(
     obs_keys: tuple[str, ...],
 ) -> Callable[..., tuple[Figure, pd.DataFrame, gr.DownloadButton]]:
     """Return a Gradio event-handler function for RV computation."""
-    def handler(*values: object) -> tuple[Figure, pd.DataFrame, gr.DownloadButton]:
+    def handler(*values: tuple[float | str | bool | None, ...]) -> tuple[Figure, pd.DataFrame, gr.DownloadButton]:
         idx = 0
         n_prim = len(prim_keys)
         n_sec = len(sec_keys)

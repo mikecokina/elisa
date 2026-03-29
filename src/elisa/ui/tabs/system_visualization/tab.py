@@ -107,7 +107,7 @@ def _make_handler(
     :rtype: Callable[..., tuple[dict, dict, dict, dict]]
     """
 
-    def handler(*values: object) -> tuple[dict, dict, dict, dict]:
+    def handler(*values: tuple[float | str | bool | None, ...]) -> tuple[dict, dict, dict, dict]:
         idx = 0
         n_prim = len(prim_keys)
         n_sec = len(sec_keys)
