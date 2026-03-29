@@ -304,7 +304,7 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
         - **nwalkers** (:class:`int`) - The number of walkers in the ensemble.
           Minimum is 2 * number of free parameters.
         - **nsteps** (:class:`int`) - The number of steps to run (default: 1000)
-        - **initial_state** (:class:`ndarray`) - The initial state or position vector
+        - **initial_state** (:class:`ndarray`) - The initial state or MCMC
           made of free parameters with shape (nwalkers, number of free parameters).
           The order is specified by parameter order in `x0`. Initial states should
           be supplied in normalized form (0, 1). For example, 0 means value at `min`

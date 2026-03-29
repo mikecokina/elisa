@@ -305,7 +305,7 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         Function transforms user initial state to normalized format suitable for MCMC chain,
         where all values are in the interval (0, 1).
 
-        :param initial_state: Initial state matrix before normalization. If None, random
+        :param initial_state: Initial state matrix. If None, random
             initial states in (0, 1) are generated with the first walker set to x0_vector.
         :type initial_state: NDArray[Float] | None
         :param nwalkers: The number of walkers in the ensemble. Minimum is 2 * number
