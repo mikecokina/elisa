@@ -1410,10 +1410,9 @@ def get_atm_table(
 
 
 def get_list_of_all_atm_tables(atlas: str) -> list[str]:
-    """Get list of all available atmosphere table files in configured location.
+    """Get list of all available atmosphere table files in the configured location.
 
-    Recursively searches the configured atlas directory for CSV files
-    containing atmosphere table data.
+    Recursively searches the configured atlas directory for CSV files containing atmosphere table data.
 
     :param atlas: Atmosphere atlas name (e.g., 'castelli', 'ck04').
     :type atlas: str
@@ -1421,12 +1420,7 @@ def get_list_of_all_atm_tables(atlas: str) -> list[str]:
     :rtype: list[str]
     """
     source = settings.ATLAS_TO_BASE_DIR[validated_atlas(atlas)]
-    matches = []
-    for root, _dirnames, filenames in Path(source).walk():
-        for filename in filenames:
-            if filename.endswith((".csv",)):
-                matches.extend([str(root / filename)])
-    return matches
+    return [str(path) for path in Path(source).rglob("*.csv") if path.is_file()]
 
 
 def multithread_atm_tables_reader(

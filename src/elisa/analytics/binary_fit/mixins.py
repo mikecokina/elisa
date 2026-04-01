@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 from time import time
 from typing import TYPE_CHECKING, Any
@@ -10,6 +10,7 @@ import numpy as np
 
 from elisa import settings
 from elisa.logger import getPersistentLogger
+from elisa.utc import UTC
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
