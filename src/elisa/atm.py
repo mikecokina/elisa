@@ -684,7 +684,7 @@ class NaiveInterpolatedAtm:
         log_g_name = np.char.add("g", np.char.zfill(logg_int.astype(str), 2))
 
         # Build filenames
-        fnames = str(atlas) + mh_name + "_" + temp_name + "_" + log_g_name
+        fnames = [f"{atlas}{mh}_{temp}_{g}" for mh, temp, g in zip(mh_name, temp_name, log_g_name)]
 
         return [str(Path(settings.ATLAS_TO_BASE_DIR[atlas]) / directory / (fname + ".csv")) for fname in fnames]
 
