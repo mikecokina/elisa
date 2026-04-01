@@ -490,7 +490,7 @@ def integrate_eccentric_curve_interp_appx(
                                      ``reduced_orbit_arr``.
     :type counterpart_position_arr: NDArray[Float]
     :param potentials: Corrected potentials.
-    :type potentials: dict[str, ArrayLike]
+    :type potentials: dict[str, NDArray]
     :param crv_labels: Curve labels.
     :type crv_labels: Sequence[str]
     :param curve_fn: Curve integrator function.
@@ -574,7 +574,7 @@ def integrate_eccentric_curve_symmetrical_counterparts_appx(
     :param orbital_supplements: Paired base and mirrored orbital positions.
     :type orbital_supplements: OrbitalSupplements
     :param potentials: Corrected potentials.
-    :type potentials: dict[str, ArrayLike]
+    :type potentials: dict[str, NDArray]
     :param crv_labels: Curve labels.
     :type crv_labels: Sequence[str]
     :param curve_fn: Curve integrator function.
@@ -638,7 +638,7 @@ def integrate_eccentric_curve_similar_neighbours_appx(
                               surface-geometry recalculation.
     :type new_geometry_mask: NDArray[bool]
     :param potentials: Corrected surface potentials.
-    :type potentials: dict[str, ArrayLike]
+    :type potentials: dict[str, NDArray]
     :param crv_labels: Curve labels.
     :type crv_labels: Sequence[str]
     :param curve_fn: Curve integrator function.
@@ -679,9 +679,9 @@ def integrate_eccentric_curve_exactly(
     :type binary: elisa.binary_system.system.BinarySystem
     :param orbital_motion: All orbital positions at which the curve will be
                            calculated.
-    :type orbital_motion: Sequence[ArrayLike]
+    :type orbital_motion: Sequence[NDArray]
     :param potentials: Corrected surface potentials.
-    :type potentials: dict[str, ArrayLike]
+    :type potentials: dict[str, NDArray]
     :param crv_labels: Labels of the calculated curves, such as passbands or
                        components.
     :type crv_labels: Sequence[str]
