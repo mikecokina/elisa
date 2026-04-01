@@ -31,6 +31,8 @@ from elisa.ui.tabs.rv_fitting.logic import compute
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from numpy.typing import NDArray
+
     from elisa.ui.tabs.rv_fitting.components.data_inputs import DataInputComponents
 
 # ---------------------------------------------------------------------------
@@ -436,6 +438,11 @@ def build() -> None:  # noqa: C901, PLR0915
         # Keys: 'lsqrt' -> RVBinaryAnalyticsTask, 'mcmc' -> RVBinaryAnalyticsTask
         tasks_state: gr.State = gr.State(value={})
 
+        # Session state for loaded chain data
+        # Keys: 'chain_task' -> RVBinaryAnalyticsTask (loaded from chain file),
+        #       'initial_state' -> numpy array for MCMC initial positions
+        chain_state: gr.State = gr.State(value={})
+
         # ------------------------------------------------------------------ #
         # Section 1 - Data upload                                              #
         # ------------------------------------------------------------------ #
@@ -554,7 +561,7 @@ def build() -> None:  # noqa: C901, PLR0915
                     minimum=10,
                 )
                 nsteps_comp = gr.Number(
-                    value=120,
+                    value=100,
                     label="Sampling steps",
                     info="Total number of sampling steps per walker (after burn-in).",
                     precision=0,
@@ -590,6 +597,52 @@ def build() -> None:  # noqa: C901, PLR0915
                     label="Show progress bar",
                     scale=1,
                 )
+
+        # ------------------------------------------------------------------ #
+        # Section 3.1 - Chain loading (optional)                               #
+        # ------------------------------------------------------------------ #
+        with gr.Accordion("3.1 · Load previous MCMC chain (optional)", open=False):
+            gr.Markdown(
+                "**Load a previously saved MCMC chain** to resume from or "
+                "visualize earlier results. When you load a chain, the corner "
+                "and traces plots will be automatically generated. If the "
+                "'Use as initial state' checkbox is enabled, the last nwalkers "
+                "samples from the loaded chain will be used as the starting "
+                "positions for a new MCMC run.",
+            )
+            with gr.Row():
+                chain_file_comp = gr.File(
+                    label="Chain file (flat-chain JSON)",
+                    file_types=[".json"],
+                    scale=2,
+                )
+                result_file_comp = gr.File(
+                    label="Result file (result JSON)",
+                    file_types=[".json"],
+                    scale=2,
+                )
+            with gr.Row():
+                discard_comp = gr.Number(
+                    value=0,
+                    label="Discard (burn-in samples per walker)",
+                    info="Number of initial samples to discard before generating plots.",
+                    precision=0,
+                    scale=2,
+                    minimum=0,
+                )
+                use_initial_state_comp = gr.Checkbox(
+                    value=False,
+                    label="Use as initial state for next MCMC run",
+                    info="When checked, the last nwalkers samples will seed the next MCMC fit.",
+                    scale=2,
+                )
+            load_chain_btn = gr.Button(
+                "📂 Load chain & plot diagnostics",
+                variant="secondary",
+                scale=1,
+            )
+            chain_load_status = gr.Markdown(value="Ready to load chain.", visible=True)
+
 
         # ------------------------------------------------------------------ #
         # Section 4 - Action buttons                                           #
@@ -677,30 +730,19 @@ def build() -> None:  # noqa: C901, PLR0915
             except ValueError as exc:
                 raise gr.Error(str(exc)) from exc
 
-            updates: list[object] = []
-            for key in fit_keys:
-                if key.endswith(("_min", "_max")):
-                    param_name = key.rsplit("_", maxsplit=1)[0]
-                    mode = str(params.get(f"{param_name}_mode", "free"))
-                    val = params.get(key)
-                    upd = gr.update(interactive=mode == "free")
-                    if val is not None:
-                        upd = gr.update(value=val, interactive=mode == "free")
-                    updates.append(upd)
-                elif key.endswith("_constraint"):
-                    param_name = key.rsplit("_", maxsplit=1)[0]
-                    mode = str(params.get(f"{param_name}_mode", "free"))
-                    val = params.get(key, "")
-                    updates.append(gr.update(value=val, interactive=mode == "constrained"))
-                elif key in params:
-                    updates.append(gr.update(value=params[key]))
-                else:
-                    updates.append(gr.update())
-            return updates
+            return _build_param_updates_from_dict(params)
 
         params_json_comp.upload(
             fn=_load_json_handler,
             inputs=[params_json_comp],
+            outputs=fit_inputs_list,
+        )
+
+        # When a result file is dropped in the chain loading section,
+        # immediately update initial parameters (same as "Load Parameters from Previous Fit")
+        result_file_comp.upload(
+            fn=_load_json_handler,
+            inputs=[result_file_comp],
             outputs=fit_inputs_list,
         )
 
@@ -750,9 +792,124 @@ def build() -> None:  # noqa: C901, PLR0915
             outputs=[observed_data_plot, obs_plot_accordion],
         )
 
-        # Chain-loading handler removed - the UI no longer supports loading
-        # or resuming MCMC from a flattened chain. Use the MCMC settings and
-        # the parameter form to run fresh MCMC sessions.
+        # Helper to build parameter updates from a params dict
+        def _build_param_updates_from_dict(params: dict) -> list[object]:
+            """Build gr.update objects for all fit parameters from a flat params dict.
+
+            :param params: Flat parameter dict with mode, value, min, max, constraint info.
+            :type params: dict
+            :returns: List of gr.update objects, one per fit_key.
+            :rtype: list[object]
+            """
+            updates: list[object] = []
+            for key in fit_keys:
+                if key.endswith(("_min", "_max")):
+                    param_name = key.rsplit("_", maxsplit=1)[0]
+                    mode = str(params.get(f"{param_name}_mode", "free"))
+                    val = params.get(key)
+                    upd = gr.update(interactive=mode == "free")
+                    if val is not None:
+                        upd = gr.update(value=val, interactive=mode == "free")
+                    updates.append(upd)
+                elif key.endswith("_constraint"):
+                    param_name = key.rsplit("_", maxsplit=1)[0]
+                    mode = str(params.get(f"{param_name}_mode", "free"))
+                    val = params.get(key, "")
+                    updates.append(gr.update(value=val, interactive=mode == "constrained"))
+                elif key in params:
+                    updates.append(gr.update(value=params[key]))
+                else:
+                    updates.append(gr.update())
+            return updates
+
+        # Chain loading handler - load MCMC chain and optionally use as initial state
+        def _load_chain_handler(
+            chain_file: object | None,
+            result_file: object | None,
+            discard: float,
+            *,
+            use_initial_state: bool = False,
+        ) -> Any:
+            """Load a previously saved MCMC chain and prepare it for reuse.
+
+            Loads the chain and result files, generates corner and traces plots,
+            updates the MCMC results tab, and optionally extracts initial state.
+            Also extracts parameter values from the result to populate the
+            parameter input form.
+
+            :param chain_file: Gradio file object for the chain JSON file.
+            :type chain_file: object | None
+            :param result_file: Gradio file object for the result JSON file.
+            :type result_file: object | None
+            :param discard: Number of burn-in samples to discard.
+            :type discard: float
+            :param use_initial_state: Whether to prepare the chain for use as initial state.
+            :type use_initial_state: bool
+            :returns: Tuple of (chain_state, status_msg, corner_fig, traces_fig,
+                results_df, *param_updates).
+            :rtype: Any
+            """
+            chain_path: str | None = getattr(chain_file, "name", None)
+            result_path: str | None = getattr(result_file, "name", None)
+
+            if chain_path is None or result_path is None:
+                msg = "Both chain file and result file are required."
+                raise gr.Error(msg)
+
+            discard_int = int(discard) if discard else 0
+
+            try:
+                task, corner_fig, traces_fig, results_df = compute.load_chain(
+                    chain_path,
+                    result_path,
+                    discard=discard_int,
+                )
+            except gr.Error:
+                raise
+            except Exception as exc:
+                msg = f"Failed to load chain: {exc}"
+                raise gr.Error(msg) from exc
+
+            # Build the new chain state - store the task and flag for use_initial_state
+            # Initial state extraction is deferred to fit time so nwalkers can change after loading
+            new_state: dict = {"chain_task": task, "use_initial_state": use_initial_state}
+
+            if use_initial_state:
+                status_msg = (
+                    "✓ Chain loaded successfully! Corner and traces plots generated. "
+                    "Initial state will be extracted and used when you hit Run MCMC "
+                    "(you can still adjust nwalkers before fitting)."
+                )
+            else:
+                status_msg = (
+                    "✓ Chain loaded successfully! Corner and traces plots generated. "
+                    "Initial state checkbox not checked - chain will not be used for next run."
+                )
+
+            # Extract parameter values and build updates
+            # param_updates: list[object] = []
+            try:
+                params = compute.load_params_from_json(result_path)
+                param_updates = _build_param_updates_from_dict(params)
+            except (ValueError, KeyError) as exc:
+                msg_warn = f"Could not extract parameters from result file: {exc}"
+                gr.Warning(msg_warn)
+                param_updates = [gr.update() for _ in fit_keys]
+
+            return new_state, status_msg, corner_fig, traces_fig, results_df, *param_updates
+
+        load_chain_btn.click(
+            fn=lambda cf, rf, d, uis: _load_chain_handler(cf, rf, d, use_initial_state=uis),
+            inputs=[chain_file_comp, result_file_comp, discard_comp, use_initial_state_comp],
+            outputs=[
+                chain_state,
+                chain_load_status,
+                corner_plot,
+                traces_plot,
+                mcmc_table,
+                *[fit_comps[k] for k in fit_keys],
+            ],
+        )
 
         # Transfer LSQRT result values into the param form
         def _transfer(state: dict | None) -> list[object]:
@@ -790,13 +947,127 @@ def build() -> None:  # noqa: C901, PLR0915
             outputs=value_outputs,
         )
 
+        # Helper to extract and validate initial state from loaded chain
+        def _extract_and_validate_initial_state(
+            chain_state_dict: dict | None,
+            nwalkers: int,
+        ) -> object | None:
+            """Extract and validate initial MCMC state from a loaded chain.
+
+            Retrieves the chain task from the state dict, extracts the last
+            nwalkers samples as initial state, and validates the shape matches
+            the expected dimensions (nwalkers, n_params).
+
+            :param chain_state_dict: State dict with 'chain_task' and 'use_initial_state' keys.
+            :type chain_state_dict: dict | None
+            :param nwalkers: Number of walkers for the MCMC fit.
+            :type nwalkers: int
+            :returns: Initial state array of shape (nwalkers, n_params), or None if not available.
+            :rtype: object | None
+            :raises gr.Error: If chain is invalid, too short, or shape mismatch occurs.
+            """
+            if not chain_state_dict or not isinstance(chain_state_dict, dict):
+                return None
+
+            use_initial_state = chain_state_dict.get("use_initial_state", False)
+            chain_task = chain_state_dict.get("chain_task")
+
+            if not use_initial_state or chain_task is None:
+                return None
+
+            # Extract initial state from chain
+            try:
+                initial_state: NDArray = compute.extract_initial_state_from_chain(
+                    task=chain_task,
+                    nwalkers=nwalkers,
+                )
+            except gr.Error:
+                raise
+            except Exception as exc:
+                msg = f"Failed to extract initial state from loaded chain: {exc}"
+                raise gr.Error(msg) from exc
+
+            # Validate shape: must be (nwalkers, n_params)
+            expected_n_params = len(chain_task.fit_cls.variable_labels)
+            if initial_state.shape != (nwalkers, expected_n_params):
+                msg = (
+                    f"Invalid shape for initial MCMC state: expected "
+                    f"({nwalkers}, {expected_n_params}), got {initial_state.shape}. "
+                    f"This may happen if you changed nwalkers after loading the chain. "
+                    f"Load the chain again with the correct nwalkers value."
+                )
+                raise gr.Error(msg)
+
+            return initial_state
+
+        # MCMC run with optional initial state from loaded chain
+        def _mcmc_with_chain_handler(
+            *values: object,
+            chain_state_dict: dict | None = None,
+        ) -> tuple[dict, Figure, Figure | None, Figure | None, pd.DataFrame, gr.DownloadButton]:
+            """Run MCMC, optionally using a loaded chain as initial state.
+
+            :param values: Gradio input values (passed via inputs list).
+            :type values: object
+            :param chain_state_dict: Optional dict with 'chain_task' and 'use_initial_state' keys.
+            :type chain_state_dict: dict | None
+            :returns: MCMC results tuple.
+            :rtype: tuple
+            """
+            n_data = len(data_keys)
+            n_fit = len(fit_keys)
+            data_vals = _collect_param_values(data_keys, values, 0)
+            fit_vals = _collect_param_values(fit_keys, values, n_data)
+            mcmc_vals = _collect_param_values(mcmc_keys, values, n_data + n_fit)
+
+            primary_path: str | None = getattr(data_vals.get("primary_file"), "name", None)
+            secondary_path: str | None = getattr(data_vals.get("secondary_file"), "name", None)
+            x_unit_str: str = str(data_vals.get("x_unit", "Julian days (JD)"))
+
+            nwalkers = int(mcmc_vals.get("nwalkers") or 50)
+            nsteps = int(mcmc_vals.get("nsteps") or 500)
+            burn_in = int(mcmc_vals.get("burn_in") or 50)
+            fit_id = str(mcmc_vals.get("fit_id") or "mcmc_rv_fit")
+            save = bool(mcmc_vals.get("save_chain", True))
+            progress = bool(mcmc_vals.get("progress", True))
+
+            # Extract and validate initial state from loaded chain if available
+            initial_state = _extract_and_validate_initial_state(chain_state_dict, nwalkers)
+
+            try:
+                result, model_fig, corner_fig, traces_fig, df, json_path = compute.run_mcmc(
+                    primary_path,
+                    secondary_path,
+                    x_unit_str,
+                    fit_vals,
+                    nwalkers,
+                    nsteps,
+                    burn_in,
+                    fit_id,
+                    save=save,
+                    progress=progress,
+                    initial_state=initial_state,
+                )
+            except Exception as exc:
+                msg = str(exc)
+                raise gr.Error(msg) from exc
+
+            return (
+                result,
+                model_fig,
+                corner_fig,
+                traces_fig,
+                df,
+                gr.DownloadButton(value=json_path, visible=True),
+            )
+
         # MCMC run - immediately switch tab, then run computation
         mcmc_btn.click(
             fn=lambda: gr.update(selected=_TAB_MCMC),
             outputs=[results_tabs],
         ).then(
-            fn=_mcmc_handler(data_keys, fit_keys, mcmc_keys),
-            inputs=mcmc_all_inputs,
+            fn=lambda cstate, *vals: _mcmc_with_chain_handler(*vals, chain_state_dict=cstate),
+            inputs=[chain_state, *mcmc_all_inputs],
             outputs=[
                 gr.State(),  # mcmc result (not stored - download covers it)
                 mcmc_model_plot,
@@ -807,3 +1078,6 @@ def build() -> None:  # noqa: C901, PLR0915
             ],
             show_progress="full",
         )
+
+
+

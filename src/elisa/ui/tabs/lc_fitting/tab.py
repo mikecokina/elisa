@@ -447,7 +447,7 @@ def _build_mcmc_accordion() -> tuple[gr.Number, gr.Number, gr.Number, gr.Textbox
                 minimum=10,
             )
             nsteps_comp = gr.Number(
-                value=120,
+                value=100,
                 label="Sampling steps",
                 info="Total number of sampling steps per walker (after burn-in).",
                 precision=0,

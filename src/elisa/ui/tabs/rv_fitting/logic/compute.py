@@ -19,13 +19,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import gradio as gr
 import matplotlib.pyplot as plt
 import pandas as pd
 
 from elisa import units as u
 from elisa.analytics import RVBinaryAnalyticsTask, RVData
-
-# chain-loading plotting helpers removed - analytics layer provides these
 from elisa.ui.shared.logging_config import fit_logging
 from elisa.utc import UTC
 
@@ -33,6 +32,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from matplotlib.figure import Figure
+    from numpy.typing import NDArray
 
     from elisa.types import Float, Int
 
@@ -258,7 +258,7 @@ def run_lsqrt(
         (keys follow the :data:`~components.param_inputs.FIELD_ORDER` convention).
     :type param_values: dict[str, object]
     :param task: Optional pre-constructed :class:`~elisa.analytics.RVBinaryAnalyticsTask`.
-        When supplied the fit will be run on this task instance and it will be
+        When supplied the fit will be run on this task instance, and it will be
         populated with the resulting fit state (useful when the caller wants
         to retain the task object across UI actions).
     :type task: RVBinaryAnalyticsTask | None
@@ -314,11 +314,11 @@ def run_mcmc(
     nsteps: Int,
     burn_in: Int,
     fit_id: str,
-
     *,
     save: bool = True,
     progress: bool = True,
     task: RVBinaryAnalyticsTask | None = None,
+    initial_state: object = None,
 ) -> tuple[dict, Figure, Figure, Figure, pd.DataFrame, str]:
     """Run an MCMC RV fit and return all displayable artefacts.
 
@@ -347,10 +347,15 @@ def run_mcmc(
     :param progress: Whether to show a progress indicator during MCMC sampling.
     :type progress: bool
     :param task: Optional pre-constructed :class:`~elisa.analytics.RVBinaryAnalyticsTask`.
-        When supplied the MCMC fit will be run on this task instance and it
+        When supplied the MCMC fit will be run on this task instance, and it
         will be populated with the resulting chain and fit state. The caller
         is responsible for providing appropriate ``data`` on the task.
     :type task: RVBinaryAnalyticsTask | None
+    :param initial_state: Optional initial state array for MCMC walkers.
+        Should be an array of shape (nwalkers, n_params) containing the
+        starting positions for each walker. When ``None``, the sampler
+        initializes walkers from the prior.
+    :type initial_state: object
     :returns: Tuple of
         ``(result_dict, model_figure, corner_figure, traces_figure,
         results_dataframe, json_path)``.
@@ -398,16 +403,18 @@ def run_mcmc(
     plt.close("all")
     # noinspection PyTypeChecker
     with fit_logging():
-
-        result = task.fit(
-            x0=x0,
-            nwalkers=nwalkers,
-            nsteps=nsteps,
-            burn_in=burn_in,
-            save=save,
-            fit_id=fit_id,
-            progress=progress,
-        )
+        fit_kwargs = {
+            "x0": x0,
+            "nwalkers": nwalkers,
+            "nsteps": nsteps,
+            "burn_in": burn_in,
+            "save": save,
+            "fit_id": fit_id,
+            "progress": progress,
+        }
+        if initial_state is not None:
+            fit_kwargs["initial_state"] = initial_state  # type: ignore[typeddict-unknown-key]
+        result = task.fit(**fit_kwargs)
 
     model_fig: Figure = task.plot.model(return_figure_instance=True)
 
@@ -551,3 +558,118 @@ def load_params_from_json(path: str) -> dict[str, object]:
                 continue
             out.update(_param_meta_to_flat(name, meta))
     return out
+
+
+def load_chain(
+    chain_file_path: str,
+    result_file_path: str,
+    discard: Int = 0,
+) -> tuple[RVBinaryAnalyticsTask, Figure | None, Figure | None, pd.DataFrame | None]:
+    """Load a previously saved MCMC chain and results for plotting and reuse.
+
+    Loads both the result JSON (containing fitted parameters) and the chain
+    JSON file, then creates an :class:`~elisa.analytics.RVBinaryAnalyticsTask`
+    with the loaded state. Automatically generates corner and traces plots
+    if both files load successfully.
+
+    :param chain_file_path: Path to the saved flat-chain JSON file.
+    :type chain_file_path: str
+    :param result_file_path: Path to the saved result JSON file.
+    :type result_file_path: str
+    :param discard: Number of initial chain samples to discard per walker.
+        Used to trim burn-in before generating plots.
+    :type discard: elisa.types.Int
+    :returns: Tuple of (task, corner_figure, traces_figure, results_dataframe).
+        Figures are ``None`` if plotting fails. DataFrame is ``None`` if
+        result extraction fails.
+    :rtype: tuple[RVBinaryAnalyticsTask, Figure | None, Figure | None, pandas.DataFrame | None]
+    :raises gr.Error: If result file cannot be loaded or if chain file
+        is missing or invalid.
+    """
+    # Create a task to hold the loaded state.
+    task = RVBinaryAnalyticsTask(data={}, method="mcmc")
+
+    try:
+        # Load result first - this populates the task with fit parameters.
+        task.load_result(filename=result_file_path)
+    except Exception as exc:
+        msg = f"Failed to load result file '{result_file_path}': {exc}"
+        raise gr.Error(msg) from exc
+
+    try:
+        # Load chain - this populates task.fit_cls.flat_chain
+        task.load_chain(chain_file_path, discard=discard)
+    except Exception as exc:
+        msg = f"Failed to load chain file '{chain_file_path}': {exc}"
+        raise gr.Error(msg) from exc
+
+    # Generate plots using the task's plotting interface.
+    corner_fig: Figure | None = None
+    traces_fig: Figure | None = None
+    results_df: pd.DataFrame | None = None
+
+    plt.close("all")
+    try:
+        with _capture_figure() as corner_captured:
+            task.plot.corner(truths=True)
+        corner_fig = corner_captured[0] if corner_captured else None
+    except Exception as exc:  # noqa: BLE001
+        msg = f"Corner plot generation failed: {exc}"
+        gr.Warning(msg)
+
+    plt.close("all")
+    try:
+        with _capture_figure() as traces_captured:
+            task.plot.traces(truths=True)
+        traces_fig = traces_captured[0] if traces_captured else None
+    except Exception as exc:  # noqa: BLE001
+        msg = f"Traces plot generation failed: {exc}"
+        gr.Warning(msg)
+
+    try:
+        results_df = result_to_dataframe(task.fit_cls.flat_result)
+    except Exception as exc:  # noqa: BLE001
+        msg = f"Results dataframe generation failed: {exc}"
+        gr.Warning(msg)
+
+    return task, corner_fig, traces_fig, results_df
+
+
+def extract_initial_state_from_chain(
+    task: RVBinaryAnalyticsTask,
+    nwalkers: Int,
+) -> NDArray:
+    """Extract the last nwalkers samples from a loaded chain as initial state.
+
+    Uses the last nwalkers rows from the chain to create an initial state
+    array suitable for passing to :meth:`~elisa.analytics.RVBinaryAnalyticsTask.fit`
+    as the ``initial_state`` parameter.
+
+    :param task: Task with a loaded chain (task.fit_cls.flat_chain populated).
+    :type task: RVBinaryAnalyticsTask
+    :param nwalkers: Number of walkers for the next MCMC run.
+    :type nwalkers: elisa.types.Int
+    :returns: Array of shape (nwalkers, n_params) containing initial positions.
+    :rtype: object
+    :raises gr.Error: If the chain is too short or if extraction fails.
+    """
+    try:
+        chain = task.fit_cls.flat_chain
+    except Exception as exc:
+        msg = f"Failed to access chain from loaded task: {exc}"
+        raise gr.Error(msg) from exc
+
+    if chain is None or chain.size == 0:
+        msg = "Chain is empty or not loaded."
+        raise gr.Error(msg)
+
+    n_samples = chain.shape[0]
+    if n_samples < nwalkers:
+        msg = (
+            f"Chain has {n_samples} samples but {nwalkers} walkers requested. "
+            f"Load a longer chain or reduce the number of walkers."
+        )
+        raise gr.Error(msg)
+
+    # Extract the last nwalkers rows
+    return chain[-nwalkers:, :]
