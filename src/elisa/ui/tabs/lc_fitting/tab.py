@@ -28,6 +28,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.figure import Figure  # noqa: TC002
 
+from elisa.analytics import LCBinaryAnalyticsTask
 from elisa.analytics.binary_fit.shared import extend_observations_to_desired_interval
 from elisa.ui.tabs.lc_fitting.components import data_inputs, param_inputs
 from elisa.ui.tabs.lc_fitting.components.data_inputs import MAX_PASSBAND_ROWS
@@ -569,7 +570,9 @@ def build() -> None:  # noqa: C901, PLR0915
             "the LSQRT solution.",
         )
 
-        lsqrt_result_state: gr.State = gr.State()
+        # Session state holding analytics tasks keyed by method.
+        # Keys: 'lsqrt' -> LCBinaryAnalyticsTask (populated after each LSQRT run)
+        tasks_state: gr.State = gr.State(value={})
         (
             data_comps,
             period_comp,
@@ -699,16 +702,27 @@ def build() -> None:  # noqa: C901, PLR0915
             else:
                 fit_vals = _collect_param_values(standard_fit_keys, values, n_lc + n_cf)
 
+            # Load data here so the task is constructed with real LCData objects
+            # (mirroring the RV fitting pattern where the tab owns the task instance).
             try:
-                result, fig, df, json_path = compute.run_lsqrt(
+                lc_data = compute.load_lc_dataset(lc_rows, x_unit_str)
+            except ValueError as exc:
+                raise gr.Error(str(exc)) from exc
+
+            task_obj = LCBinaryAnalyticsTask(data=lc_data, method="least_squares", expected_morphology=morphology)
+
+            try:
+                _, fig, df, json_path = compute.run_lsqrt(
                     lc_rows,
                     x_unit_str,
                     fit_vals,
                     morphology,
+                    task=task_obj,
                 )
             except Exception as exc:
                 raise gr.Error(str(exc)) from exc
-            return result, fig, df, gr.DownloadButton(value=json_path, visible=True)
+
+            return {"lsqrt": task_obj}, fig, df, gr.DownloadButton(value=json_path, visible=True)
 
         # Unified MCMC - same approach
         def _unified_mcmc(*values: object) -> tuple:
@@ -724,10 +738,12 @@ def build() -> None:  # noqa: C901, PLR0915
             )
             if is_community:
                 fit_vals = _collect_param_values(community_fit_keys, values, n_lc)
-                mcmc_vals = _collect_param_values(mcmc_keys, values, n_lc + n_cf)
             else:
                 fit_vals = _collect_param_values(standard_fit_keys, values, n_lc + n_cf)
-                mcmc_vals = _collect_param_values(mcmc_keys, values, n_lc + n_cf + n_sf)
+            # unified_mcmc_inputs always contains both community and standard fit
+            # inputs before the mcmc block, so the mcmc offset is the same for
+            # both approaches: lc_data + community_fit + standard_fit.
+            mcmc_vals = _collect_param_values(mcmc_keys, values, n_lc + n_cf + n_sf)
 
             nwalkers = int(mcmc_vals.get("nwalkers") or 50)
             nsteps = int(mcmc_vals.get("nsteps") or 500)
@@ -755,12 +771,21 @@ def build() -> None:  # noqa: C901, PLR0915
 
         # Create transfer handlers for each approach
         def _make_community_transfer() -> Callable[[dict | None, str], list[object]]:
-            def _transfer(result: dict | None, approach: str) -> list[object]:
+            def _transfer(state: dict | None, approach: str) -> list[object]:
                 if approach != "Community":
                     return [gr.update() for _ in community_value_outputs]
-                if result is None:
+                if not state:
                     msg = "No LSQRT result available yet - run Least Squares first."
                     raise gr.Error(msg)
+                task = state.get("lsqrt") if isinstance(state, dict) else None
+                if task is None:
+                    msg = "No LSQRT task stored in session state - run Least Squares first."
+                    raise gr.Error(msg)
+                try:
+                    result = task.get_result()
+                except Exception as exc:
+                    msg = f"Failed to extract result from stored task: {exc}"
+                    raise gr.Error(msg) from exc
                 values = compute.extract_values_for_transfer(result)
 
                 def _upd(key: str) -> object:
@@ -778,12 +803,21 @@ def build() -> None:  # noqa: C901, PLR0915
             return _transfer
 
         def _make_standard_transfer() -> Callable[[dict | None, str], list[object]]:
-            def _transfer(result: dict | None, approach: str) -> list[object]:
+            def _transfer(state: dict | None, approach: str) -> list[object]:
                 if approach != "Standard":
                     return [gr.update() for _ in standard_value_outputs]
-                if result is None:
+                if not state:
                     msg = "No LSQRT result available yet - run Least Squares first."
                     raise gr.Error(msg)
+                task = state.get("lsqrt") if isinstance(state, dict) else None
+                if task is None:
+                    msg = "No LSQRT task stored in session state - run Least Squares first."
+                    raise gr.Error(msg)
+                try:
+                    result = task.get_result()
+                except Exception as exc:
+                    msg = f"Failed to extract result from stored task: {exc}"
+                    raise gr.Error(msg) from exc
                 values = compute.extract_values_for_transfer(result)
 
                 def _upd(key: str) -> object:
@@ -841,7 +875,7 @@ def build() -> None:  # noqa: C901, PLR0915
         ).then(
             fn=_unified_lsqrt,
             inputs=unified_lsqrt_inputs,
-            outputs=[lsqrt_result_state, lsqrt_model_plot, lsqrt_table, lsqrt_download],
+            outputs=[tasks_state, lsqrt_model_plot, lsqrt_table, lsqrt_download],
             show_progress="full",
         )
 
@@ -892,10 +926,20 @@ def build() -> None:  # noqa: C901, PLR0915
                 raise gr.Error(msg)
 
             # Choose ephemeris values - prefer data-section period, then form period, then LSQRT result
-            def _extract_from_lsqr(key: str) -> object | None:
+            def _extract_from_lsqr(key: str) -> object | None:  # noqa: PLR0911
                 if not isinstance(lsqrt_state_val, dict):
                     return None
-                system = lsqrt_state_val.get("system")
+                task = lsqrt_state_val.get("lsqrt")
+                if task is None:
+                    return None
+                # noinspection PyBroadException
+                try:
+                    result = task.get_result()
+                except Exception:  # noqa: BLE001
+                    return None
+                if not isinstance(result, dict):
+                    return None
+                system = result.get("system")
                 if not isinstance(system, dict):
                     return None
                 meta = system.get(key)
@@ -1004,7 +1048,7 @@ def build() -> None:  # noqa: C901, PLR0915
             start_phase_comp,
             stop_phase_comp,
             centre_comp,
-            lsqrt_result_state,
+            tasks_state,
         ]
         plot_obs_btn.click(
             fn=_plot_loaded_lc_handler,
@@ -1014,11 +1058,11 @@ def build() -> None:  # noqa: C901, PLR0915
 
         transfer_btn.click(
             fn=_make_community_transfer(),
-            inputs=[lsqrt_result_state, approach_comp],
+            inputs=[tasks_state, approach_comp],
             outputs=community_value_outputs,
         ).then(
             fn=_make_standard_transfer(),
-            inputs=[lsqrt_result_state, approach_comp],
+            inputs=[tasks_state, approach_comp],
             outputs=standard_value_outputs,
         )
 

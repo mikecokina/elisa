@@ -609,11 +609,54 @@ def load_params_from_json(path: str) -> dict[str, object]:
 # ---------------------------------------------------------------------------
 
 
+def load_lc_dataset(
+    lc_rows: list[LCRowData],
+    x_unit_str: str,
+) -> dict[str, LCData]:
+    """Load all valid passband rows into a passband -> :class:`~elisa.analytics.LCData` mapping.
+
+    Skips rows that have no file path or no passband name.  Raises
+    :exc:`ValueError` when the result is empty (no rows with valid files).
+
+    This helper is exposed so the UI layer can load data and construct a
+    :class:`~elisa.analytics.LCBinaryAnalyticsTask` with *real* data before
+    calling :func:`run_lsqrt`, mirroring the RV fitting pattern where the tab
+    owns the task instance.
+
+    :param lc_rows: List of passband row descriptors from the UI.
+    :type lc_rows: list[LCRowData]
+    :param x_unit_str: X-axis unit label from the UI dropdown.
+    :type x_unit_str: str
+    :returns: Mapping from passband name to loaded :class:`~elisa.analytics.LCData`.
+    :rtype: dict[str, LCData]
+    :raises ValueError: If no rows with a valid file path and passband are found.
+    """
+    data: dict[str, LCData] = {}
+    for row in lc_rows:
+        passband = row.get("passband") or ""
+        file_path = row.get("file_path")
+        if not passband or not file_path:
+            continue
+        data[passband] = load_lc_data(
+            file_path,
+            passband,
+            x_unit_str,
+            row.get("y_unit", "Flux (dimensionless)"),
+            row.get("reference_magnitude"),
+        )
+    if not data:
+        msg = "At least one light curve with a valid data file must be provided."
+        raise ValueError(msg)
+    return data
+
+
 def run_lsqrt(
     lc_rows: list[LCRowData],
     x_unit_str: str,
     param_values: dict[str, object],
     morphology: str,
+    *,
+    task: LCBinaryAnalyticsTask | None = None,
 ) -> tuple[dict, Figure, pd.DataFrame, str]:
     """Run a least-squares LC fit and return all displayable artefacts.
 
@@ -623,39 +666,32 @@ def run_lsqrt(
     returns the fitted result together with a model plot, a results table,
     and a path to the saved JSON result.
 
-    :param lc_rows: List of passband row dicts (only rows with a non-``None``
-        ``file_path`` and non-empty ``passband`` are loaded).
+    When a pre-constructed *task* is supplied (already initialised with the
+    correct ``data``) it is used directly and populated with fit state
+    in-place, so the caller can retain the instance across UI actions (e.g.
+    for parameter transfer to MCMC).  The caller is responsible for ensuring
+    that ``task.data`` is set before calling this function.
+
+    :param lc_rows: List of passband row dicts.  Only used when *task* is
+        ``None`` to load the observational data.
     :type lc_rows: list[LCRowData]
-    :param x_unit_str: X-axis unit label from the UI dropdown.
+    :param x_unit_str: X-axis unit label from the UI dropdown.  Only used
+        when *task* is ``None``.
     :type x_unit_str: str
     :param param_values: Flat parameter dict from the Gradio form.
     :type param_values: dict[str, object]
     :param morphology: Expected binary morphology (``"detached"`` or
         ``"over-contact"``).
     :type morphology: str
+    :param task: Optional pre-constructed :class:`~elisa.analytics.LCBinaryAnalyticsTask`
+        already initialised with observational data.  When ``None`` a fresh
+        task is built from *lc_rows* internally.
+    :type task: LCBinaryAnalyticsTask | None
     :returns: Tuple of ``(result_dict, model_figure, results_dataframe, json_path)``.
     :rtype: tuple[dict, matplotlib.figure.Figure, pandas.DataFrame, str]
-    :raises ValueError: If no valid LC data rows are provided.
+    :raises ValueError: If no valid LC data rows are provided (only when
+        *task* is ``None``).
     """
-    data: dict[str, LCData] = {}
-    for row in lc_rows:
-        passband = row.get("passband") or ""
-        file_path = row.get("file_path")
-        if not passband or not file_path:
-            continue
-        lc = load_lc_data(
-            file_path,
-            passband,
-            x_unit_str,
-            row.get("y_unit", "Flux (dimensionless)"),
-            row.get("reference_magnitude"),
-        )
-        data[passband] = lc
-
-    if not data:
-        msg = "At least one light curve with a valid data file must be provided."
-        raise ValueError(msg)
-
     x0_dict = build_x0(param_values, include_nuisance=False)
     x0 = BinaryInitialParameters(**x0_dict)
 
@@ -668,9 +704,13 @@ def run_lsqrt(
     plt.close("all")
     # noinspection PyTypeChecker
     with fit_logging():
-        task = LCBinaryAnalyticsTask(
-            data=data, method="least_squares", expected_morphology=morphology,
-        )
+        if task is None:
+            # No task provided - load data and create the task from scratch.
+            data = load_lc_dataset(lc_rows, x_unit_str)
+            task = LCBinaryAnalyticsTask(
+                data=data, method="least_squares", expected_morphology=morphology,
+            )
+        # else: caller already constructed the task with real data; use it directly.
         result = task.fit(x0=x0)
 
     model_fig: Figure = task.plot.model(return_figure_instance=True)
@@ -791,3 +831,5 @@ def run_mcmc(
     task.save_result(str(json_path))
 
     return result, model_fig, corner_fig, traces_fig, df, str(json_path)
+
+
