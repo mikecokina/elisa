@@ -633,16 +633,16 @@ def load_lc_dataset(
     """
     data: dict[str, LCData] = {}
     for row in lc_rows:
-        passband = row.get("passband") or ""
-        file_path = row.get("file_path")
+        passband = row["passband"]
+        file_path = row["file_path"]
         if not passband or not file_path:
             continue
         data[passband] = load_lc_data(
             file_path,
             passband,
             x_unit_str,
-            row.get("y_unit", "Flux (dimensionless)"),
-            row.get("reference_magnitude"),
+            row["y_unit"],
+            row["reference_magnitude"],
         )
     if not data:
         msg = "At least one light curve with a valid data file must be provided."
@@ -768,24 +768,7 @@ def run_mcmc(
     :rtype: tuple[dict, Figure, Figure | None, Figure | None, pandas.DataFrame, str]
     :raises ValueError: If no valid LC data rows are provided.
     """
-    data: dict[str, LCData] = {}
-    for row in lc_rows:
-        passband = row.get("passband") or ""
-        file_path = row.get("file_path")
-        if not passband or not file_path:
-            continue
-        lc = load_lc_data(
-            file_path,
-            passband,
-            x_unit_str,
-            row.get("y_unit", "Flux (dimensionless)"),
-            row.get("reference_magnitude"),
-        )
-        data[passband] = lc
-
-    if not data:
-        msg = "At least one light curve with a valid data file must be provided."
-        raise ValueError(msg)
+    data: dict[str, LCData] = load_lc_dataset(lc_rows, x_unit_str)
 
     x0_dict = build_x0(param_values, include_nuisance=True)
     x0 = BinaryInitialParameters(**x0_dict)
