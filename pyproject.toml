@@ -140,5 +140,7 @@ ignore = [
     "ANN002", # Missing type annotation for `*args`
     "ANN003", # Missing type annotation for `**kwargs`
     "ANN401", # Any type annotation
-    "EXE002"# Shebang is missing executable file
+    "EXE002", # Shebang is missing executable file
+    "D213", # Multiline summary docstring should start at the first line
+    "D203", # Incorrect blank lines before class docstring
 ]

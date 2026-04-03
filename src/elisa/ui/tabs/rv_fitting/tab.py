@@ -20,11 +20,11 @@ import gradio as gr
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd  # noqa: TC002 - needed at runtime for Gradio type hints
-from matplotlib.figure import Figure  # noqa: TC002 - same reason
 
 from elisa import units as u
 from elisa.analytics import RVBinaryAnalyticsTask, RVData
 from elisa.analytics.binary_fit.shared import extend_observations_to_desired_interval
+from elisa.ui.shared.plotting import figure_to_pil
 from elisa.ui.tabs.rv_fitting.components import data_inputs, param_inputs
 from elisa.ui.tabs.rv_fitting.logic import compute
 
@@ -69,8 +69,13 @@ def _collect_param_values(
 def _lsqrt_handler(
     data_keys: tuple[str, ...],
     fit_keys: tuple[str, ...],
-) -> Callable[..., tuple[dict, Figure, pd.DataFrame, gr.DownloadButton]]:
+) -> Callable[..., tuple[object, dict, object, pd.DataFrame, object]]:
     """Return the LSQRT Gradio event-handler bound to the given key tuples.
+
+    The returned handler prepends a ``gr.Tabs`` select update so the caller
+    can wire it to a single ``.click()`` without a ``.then()`` chain - which
+    eliminates the intermediate loading-state timer registration that fires
+    ``find_node_by_id`` on every tick during computation.
 
     :param data_keys: Keys for data-input components in order.
     :type data_keys: tuple[str, ...]
@@ -81,7 +86,7 @@ def _lsqrt_handler(
 
     def handler(
         *values: object,
-    ) -> tuple[dict, Figure, pd.DataFrame, gr.DownloadButton]:
+    ) -> tuple[object, dict, object, pd.DataFrame, object]:
         n_data = len(data_keys)
         data_vals = _collect_param_values(data_keys, values, 0)
         fit_vals = _collect_param_values(fit_keys, values, n_data)
@@ -113,7 +118,13 @@ def _lsqrt_handler(
         # The compute.run_lsqrt call populated `task_obj` by running fit on it
         # so store it in the session state for later reuse.
         state_obj = {"lsqrt": task_obj}
-        return state_obj, fig, df, gr.DownloadButton(value=json_path, visible=True)
+        return (
+            gr.update(selected=_TAB_LSQRT),
+            state_obj,
+            fig,
+            df,
+            gr.update(value=json_path, visible=True),
+        )
 
     return handler
 
@@ -122,7 +133,7 @@ def _mcmc_handler(
     data_keys: tuple[str, ...],
     fit_keys: tuple[str, ...],
     mcmc_keys: tuple[str, ...],
-) -> Callable[..., tuple[dict, Figure, Figure | None, Figure | None, pd.DataFrame, gr.DownloadButton]]:
+) -> Callable[..., tuple[dict, object, object | None, object | None, pd.DataFrame, dict[str, Any]]]:
     """Return the MCMC Gradio event-handler bound to the given key tuples.
 
     :param data_keys: Keys for data-input components in order.
@@ -136,7 +147,7 @@ def _mcmc_handler(
 
     def handler(
         *values: tuple[float | str | bool | dict, None, ...],
-    ) -> tuple[dict, Figure, Figure | None, Figure | None, pd.DataFrame, gr.DownloadButton]:
+    ) -> tuple[dict, object, object | None, object | None, pd.DataFrame, dict[str, Any]]:
         n_data = len(data_keys)
         n_fit = len(fit_keys)
         data_vals = _collect_param_values(data_keys, values, 0)
@@ -177,21 +188,21 @@ def _mcmc_handler(
             corner_fig,
             traces_fig,
             df,
-            gr.DownloadButton(value=json_path, visible=True),
+            gr.update(value=json_path, visible=True),
         )
 
     return handler
 
 
-def _plot_loaded_data_handler(_data_keys: tuple[str, ...]) -> Callable[..., tuple[Figure, dict[str, Any]]]:  # noqa: C901, PLR0915
+def _plot_loaded_data_handler(_data_keys: tuple[str, ...]) -> Callable[..., tuple[object, dict[str, Any]]]:  # noqa: C901, PLR0915
     """Return a handler that plots uploaded RV files (observational points).
 
     If the uploaded data are in Julian days, the handler will phase the time
     series using the supplied orbital *period* and *T0* (primary minimum time).
     Otherwise, the raw x-axis is used (time/phase as uploaded).
 
-    The function returns a matplotlib Figure showing primary and optional
-    secondary data with error bars.
+    The function returns a PIL Image showing primary and optional secondary
+    data with error bars.
     """
 
     def _plot_loaded_data(  # noqa: C901, PLR0912, PLR0915
@@ -205,7 +216,7 @@ def _plot_loaded_data_handler(_data_keys: tuple[str, ...]) -> Callable[..., tupl
         stop_phase: float | None,
         centre_value: float | None,
         lsqrt_result: dict | None = None,
-    ) -> tuple[Figure, dict[str, Any]]:
+    ) -> tuple[object, dict[str, Any]]:
         primary_path: str | None = getattr(primary_file, "name", None)
         secondary_path: str | None = getattr(secondary_file, "name", None)
 
@@ -360,7 +371,7 @@ def _plot_loaded_data_handler(_data_keys: tuple[str, ...]) -> Callable[..., tupl
         ax.legend(loc="best")
         fig.tight_layout()
 
-        return fig, gr.update(open=True)
+        return figure_to_pil(fig), gr.update(open=True)
 
     return _plot_loaded_data
 
@@ -370,14 +381,14 @@ def _plot_loaded_data_handler(_data_keys: tuple[str, ...]) -> Callable[..., tupl
 # ---------------------------------------------------------------------------
 
 
-def _build_lsqrt_results() -> tuple[gr.Plot, gr.DataFrame, gr.DownloadButton]:
+def _build_lsqrt_results() -> tuple[gr.Image, gr.DataFrame, gr.DownloadButton]:
     """Render the LSQRT results sub-tab content and return output components.
 
     :returns: Tuple of ``(model_plot, table, download_button)``.
-    :rtype: tuple[gr.Plot, gr.DataFrame, gr.DownloadButton]
+    :rtype: tuple[gr.Image, gr.DataFrame, gr.DownloadButton]
     """
     with gr.Row():
-        model_plot = gr.Plot(label="Model fit")
+        model_plot = gr.Image(label="Model fit", type="pil")
     with gr.Row():
         table = gr.DataFrame(label="Fitted parameters", wrap=True)
     with gr.Row():
@@ -385,21 +396,21 @@ def _build_lsqrt_results() -> tuple[gr.Plot, gr.DataFrame, gr.DownloadButton]:
     return model_plot, table, download
 
 
-def _build_mcmc_results() -> tuple[gr.Plot, gr.DataFrame, gr.Plot, gr.Plot, gr.DownloadButton]:
+def _build_mcmc_results() -> tuple[gr.Image, gr.DataFrame, gr.Image, gr.Image, gr.DownloadButton]:
     """Render the MCMC results sub-tab content and return output components.
 
     :returns: Tuple of
         ``(model_plot, table, corner_plot, traces_plot, download_button)``.
-    :rtype: tuple[gr.Plot, gr.DataFrame, gr.Plot, gr.Plot, gr.DownloadButton]
+    :rtype: tuple[gr.Image, gr.DataFrame, gr.Image, gr.Image, gr.DownloadButton]
     """
     with gr.Row():
-        model_plot = gr.Plot(label="Model fit (MCMC median)")
+        model_plot = gr.Image(label="Model fit (MCMC median)", type="pil")
     with gr.Row():
         table = gr.DataFrame(label="Fitted parameters", wrap=True)
     with gr.Row():
-        corner_plot = gr.Plot(label="Corner plot")
+        corner_plot = gr.Image(label="Corner plot", type="pil")
     with gr.Row():
-        traces_plot = gr.Plot(label="Parameter traces")
+        traces_plot = gr.Image(label="Parameter traces", type="pil")
     with gr.Row():
         download = gr.DownloadButton(label="💾 Download result JSON", visible=False)
     return model_plot, table, corner_plot, traces_plot, download
@@ -488,7 +499,7 @@ def build() -> None:  # noqa: C901, PLR0915
                     scale=2,
                 )
 
-                # Centre used when folding JD to phases
+                # Center used when folding JD to phases
                 centre_comp = gr.Number(
                     value=0.0,
                     label="Phase centre - centre used when folding JD to phases",
@@ -514,13 +525,15 @@ def build() -> None:  # noqa: C901, PLR0915
                 fn=_on_x_unit_change,
                 inputs=[data_comps["x_unit"]],
                 outputs=[period_comp, t0_comp],
+                show_progress="hidden",
+                show_progress_on=[],
             )
 
             # Inline, collapsible plot area for the uploaded observational data -
             # placed inside the data accordion so the plot appears near the inputs.
             # Default to collapsed so the data controls remain the primary focus.
             with gr.Accordion("Observed data plot", open=False) as obs_plot_accordion:
-                observed_data_plot = gr.Plot(label="Observed data")
+                observed_data_plot = gr.Image(label="Observed data", type="pil")
 
         # ------------------------------------------------------------------ #
         # Section 2 - Initial parameters                                       #
@@ -643,7 +656,6 @@ def build() -> None:  # noqa: C901, PLR0915
             )
             chain_load_status = gr.Markdown(value="Ready to load chain.", visible=True)
 
-
         # ------------------------------------------------------------------ #
         # Section 4 - Action buttons                                           #
         # ------------------------------------------------------------------ #
@@ -712,8 +724,8 @@ def build() -> None:  # noqa: C901, PLR0915
 
             Calls :func:`~logic.compute.load_params_from_json` and returns a
             ``gr.update`` for every component in ``fit_inputs_list``, setting
-            ``value``, ``mode``, ``constraint``, and interactivity of min/max
-            based on the loaded mode.
+            ``value``, ``mode``, ``constraint`` value, and the ``interactive``
+            state of ``constraint`` / ``min`` / ``max`` based on the loaded mode.
 
             :param json_file: Gradio file object from the upload component.
             :type json_file: object
@@ -732,10 +744,53 @@ def build() -> None:  # noqa: C901, PLR0915
 
             return _build_param_updates_from_dict(params)
 
+        # Helper to build parameter updates from a params dict
+        def _build_param_updates_from_dict(params: dict) -> list[object]:
+            """Build ``gr.update`` objects for all fit parameters from a flat params dict.
+
+            Sets ``value``, ``mode`` (free/fixed/constrained), and the
+            ``interactive`` state of the companion ``constraint`` / ``min`` /
+            ``max`` fields in one batch.  Svelte only recreates a DOM node when
+            the ``interactive`` flag *actually changes*, so only params whose
+            mode differs from the form default incur a lifecycle event - not the
+            full set of 40 components.
+
+            :param params: Flat parameter dict from
+                :func:`~logic.compute.load_params_from_json`.
+            :type params: dict
+            :returns: List of ``gr.update`` objects, one per entry in
+                :data:`~components.param_inputs.FIELD_ORDER`.
+            :rtype: list[object]
+            """
+
+            def _update(k: str) -> object:
+                if k.endswith("_constraint"):
+                    prefix = k[:-11]  # strip "_constraint" (11 chars)
+                    mode = str(params.get(f"{prefix}_mode", "free"))
+                    val = params.get(k)
+                    return gr.update(
+                        value=str(val) if val is not None else "",
+                        interactive=(mode == "constrained"),
+                    )
+                if k.endswith(("_min", "_max")):
+                    prefix = k[:-4]  # strip "_min" or "_max" (4 chars each)
+                    mode = str(params.get(f"{prefix}_mode", "free"))
+                    val = params.get(k)
+                    if val is not None:
+                        return gr.update(value=val, interactive=(mode == "free"))
+                    return gr.update(interactive=(mode == "free"))
+                if k in params:
+                    return gr.update(value=params[k])
+                return gr.update()
+
+            return [_update(k) for k in fit_keys]
+
         params_json_comp.upload(
             fn=_load_json_handler,
             inputs=[params_json_comp],
             outputs=fit_inputs_list,
+            show_progress="hidden",
+            show_progress_on=[],
         )
 
         # When a result file is dropped in the chain loading section,
@@ -744,6 +799,8 @@ def build() -> None:  # noqa: C901, PLR0915
             fn=_load_json_handler,
             inputs=[result_file_comp],
             outputs=fit_inputs_list,
+            show_progress="hidden",
+            show_progress_on=[],
         )
 
         # Keep the data-section period input in sync with the System Period value
@@ -756,22 +813,27 @@ def build() -> None:  # noqa: C901, PLR0915
             fn=lambda val: gr.update(value=val),
             inputs=[period_value_comp],
             outputs=[period_comp],
+            show_progress="hidden",
+            show_progress_on=[],
         )
 
-        # LSQRT run - immediately switch tab, then run computation
+        # LSQRT run - handler now returns tab-select update as first value so
+        # the whole operation is a single .click() with no .then() chain.
+        # A .then() chain creates two separate Gradio event dependencies; even
+        # with show_progress_on=[] there is a brief window where the loading-state
+        # timer fires between the two deps and may call find_node_by_id.
         lsqrt_btn.click(
-            fn=lambda: gr.update(selected=_TAB_LSQRT),
-            outputs=[results_tabs],
-        ).then(
             fn=_lsqrt_handler(data_keys, fit_keys),
             inputs=lsqrt_all_inputs,
             outputs=[
+                results_tabs,
                 tasks_state,
                 lsqrt_model_plot,
                 lsqrt_table,
                 lsqrt_download,
             ],
-            show_progress="full",
+            show_progress="hidden",
+            show_progress_on=[],
         )
 
         # Plot loaded observational data without fitting - include period and T0
@@ -790,37 +852,9 @@ def build() -> None:  # noqa: C901, PLR0915
                 tasks_state,
             ],
             outputs=[observed_data_plot, obs_plot_accordion],
+            show_progress="hidden",
+            show_progress_on=[],
         )
-
-        # Helper to build parameter updates from a params dict
-        def _build_param_updates_from_dict(params: dict) -> list[object]:
-            """Build gr.update objects for all fit parameters from a flat params dict.
-
-            :param params: Flat parameter dict with mode, value, min, max, constraint info.
-            :type params: dict
-            :returns: List of gr.update objects, one per fit_key.
-            :rtype: list[object]
-            """
-            updates: list[object] = []
-            for key in fit_keys:
-                if key.endswith(("_min", "_max")):
-                    param_name = key.rsplit("_", maxsplit=1)[0]
-                    mode = str(params.get(f"{param_name}_mode", "free"))
-                    val = params.get(key)
-                    upd = gr.update(interactive=mode == "free")
-                    if val is not None:
-                        upd = gr.update(value=val, interactive=mode == "free")
-                    updates.append(upd)
-                elif key.endswith("_constraint"):
-                    param_name = key.rsplit("_", maxsplit=1)[0]
-                    mode = str(params.get(f"{param_name}_mode", "free"))
-                    val = params.get(key, "")
-                    updates.append(gr.update(value=val, interactive=mode == "constrained"))
-                elif key in params:
-                    updates.append(gr.update(value=params[key]))
-                else:
-                    updates.append(gr.update())
-            return updates
 
         # Chain loading handler - load MCMC chain and optionally use as initial state
         def _load_chain_handler(
@@ -909,6 +943,8 @@ def build() -> None:  # noqa: C901, PLR0915
                 mcmc_table,
                 *[fit_comps[k] for k in fit_keys],
             ],
+            show_progress="hidden",
+            show_progress_on=[],
         )
 
         # Transfer LSQRT result values into the param form
@@ -945,6 +981,8 @@ def build() -> None:  # noqa: C901, PLR0915
             fn=_transfer,
             inputs=[tasks_state],
             outputs=value_outputs,
+            show_progress="hidden",
+            show_progress_on=[],
         )
 
         # Helper to extract and validate initial state from loaded chain
@@ -1004,14 +1042,17 @@ def build() -> None:  # noqa: C901, PLR0915
         def _mcmc_with_chain_handler(
             *values: object,
             chain_state_dict: dict | None = None,
-        ) -> tuple[dict, Figure, Figure | None, Figure | None, pd.DataFrame, gr.DownloadButton]:
+        ) -> tuple[object, object, object | None, object | None, pd.DataFrame, object]:
             """Run MCMC, optionally using a loaded chain as initial state.
+
+            Returns a tab-select update as the first element so the caller can
+            wire this to a single ``.click()`` without a ``.then()`` chain.
 
             :param values: Gradio input values (passed via inputs list).
             :type values: object
             :param chain_state_dict: Optional dict with 'chain_task' and 'use_initial_state' keys.
             :type chain_state_dict: dict | None
-            :returns: MCMC results tuple.
+            :returns: ``(tab_update, model_fig, corner_fig, traces_fig, df, download_update)``.
             :rtype: tuple
             """
             n_data = len(data_keys)
@@ -1035,7 +1076,7 @@ def build() -> None:  # noqa: C901, PLR0915
             initial_state = _extract_and_validate_initial_state(chain_state_dict, nwalkers)
 
             try:
-                result, model_fig, corner_fig, traces_fig, df, json_path = compute.run_mcmc(
+                _result, model_fig, corner_fig, traces_fig, df, json_path = compute.run_mcmc(
                     primary_path,
                     secondary_path,
                     x_unit_str,
@@ -1053,31 +1094,26 @@ def build() -> None:  # noqa: C901, PLR0915
                 raise gr.Error(msg) from exc
 
             return (
-                result,
+                gr.update(selected=_TAB_MCMC),
                 model_fig,
                 corner_fig,
                 traces_fig,
                 df,
-                gr.DownloadButton(value=json_path, visible=True),
+                gr.update(value=json_path, visible=True),
             )
 
-        # MCMC run - immediately switch tab, then run computation
+        # MCMC run - single .click(), handler returns tab-select update first.
         mcmc_btn.click(
-            fn=lambda: gr.update(selected=_TAB_MCMC),
-            outputs=[results_tabs],
-        ).then(
             fn=lambda cstate, *vals: _mcmc_with_chain_handler(*vals, chain_state_dict=cstate),
             inputs=[chain_state, *mcmc_all_inputs],
             outputs=[
-                gr.State(),  # mcmc result (not stored - download covers it)
+                results_tabs,
                 mcmc_model_plot,
                 corner_plot,
                 traces_plot,
                 mcmc_table,
                 mcmc_download,
             ],
-            show_progress="full",
+            show_progress="hidden",
+            show_progress_on=[],
         )
-
-
-

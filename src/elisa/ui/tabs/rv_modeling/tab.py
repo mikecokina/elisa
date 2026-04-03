@@ -95,7 +95,7 @@ def build() -> None:
             compute_btn = gr.Button("🚀 Compute RV Curves", variant="primary", scale=2)
             clear_btn = gr.Button("🗑 Clear outputs", variant="secondary", scale=1)
         with gr.Row():
-            rv_plot = gr.Plot(label="Radial Velocity Curves", scale=3)
+            rv_plot = gr.Plot(label="Radial Velocity Curves", scale=3, buttons=[])
             with gr.Column(scale=2):
                 rv_table = gr.DataFrame(label="Phase / RV data (km/s)")
                 dl_btn = gr.DownloadButton(
@@ -117,9 +117,13 @@ def build() -> None:
             fn=_make_handler(prim_keys, sec_keys, sys_keys, obs_keys),
             inputs=all_inputs,
             outputs=[rv_plot, rv_table, dl_btn],
+            show_progress="hidden",
+            show_progress_on=[],
         )
         clear_btn.click(
             fn=lambda: (None, None, gr.DownloadButton(visible=False)),
             inputs=None,
             outputs=[rv_plot, rv_table, dl_btn],
+            show_progress="hidden",
+            show_progress_on=[],
         )

@@ -9,13 +9,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
-
 from elisa import BinarySystem, Star
 from elisa import units as u
 
 if TYPE_CHECKING:
+    from matplotlib.figure import Figure
+
     from elisa.types import Float
 
 
@@ -78,4 +77,3 @@ def run_visualization(
     )
 
     return mesh_fig, orbit_fig
-

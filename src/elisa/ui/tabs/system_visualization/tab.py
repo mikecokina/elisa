@@ -8,9 +8,10 @@ and registers event handlers. No state is held at module level.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import gradio as gr
+from PIL import Image  # noqa: TC002 - needed at runtime for Gradio type hints
 
 from elisa.ui.components import star_inputs, system_inputs
 from elisa.ui.shared.const import ATMOSPHERE_CHOICES
@@ -68,6 +69,40 @@ _OBSERVER_DEFAULTS: dict[str, Number | str | None] = {
 
 
 # ---------------------------------------------------------------------------
+# Client-side JS for the mode-change dropdown.
+#
+# Toggles ``viz-control-disabled`` CSS class on each observer control
+# based on the selected visualization mode.  Runs entirely in the browser
+# (no server round-trip, no Gradio loading-state walk).
+# ---------------------------------------------------------------------------
+_VIZ_MODE_CHANGE_JS: str = """
+(mode) => {
+    const cls = 'viz-control-disabled';
+    const showMesh = mode === 'mesh';
+    const showOrbit = mode === 'orbit';
+    const showEquip = mode === 'equipotential';
+    const showSurface = mode === 'surface';
+    const showShared = showMesh || showEquip || showSurface;
+
+    const rules = {
+        'viz-ctrl-phase': showShared,
+        'viz-ctrl-components_to_plot': showShared,
+        'viz-ctrl-plane': showEquip,
+        'viz-ctrl-frame_of_reference': showOrbit,
+        'viz-ctrl-colormap': showSurface,
+        'viz-ctrl-elevation': showSurface,
+        'viz-ctrl-azimuth': showSurface,
+    };
+    for (const [id, enabled] of Object.entries(rules)) {
+        const el = document.getElementById(id);
+        if (el) { el.classList.toggle(cls, !enabled); }
+    }
+    return [];
+}
+"""
+
+
+# ---------------------------------------------------------------------------
 # Internal handler
 # ---------------------------------------------------------------------------
 
@@ -79,17 +114,13 @@ def _make_handler(
     obs_keys: tuple[str, ...],
     puls_keys: tuple[str, ...],
     spot_keys: tuple[str, ...],
-) -> Callable[..., tuple[dict, dict, dict, dict]]:
-    """Return a Gradio event-handler function bound to the given key sequences.
+) -> Callable:
+    """Return a Gradio event-handler bound to the given key sequences.
 
-    The handler unpacks the flat list of values that Gradio passes to the
-    callback into named parameter dicts and delegates to
+    Unpacks the flat value list Gradio passes to the callback into named
+    parameter dicts and delegates to
     :func:`~elisa.ui.tabs.system_visualization.logic.compute.run_visualization`.
-
-    Each output is returned as a ``gr.update`` dict that sets both ``value``
-    and ``visible`` so that a single click event is the authoritative source
-    of truth for plot state, independent of the separate ``.change()`` event
-    that drives the mode selector.
+    Returns the single active PIL image (``None`` for inactive modes).
 
     :param prim_keys: Ordered keys for primary star parameters.
     :type prim_keys: tuple[str, ...]
@@ -104,10 +135,10 @@ def _make_handler(
     :param spot_keys: Ordered keys for per-component spot parameters.
     :type spot_keys: tuple[str, ...]
     :returns: A callable suitable for ``gr.Button.click(fn=...)``.
-    :rtype: Callable[..., tuple[dict, dict, dict, dict]]
+    :rtype: Callable
     """
 
-    def handler(*values: tuple[float | str | bool | None, ...]) -> tuple[dict, dict, dict, dict]:
+    def handler(*values: tuple[float | str | bool | None, ...]) -> Image.Image:
         idx = 0
         n_prim = len(prim_keys)
         n_sec = len(sec_keys)
@@ -132,7 +163,7 @@ def _make_handler(
         observer_params = dict(zip(obs_keys, values[idx:], strict=True))
 
         try:
-            mesh_fig, orbit_fig, equip_fig, surface_fig = compute.run_visualization(
+            mesh_img, orbit_img, equip_img, surface_img = compute.run_visualization(
                 primary_params,
                 secondary_params,
                 system_params,
@@ -146,13 +177,8 @@ def _make_handler(
             msg = str(exc)
             raise gr.Error(msg) from exc
 
-        mode: str | None = observer_params.get("visualization_mode") or None
-        return (
-            gr.update(value=mesh_fig,    visible=mode == "mesh"),
-            gr.update(value=orbit_fig,   visible=mode == "orbit"),
-            gr.update(value=equip_fig,   visible=mode == "equipotential"),
-            gr.update(value=surface_fig, visible=mode == "surface"),
-        )
+        # Return whichever image was produced (only one is non-None per call)
+        return mesh_img or orbit_img or equip_img or surface_img
 
     return handler
 
@@ -229,13 +255,19 @@ def build() -> None:
             clear_btn = gr.Button("🗑 Clear outputs", variant="secondary", scale=1)
 
         # ------------------------------------------------------------------ #
-        # Outputs - initial visibility matches the default mode               #
+        # Output - single image component.                                    #
+        # Root cause of the ~400 ms input lag: having N Plot/Image components #
+        # that have ever held data permanently adds toolbar-button event       #
+        # listeners (download, fullscreen, share, edit) to the DOM that never  #
+        # get removed, even after clearing.  A single stripped-down component  #
+        # limits that to one set of listeners at most.                         #
         # ------------------------------------------------------------------ #
-        with gr.Row():
-            mesh_plot = gr.Plot(label="Mesh Visualization", visible=False, scale=1)
-            orbit_plot = gr.Plot(label="Orbital Motion", visible=False, scale=1)
-            equipotential_plot = gr.Plot(label="Equipotential", visible=False, scale=1)
-            surface_plot = gr.Plot(label="Surface Visualization", visible=False, scale=1)
+        output_plot = gr.Image(
+            label="Visualization",
+            type="pil",
+            interactive=False,
+            buttons=[],
+        )
 
         # ------------------------------------------------------------------ #
         # Event wiring                                                         #
@@ -261,22 +293,33 @@ def build() -> None:
         visualize_btn.click(
             fn=_make_handler(prim_keys, sec_keys, sys_keys, obs_keys, puls_keys, spot_keys),
             inputs=all_inputs,
-            outputs=[mesh_plot, orbit_plot, equipotential_plot, surface_plot],
+            outputs=[output_plot],
+            show_progress="hidden",
+            show_progress_on=[],
         )
 
         clear_btn.click(
-            fn=lambda: (None, None, None, None),
+            fn=lambda: None,
             inputs=None,
-            outputs=[mesh_plot, orbit_plot, equipotential_plot, surface_plot],
+            outputs=[output_plot],
+            show_progress="hidden",
+            show_progress_on=[],
+        )
+
+        cast("gr.Dropdown", obs_comps["visualization_mode"]).change(
+            fn=None,
+            js=_VIZ_MODE_CHANGE_JS,
+            inputs=[obs_comps["visualization_mode"]],
+            outputs=[],
         )
 
         all_form_outputs: list[gr.Component] = (
-            [prim_comps[k] for k in prim_keys]
-            + [sec_comps[k] for k in sec_keys]
-            + [sys_comps[k] for k in sys_keys]
+            [prim_comps[k] for k in prim_keys] + [sec_comps[k] for k in sec_keys] + [sys_comps[k] for k in sys_keys]
         )
         json_file_input.upload(
             fn=make_json_load_handler(prim_keys, sec_keys, sys_keys),
             inputs=[json_file_input],
             outputs=all_form_outputs,
+            show_progress="hidden",
+            show_progress_on=[],
         )

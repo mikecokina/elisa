@@ -28,7 +28,7 @@ Y_UNIT_DEFAULT: str = Y_UNIT_CHOICES[0]
 
 #: Available passbands offered in the UI (bolometric excluded - rarely used for fitting).
 PASSBAND_CHOICES: list[str] = [p for p in settings.PASSBANDS if p != "bolometric"]
-PASSBAND_DEFAULT: str = "Generic.Bessell.V"
+PASSBAND_DEFAULT: str = "Generic.Bessell.U"
 
 
 # ---------------------------------------------------------------------------

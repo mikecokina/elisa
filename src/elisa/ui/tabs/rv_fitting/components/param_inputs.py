@@ -59,7 +59,7 @@ PARAM_SPEC: dict[str, _Spec] = {
     ),
     "ln_f": (
         "**Log noise**  ln(f)  [nuisance]",
-        -5.0, False, -10.0, 0.0, "",
+        -20.0, False, -25.0, 0.0, "",
     ),
 }
 
@@ -80,7 +80,7 @@ FIELD_ORDER: tuple[str, ...] = tuple(
 
 
 def _mode_handler(mode: str) -> tuple[Any, Any, Any]:
-    """Handle mode radio change for any parameter row.
+    """Handle mode dropdown change for any parameter row.
 
     - **free** - min and max editable, constraint greyed out.
     - **fixed** - min, max, and constraint all greyed out.
@@ -124,7 +124,7 @@ def _param_row(
     """Render one parameter row with mode selector (free/fixed/constrained).
 
     All secondary fields (constraint, min, max) are always present in the DOM.
-    Interactivity is toggled by the mode radio to avoid Gradio's
+    Interactivity is toggled by the mode dropdown to avoid Gradio's
     loading-spinner bug with ``visible`` updates inside Tabs/Accordions.
 
     :param components: Mutable dict that receives the new components.
@@ -155,7 +155,7 @@ def _param_row(
             interactive=True,
             container=True,
         )
-        mode_comp = gr.Radio(
+        mode_comp = gr.Dropdown(
             choices=["free", "fixed", "constrained"],
             value=mode,
             label="Mode",
@@ -191,6 +191,8 @@ def _param_row(
         fn=_mode_handler,
         inputs=[mode_comp],
         outputs=[constraint_comp, min_comp, max_comp],
+        show_progress="hidden",
+        show_progress_on=[],
     )
 
     components[f"{name}_value"] = value_comp

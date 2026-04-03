@@ -44,6 +44,8 @@ def build_terminal_output() -> tuple[gr.Code, gr.Button, gr.Button]:
         refresh_btn.click(
             fn=UILogger.get_output,
             outputs=output_code,
+            show_progress="hidden",
+            show_progress_on=[],
         )
 
         # Set up clear handler
@@ -55,6 +57,8 @@ def build_terminal_output() -> tuple[gr.Code, gr.Button, gr.Button]:
         clear_btn.click(
             fn=clear_and_refresh,
             outputs=output_code,
+            show_progress="hidden",
+            show_progress_on=[],
         )
 
     return output_code, refresh_btn, clear_btn
@@ -96,6 +100,8 @@ def build_auto_refresh_terminal_output() -> gr.Code:
         refresh_btn.click(
             fn=UILogger.get_output,
             outputs=output_code,
+            show_progress="hidden",
+            show_progress_on=[],
         )
 
         def clear_and_refresh() -> str:
@@ -105,6 +111,8 @@ def build_auto_refresh_terminal_output() -> gr.Code:
         clear_btn.click(
             fn=clear_and_refresh,
             outputs=output_code,
+            show_progress="hidden",
+            show_progress_on=[],
         )
 
     return output_code
@@ -113,36 +121,26 @@ def build_auto_refresh_terminal_output() -> gr.Code:
 def setup_terminal_refresh(
     output_component: gr.Code,
     *,
-    trigger_component: gr.Component | None = None,
     every_seconds: int | None = None,
 ) -> None:
     """Set up automatic refresh of terminal output component.
 
-    Can refresh either on a component change or on a timer.
+    Refreshes the output component on a timer.
 
     :param output_component: The Code component to update.
     :type output_component: gr.Code
-    :param trigger_component: Component whose changes trigger refresh.
-        If None, uses timed refresh.
-    :type trigger_component: gr.Component | None
     :param every_seconds: Seconds between refreshes (for timer-based refresh).
-        If None, refresh only on component changes.
+        If None, no automatic refresh is set up.
     :type every_seconds: int | None
     :returns: ``None``
     :rtype: None
     """
-    if trigger_component is not None:
-        trigger_component.change(
-            fn=UILogger.get_output,
-            outputs=output_component,
-            trigger_mode="always_last",
-        )
-
     if every_seconds is not None:
         gr.Timer(
             value=every_seconds,
         ).tick(
             fn=UILogger.get_output,
             outputs=output_component,
+            show_progress="hidden",
+            show_progress_on=[],
         )
-

@@ -72,4 +72,3 @@ def build(*, defaults: dict[str, Float | str] | None = None) -> dict[str, gr.Com
     )
 
     return components
-

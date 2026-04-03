@@ -206,7 +206,7 @@ def build() -> None:
         # Outputs                                                              #
         # ------------------------------------------------------------------ #
         with gr.Row():
-            lc_plot = gr.Plot(label="Light Curve", scale=3)
+            lc_plot = gr.Plot(label="Light Curve", scale=3, buttons=[])
             with gr.Column(scale=2):
                 lc_table = gr.DataFrame(label="Phase / Flux data")
                 dl_btn = gr.DownloadButton(
@@ -239,12 +239,16 @@ def build() -> None:
             fn=_make_handler(prim_keys, sec_keys, sys_keys, obs_keys, puls_keys),
             inputs=all_inputs,
             outputs=[lc_plot, lc_table, dl_btn],
+            show_progress="hidden",
+            show_progress_on=[],
         )
 
         clear_btn.click(
             fn=lambda: (None, None, gr.DownloadButton(visible=False)),
             inputs=None,
             outputs=[lc_plot, lc_table, dl_btn],
+            show_progress="hidden",
+            show_progress_on=[],
         )
 
         all_form_outputs: list[gr.Component] = (
@@ -256,4 +260,6 @@ def build() -> None:
             fn=make_json_load_handler(prim_keys, sec_keys, sys_keys),
             inputs=[json_file_input],
             outputs=all_form_outputs,
+            show_progress="hidden",
+            show_progress_on=[],
         )

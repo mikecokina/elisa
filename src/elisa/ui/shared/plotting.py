@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from io import BytesIO
 from typing import TYPE_CHECKING
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+from PIL import Image
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
@@ -83,6 +85,40 @@ _RC: dict[str, object] = {
     "grid.linestyle": "--",
     "figure.dpi": 130,
 }
+
+
+def figure_to_pil(fig: Figure | None) -> Image.Image | None:
+    """Convert a matplotlib Figure to a PIL Image for efficient Gradio rendering.
+
+    Matplotlib figures cause expensive serialisation in Gradio when used with
+    ``gr.Plot``.  Converting to a PIL ``Image`` and using ``gr.Image`` instead
+    reduces the WebSocket payload size and avoids Gradio's internal figure
+    processing overhead.
+
+    The figure is always closed after conversion so matplotlib's memory is
+    released.  Pass ``None`` to skip conversion and get ``None`` back, which
+    ``gr.Image`` accepts as a *clear* signal.
+
+    :param fig: Matplotlib figure to convert, or ``None``.
+    :type fig: matplotlib.figure.Figure | None
+    :returns: PIL Image containing the rendered figure, or ``None``.
+    :rtype: PIL.Image.Image | None
+    """
+    if fig is None:
+        return None
+
+    try:
+        buf = BytesIO()
+        fig.savefig(buf, format="png", dpi=100, bbox_inches="tight")
+        buf.seek(0)
+        img = Image.open(buf)
+        img.load()
+        img_copy = img.copy()
+        buf.close()
+    finally:
+        plt.close(fig)
+
+    return img_copy
 
 
 def render_lc_figure(

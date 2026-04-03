@@ -25,14 +25,14 @@ Each regular parameter exposes five controls::
 
 from __future__ import annotations
 
+from html import escape
 from typing import TYPE_CHECKING, Any, Literal
 
 import gradio as gr
 
+from elisa.ui.shared.const import MAX_SPOTS
+
 if TYPE_CHECKING:
-
-    from collections.abc import Callable
-
     from elisa.types import Float
 
 # ---------------------------------------------------------------------------
@@ -46,31 +46,59 @@ _Spec = tuple[str, float, bool, float | None, float | None, str | None]
 SYSTEM_COMMON_SPEC: dict[str, _Spec] = {
     "inclination": (
         "**Inclination**  i  [deg]",
-        85.0, False, 80.0, 90.0, "deg",
+        85.0,
+        False,
+        80.0,
+        90.0,
+        "deg",
     ),
     "eccentricity": (
         "**Eccentricity**  e",
-        0.0, True, 0.0, 0.5, None,
+        0.0,
+        True,
+        0.0,
+        0.5,
+        None,
     ),
     "argument_of_periastron": (
         "**Arg. of periastron**  ω  [deg]",
-        0.0, True, 0.0, 360.0, "deg",
+        0.0,
+        True,
+        0.0,
+        360.0,
+        "deg",
     ),
     "period": (
         "**Orbital period**  P  [d]",
-        2.5, True, 0.01, 1000.0, "d",
+        2.5,
+        True,
+        0.01,
+        1000.0,
+        "d",
     ),
     "primary_minimum_time": (
         "**Primary minimum time**  T₀  [d]",
-        54953.5388437, True, 50000.0, 60000.0, "d",
+        54953.5388437,
+        True,
+        50000.0,
+        60000.0,
+        "d",
     ),
     "additional_light": (
         "**Additional light**  l₃",
-        0.0, True, 0.0, 0.5, None,
+        0.0,
+        True,
+        0.0,
+        0.5,
+        None,
     ),
     "phase_shift": (
         "**Phase shift**  Δφ",
-        0.0, True, -0.5, 0.5, None,
+        0.0,
+        True,
+        -0.5,
+        0.5,
+        None,
     ),
 }
 
@@ -78,11 +106,19 @@ SYSTEM_COMMON_SPEC: dict[str, _Spec] = {
 _SYSTEM_COMMUNITY_SPEC: dict[str, _Spec] = {
     "semi_major_axis": (
         "**Semi-major axis**  a  [R☉]",
-        11.55, False, 5.0, 30.0, "R☉",
+        11.55,
+        False,
+        5.0,
+        30.0,
+        "R☉",
     ),
     "mass_ratio": (
         "**Mass ratio**  q = M₂/M₁",
-        0.56, True, 0.1, 2.0, None,
+        0.56,
+        True,
+        0.1,
+        2.0,
+        None,
     ),
 }
 
@@ -90,27 +126,51 @@ _SYSTEM_COMMUNITY_SPEC: dict[str, _Spec] = {
 _COMPONENT_COMMON_SPEC: dict[str, _Spec] = {
     "t_eff": (
         "**Effective temperature**  T_eff  [K]",
-        9500.0, False, 9000.0, 11000.0, "K",
+        9500.0,
+        False,
+        9000.0,
+        11000.0,
+        "K",
     ),
     "surface_potential": (
         "**Surface potential**  Ω",
-        4.0, False, 3.0, 5.0, None,
+        4.0,
+        False,
+        3.0,
+        5.0,
+        None,
     ),
     "gravity_darkening": (
         "**Gravity darkening**  β",
-        1.0, True, 0.0, 1.0, None,
+        1.0,
+        True,
+        0.0,
+        1.0,
+        None,
     ),
     "albedo": (
         "**Albedo**  A",
-        0.6, True, 0.0, 1.0, None,
+        0.6,
+        True,
+        0.0,
+        1.0,
+        None,
     ),
     "synchronicity": (
         "**Synchronicity**  F",
-        1.0, True, 0.1, 10.0, None,
+        1.0,
+        True,
+        0.1,
+        10.0,
+        None,
     ),
     "metallicity": (
         "**Metallicity**  [Fe/H]",
-        0.0, True, -2.0, 1.0, None,
+        0.0,
+        True,
+        -2.0,
+        1.0,
+        None,
     ),
 }
 
@@ -118,12 +178,14 @@ _COMPONENT_COMMON_SPEC: dict[str, _Spec] = {
 _COMPONENT_STANDARD_SPEC: dict[str, _Spec] = {
     "mass": (
         "**Mass**  M  [M☉]",
-        2.0, False, 0.1, 100.0, "M☉",
+        2.0,
+        False,
+        0.1,
+        100.0,
+        "M☉",
     ),
 }
 
-MAX_SPOT_SLOTS = 6
-MAX_SPOTS_LOCAL = 6
 
 SPOT_PARAMS: tuple[str, ...] = (
     "longitude",
@@ -176,34 +238,36 @@ SYSTEM_REGULAR_PARAMS: tuple[str, ...] = tuple(SYSTEM_COMMON_SPEC.keys())
 COMPONENT_PARAMS: tuple[str, ...] = COMPONENT_PARAMS_COMMUNITY
 
 
-def _build_field_order(approach: Literal["community", "standard"]) -> tuple[str, ...]:
+def _build_field_order(approach: Literal["community", "standard", "unified"]) -> tuple[str, ...]:
     """Build FIELD_ORDER dynamically based on the approach.
 
-    :param approach: Fitting approach ("community" or "standard").
-    :type approach: Literal["community", "standard"]
+    :param approach: Fitting approach ("community", "standard", or "unified").
+    :type approach: Literal["community", "standard", "unified"]
     :returns: Tuple of field names in canonical order.
     :rtype: tuple[str, ...]
     """
-    system_params = SYSTEM_PARAMS_COMMUNITY if approach == "community" else SYSTEM_PARAMS_STANDARD
-    component_params = COMPONENT_PARAMS_COMMUNITY if approach == "community" else COMPONENT_PARAMS_STANDARD
+    if approach == "community":
+        system_params = SYSTEM_PARAMS_COMMUNITY
+        component_params = COMPONENT_PARAMS_COMMUNITY
+    elif approach == "standard":
+        system_params = SYSTEM_PARAMS_STANDARD
+        component_params = COMPONENT_PARAMS_STANDARD
+    else:
+        system_params = SYSTEM_PARAMS_UNIFIED
+        component_params = COMPONENT_PARAMS_UNIFIED
 
     return (
-        *(
-            f"system_{name}_{sub}"
-            for name in system_params
-            for sub in ("value", "mode", "constraint", "min", "max")
-        ),
+        *(f"system_{name}_{sub}" for name in system_params for sub in ("value", "mode", "constraint", "min", "max")),
         *(
             f"primary_{name}_{sub}"
             for name in component_params
             for sub in ("value", "mode", "constraint", "min", "max")
         ),
-        # Spots for primary - enabled, count, then per-spot fields
-        "primary_spots_enabled",
-        "primary_spot_count",
+        # Spots for primary - static slots with per-slot enable flag
+        *(f"primary_spot_{i}_enabled" for i in range(MAX_SPOTS)),
         *(
             f"primary_spot_{i}_{p}_{s}"
-            for i in range(6)
+            for i in range(MAX_SPOTS)
             for p in ("longitude", "latitude", "angular_radius", "temperature_factor")
             for s in ("value", "mode", "constraint", "min", "max")
         ),
@@ -212,12 +276,11 @@ def _build_field_order(approach: Literal["community", "standard"]) -> tuple[str,
             for name in component_params
             for sub in ("value", "mode", "constraint", "min", "max")
         ),
-        # Spots for secondary - enabled, count, then per-spot fields
-        "secondary_spots_enabled",
-        "secondary_spot_count",
+        # Spots for secondary - static slots with per-slot enable flag
+        *(f"secondary_spot_{i}_enabled" for i in range(MAX_SPOTS)),
         *(
             f"secondary_spot_{i}_{p}_{s}"
-            for i in range(6)
+            for i in range(MAX_SPOTS)
             for p in ("longitude", "latitude", "angular_radius", "temperature_factor")
             for s in ("value", "mode", "constraint", "min", "max")
         ),
@@ -229,10 +292,97 @@ def _build_field_order(approach: Literal["community", "standard"]) -> tuple[str,
     )
 
 
-# Default to community approach for backward compatibility
-FIELD_ORDER: tuple[str, ...] = _build_field_order("community")
+# Unified parameter name tuples
+SYSTEM_PARAMS_UNIFIED: tuple[str, ...] = (
+    *tuple(SYSTEM_COMMON_SPEC.keys()),
+    *tuple(_SYSTEM_COMMUNITY_SPEC.keys()),
+)
+
+COMPONENT_PARAMS_UNIFIED: tuple[str, ...] = (
+    *tuple(_COMPONENT_STANDARD_SPEC.keys()),
+    *tuple(_COMPONENT_COMMON_SPEC.keys()),
+)
+
+# Unified parameter order used by the LC fitting tab.
+FIELD_ORDER_UNIFIED: tuple[str, ...] = _build_field_order("unified")
+
+# Backward compatibility exports
+FIELD_ORDER: tuple[str, ...] = FIELD_ORDER_UNIFIED
 FIELD_ORDER_COMMUNITY: tuple[str, ...] = _build_field_order("community")
 FIELD_ORDER_STANDARD: tuple[str, ...] = _build_field_order("standard")
+
+_APPROACH_TOGGLE_PREFIXES: dict[str, tuple[str, ...]] = {
+    "community": ("primary_mass", "secondary_mass"),
+    "standard": ("system_semi_major_axis", "system_mass_ratio"),
+}
+
+APPROACH_TOGGLED_PREFIXES: tuple[str, ...] = tuple(
+    dict.fromkeys(prefix for prefixes in _APPROACH_TOGGLE_PREFIXES.values() for prefix in prefixes),
+)
+
+APPROACH_TOGGLED_KEYS: tuple[str, ...] = tuple(
+    f"{prefix}_{sub}"
+    for prefixes in _APPROACH_TOGGLE_PREFIXES.values()
+    for prefix in prefixes
+    for sub in ("value", "mode", "constraint", "min", "max")
+)
+
+APPROACH_TOGGLED_LABEL_KEYS: tuple[str, ...] = tuple(f"{prefix}_label" for prefix in APPROACH_TOGGLED_PREFIXES)
+
+
+def style_param_label(label: str, *, disabled: bool) -> str:
+    """Return parameter label Markdown with optional disabled styling.
+
+    :param label: Base Markdown label text.
+    :type label: str
+    :param disabled: Whether the corresponding parameter is disabled.
+    :type disabled: bool
+    :returns: Styled Markdown string for display in ``gr.Markdown``.
+    :rtype: str
+    """
+    if not disabled:
+        return label
+    # Render full label text in red when disabled; strip Markdown markers so
+    # the whole string is styled uniformly (not only markdown-emphasized parts).
+    plain_label = escape(label.replace("**", ""))
+    return f"<span style='color:#b54848'>{plain_label}</span>"
+
+
+def get_label_for_prefix(prefix: str) -> str | None:
+    """Return the base Markdown label for a ``section_param`` prefix.
+
+    :param prefix: Prefix like ``"system_mass_ratio"``.
+    :type prefix: str
+    :returns: Matching base label text when found.
+    :rtype: str | None
+    """
+    section, _, name = prefix.partition("_")
+    if not name:
+        return None
+
+    if section == "system":
+        spec = {**SYSTEM_COMMON_SPEC, **_SYSTEM_COMMUNITY_SPEC}
+        return spec.get(name, (None,))[0]
+    if section in {"primary", "secondary"}:
+        spec = {**_COMPONENT_STANDARD_SPEC, **_COMPONENT_COMMON_SPEC}
+        return spec.get(name, (None,))[0]
+    if section == "nuisance" and name == "ln_f":
+        return "**Log noise**  ln(f)  [nuisance]"
+    return None
+
+
+def is_key_interactive_for_approach(key: str, approach: Literal["community", "standard"]) -> bool:
+    """Return whether a field key should be interactive for the selected approach.
+
+    :param key: Flat component key such as ``"system_mass_ratio_value"``.
+    :type key: str
+    :param approach: Selected fitting approach.
+    :type approach: Literal["community", "standard"]
+    :returns: ``True`` when the field should be interactive in the UI.
+    :rtype: bool
+    """
+    prefixes = _APPROACH_TOGGLE_PREFIXES.get(approach, ())
+    return not any(key.startswith(f"{prefix}_") for prefix in prefixes)
 
 
 # ---------------------------------------------------------------------------
@@ -241,7 +391,7 @@ FIELD_ORDER_STANDARD: tuple[str, ...] = _build_field_order("standard")
 
 
 def _mode_handler(mode: str) -> tuple[Any, Any, Any]:
-    """Handle mode radio change for any parameter row.
+    """Handle mode dropdown change for any parameter row.
 
     Controls which secondary fields are editable based on the selected mode:
 
@@ -279,7 +429,7 @@ def _param_row(
     section: str,
     name: str,
     label: str,
-    value: float | str | None ,
+    value: float | str | None,
     fixed: bool,  # noqa: FBT001
     lo: float | str | None,
     hi: float | str | None,
@@ -288,7 +438,7 @@ def _param_row(
     """Render one parameter row with mode selector (free/fixed/constrained).
 
     All secondary fields (constraint, min, max) are always visible.
-    Interactivity is toggled by the mode radio so Gradio never needs to
+    Interactivity is toggled by the mode dropdown so Gradio never needs to
     insert or remove DOM elements, which avoids the loading-spinner bug
     that affects ``gr.update(visible=...)`` inside nested Tabs/Accordions.
 
@@ -327,7 +477,7 @@ def _param_row(
 
     with gr.Row():
         with gr.Column(scale=3, min_width=200):
-            gr.Markdown(label)
+            label_comp = gr.Markdown(label)
         value_comp = gr.Number(
             value=fv,
             label="Initial value",
@@ -335,7 +485,7 @@ def _param_row(
             interactive=True,
             container=True,
         )
-        mode_comp = gr.Radio(
+        mode_comp = gr.Dropdown(
             choices=["free", "fixed", "constrained"],
             value=mode,
             label="Mode",
@@ -371,6 +521,8 @@ def _param_row(
         fn=_mode_handler,
         inputs=[mode_comp],
         outputs=[constraint_comp, min_comp, max_comp],
+        show_progress="hidden",
+        show_progress_on=[],
     )
 
     components[f"{section}_{name}_value"] = value_comp
@@ -378,9 +530,10 @@ def _param_row(
     components[f"{section}_{name}_constraint"] = constraint_comp
     components[f"{section}_{name}_min"] = min_comp
     components[f"{section}_{name}_max"] = max_comp
+    components[f"{section}_{name}_label"] = label_comp
 
 
-def _build_component_section(
+def _build_component_section(  # noqa: PLR0915
     components: dict[str, gr.Component],
     section: str,
     approach: Literal["community", "standard"],
@@ -421,147 +574,95 @@ def _build_component_section(
         constraint = defaults.get(f"{section}_{name}_constraint")
         _param_row(components, section, name, label, val, fixed, lo, hi, constraint)
 
-    # ------------------------------------------------------------------ #
-    # Spots UI for this component                                          #
-    # ------------------------------------------------------------------ #
-    from elisa.ui.shared import build_full_width_button_row  # noqa: PLC0415
-
-    def _make_spot_add_handler(max_spots: int):
-        def handler(spot_count: int):
-            current = int(spot_count)
-            new_count = min(current + 1, max_spots)
-            return [new_count, *[gr.update(visible=(i < new_count)) for i in range(max_spots)]]
-
-        return handler
-
-    def _make_spot_remove_handler(slot_idx: int, max_spots: int) -> Callable:
-        n_params = len(SPOT_PARAMS)
-        n_sub = 5  # value, mode, constraint, min, max
-        default_row = []
-        for p in SPOT_PARAMS:
-            dv, dlo, dhi = _SPOT_DEFAULTS[p]
-            default_row.extend([dv, "free", "", dlo, dhi])
-
-        def handler(spot_count_: int, *flat_values: object) -> list[object]:
-            current = int(spot_count_)
-            total_outputs = 1 + max_spots + max_spots * n_params * n_sub
-            if current == 0:
-                return [gr.update()] * total_outputs
-
-            new_count = max(0, current - 1)
-
-            # reconstruct spots array from flat_values
-            slots: list[list[object]] = []
-            idx = 0
-            for k in range(max_spots):
-                slot_vals: list[object] = []
-                for _ in range(n_params * n_sub):
-                    slot_vals.append(flat_values[idx])
-                    idx += 1
-                slots.append(slot_vals)
-
-            # shift left from slot_idx
-            for k in range(slot_idx, max_spots - 1):
-                slots[k] = slots[k + 1]
-            slots[-1] = list(default_row)
-
-            out: list[object] = [new_count]
-            out.extend(gr.update(visible=(k < new_count)) for k in range(max_spots))
-            for k in range(max_spots):
-                for val_ in slots[k]:
-                    out.extend([gr.update(value=val_)])
-            return out
-
-        return handler
-
     with gr.Accordion("Spots (optional)", open=False):
-        enabled_comp = gr.Checkbox(
-            label=f"Enable {section.capitalize()} spots",
-            value=False,
-            info="Tick to add surface spots to this component.",
-        )
-        spot_count = gr.State(value=0)
+        for i in range(MAX_SPOTS):
+            if i > 0:
+                gr.HTML("<hr style='margin: 10px 0;'>")
 
-        with gr.Column(visible=False) as spots_section:
-            add_btn = build_full_width_button_row(
-                "+ Add spot",
-                elem_classes=["full-width-button"],
-                spacer_margin_px=8,
-            )
+            with gr.Row():
+                gr.Markdown(f"**Spot {i + 1}**", elem_classes=["spot-header"])
+                enabled_comp = gr.Checkbox(
+                    label="Use",
+                    value=bool(defaults.get(f"{section}_spot_{i}_enabled", False)),
+                    scale=0,
+                    min_width=80,
+                )
 
-            spot_groups: list[gr.Column] = []
-            remove_btns: list[gr.Button] = []
+            mode_comps: list[gr.Component] = []
+            value_comps: list[gr.Component] = []
+            constraint_comps: list[gr.Component] = []
+            min_comps: list[gr.Component] = []
+            max_comps: list[gr.Component] = []
 
-            for i in range(MAX_SPOTS_LOCAL):
-                with gr.Column(visible=False) as grp:
-                    if i > 0:
-                        gr.HTML("<hr style='margin: 10px 0;'>")
-
-                    gr.Markdown(f"**Spot {i + 1}**", elem_classes=["spot-header"])
-
-                    remove_btn = gr.Button(
-                        "✕ Remove spot",
-                        variant="stop",
-                        size="sm",
-                        scale=1,
-                    )
-
-                    # per-spot parameters - use _param_row to create full control set
-                    for p in SPOT_PARAMS:
-                        lab = {
-                            "longitude": "Longitude (deg)",
-                            "latitude": "Latitude (deg)",
-                            "angular_radius": "Angular radius (deg)",
-                            "temperature_factor": "Temperature factor",
-                        }[p]
-                        # build keys as e.g. primary_spot_0_longitude_value
-                        default_val = _SPOT_DEFAULTS[p][0]
-                        default_lo = _SPOT_DEFAULTS[p][1]
-                        default_hi = _SPOT_DEFAULTS[p][2]
-                        _param_row(
-                            components,
-                            section,
-                            f"spot_{i}_{p}",
-                            f"{lab}",
-                            defaults.get(f"{section}_spot_{i}_{p}_value", default_val),
-                            defaults.get(f"{section}_spot_{i}_{p}_fixed", False),
-                            defaults.get(f"{section}_spot_{i}_{p}_min", default_lo),
-                            defaults.get(f"{section}_spot_{i}_{p}_max", default_hi),
-                            defaults.get(f"{section}_spot_{i}_{p}_constraint"),
-                        )
-
-                spot_groups.append(grp)
-                remove_btns.append(remove_btn)
-
-        enabled_comp.change(
-            fn=lambda v: gr.update(visible=v),
-            inputs=[enabled_comp],
-            outputs=[spots_section],
-        )
-
-        add_btn.click(
-            fn=_make_spot_add_handler(MAX_SPOTS_LOCAL),
-            inputs=[spot_count],
-            outputs=[spot_count, *spot_groups],
-        )
-
-        # prepare list of all flat value components for remove handlers
-        all_spot_value_comps: list[gr.Component] = []
-        for i in range(MAX_SPOTS_LOCAL):
+            # per-spot parameters - same fitting controls as other params
             for p in SPOT_PARAMS:
-                for sub in ("value", "mode", "constraint", "min", "max"):
-                    all_spot_value_comps.append(components[f"{section}_spot_{i}_{p}_{sub}"])
+                lab = {
+                    "longitude": "Longitude (deg)",
+                    "latitude": "Latitude (deg)",
+                    "angular_radius": "Angular radius (deg)",
+                    "temperature_factor": "Temperature factor",
+                }[p]
+                default_val = _SPOT_DEFAULTS[p][0]
+                default_lo = _SPOT_DEFAULTS[p][1]
+                default_hi = _SPOT_DEFAULTS[p][2]
+                _param_row(
+                    components,
+                    section,
+                    f"spot_{i}_{p}",
+                    f"{lab}",
+                    defaults.get(f"{section}_spot_{i}_{p}_value", default_val),
+                    defaults.get(f"{section}_spot_{i}_{p}_fixed", False),
+                    defaults.get(f"{section}_spot_{i}_{p}_min", default_lo),
+                    defaults.get(f"{section}_spot_{i}_{p}_max", default_hi),
+                    defaults.get(f"{section}_spot_{i}_{p}_constraint"),
+                )
+                value_comps.append(components[f"{section}_spot_{i}_{p}_value"])
+                mode_comps.append(components[f"{section}_spot_{i}_{p}_mode"])
+                constraint_comps.append(components[f"{section}_spot_{i}_{p}_constraint"])
+                min_comps.append(components[f"{section}_spot_{i}_{p}_min"])
+                max_comps.append(components[f"{section}_spot_{i}_{p}_max"])
 
-        for i, rm_btn in enumerate(remove_btns):
-            rm_btn.click(
-                fn=_make_spot_remove_handler(i, MAX_SPOTS_LOCAL),
-                inputs=[spot_count, *all_spot_value_comps],
-                outputs=[spot_count, *spot_groups, *all_spot_value_comps],
+            def _toggle_spot_controls(enabled: object, *modes: object) -> list[object]:
+                is_enabled = bool(enabled)
+                updates: list[object] = []
+                for mode_obj in modes:
+                    mode_str_ = str(mode_obj)
+                    updates.append(gr.update(interactive=is_enabled))
+                    updates.append(gr.update(interactive=is_enabled))
+                    updates.append(gr.update(interactive=is_enabled and mode_str_ == "constrained"))
+                    updates.append(gr.update(interactive=is_enabled and mode_str_ == "free"))
+                    updates.append(gr.update(interactive=is_enabled and mode_str_ == "free"))
+                return updates
+
+            enabled_comp.change(
+                fn=_toggle_spot_controls,
+                inputs=[enabled_comp, *mode_comps],
+                outputs=[
+                    comp
+                    for idx in range(len(SPOT_PARAMS))
+                    for comp in (
+                        value_comps[idx],
+                        mode_comps[idx],
+                        constraint_comps[idx],
+                        min_comps[idx],
+                        max_comps[idx],
+                    )
+                ],
+                show_progress="hidden",
+                show_progress_on=[],
             )
 
-        # register components into mapping so FIELD_ORDER keys exist
-        components[f"{section}_spots_enabled"] = enabled_comp
-        components[f"{section}_spot_count"] = spot_count
+            # apply initial enabled-state interactivity
+            initial_enabled = bool(defaults.get(f"{section}_spot_{i}_enabled", False))
+            for idx, mode_comp in enumerate(mode_comps):
+                mode_str = str(mode_comp.value)
+                value_comps[idx].interactive = initial_enabled
+                mode_comps[idx].interactive = initial_enabled
+                constraint_comps[idx].interactive = initial_enabled and mode_str == "constrained"
+                min_comps[idx].interactive = initial_enabled and mode_str == "free"
+                max_comps[idx].interactive = initial_enabled and mode_str == "free"
+
+            components[f"{section}_spot_{i}_enabled"] = enabled_comp
 
 
 # ---------------------------------------------------------------------------
@@ -574,12 +675,13 @@ def build(
     approach: str = "community",
     defaults: dict[str, Float | bool | str | None] | None = None,
 ) -> tuple[dict[str, gr.Component], list[gr.Component]]:
-    """Render initial parameters for a specific approach.
+    """Render the unified LC fitting parameter form.
 
-    Builds ONLY the specified approach (Community or Standard). Returns its own
-    field order tuple and the parameter components dict.
+    A single superset form is rendered for both approaches. The *approach*
+    argument is retained for backward compatibility and for initial
+    interactivity state.
 
-    :param approach: Fitting approach (``"community"`` or ``"standard"``).
+    :param approach: Initial fitting approach (``"community"`` or ``"standard"``).
     :type approach: str
     :param defaults: Flat mapping of ``"{section}_{name}_{sub}"`` keys
         to override default values.
@@ -593,8 +695,31 @@ def build(
     components: dict[str, gr.Component] = {}
     sections: list[gr.Component] = []
 
+    normalized_approach: Literal["community", "standard"] = "community"
+    if str(approach).strip().lower() == "standard":
+        normalized_approach = "standard"
+
     # noinspection PyTypeChecker
-    _build_approach_params(components, approach, defaults)
+    _build_approach_params(components, normalized_approach, defaults)
+
+    # Apply initial approach-dependent interactivity to the exclusive fields.
+    for key in APPROACH_TOGGLED_KEYS:
+        if key not in components:
+            continue
+        component = components[key]
+        component.interactive = is_key_interactive_for_approach(key, normalized_approach)
+
+    # Apply initial label color so disabled approach-specific params are visibly
+    # marked on first render before any radio-change event fires.
+    for prefix in APPROACH_TOGGLED_PREFIXES:
+        label_key = f"{prefix}_label"
+        if label_key not in components:
+            continue
+        base_label = get_label_for_prefix(prefix)
+        if base_label is None:
+            continue
+        disabled = not is_key_interactive_for_approach(f"{prefix}_value", normalized_approach)
+        components[label_key].value = style_param_label(base_label, disabled=disabled)
 
     return components, sections
 
@@ -604,20 +729,19 @@ def _build_approach_params(
     approach: Literal["community", "standard"],
     defaults: dict[str, Float | bool | str | None],
 ) -> None:
-    """Build parameter inputs for a specific approach.
+    """Build unified parameter inputs for the LC fitting form.
 
     :param components: Mutable dict that receives the new components.
     :type components: dict[str, gr.Component]
-    :param approach: Fitting approach (``"community"`` or ``"standard"``).
+    :param approach: Kept for backward compatibility with callers.
     :type approach: Literal["community", "standard"]
     :param defaults: User-supplied defaults override dict.
     :type defaults: dict[str, Float | bool | str | None]
     """
-    # Determine which parameter sets to use
-    system_params = SYSTEM_PARAMS_COMMUNITY if approach == "community" else SYSTEM_PARAMS_STANDARD
-
-    # Build combined system spec
-    system_spec = {**SYSTEM_COMMON_SPEC, **_SYSTEM_COMMUNITY_SPEC} if approach == "community" else SYSTEM_COMMON_SPEC
+    # Keep *approach* in signature for backward compatibility with callers.
+    _ = approach
+    system_params = SYSTEM_PARAMS_UNIFIED
+    system_spec = {**SYSTEM_COMMON_SPEC, **_SYSTEM_COMMUNITY_SPEC}
 
     # ------------------------------------------------------------------ #
     # Section: System                                                       #
@@ -629,8 +753,8 @@ def _build_approach_params(
             fixed = defaults.get(f"system_{name}_fixed", def_fixed)
             lo = defaults.get(f"system_{name}_min", def_min)
             hi = defaults.get(f"system_{name}_max", def_max)
-            # semi_major_axis defaults to constrained mode in community approach
-            if name == "semi_major_axis" and approach == "community":
+            # semi_major_axis defaults to constrained mode.
+            if name == "semi_major_axis":
                 constraint = defaults.get(
                     f"system_{name}_constraint",
                     "11.55 / sin(radians(system@inclination))",
@@ -643,7 +767,7 @@ def _build_approach_params(
     # Section: Primary                                                      #
     # ------------------------------------------------------------------ #
     with gr.Accordion("Primary Component Parameters", open=False):
-        _build_component_section(components, "primary", approach, defaults)
+        _build_component_section(components, "primary", "standard", defaults)
 
     # ------------------------------------------------------------------ #
     # Section: Secondary                                                    #
@@ -659,7 +783,10 @@ def _build_approach_params(
             "metallicity": (0.0, -2.0, 1.0),
         }
         _build_component_section(
-            components, "secondary", approach, defaults,
+            components,
+            "secondary",
+            "standard",
+            defaults,
             value_overrides=_secondary_value_overrides,
         )
 
@@ -669,20 +796,29 @@ def _build_approach_params(
     with gr.Accordion("MCMC Nuisance Parameter", open=False):
         gr.Markdown("Log noise term that accounts for underestimated observational uncertainties.")
 
-        ln_f_val = defaults.get("nuisance_ln_f_value", -5.0)
+        ln_f_val = defaults.get("nuisance_ln_f_value", -20.0)
         ln_f_fixed = bool(defaults.get("nuisance_ln_f_fixed", False))
-        ln_f_lo = defaults.get("nuisance_ln_f_min", -10.0)
+        ln_f_lo = defaults.get("nuisance_ln_f_min", -25.0)
         ln_f_hi = defaults.get("nuisance_ln_f_max", 0.0)
         ln_f_constraint = defaults.get("nuisance_ln_f_constraint")
 
         _param_row(
-            components, "nuisance", "ln_f",
+            components,
+            "nuisance",
+            "ln_f",
             "**Log noise**  ln(f)  [nuisance]",
-            ln_f_val, ln_f_fixed, ln_f_lo, ln_f_hi, ln_f_constraint,
+            ln_f_val,
+            ln_f_fixed,
+            ln_f_lo,
+            ln_f_hi,
+            ln_f_constraint,
         )
 
 
-def parse_spots_fit(spot_params: dict[str, object] | None, section: str | None = None) -> list[dict[str, object]]:
+def parse_spots_fit(  # noqa: C901
+    spot_params: dict[str, object] | None,
+    section: str | None = None,
+) -> list[dict[str, object]]:
     """Convert flat spot parameters (from the fitting form) into a list of spot dicts.
 
     Each spot parameter in the form has controls for value/mode/constraint/min/max
@@ -700,25 +836,20 @@ def parse_spots_fit(spot_params: dict[str, object] | None, section: str | None =
     :returns: List of spot dicts with label and parameter structure.
     :rtype: list[dict[str, object]]
     """
-    from typing import cast
+    from typing import cast  # noqa: PLC0415
 
     if not spot_params:
         return []
 
-    enabled_key = f"{section}_spots_enabled" if section else "spots_enabled"
-    count_key = f"{section}_spot_count" if section else "spot_count"
-    if not bool(spot_params.get(enabled_key, False)):
-        return []
-
-    count = int(spot_params.get(count_key, 0) or 0)
-    if count <= 0:
-        return []
-
     spots: list[dict[str, object]] = []
 
-    for i in range(min(count, MAX_SPOT_SLOTS)):
-        def get_key(p: str, sub: str) -> str:
-            base = f"{section}_spot_{i}_{p}" if section else f"spot_{i}_{p}"
+    for i in range(MAX_SPOTS):
+        enabled_key = f"{section}_spot_{i}_enabled" if section else f"spot_{i}_enabled"
+        if not bool(spot_params.get(enabled_key, False)):
+            continue
+
+        def get_key(p: str, sub: str, *, _i: int = i) -> str:
+            base = f"{section}_spot_{_i}_{p}" if section else f"spot_{_i}_{p}"
             return f"{base}_{sub}"
 
         # Build the spot dict with label and parameter entries

@@ -1,7 +1,7 @@
 """Core computation logic for LC fitting - no Gradio dependency.
 
 Translates flat Gradio value dicts and passband row data into ELISa
-analytics objects, runs LSQRT or MCMC optimisation, and returns plain
+analytics objects, runs LSQRT or MCMC optimization, and returns plain
 Python / matplotlib objects for the UI layer.
 
 The ``semi_major_axis`` parameter supports three modes via the
@@ -20,7 +20,7 @@ import logging
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Literal, TypedDict
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -28,13 +28,16 @@ import pandas as pd
 from elisa import units as u
 from elisa.analytics import LCBinaryAnalyticsTask, LCData
 from elisa.analytics.params.parameters import BinaryInitialParameters
+from elisa.ui.shared.const import MAX_SPOTS
 from elisa.ui.shared.logging_config import fit_logging
+from elisa.ui.shared.plotting import figure_to_pil
 from elisa.utc import UTC
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from matplotlib.figure import Figure
+    from PIL import Image
 
     from elisa.types import Float
 
@@ -53,6 +56,8 @@ _Y_UNIT_MAP: dict[str, object] = {
     "Flux (dimensionless)": u.dimensionless_unscaled,
     "Magnitude (mag)": u.mag,
 }
+
+_X_UNIT_JD = "Julian days (JD)"
 
 # Unit strings injected into the x0 dict for each parameter.
 # None means dimensionless (unit key omitted).
@@ -277,6 +282,8 @@ def _build_component_params(
     param_values: dict[str, object],
     section: str,
     base_params: tuple[str, ...],
+    *,
+    include_mass: bool,
 ) -> dict[str, dict]:
     """Build one component section (primary or secondary) for the x0 dict.
 
@@ -290,21 +297,44 @@ def _build_component_params(
     :type section: str
     :param base_params: Ordered names of the common component parameters.
     :type base_params: tuple[str, ...]
+    :param include_mass: Whether the ``mass`` entry should be included.
+    :type include_mass: bool
     :returns: Per-component parameter dict ready for ``BinaryInitialParameters``.
     :rtype: dict[str, dict]
     """
     result: dict[str, dict] = {
         name: _build_regular_param_entry(
-            param_values, f"{section}_{name}", _COMPONENT_PARAM_UNITS.get(name),
+            param_values,
+            f"{section}_{name}",
+            _COMPONENT_PARAM_UNITS.get(name),
         )
         for name in base_params
     }
-    # Optional: mass present only in the standard approach.
-    if f"{section}_mass_value" in param_values:
+    if include_mass and f"{section}_mass_value" in param_values:
         result["mass"] = _build_regular_param_entry(
-            param_values, f"{section}_mass", _COMPONENT_PARAM_UNITS.get("mass"),
+            param_values,
+            f"{section}_mass",
+            _COMPONENT_PARAM_UNITS.get("mass"),
         )
     return result
+
+
+def _normalize_approach(approach: str) -> Literal["community", "standard"]:
+    """Normalize approach label to internal lowercase representation.
+
+    :param approach: User/UI approach label.
+    :type approach: str
+    :returns: Lowercase normalized approach.
+    :rtype: Literal["community", "standard"]
+    :raises ValueError: If *approach* is not recognized.
+    """
+    normalized = approach.strip().lower()
+    if normalized == "community":
+        return "community"
+    if normalized == "standard":
+        return "standard"
+    msg = f"Unknown fitting approach: {approach}"
+    raise ValueError(msg)
 
 
 def _build_nuisance_entry(param_values: dict[str, object]) -> dict[str, object]:
@@ -334,7 +364,13 @@ def _build_nuisance_entry(param_values: dict[str, object]) -> dict[str, object]:
     return entry
 
 
-def build_x0(param_values: dict[str, object], *, include_nuisance: bool = False) -> dict:
+def build_x0(
+    param_values: dict[str, object],
+    *,
+    include_nuisance: bool = False,
+    approach: str = "community",
+    include_primary_minimum_time: bool = True,
+) -> dict:
     """Build the ``BinaryInitialParameters`` input dict from flat UI values.
 
     Constructs the nested
@@ -356,6 +392,12 @@ def build_x0(param_values: dict[str, object], *, include_nuisance: bool = False)
     :param include_nuisance: Whether to include nuisance parameters (used only for MCMC).
         Defaults to False (LSQRT fitting).
     :type include_nuisance: bool
+    :param approach: Fitting approach used to select exclusive parameters.
+    :type approach: str
+    :param include_primary_minimum_time: Whether to include
+        ``system@primary_minimum_time`` in the serialized x0.
+        Set to ``False`` when observational x-axis is phase data.
+    :type include_primary_minimum_time: bool
     :returns: Nested initial-parameter dict suitable for
         ``LCBinaryAnalyticsTask.fit(x0=...)``.
     :rtype: dict
@@ -366,29 +408,45 @@ def build_x0(param_values: dict[str, object], *, include_nuisance: bool = False)
         parse_spots_fit,
     )
 
+    normalized_approach = _normalize_approach(approach)
+
     # Build all regular system parameters (common to both standard and community)
     system: dict[str, dict] = {
         name: _build_regular_param_entry(
-            param_values, f"system_{name}", _SYSTEM_PARAM_UNITS.get(name),
+            param_values,
+            f"system_{name}",
+            _SYSTEM_PARAM_UNITS.get(name),
         )
         for name in SYSTEM_REGULAR_PARAMS
+        if include_primary_minimum_time or name != "primary_minimum_time"
     }
 
-    # Add optional system parameters if present
-    # (semi_major_axis + mass_ratio: community; semi_major_axis: both)
-    for optional_param in ("semi_major_axis", "mass_ratio"):
-        if f"system_{optional_param}_value" in param_values:
-            if optional_param == "semi_major_axis":
-                system[optional_param] = _build_sma_entry(param_values)
-            else:
-                system[optional_param] = _build_regular_param_entry(
-                    param_values, f"system_{optional_param}", _SYSTEM_PARAM_UNITS.get(optional_param),
-                )
+    if normalized_approach == "community":
+        for optional_param in ("semi_major_axis", "mass_ratio"):
+            if f"system_{optional_param}_value" in param_values:
+                if optional_param == "semi_major_axis":
+                    system[optional_param] = _build_sma_entry(param_values)
+                else:
+                    system[optional_param] = _build_regular_param_entry(
+                        param_values,
+                        f"system_{optional_param}",
+                        _SYSTEM_PARAM_UNITS.get(optional_param),
+                    )
 
     result: dict[str, dict] = {
         "system": system,
-        "primary": _build_component_params(param_values, "primary", COMPONENT_PARAMS),
-        "secondary": _build_component_params(param_values, "secondary", COMPONENT_PARAMS),
+        "primary": _build_component_params(
+            param_values,
+            "primary",
+            COMPONENT_PARAMS,
+            include_mass=(normalized_approach == "standard"),
+        ),
+        "secondary": _build_component_params(
+            param_values,
+            "secondary",
+            COMPONENT_PARAMS,
+            include_mass=(normalized_approach == "standard"),
+        ),
     }
 
     # Attach spots if present in the flat param_values for primary and secondary
@@ -568,7 +626,7 @@ def detect_approach_from_json(path: str) -> str:
     return "Community" if kind == "community" else "Standard"
 
 
-def load_params_from_json(path: str) -> dict[str, object]:
+def load_params_from_json(path: str) -> dict[str, object]:  # noqa: C901
     """Load parameter values, bounds, and modes from a saved LC result JSON.
 
     Parses the ``system``, ``primary``, ``secondary``, and ``nuisance``
@@ -597,8 +655,26 @@ def load_params_from_json(path: str) -> dict[str, object]:
         raise ValueError(msg)
 
     out: dict[str, object] = {}
+
+    def _flatten_spots(section_: str, spots_raw_: object) -> None:
+        if not isinstance(spots_raw_, list):
+            return
+
+        for idx, spot in enumerate(spots_raw_[:MAX_SPOTS]):
+            if not isinstance(spot, dict):
+                continue
+
+            out[f"{section_}_spot_{idx}_enabled"] = True
+            for param_name in ("longitude", "latitude", "angular_radius", "temperature_factor"):
+                meta_ = spot.get(param_name)
+                if isinstance(meta_, dict):
+                    out.update(_param_meta_to_flat(section_, f"spot_{idx}_{param_name}", meta_))
+
     for section in ("system", "primary", "secondary", "nuisance"):
         for name, meta in (data.get(section) or {}).items():
+            if name == "spots" and section in {"primary", "secondary"}:
+                _flatten_spots(section, meta)
+                continue
             if isinstance(meta, dict):
                 out.update(_param_meta_to_flat(section, name, meta))
     return out
@@ -655,10 +731,11 @@ def run_lsqrt(
     x_unit_str: str,
     param_values: dict[str, object],
     morphology: str,
+    approach: str = "community",
     *,
     task: LCBinaryAnalyticsTask | None = None,
-) -> tuple[dict, Figure, pd.DataFrame, str]:
-    """Run a least-squares LC fit and return all displayable artefacts.
+) -> tuple[dict, Image.Image, pd.DataFrame, str]:
+    """Run a least-squares LC fit and return all displayable artifacts.
 
     Loads :class:`~elisa.analytics.LCData` objects from the supplied row
     descriptors, builds the initial-parameter structure, runs the LSQRT
@@ -666,7 +743,7 @@ def run_lsqrt(
     returns the fitted result together with a model plot, a results table,
     and a path to the saved JSON result.
 
-    When a pre-constructed *task* is supplied (already initialised with the
+    When a pre-constructed *task* is supplied (already initialized with the
     correct ``data``) it is used directly and populated with fit state
     in-place, so the caller can retain the instance across UI actions (e.g.
     for parameter transfer to MCMC).  The caller is responsible for ensuring
@@ -683,16 +760,23 @@ def run_lsqrt(
     :param morphology: Expected binary morphology (``"detached"`` or
         ``"over-contact"``).
     :type morphology: str
+    :param approach: Fitting approach (``"community"`` or ``"standard"``).
+    :type approach: str
     :param task: Optional pre-constructed :class:`~elisa.analytics.LCBinaryAnalyticsTask`
-        already initialised with observational data.  When ``None`` a fresh
+        already initialized with observational data.  When ``None`` a fresh
         task is built from *lc_rows* internally.
     :type task: LCBinaryAnalyticsTask | None
-    :returns: Tuple of ``(result_dict, model_figure, results_dataframe, json_path)``.
-    :rtype: tuple[dict, matplotlib.figure.Figure, pandas.DataFrame, str]
+    :returns: Tuple of ``(result_dict, model_image, results_dataframe, json_path)``.
+    :rtype: tuple[dict, PIL.Image.Image, pandas.DataFrame, str]
     :raises ValueError: If no valid LC data rows are provided (only when
         *task* is ``None``).
     """
-    x0_dict = build_x0(param_values, include_nuisance=False)
+    x0_dict = build_x0(
+        param_values,
+        include_nuisance=False,
+        approach=approach,
+        include_primary_minimum_time=(x_unit_str == _X_UNIT_JD),
+    )
     x0 = BinaryInitialParameters(**x0_dict)
 
     _logger.debug(
@@ -708,7 +792,9 @@ def run_lsqrt(
             # No task provided - load data and create the task from scratch.
             data = load_lc_dataset(lc_rows, x_unit_str)
             task = LCBinaryAnalyticsTask(
-                data=data, method="least_squares", expected_morphology=morphology,
+                data=data,
+                method="least_squares",
+                expected_morphology=morphology,
             )
         # else: caller already constructed the task with real data; use it directly.
         result = task.fit(x0=x0)
@@ -719,7 +805,7 @@ def run_lsqrt(
     json_path = _result_temp_path("lsqrt")
     task.save_result(str(json_path))
 
-    return result, model_fig, df, str(json_path)
+    return result, figure_to_pil(model_fig), df, str(json_path)
 
 
 def run_mcmc(
@@ -727,6 +813,7 @@ def run_mcmc(
     x_unit_str: str,
     param_values: dict[str, object],
     morphology: str,
+    approach: str = "community",
     nwalkers: int = 50,
     nsteps: int = 500,
     burn_in: int = 50,
@@ -734,7 +821,7 @@ def run_mcmc(
     *,
     save: bool = True,
     progress: bool = True,
-) -> tuple[dict, Figure, Figure | None, Figure | None, pd.DataFrame, str]:
+) -> tuple[dict, Image.Image, Image.Image | None, Image.Image | None, pd.DataFrame, str]:
     """Run an MCMC LC fit and return all displayable artifacts.
 
     Loads LC data, constructs parameters, runs the MCMC sampler, and captures
@@ -750,6 +837,8 @@ def run_mcmc(
     :param morphology: Expected binary morphology (``"detached"`` or
         ``"over-contact"``).
     :type morphology: str
+    :param approach: Fitting approach (``"community"`` or ``"standard"``).
+    :type approach: str
     :param nwalkers: Number of MCMC walkers.
     :type nwalkers: int
     :param nsteps: Number of MCMC steps per walker.
@@ -763,14 +852,19 @@ def run_mcmc(
     :param progress: Whether to show progress bar during MCMC sampling.
     :type progress: bool
     :returns: Tuple of
-        ``(result_dict, model_figure, corner_figure, traces_figure,
+        ``(result_dict, model_image, corner_image, traces_image,
         results_dataframe, json_path)``.
-    :rtype: tuple[dict, Figure, Figure | None, Figure | None, pandas.DataFrame, str]
+    :rtype: tuple[dict, PIL.Image.Image, PIL.Image.Image | None, PIL.Image.Image | None, pandas.DataFrame, str]
     :raises ValueError: If no valid LC data rows are provided.
     """
     data: dict[str, LCData] = load_lc_dataset(lc_rows, x_unit_str)
 
-    x0_dict = build_x0(param_values, include_nuisance=True)
+    x0_dict = build_x0(
+        param_values,
+        include_nuisance=True,
+        approach=approach,
+        include_primary_minimum_time=(x_unit_str == _X_UNIT_JD),
+    )
     x0 = BinaryInitialParameters(**x0_dict)
 
     _logger.debug(
@@ -786,7 +880,9 @@ def run_mcmc(
     # noinspection PyTypeChecker
     with fit_logging():
         task = LCBinaryAnalyticsTask(
-            data=data, method="mcmc", expected_morphology=morphology,
+            data=data,
+            method="mcmc",
+            expected_morphology=morphology,
         )
         result = task.fit(
             x0=x0,
@@ -813,6 +909,13 @@ def run_mcmc(
     json_path = _result_temp_path("mcmc")
     task.save_result(str(json_path))
 
-    return result, model_fig, corner_fig, traces_fig, df, str(json_path)
+    return (
+        result,
+        figure_to_pil(model_fig),
+        figure_to_pil(corner_fig),
+        figure_to_pil(traces_fig),
+        df,
+        str(json_path),
+    )
 
 

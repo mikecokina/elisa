@@ -21,28 +21,23 @@ The ``semi_major_axis`` parameter supports a three-way mode selector:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, SupportsIndex
+from typing import Literal, SupportsIndex, cast
 
 import gradio as gr
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.figure import Figure  # noqa: TC002
 
 from elisa.analytics import LCBinaryAnalyticsTask
 from elisa.analytics.binary_fit.shared import extend_observations_to_desired_interval
+from elisa.ui.shared.plotting import figure_to_pil
 from elisa.ui.tabs.lc_fitting.components import data_inputs, param_inputs
 from elisa.ui.tabs.lc_fitting.components.data_inputs import MAX_PASSBAND_ROWS
 from elisa.ui.tabs.lc_fitting.components.param_inputs import (
     COMPONENT_PARAMS,
-    FIELD_ORDER_COMMUNITY,
-    FIELD_ORDER_STANDARD,
+    FIELD_ORDER_UNIFIED,
     SYSTEM_REGULAR_PARAMS,
 )
 from elisa.ui.tabs.lc_fitting.logic import compute
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
 
 # ---------------------------------------------------------------------------
 # Tab ID constants
@@ -50,6 +45,73 @@ if TYPE_CHECKING:
 
 _TAB_LSQRT = "lc_lsqrt_results"
 _TAB_MCMC = "lc_mcmc_results"
+
+_X_UNIT_JD = "Julian days (JD)"
+_PRIMARY_MIN_TIME_PREFIX = "system_primary_minimum_time"
+_PRIMARY_MIN_TIME_KEYS: tuple[str, ...] = (
+    f"{_PRIMARY_MIN_TIME_PREFIX}_value",
+    f"{_PRIMARY_MIN_TIME_PREFIX}_mode",
+    f"{_PRIMARY_MIN_TIME_PREFIX}_constraint",
+    f"{_PRIMARY_MIN_TIME_PREFIX}_min",
+    f"{_PRIMARY_MIN_TIME_PREFIX}_max",
+)
+
+
+def _is_jd_x_unit(x_unit: str) -> bool:
+    """Return whether the selected x-axis unit is Julian days.
+
+    :param x_unit: X-axis unit label from the dropdown.
+    :type x_unit: str
+    :returns: ``True`` when x-unit is Julian days.
+    :rtype: bool
+    """
+    return x_unit == _X_UNIT_JD
+
+
+def _primary_min_time_interactivity(mode: str, *, enabled: bool) -> tuple[bool, bool, bool, bool, bool]:
+    """Compute interactivity tuple for primary-minimum-time controls.
+
+    :param mode: Parameter mode value (``"free"``, ``"fixed"``, ``"constrained"``).
+    :type mode: str
+    :param enabled: Whether the whole parameter row is enabled by x-unit context.
+    :type enabled: bool
+    :returns: ``(value, mode, constraint, min, max)`` interactivity flags.
+    :rtype: tuple[bool, bool, bool, bool, bool]
+    """
+    if not enabled:
+        return False, False, False, False, False
+    return (
+        True,
+        True,
+        mode == "constrained",
+        mode == "free",
+        mode == "free",
+    )
+
+
+def _primary_min_time_label_update(*, disabled: bool) -> object:
+    """Build label update for ``system_primary_minimum_time``.
+
+    :param disabled: Whether label should use disabled styling.
+    :type disabled: bool
+    :returns: ``gr.update`` payload for the label Markdown component.
+    :rtype: object
+    """
+    base_label = param_inputs.get_label_for_prefix(_PRIMARY_MIN_TIME_PREFIX)
+    if base_label is None:
+        return gr.update()
+    return gr.update(value=param_inputs.style_param_label(base_label, disabled=disabled))
+
+
+def _is_x_unit_restricted_key(key: str) -> bool:
+    """Return whether *key* belongs to the x-unit restricted T0 parameter.
+
+    :param key: Flat form key.
+    :type key: str
+    :returns: ``True`` for ``system_primary_minimum_time_*`` keys.
+    :rtype: bool
+    """
+    return any(key == restricted_key for restricted_key in _PRIMARY_MIN_TIME_KEYS)
 
 
 # ---------------------------------------------------------------------------
@@ -167,14 +229,14 @@ def _parse_lc_inputs_simple(
 # ---------------------------------------------------------------------------
 
 
-def _build_lsqrt_results() -> tuple[gr.Plot, gr.DataFrame, gr.DownloadButton]:
+def _build_lsqrt_results() -> tuple[gr.Image, gr.DataFrame, gr.DownloadButton]:
     """Render the LSQRT results sub-tab and return output components.
 
     :returns: Tuple of ``(model_plot, table, download_button)``.
-    :rtype: tuple[gr.Plot, gr.DataFrame, gr.DownloadButton]
+    :rtype: tuple[gr.Image, gr.DataFrame, gr.DownloadButton]
     """
     with gr.Row():
-        model_plot = gr.Plot(label="Model fit")
+        model_plot = gr.Image(label="Model fit", type="pil")
     with gr.Row():
         table = gr.DataFrame(label="Fitted parameters", wrap=True)
     with gr.Row():
@@ -182,21 +244,21 @@ def _build_lsqrt_results() -> tuple[gr.Plot, gr.DataFrame, gr.DownloadButton]:
     return model_plot, table, download
 
 
-def _build_mcmc_results() -> tuple[gr.Plot, gr.DataFrame, gr.Plot, gr.Plot, gr.DownloadButton]:
+def _build_mcmc_results() -> tuple[gr.Image, gr.DataFrame, gr.Image, gr.Image, gr.DownloadButton]:
     """Render the MCMC results sub-tab and return output components.
 
     :returns: Tuple of
         ``(model_plot, table, corner_plot, traces_plot, download_button)``.
-    :rtype: tuple[gr.Plot, gr.DataFrame, gr.Plot, gr.Plot, gr.DownloadButton]
+    :rtype: tuple[gr.Image, gr.DataFrame, gr.Image, gr.Image, gr.DownloadButton]
     """
     with gr.Row():
-        model_plot = gr.Plot(label="Model fit (MCMC median)")
+        model_plot = gr.Image(label="Model fit (MCMC median)", type="pil")
     with gr.Row():
         table = gr.DataFrame(label="Fitted parameters", wrap=True)
     with gr.Row():
-        corner_plot = gr.Plot(label="Corner plot")
+        corner_plot = gr.Image(label="Corner plot", type="pil")
     with gr.Row():
-        traces_plot = gr.Plot(label="Parameter traces")
+        traces_plot = gr.Image(label="Parameter traces", type="pil")
     with gr.Row():
         download = gr.DownloadButton(label="💾 Download result JSON", visible=False)
     return model_plot, table, corner_plot, traces_plot, download
@@ -207,15 +269,73 @@ def _build_mcmc_results() -> tuple[gr.Plot, gr.DataFrame, gr.Plot, gr.Plot, gr.D
 # ---------------------------------------------------------------------------
 
 
-def _wire_json_loader(  # noqa: C901
+def _build_active_param_update(k: str, params: dict[str, object], approach: str, x_unit: str) -> object:
+    """Build one ``gr.update`` for field *k* using the loaded *params* dict.
+
+    For ``_constraint`` / ``_min`` / ``_max`` keys the correct ``interactive``
+    state is included so the form reflects the loaded mode without requiring a
+    manual dropdown click.  Svelte only recreates a DOM node when
+    ``interactive`` actually changes, so only params whose mode differs from
+    the form default incur a lifecycle event.
+
+    :param k: Field key from the loader key tuple.
+    :type k: str
+    :param params: Flat parameter dict from
+        :func:`~logic.compute.load_params_from_json`.
+    :type params: dict[str, object]
+    :param approach: Lowercase approach (``"community"`` or ``"standard"``).
+    :type approach: str
+    :param x_unit: Current x-axis unit label used for x-unit-dependent gating.
+    :type x_unit: str
+    :returns: A ``gr.update`` with value and, where applicable, interactive.
+    :rtype: object
+    """
+    normalized: Literal["community", "standard"] = "community" if approach == "community" else "standard"
+    interactive_allowed = param_inputs.is_key_interactive_for_approach(k, normalized)
+    if _is_x_unit_restricted_key(k):
+        interactive_allowed = interactive_allowed and _is_jd_x_unit(x_unit)
+
+    update_kwargs: dict[str, object] = {}
+    if k.endswith("_constraint"):
+        prefix = k[:-11]  # strip "_constraint" (11 chars)
+        mode = str(params.get(f"{prefix}_mode", "free"))
+        val = params.get(k)
+        update_kwargs["value"] = str(val) if val is not None else ""
+        update_kwargs["interactive"] = (mode == "constrained") and interactive_allowed
+    elif k.endswith(("_min", "_max")):
+        prefix = k[:-4]  # strip "_min" or "_max" (4 chars each)
+        mode = str(params.get(f"{prefix}_mode", "free"))
+        if k in params:
+            update_kwargs["value"] = params[k]
+        update_kwargs["interactive"] = (mode == "free") and interactive_allowed
+    else:
+        if k in params:
+            update_kwargs["value"] = params[k]
+        if not interactive_allowed:
+            update_kwargs["interactive"] = False
+
+    return gr.update(**update_kwargs)
+
+
+def _normalize_ui_approach(approach: str) -> Literal["community", "standard"]:
+    """Normalize radio value to internal approach literal.
+
+    :param approach: Approach label from the radio component.
+    :type approach: str
+    :returns: Lowercase approach literal.
+    :rtype: Literal["community", "standard"]
+    """
+    if approach == "Community":
+        return "community"
+    return "standard"
+
+
+def _wire_json_loader(
     params_json_comp: gr.File,
-    community_fit_comps: dict[str, gr.Component],
-    standard_fit_comps: dict[str, gr.Component],
-    community_fit_keys: tuple[str, ...],
-    standard_fit_keys: tuple[str, ...],
+    fit_comps: dict[str, gr.Component],
+    fit_keys: tuple[str, ...],
     approach_comp: gr.Radio,
-    community_group: gr.Column,
-    standard_group: gr.Column,
+    x_unit_comp: gr.Dropdown,
 ) -> None:
     """Wire the JSON param-loader upload event with auto-detection of approach.
 
@@ -223,38 +343,59 @@ def _wire_json_loader(  # noqa: C901
     :func:`~logic.compute.detect_approach_from_json`, switches the approach
     radio and section visibility, then populates the correct parameter form.
 
+    **Performance design notes:**
+
+    - **Spot-param fields are included in outputs.**  The loader now restores
+      spot slots directly from result JSON data so previous-fit spot
+      configuration is reproduced in the form.
+    - **Interactive state included for active approach.**  Each
+      ``constraint`` / ``min`` / ``max`` field is updated with both ``value``
+      and the correct ``interactive`` flag derived from the loaded mode.
+      Svelte only recreates a DOM node when ``interactive`` *actually changes*,
+      so only params whose mode differs from the form default incur a lifecycle
+      event - not all 22.  The inactive approach receives plain no-op
+      ``gr.update()`` calls because its column is hidden.
+    - **``show_progress="hidden"`` + ``show_progress_on=[]``.**  Without
+      ``show_progress_on=[]``, Gradio's loading-state machinery defaults to
+      ``show_progress_on=None``, which the JS frontend interprets as
+      ``null || dep.outputs`` and therefore registers *every output component*
+      for loading-status tracking.  ``update_loading_stati_state()`` is then
+      called multiple times per event and invokes ``find_node_by_id`` once per
+      registered component each time - for 231 outputs that produces hundreds
+      of redundant tree-walk calls even though the progress spinner is hidden.
+      Passing an explicit empty list sets ``dep.show_progress_on = []`` (truthy
+      in JS), making ``[] || dep.outputs`` evaluate to ``[]``, so zero
+      components are registered and zero extra ``find_node_by_id`` calls occur.
+
     :param params_json_comp: The file upload component for the result JSON.
     :type params_json_comp: gr.File
-    :param community_fit_comps: Community component mapping.
-    :type community_fit_comps: dict[str, gr.Component]
-    :param standard_fit_comps: Standard component mapping.
-    :type standard_fit_comps: dict[str, gr.Component]
-    :param community_fit_keys: Ordered param keys for Community approach.
-    :type community_fit_keys: tuple[str, ...]
-    :param standard_fit_keys: Ordered param keys for Standard approach.
-    :type standard_fit_keys: tuple[str, ...]
+    :param fit_comps: Unified parameter component mapping.
+    :type fit_comps: dict[str, gr.Component]
+    :param fit_keys: Ordered unified param keys.
+    :type fit_keys: tuple[str, ...]
     :param approach_comp: The approach radio button component.
     :type approach_comp: gr.Radio
-    :param community_group: The community parameters Column component.
-    :type community_group: gr.Column
-    :param standard_group: The standard parameters Column component.
-    :type standard_group: gr.Column
+    :param x_unit_comp: X-axis unit dropdown component.
+    :type x_unit_comp: gr.Dropdown
     """
+    loader_keys: tuple[str, ...] = fit_keys
+    label_keys: tuple[str, ...] = tuple(k for k in param_inputs.APPROACH_TOGGLED_LABEL_KEYS if k in fit_comps)
+
     all_outputs: list[gr.Component] = (
-        [approach_comp, community_group, standard_group]
-        + [community_fit_comps[k] for k in community_fit_keys]
-        + [standard_fit_comps[k] for k in standard_fit_keys]
+        [approach_comp] + [fit_comps[k] for k in loader_keys] + [fit_comps[k] for k in label_keys]
     )
 
-    def _load_json_handler(json_file: object) -> list[object]:
+    def _load_json_handler(json_file: object, x_unit: object) -> list[object]:
         """Populate the parameter form from an uploaded LC result JSON.
 
         Auto-detects Community vs Standard, switches the approach selector
-        and section visibility, then loads parameters into the correct form.
+        and section visibility, then loads parameter values into the form.
+        Spot parameters are not written to the form; a notification is shown
+        when the JSON contains them.
 
         :param json_file: Gradio file object from the upload component.
         :type json_file: object
-        :returns: Updates for approach_comp, both groups, and all param components.
+        :returns: Updates for approach selector and all non-spot param components.
         :rtype: list[object]
         """
         path: str | None = getattr(json_file, "name", None)
@@ -267,61 +408,46 @@ def _wire_json_loader(  # noqa: C901
         except ValueError as exc:
             raise gr.Error(str(exc)) from exc
 
-        is_community = approach == "Community"
-        fit_keys = community_fit_keys if is_community else standard_fit_keys
+        ui_approach = cast("Literal['community', 'standard']", "community" if approach == "Community" else "standard")
 
         try:
             params = compute.load_params_from_json(path)
         except ValueError as exc:
             raise gr.Error(str(exc)) from exc
 
-        # Build updates for the active approach's parameters.
-        # For _constraint keys: set interactive=True only when mode=="constrained".
-        # For _min / _max keys: set interactive=True only when mode=="free".
-        # For all others (_value, _mode): set value if present.
-        active_updates: list[object] = []
-        for key in fit_keys:
-            if key.endswith("_constraint"):
-                base_prefix = key[: -len("_constraint")]
-                mode = str(params.get(f"{base_prefix}_mode", "free"))
-                val = params.get(key)
-                upd: dict[str, object] = {"interactive": mode == "constrained"}
-                if val is not None:
-                    upd["value"] = val
-                active_updates.append(gr.update(**upd))
-            elif key.endswith(("_min", "_max")):
-                base_prefix = key.rsplit("_", 1)[0]
-                mode = str(params.get(f"{base_prefix}_mode", "free"))
-                is_interactive = mode == "free"
-                val = params.get(key)
-                upd = {"interactive": is_interactive}
-                if val is not None:
-                    upd["value"] = val
-                active_updates.append(gr.update(**upd))
-            elif key in params:
-                active_updates.append(gr.update(value=params[key]))
-            else:
-                active_updates.append(gr.update())
+        x_unit_str = str(x_unit)
+        updates: list[object] = [_build_active_param_update(k, params, ui_approach, x_unit_str) for k in loader_keys]
 
-        # Inactive approach gets empty updates
-        inactive_keys = standard_fit_keys if is_community else community_fit_keys
-        inactive_updates = [gr.update() for _ in inactive_keys]
+        label_updates: list[object] = []
+        for label_key in label_keys:
+            prefix = label_key.removesuffix("_label")
+            base_label = param_inputs.get_label_for_prefix(prefix)
+            if base_label is None:
+                label_updates.append(gr.update())
+                continue
+            interactive = param_inputs.is_key_interactive_for_approach(f"{prefix}_value", ui_approach)
+            styled = param_inputs.style_param_label(base_label, disabled=not interactive)
+            label_updates.append(gr.update(value=styled))
 
-        community_updates = active_updates if is_community else inactive_updates
-        standard_updates = inactive_updates if is_community else active_updates
+        primary_min_time_label_key = f"{_PRIMARY_MIN_TIME_PREFIX}_label"
+        if primary_min_time_label_key in fit_comps:
+            primary_min_time_label_index = label_keys.index(primary_min_time_label_key)
+            label_updates[primary_min_time_label_index] = _primary_min_time_label_update(
+                disabled=not _is_jd_x_unit(x_unit_str),
+            )
 
         return [
             gr.update(value=approach),
-            gr.update(visible=is_community),
-            gr.update(visible=not is_community),
-            *community_updates,
-            *standard_updates,
+            *updates,
+            *label_updates,
         ]
 
     params_json_comp.upload(
         fn=_load_json_handler,
-        inputs=[params_json_comp],
+        inputs=[params_json_comp, x_unit_comp],
         outputs=all_outputs,
+        show_progress="hidden",
+        show_progress_on=[],
     )
 
 
@@ -338,7 +464,7 @@ def _build_data_accordion() -> tuple[
     gr.Number,
     gr.Number,
     gr.Button,
-    gr.Plot,
+    gr.Image,
     gr.Accordion,
 ]:
     """Render accordion 1 (Observational data) and return component refs.
@@ -408,11 +534,13 @@ def _build_data_accordion() -> tuple[
             fn=_on_x_unit_change,
             inputs=[data_comps.x_unit],
             outputs=[period_comp, t0_comp],
+            show_progress="hidden",
+            show_progress_on=[],
         )
 
         # Collapsible plot area for observed light curves
         with gr.Accordion("Observed data plot", open=False) as obs_plot_accordion:
-            observed_data_plot = gr.Plot(label="Observed data")
+            observed_data_plot = gr.Image(label="Observed data", type="pil")
 
         return (
             data_comps,
@@ -501,13 +629,13 @@ def _build_action_buttons() -> tuple[gr.Button, gr.Button, gr.Button]:
 
 def _build_results_section() -> tuple[
     gr.Tabs,
-    gr.Plot,
+    gr.Image,
     gr.DataFrame,
     gr.DownloadButton,
-    gr.Plot,
+    gr.Image,
     gr.DataFrame,
-    gr.Plot,
-    gr.Plot,
+    gr.Image,
+    gr.Image,
     gr.DownloadButton,
 ]:
     """Render the results tabs section and return all output components.
@@ -603,13 +731,7 @@ def build() -> None:  # noqa: C901, PLR0915
                     scale=1,
                 )
 
-            # Build Community parameters
-            with gr.Column(visible=True) as community_group:
-                community_fit_comps, _community_sections = param_inputs.build(approach="community")
-
-            # Build Standard parameters
-            with gr.Column(visible=False) as standard_group:
-                standard_fit_comps, _standard_sections = param_inputs.build(approach="standard")
+            fit_comps, _fit_sections = param_inputs.build(approach="community")
 
             with gr.Accordion("Load Parameters from Previous Fit", open=False):
                 gr.Markdown(
@@ -637,17 +759,43 @@ def build() -> None:  # noqa: C901, PLR0915
             mcmc_download,
         ) = _build_results_section()
 
-        # Wire approach selector to toggle visibility
+        # Wire approach selector to toggle interactivity for exclusive fields.
+        approach_toggle_keys = param_inputs.APPROACH_TOGGLED_KEYS
+        approach_toggle_outputs = [fit_comps[k] for k in approach_toggle_keys]
+        approach_toggle_prefixes = param_inputs.APPROACH_TOGGLED_PREFIXES
+        approach_toggle_label_keys = [k for k in param_inputs.APPROACH_TOGGLED_LABEL_KEYS if k in fit_comps]
+        approach_toggle_label_outputs = [fit_comps[k] for k in approach_toggle_label_keys]
+
+        def _on_approach_change(approach: str) -> list[object]:
+            normalized = _normalize_ui_approach(approach)
+            field_updates = [
+                gr.update(interactive=param_inputs.is_key_interactive_for_approach(k, normalized))
+                for k in approach_toggle_keys
+            ]
+
+            label_updates: list[object] = []
+            for prefix in approach_toggle_prefixes:
+                base_label = param_inputs.get_label_for_prefix(prefix)
+                if base_label is None:
+                    label_updates.append(gr.update())
+                    continue
+                interactive = param_inputs.is_key_interactive_for_approach(f"{prefix}_value", normalized)
+                styled = param_inputs.style_param_label(base_label, disabled=not interactive)
+                label_updates.append(gr.update(value=styled))
+
+            return field_updates + label_updates
+
         approach_comp.change(
-            fn=lambda a: (gr.update(visible=a == "Community"), gr.update(visible=a == "Standard")),
+            fn=_on_approach_change,
             inputs=[approach_comp],
-            outputs=[community_group, standard_group],
+            outputs=approach_toggle_outputs + approach_toggle_label_outputs,
+            show_progress="hidden",
+            show_progress_on=[],
         )
 
-        # Setup for Community approach
-        community_fit_keys = FIELD_ORDER_COMMUNITY
-        community_fit_inputs = [community_fit_comps[k] for k in community_fit_keys]
-        community_lc_data_inputs = (
+        fit_keys = FIELD_ORDER_UNIFIED
+        fit_inputs = [fit_comps[k] for k in fit_keys]
+        lc_data_inputs = (
             [data_comps.x_unit, data_comps.passband_count]
             + [
                 comp
@@ -662,45 +810,87 @@ def build() -> None:  # noqa: C901, PLR0915
             + [morphology_comp]
         )
 
-        # Setup for Standard approach
-        standard_fit_keys = FIELD_ORDER_STANDARD
-        standard_fit_inputs = [standard_fit_comps[k] for k in standard_fit_keys]
-        # Note: lc_data_inputs are identical for both approaches - reuse community_lc_data_inputs
-
         mcmc_keys: tuple[str, ...] = ("nwalkers", "nsteps", "burn_in", "fit_id", "save_chain", "progress")
 
         pb_outputs = [data_comps.passband_count, *data_comps.row_groups]
-        data_comps.add_btn.click(fn=_add_passband, inputs=[data_comps.passband_count], outputs=pb_outputs)  # type: ignore[union-attr]
-        data_comps.remove_btn.click(fn=_remove_passband, inputs=[data_comps.passband_count], outputs=pb_outputs)  # type: ignore[union-attr]
+        data_comps.add_btn.click(  # type: ignore[union-attr]
+            fn=_add_passband,
+            inputs=[data_comps.passband_count],
+            outputs=pb_outputs,
+            show_progress="hidden",
+            show_progress_on=[],
+        )
+        data_comps.remove_btn.click(  # type: ignore[union-attr]
+            fn=_remove_passband,
+            inputs=[data_comps.passband_count],
+            outputs=pb_outputs,
+            show_progress="hidden",
+            show_progress_on=[],
+        )
 
         _wire_json_loader(
             params_json_comp,
-            community_fit_comps,
-            standard_fit_comps,
-            community_fit_keys,
-            standard_fit_keys,
+            fit_comps,
+            fit_keys,
             approach_comp,
-            community_group,
-            standard_group,
+            data_comps.x_unit,
         )
 
-        # Unified LSQRT - routes to correct approach based on selection.
-        # Inputs: lc_data + community_fit_inputs + standard_fit_inputs + approach_comp
-        # (lc_data is identical for both approaches - same components)
+        primary_min_time_outputs = [fit_comps[k] for k in _PRIMARY_MIN_TIME_KEYS]
+        primary_min_time_label_key = f"{_PRIMARY_MIN_TIME_PREFIX}_label"
+        primary_min_time_label_output = fit_comps.get(primary_min_time_label_key)
+
+        def _on_x_unit_fit_param_change(x_unit: str, mode: str) -> list[object]:
+            enabled = _is_jd_x_unit(x_unit)
+            _value_i, _mode_i, _constraint_i, _min_i, _max_i = _primary_min_time_interactivity(mode, enabled=enabled)
+            return [
+                gr.update(interactive=_value_i),
+                gr.update(interactive=_mode_i),
+                gr.update(interactive=_constraint_i),
+                gr.update(interactive=_min_i),
+                gr.update(interactive=_max_i),
+                _primary_min_time_label_update(disabled=not enabled),
+            ]
+
+        if primary_min_time_label_output is not None:
+            data_comps.x_unit.change(
+                fn=_on_x_unit_fit_param_change,
+                inputs=[data_comps.x_unit, fit_comps[f"{_PRIMARY_MIN_TIME_PREFIX}_mode"]],
+                outputs=[*primary_min_time_outputs, primary_min_time_label_output],
+                show_progress="hidden",
+                show_progress_on=[],
+            )
+
+            # Ensure default render matches the default x-unit (Phases).
+            default_enabled = _is_jd_x_unit(data_inputs.X_UNIT_DEFAULT)
+            default_mode = str(fit_comps[f"{_PRIMARY_MIN_TIME_PREFIX}_mode"].value)
+            value_i, mode_i, constraint_i, min_i, max_i = _primary_min_time_interactivity(
+                default_mode,
+                enabled=default_enabled,
+            )
+            fit_comps[f"{_PRIMARY_MIN_TIME_PREFIX}_value"].interactive = value_i
+            fit_comps[f"{_PRIMARY_MIN_TIME_PREFIX}_mode"].interactive = mode_i
+            fit_comps[f"{_PRIMARY_MIN_TIME_PREFIX}_constraint"].interactive = constraint_i
+            fit_comps[f"{_PRIMARY_MIN_TIME_PREFIX}_min"].interactive = min_i
+            fit_comps[f"{_PRIMARY_MIN_TIME_PREFIX}_max"].interactive = max_i
+            primary_label_base = param_inputs.get_label_for_prefix(_PRIMARY_MIN_TIME_PREFIX)
+            if primary_label_base is not None:
+                fit_comps[primary_min_time_label_key].value = param_inputs.style_param_label(
+                    primary_label_base,
+                    disabled=not default_enabled,
+                )
+
+        # Unified LSQRT - one parameter form, approach-aware serialization.
         def _unified_lsqrt(*values: object) -> tuple:
-            n_lc = len(community_lc_data_inputs)
-            n_cf = len(community_fit_keys)
+            n_lc = len(lc_data_inputs)
             approach = str(values[-1])
-            is_community = approach == "Community"
+            normalized_approach = _normalize_ui_approach(approach)
 
             x_unit_str, lc_rows, morphology, _ = _parse_lc_inputs_simple(
                 values[:n_lc],
                 MAX_PASSBAND_ROWS,
             )
-            if is_community:
-                fit_vals = _collect_param_values(community_fit_keys, values, n_lc)
-            else:
-                fit_vals = _collect_param_values(standard_fit_keys, values, n_lc + n_cf)
+            fit_vals = _collect_param_values(fit_keys, values, n_lc)
 
             # Load data here so the task is constructed with real LCData objects
             # (mirroring the RV fitting pattern where the tab owns the task instance).
@@ -717,47 +907,48 @@ def build() -> None:  # noqa: C901, PLR0915
                     x_unit_str,
                     fit_vals,
                     morphology,
+                    approach=normalized_approach,
                     task=task_obj,
                 )
             except Exception as exc:
                 raise gr.Error(str(exc)) from exc
 
-            return {"lsqrt": task_obj}, fig, df, gr.DownloadButton(value=json_path, visible=True)
+            return (
+                gr.update(selected=_TAB_LSQRT),
+                {"lsqrt": task_obj},
+                fig,
+                df,
+                gr.update(value=json_path, visible=True),
+            )
 
         # Unified MCMC - same approach
         def _unified_mcmc(*values: object) -> tuple:
-            n_lc = len(community_lc_data_inputs)
-            n_cf = len(community_fit_keys)
-            n_sf = len(standard_fit_keys)
+            n_lc = len(lc_data_inputs)
+            n_fit = len(fit_keys)
             approach = str(values[-1])
-            is_community = approach == "Community"
+            normalized_approach = _normalize_ui_approach(approach)
 
             x_unit_str, lc_rows, morphology, _ = _parse_lc_inputs_simple(
                 values[:n_lc],
                 MAX_PASSBAND_ROWS,
             )
-            if is_community:
-                fit_vals = _collect_param_values(community_fit_keys, values, n_lc)
-            else:
-                fit_vals = _collect_param_values(standard_fit_keys, values, n_lc + n_cf)
-            # unified_mcmc_inputs always contains both community and standard fit
-            # inputs before the mcmc block, so the mcmc offset is the same for
-            # both approaches: lc_data + community_fit + standard_fit.
-            mcmc_vals = _collect_param_values(mcmc_keys, values, n_lc + n_cf + n_sf)
+            fit_vals = _collect_param_values(fit_keys, values, n_lc)
+            mcmc_vals = _collect_param_values(mcmc_keys, values, n_lc + n_fit)
 
-            nwalkers = int(mcmc_vals.get("nwalkers") or 50)
-            nsteps = int(mcmc_vals.get("nsteps") or 500)
-            burn_in = int(mcmc_vals.get("burn_in") or 50)
+            nwalkers = int(mcmc_vals.get("nwalkers") or 100)
+            nsteps = int(mcmc_vals.get("nsteps") or 100)
+            burn_in = int(mcmc_vals.get("burn_in") or 20)
             fit_id = str(mcmc_vals.get("fit_id") or "mcmc_lc_fit")
             save = bool(mcmc_vals.get("save_chain", True))
             progress = bool(mcmc_vals.get("progress", True))
 
             try:
-                result, model_fig, corner_fig, traces_fig, df, json_path = compute.run_mcmc(
+                _result, model_fig, corner_fig, traces_fig, df, json_path = compute.run_mcmc(
                     lc_rows,
                     x_unit_str,
                     fit_vals,
                     morphology,
+                    approach=normalized_approach,
                     nwalkers=nwalkers,
                     nsteps=nsteps,
                     burn_in=burn_in,
@@ -767,90 +958,50 @@ def build() -> None:  # noqa: C901, PLR0915
                 )
             except Exception as exc:
                 raise gr.Error(str(exc)) from exc
-            return result, model_fig, corner_fig, traces_fig, df, gr.DownloadButton(value=json_path, visible=True)
+            return (
+                gr.update(selected=_TAB_MCMC),
+                model_fig,
+                corner_fig,
+                traces_fig,
+                df,
+                gr.update(value=json_path, visible=True),
+            )
 
-        # Create transfer handlers for each approach
-        def _make_community_transfer() -> Callable[[dict | None, str], list[object]]:
-            def _transfer(state: dict | None, approach: str) -> list[object]:
-                if approach != "Community":
-                    return [gr.update() for _ in community_value_outputs]
-                if not state:
-                    msg = "No LSQRT result available yet - run Least Squares first."
-                    raise gr.Error(msg)
-                task = state.get("lsqrt") if isinstance(state, dict) else None
-                if task is None:
-                    msg = "No LSQRT task stored in session state - run Least Squares first."
-                    raise gr.Error(msg)
-                try:
-                    result = task.get_result()
-                except Exception as exc:
-                    msg = f"Failed to extract result from stored task: {exc}"
-                    raise gr.Error(msg) from exc
-                values = compute.extract_values_for_transfer(result)
-
-                def _upd(key: str) -> object:
-                    return gr.update(value=values[key]) if key in values else gr.update()
-
-                return (
-                    [_upd(f"system_{name}_value") for name in SYSTEM_REGULAR_PARAMS]
-                    + [_upd("system_semi_major_axis_value")]
-                    + [_upd("system_mass_ratio_value")]
-                    + [_upd(f"primary_{n}_value") for n in COMPONENT_PARAMS]
-                    + [_upd(f"secondary_{n}_value") for n in COMPONENT_PARAMS]
-                    + [_upd("nuisance_ln_f_value")]
-                )
-
-            return _transfer
-
-        def _make_standard_transfer() -> Callable[[dict | None, str], list[object]]:
-            def _transfer(state: dict | None, approach: str) -> list[object]:
-                if approach != "Standard":
-                    return [gr.update() for _ in standard_value_outputs]
-                if not state:
-                    msg = "No LSQRT result available yet - run Least Squares first."
-                    raise gr.Error(msg)
-                task = state.get("lsqrt") if isinstance(state, dict) else None
-                if task is None:
-                    msg = "No LSQRT task stored in session state - run Least Squares first."
-                    raise gr.Error(msg)
-                try:
-                    result = task.get_result()
-                except Exception as exc:
-                    msg = f"Failed to extract result from stored task: {exc}"
-                    raise gr.Error(msg) from exc
-                values = compute.extract_values_for_transfer(result)
-
-                def _upd(key: str) -> object:
-                    return gr.update(value=values[key]) if key in values else gr.update()
-
-                return (
-                    [_upd(f"system_{name}_value") for name in SYSTEM_REGULAR_PARAMS]
-                    + [_upd("primary_mass_value")]
-                    + [_upd(f"primary_{n}_value") for n in COMPONENT_PARAMS if n != "mass"]
-                    + [_upd("secondary_mass_value")]
-                    + [_upd(f"secondary_{n}_value") for n in COMPONENT_PARAMS if n != "mass"]
-                    + [_upd("nuisance_ln_f_value")]
-                )
-
-            return _transfer
-
-        community_value_outputs = (
-            [community_fit_comps[f"system_{n}_value"] for n in SYSTEM_REGULAR_PARAMS]
-            + [community_fit_comps["system_semi_major_axis_value"]]
-            + [community_fit_comps["system_mass_ratio_value"]]
-            + [community_fit_comps[f"primary_{n}_value"] for n in COMPONENT_PARAMS]
-            + [community_fit_comps[f"secondary_{n}_value"] for n in COMPONENT_PARAMS]
-            + [community_fit_comps["nuisance_ln_f_value"]]
+        transfer_value_keys = (
+            [f"system_{name}_value" for name in SYSTEM_REGULAR_PARAMS]
+            + ["system_semi_major_axis_value", "system_mass_ratio_value"]
+            + ["primary_mass_value"]
+            + [f"primary_{n}_value" for n in COMPONENT_PARAMS]
+            + ["secondary_mass_value"]
+            + [f"secondary_{n}_value" for n in COMPONENT_PARAMS]
+            + ["nuisance_ln_f_value"]
         )
+        transfer_value_outputs = [fit_comps[k] for k in transfer_value_keys]
 
-        standard_value_outputs = (
-            [standard_fit_comps[f"system_{n}_value"] for n in SYSTEM_REGULAR_PARAMS]
-            + [standard_fit_comps["primary_mass_value"]]
-            + [standard_fit_comps[f"primary_{n}_value"] for n in COMPONENT_PARAMS if n != "mass"]
-            + [standard_fit_comps["secondary_mass_value"]]
-            + [standard_fit_comps[f"secondary_{n}_value"] for n in COMPONENT_PARAMS if n != "mass"]
-            + [standard_fit_comps["nuisance_ln_f_value"]]
-        )
+        def _transfer_values(state: dict | None, approach: str) -> list[object]:
+            if not state:
+                msg = "No LSQRT result available yet - run Least Squares first."
+                raise gr.Error(msg)
+            task = state.get("lsqrt") if isinstance(state, dict) else None
+            if task is None:
+                msg = "No LSQRT task stored in session state - run Least Squares first."
+                raise gr.Error(msg)
+            try:
+                result = task.get_result()
+            except Exception as exc:
+                msg = f"Failed to extract result from stored task: {exc}"
+                raise gr.Error(msg) from exc
+
+            values = compute.extract_values_for_transfer(result)
+            normalized = _normalize_ui_approach(approach)
+
+            updates: list[object] = []
+            for key in transfer_value_keys:
+                if key in values and param_inputs.is_key_interactive_for_approach(key, normalized):
+                    updates.append(gr.update(value=values[key]))
+                else:
+                    updates.append(gr.update())
+            return updates
 
         mcmc_inputs_list: list[gr.Component] = [
             nwalkers_comp,
@@ -861,29 +1012,22 @@ def build() -> None:  # noqa: C901, PLR0915
             progress_comp,
         ]
 
-        # Single combined input list for both unified handlers:
-        # lc_data + community_fit + standard_fit + [approach]
-        # lc_data is identical for both approaches (same component refs)
-        unified_lsqrt_inputs = community_lc_data_inputs + community_fit_inputs + standard_fit_inputs + [approach_comp]
-        unified_mcmc_inputs = (
-            community_lc_data_inputs + community_fit_inputs + standard_fit_inputs + mcmc_inputs_list + [approach_comp]
-        )
+        unified_lsqrt_inputs = lc_data_inputs + fit_inputs + [approach_comp]
+        unified_mcmc_inputs = lc_data_inputs + fit_inputs + mcmc_inputs_list + [approach_comp]
 
         lsqrt_btn.click(
-            fn=lambda: gr.update(selected=_TAB_LSQRT),
-            outputs=[results_tabs],
-        ).then(
             fn=_unified_lsqrt,
             inputs=unified_lsqrt_inputs,
-            outputs=[tasks_state, lsqrt_model_plot, lsqrt_table, lsqrt_download],
-            show_progress="full",
+            outputs=[results_tabs, tasks_state, lsqrt_model_plot, lsqrt_table, lsqrt_download],
+            show_progress="hidden",
+            show_progress_on=[],
         )
 
         # Observed-data plotting handler - plot uploaded LC files (does not run fit)
         def _plot_loaded_lc_handler(  # noqa: C901, PLR0912, PLR0915
             *values: SupportsIndex,
-        ) -> tuple[Figure, dict]:
-            # values correspond to community_lc_data_inputs order: x_unit, passband_count, then per-row comps
+        ) -> tuple[object, dict]:
+            # values correspond to lc_data_inputs order: x_unit, passband_count, then per-row comps
             x_unit_str = str(values[0])
             passband_count = int(values[1])
 
@@ -908,10 +1052,9 @@ def build() -> None:  # noqa: C901, PLR0915
                     },
                 )
 
-            # Determine indices for tail inputs (period/t0/etc). The prefix length is the number of
-            # lc_data inputs + community and standard fit inputs + approach radio.
-            prefix_len = len(community_lc_data_inputs) + len(community_fit_inputs) + len(standard_fit_inputs) + 1
-            tail = values[prefix_len : prefix_len + 8]
+            # Tail inputs start immediately after the lc_data inputs.
+            n_lc = len(lc_data_inputs)
+            tail = values[n_lc : n_lc + 8]
             period_val = tail[0]
             fit_period_val = tail[1]
             fit_t0_val = tail[2]
@@ -1009,7 +1152,11 @@ def build() -> None:  # noqa: C901, PLR0915
                         msg = "Start phase must be less than stop phase"
                         raise gr.Error(msg)
                     x_out, y_out, yerr_out = extend_observations_to_desired_interval(
-                        sp, ep, {pb: x}, {pb: y}, {pb: yerr},
+                        sp,
+                        ep,
+                        {pb: x},
+                        {pb: y},
+                        {pb: yerr},
                     )
                     px = np.asarray(x_out.get(pb, np.empty(0, dtype=float)))
                     py = np.asarray(y_out.get(pb, np.empty(0, dtype=float)))
@@ -1036,14 +1183,17 @@ def build() -> None:  # noqa: C901, PLR0915
             ax.grid(visible=True)
             ax.legend(loc="best")
             fig.tight_layout()
-            return fig, gr.update(open=True)
+            return figure_to_pil(fig), gr.update(open=True)
 
-        # Wire observed-data plot button: unified inputs share the same lc_data inputs prefix
-        plot_inputs = [*community_lc_data_inputs, *community_fit_inputs, *standard_fit_inputs, approach_comp]
+        # Wire observed-data plot button: only the data inputs and the handful of
+        # tail values are actually read by the handler.  The full community/standard
+        # fit_inputs (708 components) were previously included as positional padding
+        # which caused Gradio to register 750+ components for loading-stati tracking,
+        # firing find_node_by_id ~750 times on every click.
         tail_inputs = [
             period_comp,
-            community_fit_comps.get("system_period_value"),
-            community_fit_comps.get("system_primary_minimum_time_value"),
+            fit_comps.get("system_period_value"),
+            fit_comps.get("system_primary_minimum_time_value"),
             t0_comp,
             start_phase_comp,
             stop_phase_comp,
@@ -1052,30 +1202,31 @@ def build() -> None:  # noqa: C901, PLR0915
         ]
         plot_obs_btn.click(
             fn=_plot_loaded_lc_handler,
-            inputs=[*plot_inputs, *tail_inputs],
+            inputs=[*lc_data_inputs, *tail_inputs],
             outputs=[observed_data_plot, obs_plot_accordion],
+            show_progress="hidden",
+            show_progress_on=[],
         )
 
         transfer_btn.click(
-            fn=_make_community_transfer(),
+            fn=_transfer_values,
             inputs=[tasks_state, approach_comp],
-            outputs=community_value_outputs,
-        ).then(
-            fn=_make_standard_transfer(),
-            inputs=[tasks_state, approach_comp],
-            outputs=standard_value_outputs,
+            outputs=transfer_value_outputs,
+            show_progress="hidden",
+            show_progress_on=[],
         )
 
         mcmc_btn.click(
-            fn=lambda: gr.update(selected=_TAB_MCMC),
-            outputs=[results_tabs],
-        ).then(
             fn=_unified_mcmc,
             inputs=unified_mcmc_inputs,
             outputs=[
-                gr.State(),
-                mcmc_model_plot, corner_plot, traces_plot, mcmc_table, mcmc_download,
+                results_tabs,
+                mcmc_model_plot,
+                corner_plot,
+                traces_plot,
+                mcmc_table,
+                mcmc_download,
             ],
-            show_progress="full",
+            show_progress="hidden",
+            show_progress_on=[],
         )
-

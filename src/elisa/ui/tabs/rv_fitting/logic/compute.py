@@ -1,13 +1,13 @@
 """Core computation logic for RV fitting - no Gradio dependency.
 
 Translates flat Gradio value dictionaries into ELISa analytics objects,
-runs the LSQRT or MCMC optimization, and returns plain Python / matplotlib
+runs the LSQRT or MCMC optimization, and returns plain Python / PIL image
 objects that the UI layer can display.
 
 The module-level :func:`_capture_figure` context manager intercepts
 ``plt.show()`` so that MCMC diagnostic plots (corner, traces) which call
-``plt.show()`` internally can be captured as ``Figure`` objects suitable
-for ``gr.Plot``.
+``plt.show()`` internally can be captured and converted to PIL images
+suitable for ``gr.Image``.
 """
 
 from __future__ import annotations
@@ -26,6 +26,7 @@ import pandas as pd
 from elisa import units as u
 from elisa.analytics import RVBinaryAnalyticsTask, RVData
 from elisa.ui.shared.logging_config import fit_logging
+from elisa.ui.shared.plotting import figure_to_pil
 from elisa.utc import UTC
 
 if TYPE_CHECKING:
@@ -33,6 +34,7 @@ if TYPE_CHECKING:
 
     from matplotlib.figure import Figure
     from numpy.typing import NDArray
+    from PIL import Image
 
     from elisa.types import Float, Int
 
@@ -238,7 +240,7 @@ def run_lsqrt(
     param_values: dict[str, object],
     *,
     task: RVBinaryAnalyticsTask | None = None,
-) -> tuple[dict, Figure, pd.DataFrame, str]:
+) -> tuple[dict, Image.Image, pd.DataFrame, str]:
     """Run a least-squares RV fit and return all displayable artefacts.
 
     Builds :class:`~elisa.analytics.RVData` objects from the uploaded files,
@@ -262,8 +264,8 @@ def run_lsqrt(
         populated with the resulting fit state (useful when the caller wants
         to retain the task object across UI actions).
     :type task: RVBinaryAnalyticsTask | None
-    :returns: Tuple of ``(result_dict, model_figure, results_dataframe, json_path)``.
-    :rtype: tuple[dict, Figure, pandas.DataFrame, str]
+    :returns: Tuple of ``(result_dict, model_image, results_dataframe, json_path)``.
+    :rtype: tuple[dict, PIL.Image.Image, pandas.DataFrame, str]
     :raises ValueError: If no primary data file is provided.
     """
     if primary_path is None:
@@ -302,7 +304,7 @@ def run_lsqrt(
     json_path = _result_temp_path("lsqrt")
     task.save_result(str(json_path))
 
-    return result, model_fig, df, str(json_path)
+    return result, figure_to_pil(model_fig), df, str(json_path)
 
 
 def run_mcmc(
@@ -319,12 +321,12 @@ def run_mcmc(
     progress: bool = True,
     task: RVBinaryAnalyticsTask | None = None,
     initial_state: object = None,
-) -> tuple[dict, Figure, Figure, Figure, pd.DataFrame, str]:
+) -> tuple[dict, Image.Image, Image.Image | None, Image.Image | None, pd.DataFrame, str]:
     """Run an MCMC RV fit and return all displayable artefacts.
 
     Builds the ELISa data and parameter objects, runs the MCMC sampling,
-    and captures the model plot, corner plot, and traces plot as
-    ``Figure`` instances by temporarily intercepting ``plt.show()``.
+    and captures the model plot, corner plot, and traces plot as PIL images
+    by temporarily intercepting ``plt.show()``.
 
     :param primary_path: Path to the primary component RV data file.
     :type primary_path: str | None
@@ -357,9 +359,9 @@ def run_mcmc(
         initializes walkers from the prior.
     :type initial_state: object
     :returns: Tuple of
-        ``(result_dict, model_figure, corner_figure, traces_figure,
+        ``(result_dict, model_image, corner_image, traces_image,
         results_dataframe, json_path)``.
-    :rtype: tuple[dict, Figure, Figure, Figure, pandas.DataFrame, str]
+    :rtype: tuple[dict, PIL.Image.Image, PIL.Image.Image | None, PIL.Image.Image | None, pandas.DataFrame, str]
     :raises ValueError: If no primary data file is provided.
     """
     # Accept an optional pre-built task so callers (UI) can create the
@@ -431,7 +433,14 @@ def run_mcmc(
     json_path = _result_temp_path("mcmc")
     task.save_result(str(json_path))
 
-    return result, model_fig, corner_fig, traces_fig, df, str(json_path)
+    return (
+        result,
+        figure_to_pil(model_fig),
+        figure_to_pil(corner_fig),
+        figure_to_pil(traces_fig),
+        df,
+        str(json_path),
+    )
 
 
 # Chain-loading helpers removed per request. Use the analytics layer
@@ -458,9 +467,10 @@ def _gamma_ms_to_kms(value: Float | None) -> Float | None:
 def _param_meta_to_flat(name: str, meta: dict) -> dict[str, object]:
     """Convert a single parameter metadata dict to flat form entries.
 
-    Reads ``value``, ``fixed``, ``min``, and ``max`` from *meta* and maps
-    them to ``"{name}_value"``, ``"{name}_fixed"``, ``"{name}_min"``, and
-    ``"{name}_max"`` keys. Applies m/s to km/s conversion for ``gamma``.
+    Reads ``value``, ``fixed``, ``constraint``, ``min``, and ``max`` from
+    *meta* and maps them to ``"{name}_value"``, ``"{name}_mode"``,
+    ``"{name}_constraint"``, ``"{name}_min"``, and ``"{name}_max"`` keys.
+    Applies m/s to km/s conversion for ``gamma``.
 
     :param name: Parameter name (e.g. ``"gamma"``, ``"asini"``).
     :type name: str
@@ -471,6 +481,7 @@ def _param_meta_to_flat(name: str, meta: dict) -> dict[str, object]:
     """
     value = meta.get("value")
     fixed = bool(meta.get("fixed", False))
+    constraint = meta.get("constraint")
     unit_str = meta.get("unit") or ""
     min_val = meta.get("min")
     max_val = meta.get("max")
@@ -480,9 +491,19 @@ def _param_meta_to_flat(name: str, meta: dict) -> dict[str, object]:
         min_val = _gamma_ms_to_kms(min_val)
         max_val = _gamma_ms_to_kms(max_val)
 
-    entry: dict[str, object] = {f"{name}_fixed": fixed}
+    entry: dict[str, object] = {}
     if value is not None:
         entry[f"{name}_value"] = value
+
+    # Derive mode string for the UI dropdown (matching LC fitting convention).
+    if constraint:
+        entry[f"{name}_mode"] = "constrained"
+        entry[f"{name}_constraint"] = constraint
+    elif fixed:
+        entry[f"{name}_mode"] = "fixed"
+    else:
+        entry[f"{name}_mode"] = "free"
+
     if min_val is not None:
         entry[f"{name}_min"] = min_val
     if max_val is not None:
@@ -564,7 +585,7 @@ def load_chain(
     chain_file_path: str,
     result_file_path: str,
     discard: Int = 0,
-) -> tuple[RVBinaryAnalyticsTask, Figure | None, Figure | None, pd.DataFrame | None]:
+) -> tuple[RVBinaryAnalyticsTask, Image.Image | None, Image.Image | None, pd.DataFrame | None]:
     """Load a previously saved MCMC chain and results for plotting and reuse.
 
     Loads both the result JSON (containing fitted parameters) and the chain
@@ -579,10 +600,10 @@ def load_chain(
     :param discard: Number of initial chain samples to discard per walker.
         Used to trim burn-in before generating plots.
     :type discard: elisa.types.Int
-    :returns: Tuple of (task, corner_figure, traces_figure, results_dataframe).
-        Figures are ``None`` if plotting fails. DataFrame is ``None`` if
+    :returns: Tuple of (task, corner_image, traces_image, results_dataframe).
+        Images are ``None`` if plotting fails. DataFrame is ``None`` if
         result extraction fails.
-    :rtype: tuple[RVBinaryAnalyticsTask, Figure | None, Figure | None, pandas.DataFrame | None]
+    :rtype: tuple[RVBinaryAnalyticsTask, PIL.Image.Image | None, PIL.Image.Image | None, pandas.DataFrame | None]
     :raises gr.Error: If result file cannot be loaded or if chain file
         is missing or invalid.
     """
@@ -632,7 +653,7 @@ def load_chain(
         msg = f"Results dataframe generation failed: {exc}"
         gr.Warning(msg)
 
-    return task, corner_fig, traces_fig, results_df
+    return task, figure_to_pil(corner_fig), figure_to_pil(traces_fig), results_df
 
 
 def extract_initial_state_from_chain(

@@ -19,12 +19,45 @@ _LOGO_PATH = Path(__file__).parent / "assets" / "logo.png"
 
 APP_CSS = """
 input:disabled,
+input[readonly],
+textarea[readonly],
 textarea:disabled {
-    opacity: 0.4 !important;
+    opacity: 0.25 !important;
     background-color: var(--input-background-fill) !important;
     cursor: not-allowed !important;
     color: var(--body-text-color) !important;
-    filter: grayscale(40%) !important;
+    filter: grayscale(60%) !important;
+}
+
+.param-section-disabled {
+    opacity: 0.6 !important;
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+    filter: grayscale(60%) !important;
+}
+
+.section-header {
+    margin-top: 0.1rem !important;
+    margin-bottom: 0.1rem !important;
+    margin-left: 0.2rem !important;
+    font-weight: 600 !important;
+}
+
+.optional-params-header {
+    margin-top: 0.1rem !important;
+    margin-bottom: 0.1rem !important;
+    margin-left: 0.2rem !important;
+    font-weight: 600 !important;
+}
+
+/* Client-side disable for visualization observer controls.
+   Toggled by JS in the visualization_mode change handler to avoid
+   the expensive server round-trip through update_loading_stati_state. */
+.viz-control-disabled {
+    opacity: 0.6 !important;
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+    filter: grayscale(90%) !important;
 }
 """
 
@@ -83,9 +116,8 @@ def build_app() -> gr.Blocks:
         lc_fit_tab.build()
         sys_viz_tab.build()
 
-        # Add terminal output at the bottom that auto-refreshes every 2 seconds
         with gr.Accordion("📋 Terminal Output", open=True):
             terminal_output = build_auto_refresh_terminal_output()
-            setup_terminal_refresh(terminal_output, every_seconds=1)
+            setup_terminal_refresh(terminal_output, every_seconds=3)
 
     return demo

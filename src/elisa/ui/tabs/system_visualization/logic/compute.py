@@ -2,22 +2,24 @@
 
 This module is a pure-logic layer with no Gradio dependency. It translates
 raw parameter dictionaries into ELISa objects, generates mesh and orbit
-visualizations, and returns figures that can be rendered by the UI layer.
+visualizations, and returns PIL images that can be rendered by the UI layer.
 """
 
 from __future__ import annotations
 
+import gc
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 
 from elisa import BinarySystem, Star
 from elisa import units as u
+from elisa.ui.shared.plotting import figure_to_pil
 from elisa.ui.tabs.lc_modeling.components.pulsation_inputs import parse_pulsation_modes
 from elisa.ui.tabs.lc_modeling.components.spot_inputs import parse_spots
 
 if TYPE_CHECKING:
-    from matplotlib.figure import Figure
+    from PIL import Image
 
     from elisa.types import Float
 
@@ -117,6 +119,7 @@ def _filter_none(params: dict) -> dict:
     return {k: v for k, v in params.items() if v is not None}
 
 
+
 # ---------------------------------------------------------------------------
 # Main computation
 # ---------------------------------------------------------------------------
@@ -131,16 +134,19 @@ def run_visualization(
     secondary_pulsation_params: dict | None = None,
     primary_spot_params: dict | None = None,
     secondary_spot_params: dict | None = None,
-) -> tuple[Figure | None, Figure | None, Figure | None, Figure | None]:
+) -> tuple[Image.Image | None, Image.Image | None, Image.Image | None, Image.Image | None]:
     """Generate mesh, orbit, equipotential, and/or surface visualizations for a binary system.
 
-    Creates a binary system from the given parameters and produces matplotlib
-    figures based on the visualization mode:
+    Creates a binary system from the given parameters and produces PIL images
+    based on the visualization mode:
 
     - ``"mesh"``: 3D surface geometry at a given phase
     - ``"orbit"``: 2D orbital motion trajectory
     - ``"equipotential"``: 2D cross-section of Hill surface potentials
     - ``"surface"``: 3D shaded surface with an optional physical colormap
+
+    Returns PIL images instead of matplotlib figures for better performance
+    with Gradio Image components (much lighter than Plot components).
 
     :param primary_params: Primary star parameters (mass, T_eff, etc.).
     :type primary_params: dict
@@ -159,6 +165,8 @@ def run_visualization(
     :type primary_spot_params: dict | None
     :param secondary_spot_params: Secondary star spot parameters.
     :type secondary_spot_params: dict | None
+    :returns: Tuple of (mesh_image, orbit_image, equipotential_image, surface_image).
+    :rtype: tuple[Image.Image | None, Image.Image | None, Image.Image | None, Image.Image | None]
     """
     primary_params = _filter_none(_convert_params(primary_params))
     secondary_params = _filter_none(_convert_params(secondary_params))
@@ -235,4 +243,19 @@ def run_visualization(
             return_figure_instance=True,
         )
 
-    return mesh_fig, orbit_fig, equipotential_fig, surface_fig
+    # Convert matplotlib figures to PIL images for lightweight Gradio rendering
+    # This avoids expensive matplotlib figure serialization in Gradio
+    result = (
+        figure_to_pil(mesh_fig),
+        figure_to_pil(orbit_fig),
+        figure_to_pil(equipotential_fig),
+        figure_to_pil(surface_fig),
+    )
+
+    # Aggressive cleanup to prevent Gradio slowdown
+    plt.close("all")
+    plt.cla()
+    gc.collect()
+
+    return result
+
