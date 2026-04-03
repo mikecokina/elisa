@@ -2,7 +2,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.10--3.14-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-GPLv3-green.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
-[![Version](https://img.shields.io/badge/Version-0.7.0dev0-yellow.svg)](https://github.com/mikecokina/elisa/commits/dev)
+[![Version](https://img.shields.io/badge/Version-1.0.0dev0-yellow.svg)](https://github.com/mikecokina/elisa/commits/dev)
 [![Build](https://img.shields.io/badge/Build-setuptools-blue.svg)](https://pypi.org/project/setuptools/)
 [![Build](https://img.shields.io/badge/OS-Linux|Windows-magenta.svg)](https://en.wikipedia.org/wiki/Operating_system)
 

@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [0.7.0dev0] - 2026-??-??
+## [1.0.0dev0] - 2026-??-??
 
 ### Added
 - Support for Python 3.13 and 3.14.
