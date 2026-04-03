@@ -141,6 +141,7 @@ def run_visualization(
     based on the visualization mode:
 
     - ``"mesh"``: 3D surface geometry at a given phase
+    - ``"wireframe"``: 3D wireframe surface geometry at a given phase
     - ``"orbit"``: 2D orbital motion trajectory
     - ``"equipotential"``: 2D cross-section of Hill surface potentials
     - ``"surface"``: 3D shaded surface with an optional physical colormap
@@ -165,7 +166,8 @@ def run_visualization(
     :type primary_spot_params: dict | None
     :param secondary_spot_params: Secondary star spot parameters.
     :type secondary_spot_params: dict | None
-    :returns: Tuple of (mesh_image, orbit_image, equipotential_image, surface_image).
+    :returns: Tuple of (mesh_or_wireframe_image, orbit_image, equipotential_image,
+        surface_image).
     :rtype: tuple[Image.Image | None, Image.Image | None, Image.Image | None, Image.Image | None]
     """
     primary_params = _filter_none(_convert_params(primary_params))
@@ -215,6 +217,14 @@ def run_visualization(
         mesh_fig = binary.plot.mesh(
             phase=phase,
             components_to_plot=components_to_plot,
+            return_figure_instance=True,
+        )
+    elif visualization_mode == "wireframe":
+        mesh_fig = binary.plot.wireframe(
+            phase=phase,
+            components_to_plot=components_to_plot,
+            inclination=elevation,
+            azimuth=azimuth,
             return_figure_instance=True,
         )
     elif visualization_mode == "orbit":

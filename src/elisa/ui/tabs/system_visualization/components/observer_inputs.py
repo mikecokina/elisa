@@ -21,7 +21,7 @@ FIELD_ORDER: tuple[str, ...] = (
     "azimuth",
 )
 
-_VISUALIZATION_MODES: list[str] = ["mesh", "orbit", "equipotential", "surface"]
+_VISUALIZATION_MODES: list[str] = ["mesh", "wireframe", "orbit", "equipotential", "surface"]
 _COMPONENTS_CHOICES: list[str] = ["both", "primary", "secondary"]
 _PLANE_CHOICES: list[str] = ["xy", "yz", "zx"]
 _FRAME_CHOICES: list[str] = ["primary", "barycentric"]
@@ -72,25 +72,28 @@ def update_ui(mode: str | None) -> tuple[dict, ...]:
     followed by the four plot components.
 
     :param mode: Selected visualization mode - one of ``"mesh"``,
-        ``"orbit"``, ``"equipotential"``, ``"surface"``, or ``None``
+        ``"wireframe"``, ``"orbit"``, ``"equipotential"``, ``"surface"``,
+        or ``None``
         (nothing selected).
     :type mode: str | None
     :returns: Eleven ``gr.update`` dicts (7 interactive + 4 plot clears).
     :rtype: tuple[dict, ...]
     """
     show_mesh = mode == "mesh"
+    show_wireframe = mode == "wireframe"
     show_orbit = mode == "orbit"
     show_equip = mode == "equipotential"
     show_surface = mode == "surface"
-    show_shared = show_mesh or show_equip or show_surface
+    show_shared = show_mesh or show_wireframe or show_equip or show_surface
+    show_camera = show_surface or show_wireframe
     return (
         gr.update(interactive=show_shared),   # phase
         gr.update(interactive=show_shared),   # components_to_plot
         gr.update(interactive=show_equip),    # plane
         gr.update(interactive=show_orbit),    # frame_of_reference
         gr.update(interactive=show_surface),  # colormap
-        gr.update(interactive=show_surface),  # elevation
-        gr.update(interactive=show_surface),  # azimuth
+        gr.update(interactive=show_camera),   # elevation
+        gr.update(interactive=show_camera),   # azimuth
         gr.update(value=None),                # mesh_plot
         gr.update(value=None),                # orbit_plot
         gr.update(value=None),                # equipotential_plot
@@ -124,10 +127,12 @@ def build(*, defaults: dict[str, Float | str | None] | None = None) -> dict[str,
     mode_default: str | None = defaults.get("visualization_mode")  # type: ignore[assignment]
 
     show_mesh = mode_default == "mesh"
+    show_wireframe = mode_default == "wireframe"
     show_orbit = mode_default == "orbit"
     show_equip = mode_default == "equipotential"
     show_surface = mode_default == "surface"
-    show_shared = show_mesh or show_equip or show_surface
+    show_shared = show_mesh or show_wireframe or show_equip or show_surface
+    show_camera = show_surface or show_wireframe
 
     components: dict[str, gr.Component] = {}
 
@@ -141,7 +146,7 @@ def build(*, defaults: dict[str, Float | str | None] | None = None) -> dict[str,
     )
 
     # --------------------------------------------------------------------------
-    # Phase & Components - active for: mesh, equipotential, surface
+    # Phase & Components - active for: mesh, wireframe, equipotential, surface
     # --------------------------------------------------------------------------
     with gr.Group():
         gr.Markdown("**Phase & Components**", elem_classes=["section-header"])
@@ -204,12 +209,13 @@ def build(*, defaults: dict[str, Float | str | None] | None = None) -> dict[str,
         )
 
     # --------------------------------------------------------------------------
-    # Surface colormap & camera - active for: surface
+    # Surface colormap & camera - colormap active for: surface; camera for: surface, wireframe
     # --------------------------------------------------------------------------
     with gr.Group():
         gr.Markdown("**Surface Colormap & Camera**", elem_classes=["section-header"])
         colormap_default = defaults.get("colormap")
         _surface_cls = [] if show_surface else ["viz-control-disabled"]
+        _camera_cls = [] if show_camera else ["viz-control-disabled"]
         components["colormap"] = gr.Dropdown(
             choices=_COLORMAP_CHOICES,
             value=colormap_default,
@@ -229,7 +235,7 @@ def build(*, defaults: dict[str, Float | str | None] | None = None) -> dict[str,
             info="Vertical angle of the camera in degrees (0 = equator, 90 = top).",
             interactive=True,
             elem_id="viz-ctrl-elevation",
-            elem_classes=_surface_cls,
+            elem_classes=_camera_cls,
         )
         azimuth_default = defaults.get("azimuth", 90.0)
         components["azimuth"] = gr.Slider(
@@ -241,7 +247,7 @@ def build(*, defaults: dict[str, Float | str | None] | None = None) -> dict[str,
             info="Horizontal rotation of the camera in degrees.",
             interactive=True,
             elem_id="viz-ctrl-azimuth",
-            elem_classes=_surface_cls,
+            elem_classes=_camera_cls,
         )
 
     return components

@@ -79,10 +79,12 @@ _VIZ_MODE_CHANGE_JS: str = """
 (mode) => {
     const cls = 'viz-control-disabled';
     const showMesh = mode === 'mesh';
+    const showWireframe = mode === 'wireframe';
     const showOrbit = mode === 'orbit';
     const showEquip = mode === 'equipotential';
     const showSurface = mode === 'surface';
-    const showShared = showMesh || showEquip || showSurface;
+    const showShared = showMesh || showWireframe || showEquip || showSurface;
+    const showCamera = showSurface || showWireframe;
 
     const rules = {
         'viz-ctrl-phase': showShared,
@@ -90,8 +92,8 @@ _VIZ_MODE_CHANGE_JS: str = """
         'viz-ctrl-plane': showEquip,
         'viz-ctrl-frame_of_reference': showOrbit,
         'viz-ctrl-colormap': showSurface,
-        'viz-ctrl-elevation': showSurface,
-        'viz-ctrl-azimuth': showSurface,
+        'viz-ctrl-elevation': showCamera,
+        'viz-ctrl-azimuth': showCamera,
     };
     for (const [id, enabled] of Object.entries(rules)) {
         const el = document.getElementById(id);
@@ -197,9 +199,10 @@ def build() -> None:
 
     The visualization mode dropdown controls which input controls and output
     plot widgets are visible - switching to ``"mesh"`` hides the orbital frame
-    control and the orbit plot; switching to ``"orbit"`` hides the phase/
-    component controls and the mesh plot; switching to ``"surface"`` shows
-    the shared phase/component controls and the colormap selector.
+    control and the orbit plot; switching to ``"wireframe"`` enables camera
+    controls but keeps colormap disabled; switching to ``"orbit"`` hides the
+    phase/component controls and the mesh plot; switching to ``"surface"``
+    shows shared phase/component controls with colormap and camera selectors.
 
     :returns: ``None``
     :rtype: None
