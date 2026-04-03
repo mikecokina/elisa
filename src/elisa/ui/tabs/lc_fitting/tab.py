@@ -21,7 +21,7 @@ The ``semi_major_axis`` parameter supports a three-way mode selector:
 
 from __future__ import annotations
 
-from typing import Literal, SupportsIndex, cast
+from typing import TYPE_CHECKING, Any, Literal, SupportsIndex, cast
 
 import gradio as gr
 import matplotlib.pyplot as plt
@@ -38,6 +38,11 @@ from elisa.ui.tabs.lc_fitting.components.param_inputs import (
     SYSTEM_REGULAR_PARAMS,
 )
 from elisa.ui.tabs.lc_fitting.logic import compute
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+    from elisa.types import Int
 
 # ---------------------------------------------------------------------------
 # Tab ID constants
@@ -379,7 +384,11 @@ def _wire_json_loader(
     :type x_unit_comp: gr.Dropdown
     """
     loader_keys: tuple[str, ...] = fit_keys
-    label_keys: tuple[str, ...] = tuple(k for k in param_inputs.APPROACH_TOGGLED_LABEL_KEYS if k in fit_comps)
+    label_keys_list = [k for k in param_inputs.APPROACH_TOGGLED_LABEL_KEYS if k in fit_comps]
+    primary_min_time_label_key = f"{_PRIMARY_MIN_TIME_PREFIX}_label"
+    if primary_min_time_label_key in fit_comps and primary_min_time_label_key not in label_keys_list:
+        label_keys_list.append(primary_min_time_label_key)
+    label_keys: tuple[str, ...] = tuple(label_keys_list)
 
     all_outputs: list[gr.Component] = (
         [approach_comp] + [fit_comps[k] for k in loader_keys] + [fit_comps[k] for k in label_keys]
@@ -429,9 +438,9 @@ def _wire_json_loader(
             styled = param_inputs.style_param_label(base_label, disabled=not interactive)
             label_updates.append(gr.update(value=styled))
 
-        primary_min_time_label_key = f"{_PRIMARY_MIN_TIME_PREFIX}_label"
-        if primary_min_time_label_key in fit_comps:
-            primary_min_time_label_index = label_keys.index(primary_min_time_label_key)
+        primary_min_time_label_key_ = f"{_PRIMARY_MIN_TIME_PREFIX}_label"
+        if primary_min_time_label_key_ in label_keys:
+            primary_min_time_label_index = label_keys.index(primary_min_time_label_key_)
             label_updates[primary_min_time_label_index] = _primary_min_time_label_update(
                 disabled=not _is_jd_x_unit(x_unit_str),
             )
@@ -614,6 +623,63 @@ def _build_mcmc_accordion() -> tuple[gr.Number, gr.Number, gr.Number, gr.Textbox
     return nwalkers_comp, nsteps_comp, burn_in_comp, fit_id_comp, save_chain_comp, progress_comp
 
 
+def _build_chain_load_accordion() -> tuple[
+    gr.File,
+    gr.File,
+    gr.Number,
+    gr.Checkbox,
+    gr.Button,
+    gr.Markdown,
+]:
+    """Render optional chain-loading controls used for MCMC resume.
+
+    :returns: Tuple of chain loading components.
+    :rtype: tuple[gr.File, gr.File, gr.Number, gr.Checkbox, gr.Button, gr.Markdown]
+    """
+    with gr.Accordion("3.1 · Load previous MCMC chain (optional)", open=False):
+        gr.Markdown(
+            "**Load a previously saved MCMC chain** to visualize earlier results "
+            "or seed a new run. When loaded, corner and traces diagnostics are "
+            "generated automatically. If 'Use as initial state' is enabled, the "
+            "last nwalkers samples are used as starting walker positions for the "
+            "next MCMC fit.",
+        )
+        with gr.Row():
+            chain_file_comp = gr.File(
+                label="Chain file (flat-chain JSON)",
+                file_types=[".json"],
+                scale=2,
+            )
+            result_file_comp = gr.File(
+                label="Result file (result JSON)",
+                file_types=[".json"],
+                scale=2,
+            )
+        with gr.Row():
+            discard_comp = gr.Number(
+                value=0,
+                label="Discard (burn-in samples per walker)",
+                info="Number of initial samples to discard before generating diagnostics.",
+                precision=0,
+                scale=2,
+                minimum=0,
+            )
+            use_initial_state_comp = gr.Checkbox(
+                value=False,
+                label="Use as initial state for next MCMC run",
+                info="When checked, the last nwalkers samples seed the next MCMC fit.",
+                scale=2,
+            )
+        load_chain_btn = gr.Button(
+            "📂 Load chain & plot diagnostics",
+            variant="secondary",
+            scale=1,
+        )
+        chain_load_status = gr.Markdown(value="Ready to load chain.", visible=True)
+
+    return chain_file_comp, result_file_comp, discard_comp, use_initial_state_comp, load_chain_btn, chain_load_status
+
+
 def _build_action_buttons() -> tuple[gr.Button, gr.Button, gr.Button]:
     """Render the action button row and return all button components.
 
@@ -701,6 +767,7 @@ def build() -> None:  # noqa: C901, PLR0915
         # Session state holding analytics tasks keyed by method.
         # Keys: 'lsqrt' -> LCBinaryAnalyticsTask (populated after each LSQRT run)
         tasks_state: gr.State = gr.State(value={})
+        chain_state: gr.State = gr.State(value={})
         (
             data_comps,
             period_comp,
@@ -746,6 +813,14 @@ def build() -> None:  # noqa: C901, PLR0915
                     )
 
         nwalkers_comp, nsteps_comp, burn_in_comp, fit_id_comp, save_chain_comp, progress_comp = _build_mcmc_accordion()
+        (
+            chain_file_comp,
+            result_file_comp,
+            discard_comp,
+            use_initial_state_comp,
+            load_chain_btn,
+            chain_load_status,
+        ) = _build_chain_load_accordion()
         lsqrt_btn, transfer_btn, mcmc_btn = _build_action_buttons()
         (
             results_tabs,
@@ -830,6 +905,13 @@ def build() -> None:  # noqa: C901, PLR0915
 
         _wire_json_loader(
             params_json_comp,
+            fit_comps,
+            fit_keys,
+            approach_comp,
+            data_comps.x_unit,
+        )
+        _wire_json_loader(
+            result_file_comp,
             fit_comps,
             fit_keys,
             approach_comp,
@@ -921,8 +1003,54 @@ def build() -> None:  # noqa: C901, PLR0915
                 gr.update(value=json_path, visible=True),
             )
 
+        def _extract_and_validate_initial_state(
+            chain_state_dict: dict | None,
+            nwalkers: Int,
+        ) -> object | None:
+            """Extract and validate initial MCMC state from a loaded chain.
+
+            :param chain_state_dict: State dict with ``chain_task`` and ``use_initial_state`` keys.
+            :type chain_state_dict: dict | None
+            :param nwalkers: Number of walkers for the next MCMC run.
+            :type nwalkers: elisa.types.Int
+            :returns: Initial state array or ``None`` when reuse is not enabled.
+            :rtype: object | None
+            :raises gr.Error: If extraction fails or shape is invalid.
+            """
+            if not chain_state_dict or not isinstance(chain_state_dict, dict):
+                return None
+
+            use_initial_state = chain_state_dict.get("use_initial_state", False)
+            chain_task = chain_state_dict.get("chain_task")
+            if not use_initial_state or chain_task is None:
+                return None
+
+            try:
+                initial_state: NDArray = compute.extract_initial_state_from_chain(
+                    task=chain_task,
+                    nwalkers=nwalkers,
+                )
+            except gr.Error:
+                raise
+            except Exception as exc:
+                msg = f"Failed to extract initial state from loaded chain: {exc}"
+                raise gr.Error(msg) from exc
+
+            expected_n_params = len(chain_task.fit_cls.variable_labels)
+            if initial_state.shape != (nwalkers, expected_n_params):
+                msg = (
+                    f"Invalid shape for initial MCMC state: expected ({nwalkers}, {expected_n_params}), "
+                    f"got {initial_state.shape}."
+                )
+                raise gr.Error(msg)
+
+            return initial_state
+
         # Unified MCMC - same approach
-        def _unified_mcmc(*values: object) -> tuple:
+        def _unified_mcmc(
+            *values: object,
+            chain_state_dict: dict | None = None,
+        ) -> tuple:
             n_lc = len(lc_data_inputs)
             n_fit = len(fit_keys)
             approach = str(values[-1])
@@ -941,6 +1069,7 @@ def build() -> None:  # noqa: C901, PLR0915
             fit_id = str(mcmc_vals.get("fit_id") or "mcmc_lc_fit")
             save = bool(mcmc_vals.get("save_chain", True))
             progress = bool(mcmc_vals.get("progress", True))
+            initial_state = _extract_and_validate_initial_state(chain_state_dict, nwalkers)
 
             try:
                 _result, model_fig, corner_fig, traces_fig, df, json_path = compute.run_mcmc(
@@ -955,6 +1084,7 @@ def build() -> None:  # noqa: C901, PLR0915
                     fit_id=fit_id,
                     save=save,
                     progress=progress,
+                    initial_state=initial_state,
                 )
             except Exception as exc:
                 raise gr.Error(str(exc)) from exc
@@ -965,6 +1095,119 @@ def build() -> None:  # noqa: C901, PLR0915
                 traces_fig,
                 df,
                 gr.update(value=json_path, visible=True),
+            )
+
+        def _load_chain_handler(
+            chain_file: object | None,
+            result_file: object | None,
+            discard: float,
+            x_unit: str,
+            current_approach: str,
+            *,
+            use_initial_state: bool = False,
+        ) -> Any:
+            """Load an LC MCMC chain, generate diagnostics, and store reuse state.
+
+            :param chain_file: Gradio file object for the chain JSON.
+            :type chain_file: object | None
+            :param result_file: Gradio file object for the result JSON.
+            :type result_file: object | None
+            :param discard: Number of burn-in samples to discard per walker.
+            :type discard: float
+            :param use_initial_state: Whether to reuse loaded samples as initial state.
+            :type use_initial_state: bool
+            :returns: Tuple of state, status, corner figure, traces figure, and results dataframe.
+            :rtype: typing.Any
+            """
+            chain_path: str | None = getattr(chain_file, "name", None)
+            result_path: str | None = getattr(result_file, "name", None)
+            if chain_path is None or result_path is None:
+                msg = "Both chain file and result file are required."
+                raise gr.Error(msg)
+
+            discard_int = int(discard) if discard else 0
+
+            try:
+                task, corner_fig, traces_fig, results_df = compute.load_chain(
+                    chain_path,
+                    result_path,
+                    discard=discard_int,
+                )
+            except gr.Error:
+                raise
+            except Exception as exc:
+                msg = f"Failed to load chain: {exc}"
+                raise gr.Error(msg) from exc
+
+            new_state: dict[str, object] = {
+                "chain_task": task,
+                "use_initial_state": use_initial_state,
+            }
+
+            if use_initial_state:
+                status_msg = (
+                    "✓ Chain loaded successfully. Corner and traces plots generated. "
+                    "Initial state will be extracted when you run MCMC."
+                )
+            else:
+                status_msg = (
+                    "✓ Chain loaded successfully. Corner and traces plots generated. "
+                    "Initial state reuse is disabled."
+                )
+
+            try:
+                detected_approach = compute.detect_approach_from_json(result_path)
+            except ValueError as exc:
+                detected_approach = current_approach
+                msg = f"Could not detect approach from result file, using current selection: {exc}"
+                gr.Warning(msg)
+
+            try:
+                params = compute.load_params_from_json(result_path)
+                normalized_approach = _normalize_ui_approach(detected_approach)
+                param_updates = [
+                    _build_active_param_update(k, params, normalized_approach, x_unit)
+                    for k in fit_keys
+                ]
+
+                label_updates: list[object] = []
+                for label_key in approach_toggle_label_keys:
+                    prefix = label_key.removesuffix("_label")
+                    base_label = param_inputs.get_label_for_prefix(prefix)
+                    if base_label is None:
+                        label_updates.append(gr.update())
+                        continue
+                    interactive = param_inputs.is_key_interactive_for_approach(
+                        f"{prefix}_value",
+                        normalized_approach,
+                    )
+                    styled = param_inputs.style_param_label(base_label, disabled=not interactive)
+                    label_updates.append(gr.update(value=styled))
+
+                primary_min_time_label_key_ = f"{_PRIMARY_MIN_TIME_PREFIX}_label"
+                if primary_min_time_label_key_ in approach_toggle_label_keys:
+                    primary_min_time_label_index = approach_toggle_label_keys.index(primary_min_time_label_key_)
+                    label_updates[primary_min_time_label_index] = _primary_min_time_label_update(
+                        disabled=not _is_jd_x_unit(x_unit),
+                    )
+
+                approach_update = gr.update(value=detected_approach)
+            except ValueError as exc:
+                msg = f"Could not extract parameters from result file: {exc}"
+                gr.Warning(msg)
+                approach_update = gr.update()
+                param_updates = [gr.update() for _ in fit_keys]
+                label_updates = [gr.update() for _ in approach_toggle_label_keys]
+
+            return (
+                new_state,
+                status_msg,
+                corner_fig,
+                traces_fig,
+                results_df,
+                approach_update,
+                *param_updates,
+                *label_updates,
             )
 
         transfer_value_keys = (
@@ -1216,9 +1459,40 @@ def build() -> None:  # noqa: C901, PLR0915
             show_progress_on=[],
         )
 
+        load_chain_btn.click(
+            fn=lambda cf, rf, d, uis, xu, app: _load_chain_handler(
+                cf,
+                rf,
+                d,
+                xu,
+                app,
+                use_initial_state=uis,
+            ),
+            inputs=[
+                chain_file_comp,
+                result_file_comp,
+                discard_comp,
+                use_initial_state_comp,
+                data_comps.x_unit,
+                approach_comp,
+            ],
+            outputs=[
+                chain_state,
+                chain_load_status,
+                corner_plot,
+                traces_plot,
+                mcmc_table,
+                approach_comp,
+                *[fit_comps[k] for k in fit_keys],
+                *approach_toggle_label_outputs,
+            ],
+            show_progress="hidden",
+            show_progress_on=[],
+        )
+
         mcmc_btn.click(
-            fn=_unified_mcmc,
-            inputs=unified_mcmc_inputs,
+            fn=lambda cstate, *vals: _unified_mcmc(*vals, chain_state_dict=cstate),
+            inputs=[chain_state, *unified_mcmc_inputs],
             outputs=[
                 results_tabs,
                 mcmc_model_plot,

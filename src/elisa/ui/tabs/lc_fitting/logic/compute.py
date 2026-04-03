@@ -1,4 +1,4 @@
-"""Core computation logic for LC fitting - no Gradio dependency.
+"""Core computation logic for LC fitting.
 
 Translates flat Gradio value dicts and passband row data into ELISa
 analytics objects, runs LSQRT or MCMC optimization, and returns plain
@@ -22,6 +22,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypedDict
 
+import gradio as gr
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -37,9 +38,10 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from matplotlib.figure import Figure
+    from numpy.typing import NDArray
     from PIL import Image
 
-    from elisa.types import Float
+    from elisa.types import Float, Int
 
 _logger = logging.getLogger(__name__)
 
@@ -161,6 +163,73 @@ def _result_temp_path(prefix: str) -> Path:
     """
     ts = datetime.now(UTC).strftime("%Y-%m-%d_%H-%M-%S")
     return Path(tempfile.gettempdir()) / f"elisa_lc_{prefix}_{ts}.json"
+
+
+def _load_json_object_for_role(path: str, role: str) -> dict[str, object]:
+    """Load a JSON file and validate it is an object.
+
+    :param path: Path to the JSON file.
+    :type path: str
+    :param role: Human-readable role label used in error messages.
+    :type role: str
+    :returns: Parsed JSON object.
+    :rtype: dict[str, object]
+    :raises gr.Error: If the file cannot be read or root is not a JSON object.
+    """
+    try:
+        loaded = json.loads(Path(path).read_text(encoding="utf-8"))
+    except Exception as exc:
+        msg = f"Failed to read {role} file '{path}': {exc}"
+        raise gr.Error(msg) from exc
+    if not isinstance(loaded, dict):
+        msg = f"The {role} file '{path}' is not a JSON object."
+        raise gr.Error(msg)
+    return loaded
+
+
+def _normalize_chain_and_result_paths(
+    chain_file_path: str,
+    result_file_path: str,
+) -> tuple[str, str]:
+    """Validate required keys and normalize chain/result file ordering.
+
+    Handles a common UI mistake where chain and result files are uploaded into
+    opposite inputs by detecting the mismatch and swapping the paths.
+
+    :param chain_file_path: Path provided in the chain-file input.
+    :type chain_file_path: str
+    :param result_file_path: Path provided in the result-file input.
+    :type result_file_path: str
+    :returns: Normalized tuple ``(chain_file_path, result_file_path)``.
+    :rtype: tuple[str, str]
+    :raises gr.Error: If required keys are missing after normalization.
+    """
+    chain_json = _load_json_object_for_role(chain_file_path, "chain")
+    result_json = _load_json_object_for_role(result_file_path, "result")
+
+    chain_has_flat_chain = "flat_chain" in chain_json
+    result_has_flat_chain = "flat_chain" in result_json
+    chain_looks_like_result = "system" in chain_json
+    result_looks_like_result = "system" in result_json
+
+    if not chain_has_flat_chain and result_has_flat_chain and chain_looks_like_result:
+        gr.Warning("Detected swapped files - using the uploaded files in reversed order.")
+        chain_file_path, result_file_path = result_file_path, chain_file_path
+        chain_has_flat_chain = True
+        result_looks_like_result = True
+
+    if not chain_has_flat_chain:
+        msg = (
+            "Invalid chain file: missing 'flat_chain' key. "
+            "Please upload the JSON produced by MCMC chain saving, not the result JSON."
+        )
+        raise gr.Error(msg)
+
+    if not result_looks_like_result:
+        msg = "Invalid result file: missing 'system' key expected in ELISa result JSON."
+        raise gr.Error(msg)
+
+    return chain_file_path, result_file_path
 
 
 # ---------------------------------------------------------------------------
@@ -808,19 +877,123 @@ def run_lsqrt(
     return result, figure_to_pil(model_fig), df, str(json_path)
 
 
+def load_chain(
+    chain_file_path: str,
+    result_file_path: str,
+    discard: Int = 0,
+) -> tuple[LCBinaryAnalyticsTask, Image.Image | None, Image.Image | None, pd.DataFrame | None]:
+    """Load a previously saved MCMC chain and results for plotting and reuse.
+
+    :param chain_file_path: Path to the saved flat-chain JSON file.
+    :type chain_file_path: str
+    :param result_file_path: Path to the saved result JSON file.
+    :type result_file_path: str
+    :param discard: Number of initial chain samples to discard per walker.
+    :type discard: elisa.types.Int
+    :returns: Tuple of ``(task, corner_image, traces_image, results_dataframe)``.
+    :rtype: tuple[LCBinaryAnalyticsTask, PIL.Image.Image | None, PIL.Image.Image | None, pandas.DataFrame | None]
+    :raises gr.Error: If loading result or chain file fails.
+    """
+    chain_file_path, result_file_path = _normalize_chain_and_result_paths(
+        chain_file_path,
+        result_file_path,
+    )
+
+    task = LCBinaryAnalyticsTask(data={}, method="mcmc")
+
+    try:
+        task.load_result(filename=result_file_path)
+    except Exception as exc:
+        msg = f"Failed to load result file '{result_file_path}': {exc}"
+        raise gr.Error(msg) from exc
+
+    try:
+        task.load_chain(chain_file_path, discard=discard)
+    except Exception as exc:
+        msg = f"Failed to load chain file '{chain_file_path}': {exc}"
+        raise gr.Error(msg) from exc
+
+    corner_fig: Figure | None = None
+    traces_fig: Figure | None = None
+    results_df: pd.DataFrame | None = None
+
+    plt.close("all")
+    try:
+        with _capture_figure() as corner_captured:
+            task.plot.corner(truths=True)
+        corner_fig = corner_captured[0] if corner_captured else None
+    except Exception as exc:  # noqa: BLE001
+        msg = f"Corner plot generation failed: {exc}"
+        gr.Warning(msg)
+
+    plt.close("all")
+    try:
+        with _capture_figure() as traces_captured:
+            task.plot.traces(truths=True)
+        traces_fig = traces_captured[0] if traces_captured else None
+    except Exception as exc:  # noqa: BLE001
+        msg = f"Traces plot generation failed: {exc}"
+        gr.Warning(msg)
+
+    try:
+        results_df = result_to_dataframe(task.fit_cls.flat_result)
+    except Exception as exc:  # noqa: BLE001
+        msg = f"Results dataframe generation failed: {exc}"
+        gr.Warning(msg)
+
+    return task, figure_to_pil(corner_fig), figure_to_pil(traces_fig), results_df
+
+
+def extract_initial_state_from_chain(
+    task: LCBinaryAnalyticsTask,
+    nwalkers: Int,
+) -> NDArray:
+    """Extract the last *nwalkers* samples from a loaded chain as initial state.
+
+    :param task: Task with loaded chain (``task.fit_cls.flat_chain`` populated).
+    :type task: LCBinaryAnalyticsTask
+    :param nwalkers: Number of walkers for the next MCMC run.
+    :type nwalkers: elisa.types.Int
+    :returns: Array of shape ``(nwalkers, n_params)`` with initial walker positions.
+    :rtype: numpy.typing.NDArray
+    :raises gr.Error: If chain is empty or shorter than requested walker count.
+    """
+    try:
+        chain = task.fit_cls.flat_chain
+    except Exception as exc:
+        msg = f"Failed to access chain from loaded task: {exc}"
+        raise gr.Error(msg) from exc
+
+    if chain is None or chain.size == 0:
+        msg = "Chain is empty or not loaded."
+        raise gr.Error(msg)
+
+    n_samples = chain.shape[0]
+    if n_samples < nwalkers:
+        msg = (
+            f"Chain has {n_samples} samples but {nwalkers} walkers requested. "
+            f"Load a longer chain or reduce the number of walkers."
+        )
+        raise gr.Error(msg)
+
+    return chain[-nwalkers:, :]
+
+
 def run_mcmc(
     lc_rows: list[LCRowData],
     x_unit_str: str,
     param_values: dict[str, object],
     morphology: str,
     approach: str = "community",
-    nwalkers: int = 50,
-    nsteps: int = 500,
-    burn_in: int = 50,
+    nwalkers: Int = 50,
+    nsteps: Int = 500,
+    burn_in: Int = 50,
     fit_id: str = "mcmc_lc_fit",
     *,
     save: bool = True,
     progress: bool = True,
+    task: LCBinaryAnalyticsTask | None = None,
+    initial_state: object = None,
 ) -> tuple[dict, Image.Image, Image.Image | None, Image.Image | None, pd.DataFrame, str]:
     """Run an MCMC LC fit and return all displayable artifacts.
 
@@ -840,25 +1013,28 @@ def run_mcmc(
     :param approach: Fitting approach (``"community"`` or ``"standard"``).
     :type approach: str
     :param nwalkers: Number of MCMC walkers.
-    :type nwalkers: int
+    :type nwalkers: elisa.types.Int
     :param nsteps: Number of MCMC steps per walker.
-    :type nsteps: int
+    :type nsteps: elisa.types.Int
     :param burn_in: Number of burn-in steps to discard.
-    :type burn_in: int
+    :type burn_in: elisa.types.Int
     :param fit_id: Chain file identifier used when *save* is ``True``.
     :type fit_id: str
     :param save: Whether to save the chain to disk.
     :type save: bool
     :param progress: Whether to show progress bar during MCMC sampling.
     :type progress: bool
+    :param task: Optional pre-constructed :class:`~elisa.analytics.LCBinaryAnalyticsTask`.
+        When supplied, this task instance is reused for fitting.
+    :type task: LCBinaryAnalyticsTask | None
+    :param initial_state: Optional initial walker state for MCMC.
+    :type initial_state: object
     :returns: Tuple of
         ``(result_dict, model_image, corner_image, traces_image,
         results_dataframe, json_path)``.
     :rtype: tuple[dict, PIL.Image.Image, PIL.Image.Image | None, PIL.Image.Image | None, pandas.DataFrame, str]
     :raises ValueError: If no valid LC data rows are provided.
     """
-    data: dict[str, LCData] = load_lc_dataset(lc_rows, x_unit_str)
-
     x0_dict = build_x0(
         param_values,
         include_nuisance=True,
@@ -879,20 +1055,25 @@ def run_mcmc(
     plt.close("all")
     # noinspection PyTypeChecker
     with fit_logging():
-        task = LCBinaryAnalyticsTask(
-            data=data,
-            method="mcmc",
-            expected_morphology=morphology,
-        )
-        result = task.fit(
-            x0=x0,
-            nwalkers=nwalkers,
-            nsteps=nsteps,
-            burn_in=burn_in,
-            save=save,
-            fit_id=fit_id,
-            progress=progress,
-        )
+        if task is None:
+            data: dict[str, LCData] = load_lc_dataset(lc_rows, x_unit_str)
+            task = LCBinaryAnalyticsTask(
+                data=data,
+                method="mcmc",
+                expected_morphology=morphology,
+            )
+        fit_kwargs: dict[str, object] = {
+            "x0": x0,
+            "nwalkers": nwalkers,
+            "nsteps": nsteps,
+            "burn_in": burn_in,
+            "save": save,
+            "fit_id": fit_id,
+            "progress": progress,
+        }
+        if initial_state is not None:
+            fit_kwargs["initial_state"] = initial_state
+        result = task.fit(**fit_kwargs)
 
     model_fig: Figure = task.plot.model(return_figure_instance=True)
 
@@ -917,5 +1098,3 @@ def run_mcmc(
         df,
         str(json_path),
     )
-
-
