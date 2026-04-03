@@ -12,6 +12,35 @@
 
 [ELISa: A new tool for fast modelling of eclipsing binaries](https://arxiv.org/abs/2106.10116)
 
+## Desktop UI:
+
+The Gradio-based desktop UI is under active development in a separate branch: `feature/ui`.
+You can preview and test the UI from this branch; it contains the latest UI work-in-progress.
+
+- Branch on GitHub: https://github.com/mikecokina/elisa/tree/feature/ui
+
+How to try the UI locally
+
+```bash
+# fetch the branch and check it out locally
+git fetch origin
+git checkout -b feature-ui origin/feature/ui
+
+# install the package with UI extras (editable install) and launch the desktop app
+pip install -e ".[dev,test,ui]"
+python -m elisa.ui
+```
+
+Reporting issues
+
+- This branch may be unstable; use it for testing and experimentation only.
+- If you find bugs or UX issues while testing, please open a GitHub Issue and:
+  - Prefix the issue title with `[UI]` to help triage.
+  - Mention you tested `feature/ui` and include steps to reproduce, screenshots, and terminal output when possible.
+
+Once UI features are ready they will be merged into the main `dev` branch. Contributions and feedback are very welcome.
+
+
 
 ## Introduction
 
