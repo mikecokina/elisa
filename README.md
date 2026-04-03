@@ -382,6 +382,30 @@ The plotting interface supports visualization of multi-passband light curves and
 
 ---
 
+## Desktop UI
+
+ELISa ships with an interactive desktop application built on [Gradio](https://www.gradio.app/). It covers the full
+workflow - modeling, fitting, and visualization - without writing any code.
+
+**Launch the UI:**
+
+```bash
+python -m elisa.ui
+```
+
+The app opens in your browser at `http://localhost:7860` and provides five tabs:
+
+- **Light Curve Modeling** - generate synthetic light curves
+- **Radial Velocity Modeling** - generate synthetic RV curves (kinematic or radiometric method)
+- **Light Curve Fitting** - fit observed LC data using The Least Squares or MCMC
+- **Radial Velocity Fitting** - fit observed RV data using The Least Squares or MCMC
+- **System Visualization** - render surface, mesh, orbit, and equipotential plots
+
+For full usage instructions, parameter descriptions, and worked examples see
+**[UI_GUIDE.md](./UI_GUIDE.md)**.
+
+---
+
 ## Solving the Inverse Problem
 
 ELISa provides built-in functionality for inferring binary system parameters from observational data. Similar to the 
@@ -611,6 +635,7 @@ Metallicity (log10(X_Fe/X_H)):                       0.0                   -    
 
 Detailed step-by-step fitting guides are available in:
 
-- Notebook 10 - Working with ELISa datasets  
-- Notebook 11 - Light curve fitting  
-- Notebook 12 - Radial velocity fitting  
+- **[UI_GUIDE.md](./UI_GUIDE.md)** - complete user guide for the desktop application
+- Notebook 10 - Working with ELISa datasets
+- Notebook 11 - Light curve fitting
+- Notebook 12 - Radial velocity fitting

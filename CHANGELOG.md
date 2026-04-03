@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `pyproject.toml` with PEP 517 build isolation using setuptools backend.
 - Structured development extras including build and publishing tools.
 - Comprehensive type annotations throughout the codebase for improved type safety and IDE support.
+- **Gradio-based desktop UI** (`python -m elisa.ui`) with five tabs: Light Curve Modeling, Radial
+  Velocity Modeling, Light Curve Fitting, Radial Velocity Fitting, and System Visualization.
+  - Light curve and radial velocity fitting support both Least Squares and MCMC methods.
+  - System Visualization provides four rendering modes: `surface`, `mesh`, `orbit`, and `equipotential`.
+  - Radial Velocity Modeling exposes `kinematic` and `radiometric` computation methods.
+  - UI behavior can be tuned via environment variables: `ELISA_UI_SERVER_PORT`, `ELISA_UI_SERVER_HOST`,
+    `ELISA_UI_THEME`, `ELISA_UI_MAX_SPOTS`, and `ELISA_UI_MAX_PULSE_MODES`.
+- `UI_GUIDE.md` - end-user guide covering all UI tabs, parameters, workflows, and troubleshooting.
 
 ### Changed
 - Raised minimum supported Python version to 3.10.
