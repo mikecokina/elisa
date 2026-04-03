@@ -11,4 +11,4 @@ os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")
 from elisa.ui import launch
 
 if __name__ == "__main__":
-    launch(inbrowser=True, server_port=7861)
+    launch(inbrowser=True, server_port=7860)
