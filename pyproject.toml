@@ -66,7 +66,14 @@ test = [
 ]
 
 ui = [
-    "gradio~=6.9.0"
+    "gradio~=6.10.0",
+    # UI runtime dependencies used by the Gradio desktop app
+    # pandas and matplotlib are already listed in [project].dependencies but
+    # are included here for clarity when installing the `ui` extras.
+    "pandas>=2.2.3; python_version < \"3.11\"",
+    "pandas>=3.0.1; python_version >= \"3.11\"",
+    "matplotlib>=3.3.2",
+    "pillow>=9.0.0",
 ]
 
 [project.urls]
