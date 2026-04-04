@@ -30,6 +30,7 @@ import numpy as np
 from elisa.analytics import LCBinaryAnalyticsTask
 from elisa.analytics.binary_fit.shared import extend_observations_to_desired_interval
 from elisa.ui.shared.plotting import figure_to_pil
+from elisa.ui.shared.utils import collect_param_values
 from elisa.ui.tabs.lc_fitting.components import data_inputs, param_inputs
 from elisa.ui.tabs.lc_fitting.components.data_inputs import MAX_PASSBAND_ROWS
 from elisa.ui.tabs.lc_fitting.components.param_inputs import (
@@ -162,25 +163,6 @@ def _sma_mode_changed(mode: str) -> tuple[object, object, object]:
         gr.update(interactive=is_free),
         gr.update(interactive=is_free),
     )
-
-
-def _collect_param_values(
-    param_keys: tuple[str, ...],
-    values: tuple[object, ...],
-    offset: int,
-) -> dict[str, object]:
-    """Slice *values* starting at *offset* into a named dict.
-
-    :param param_keys: Ordered key names.
-    :type param_keys: tuple[str, ...]
-    :param values: Full flat value tuple from Gradio.
-    :type values: tuple[object, ...]
-    :param offset: Start index within *values*.
-    :type offset: int
-    :returns: Dict mapping each key to its corresponding value.
-    :rtype: dict[str, object]
-    """
-    return dict(zip(param_keys, values[offset : offset + len(param_keys)], strict=True))
 
 
 def _parse_lc_inputs_simple(
@@ -972,7 +954,7 @@ def build() -> None:  # noqa: C901, PLR0915
                 values[:n_lc],
                 MAX_PASSBAND_ROWS,
             )
-            fit_vals = _collect_param_values(fit_keys, values, n_lc)
+            fit_vals = collect_param_values(fit_keys, values, n_lc)
 
             # Load data here so the task is constructed with real LCData objects
             # (mirroring the RV fitting pattern where the tab owns the task instance).
@@ -1060,8 +1042,8 @@ def build() -> None:  # noqa: C901, PLR0915
                 values[:n_lc],
                 MAX_PASSBAND_ROWS,
             )
-            fit_vals = _collect_param_values(fit_keys, values, n_lc)
-            mcmc_vals = _collect_param_values(mcmc_keys, values, n_lc + n_fit)
+            fit_vals = collect_param_values(fit_keys, values, n_lc)
+            mcmc_vals = collect_param_values(mcmc_keys, values, n_lc + n_fit)
 
             nwalkers = int(mcmc_vals.get("nwalkers") or 100)
             nsteps = int(mcmc_vals.get("nsteps") or 100)

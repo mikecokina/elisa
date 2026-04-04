@@ -64,3 +64,22 @@ def result_temp_path(category: str, prefix: str) -> Path:
     """
     ts = datetime.now(UTC).strftime("%Y-%m-%d_%H-%M-%S")
     return Path(tempfile.gettempdir()) / f"elisa_{category}_{prefix}_{ts}.json"
+
+
+def collect_param_values(
+    param_keys: tuple[str, ...],
+    values: tuple[object, ...],
+    offset: int,
+) -> dict[str, object]:
+    """Slice *values* starting at *offset* into a named dict.
+
+    :param param_keys: Ordered key names.
+    :type param_keys: tuple[str, ...]
+    :param values: Full flat value tuple from Gradio callbacks.
+    :type values: tuple[object, ...]
+    :param offset: Start index within *values*.
+    :type offset: int
+    :returns: Dict mapping each key to its corresponding value.
+    :rtype: dict[str, object]
+    """
+    return dict(zip(param_keys, values[offset : offset + len(param_keys)], strict=True))
