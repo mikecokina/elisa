@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 import gradio as gr
 import pandas as pd  # noqa: TC002  - needed at runtime for Gradio get_type_hints()
-from matplotlib.figure import Figure  # noqa: TC002  - same reason
+from PIL import Image  # noqa: TC002  - same reason
 
 from elisa.ui.components import star_inputs, system_inputs
 from elisa.ui.shared.const import ATMOSPHERE_CHOICES
@@ -79,7 +79,7 @@ def _make_handler(
     sys_keys: tuple[str, ...],
     obs_keys: tuple[str, ...],
     puls_keys: tuple[str, ...],
-) -> Callable[..., tuple[Figure, pd.DataFrame, gr.DownloadButton]]:
+) -> Callable[..., tuple[Image.Image | None, pd.DataFrame, gr.DownloadButton]]:
     """Return a Gradio event-handler function bound to the given key sequences.
 
     The handler unpacks the flat list of values that Gradio passes to the
@@ -98,10 +98,12 @@ def _make_handler(
         both components, applied twice).
     :type puls_keys: tuple[str, ...]
     :returns: A callable suitable for ``gr.Button.click(fn=...)``.
-    :rtype: Callable[..., tuple[Figure, pandas.DataFrame]]
+    :rtype: Callable[..., tuple[PIL.Image.Image | None, pandas.DataFrame, gr.DownloadButton]]
     """
 
-    def handler(*values: tuple[float | str | bool | None, ...]) -> tuple[Figure, pd.DataFrame, gr.DownloadButton]:
+    def handler(
+            *values: tuple[float | str | bool | None, ...],
+    ) -> tuple[Image.Image | None, pd.DataFrame, gr.DownloadButton]:
         idx = 0
         n_prim = len(prim_keys)
         n_sec = len(sec_keys)
@@ -206,7 +208,8 @@ def build() -> None:
         # Outputs                                                              #
         # ------------------------------------------------------------------ #
         with gr.Row():
-            lc_plot = gr.Plot(label="Light Curve", scale=3, buttons=[])
+            with gr.Column(scale=3):
+                lc_plot = gr.Image(label="Light Curve", type="pil", elem_classes=["responsive-model-plot"])
             with gr.Column(scale=2):
                 lc_table = gr.DataFrame(label="Phase / Flux data")
                 dl_btn = gr.DownloadButton(

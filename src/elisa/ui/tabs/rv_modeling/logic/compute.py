@@ -11,12 +11,12 @@ import pandas as pd
 
 from elisa import Observer
 from elisa.ui.shared.binary_model import build_star, build_system
-from elisa.ui.shared.plotting import render_rv_figure
+from elisa.ui.shared.plotting import figure_to_pil, render_rv_figure
 from elisa.ui.shared.utils import opt_float
 from elisa.utc import UTC
 
 if TYPE_CHECKING:
-    from matplotlib.figure import Figure
+    from PIL import Image
 
 
 def _format_rv_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -60,8 +60,8 @@ def run_rv(
     secondary_params: dict[str, object],
     system_params: dict[str, object],
     observer_params: dict[str, object],
-) -> tuple[Figure, pd.DataFrame, str]:
-    """Compute synthetic RV curves and return figure, table, and CSV path.
+) -> tuple[Image.Image | None, pd.DataFrame, str]:
+    r"""Compute synthetic RV curves and return image, table, and CSV path.
 
     Builds the full ELISa model from the supplied parameter dictionaries,
     runs the radial-velocity synthesis for both components, and returns
@@ -78,12 +78,12 @@ def run_rv(
         ``from_phase``, ``to_phase``, ``phase_step``, and ``method``
         (``"kinematic"`` or ``"radiometric"``).
     :type observer_params: dict[str, object]
-    :returns: A tuple of ``(figure, dataframe, csv_path)`` where *figure* is a
-        Matplotlib figure suitable for ``gr.Plot``, *dataframe* contains
+    :returns: A tuple of ``(image, dataframe, csv_path)`` where *image* is a
+        PIL image suitable for ``gr.Image(type=\"pil\")``, *dataframe* contains
         columns ``phase`` and one column per component (``"primary"``,
         ``"secondary"``), and *csv_path* is the absolute path of the exported
         CSV file with a datetime-stamped name.
-    :rtype: tuple[matplotlib.figure.Figure, pandas.DataFrame, str]
+    :rtype: tuple[PIL.Image.Image | None, pandas.DataFrame, str]
     :raises ValueError: If required parameters are missing or logically invalid.
     """
     from_phase_raw = opt_float(observer_params.get("from_phase"))
@@ -109,4 +109,4 @@ def run_rv(
     for component, rv in rvs.items():
         df[component] = rv
     formatted = _format_rv_df(df)
-    return fig, formatted, _save_rv_csv(df)
+    return figure_to_pil(fig), formatted, _save_rv_csv(df)

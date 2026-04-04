@@ -22,8 +22,7 @@ from elisa.ui.shared.utils import opt_float
 from elisa.utc import UTC
 
 if TYPE_CHECKING:
-    from matplotlib.figure import Figure
-
+    from PIL import Image
 
 
 def _format_df(df: pd.DataFrame, *, normalize: bool) -> pd.DataFrame:
@@ -87,8 +86,8 @@ def run_lc(
     secondary_pulsation_params: dict[str, object] | None = None,
     primary_spot_params: dict[str, object] | None = None,
     secondary_spot_params: dict[str, object] | None = None,
-) -> tuple[Figure, pd.DataFrame, str]:
-    """Compute a synthetic light curve and return a figure and a data table.
+) -> tuple[Image.Image | None, pd.DataFrame, str]:
+    r"""Compute a synthetic light curve and return an image and a data table.
 
     Builds the full ELISa model from the supplied parameter dictionaries,
     runs the light-curve synthesis for all selected passbands, and returns
@@ -121,11 +120,11 @@ def run_lc(
     :param secondary_spot_params: Secondary star spot parameters. When ``None``
         or empty, no spots are applied to the secondary.
     :type secondary_spot_params: dict[str, object] | None
-    :returns: A tuple of ``(figure, dataframe, csv_path)`` where *figure* is a
-        Matplotlib figure suitable for ``gr.Plot``, *dataframe* contains
+    :returns: A tuple of ``(image, dataframe, csv_path)`` where *image* is a
+        PIL image suitable for ``gr.Image(type=\"pil\")``, *dataframe* contains
         columns ``phase`` and one column per passband, and *csv_path* is the
         absolute path of the exported CSV file with a datetime-stamped name.
-    :rtype: tuple[matplotlib.figure.Figure, pandas.DataFrame, str]
+    :rtype: tuple[PIL.Image.Image | None, pandas.DataFrame, str]
     :raises ValueError: If required parameters are missing or logically
         invalid (e.g. no passbands selected).
     """
@@ -181,7 +180,7 @@ def run_lc(
     )
 
     # --- render figure ---
-    from elisa.ui.shared.plotting import render_lc_figure  # noqa: PLC0415
+    from elisa.ui.shared.plotting import figure_to_pil, render_lc_figure  # noqa: PLC0415
 
     fig = render_lc_figure(phases, fluxes, normalize=normalize)
 
@@ -191,4 +190,4 @@ def run_lc(
         df[band] = flux
 
     formatted = _format_df(df, normalize=normalize)
-    return fig, formatted, _save_lc_csv(df)
+    return figure_to_pil(fig), formatted, _save_lc_csv(df)

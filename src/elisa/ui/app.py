@@ -59,6 +59,21 @@ textarea:disabled {
     cursor: not-allowed !important;
     filter: grayscale(90%) !important;
 }
+
+/* Responsive plot image sizing for modeling tabs.
+   Keeps the old gr.Plot-like behavior without hard-coded pixel height. */
+.responsive-model-plot,
+.responsive-model-plot > div,
+.responsive-model-plot .image-container {
+    width: 100% !important;
+}
+
+.responsive-model-plot img {
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    object-fit: contain !important;
+}
 """
 
 

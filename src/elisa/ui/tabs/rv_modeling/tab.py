@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import gradio as gr
 import pandas as pd  # noqa: TC002  - needed at runtime for Gradio get_type_hints()
-from matplotlib.figure import Figure  # noqa: TC002  - same reason
+from PIL import Image  # noqa: TC002  - same reason
 
 from elisa.ui.components import star_inputs, system_inputs
 from elisa.ui.tabs.rv_modeling.components import observer_inputs
@@ -52,9 +52,11 @@ def _make_handler(
     sec_keys: tuple[str, ...],
     sys_keys: tuple[str, ...],
     obs_keys: tuple[str, ...],
-) -> Callable[..., tuple[Figure, pd.DataFrame, gr.DownloadButton]]:
+) -> Callable[..., tuple[Image.Image | None, pd.DataFrame, gr.DownloadButton]]:
     """Return a Gradio event-handler function for RV computation."""
-    def handler(*values: tuple[float | str | bool | None, ...]) -> tuple[Figure, pd.DataFrame, gr.DownloadButton]:
+    def handler(
+            *values: tuple[float | str | bool | None, ...],
+    ) -> tuple[Image.Image | None, pd.DataFrame, gr.DownloadButton]:
         idx = 0
         n_prim = len(prim_keys)
         n_sec = len(sec_keys)
@@ -95,7 +97,12 @@ def build() -> None:
             compute_btn = gr.Button("🚀 Compute RV Curves", variant="primary", scale=2)
             clear_btn = gr.Button("🗑 Clear outputs", variant="secondary", scale=1)
         with gr.Row():
-            rv_plot = gr.Plot(label="Radial Velocity Curves", scale=3, buttons=[])
+            with gr.Column(scale=3):
+                rv_plot = gr.Image(
+                    label="Radial Velocity Curves",
+                    type="pil",
+                    elem_classes=["responsive-model-plot"],
+                )
             with gr.Column(scale=2):
                 rv_table = gr.DataFrame(label="Phase / RV data (km/s)")
                 dl_btn = gr.DownloadButton(
