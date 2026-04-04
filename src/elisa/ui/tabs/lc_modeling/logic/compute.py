@@ -18,6 +18,7 @@ import pandas as pd
 from elisa import BinarySystem, Observer, Star
 from elisa import units as u
 from elisa.ui.shared.fit_json import load_model_params_from_json  # noqa: F401 - re-exported for callers
+from elisa.ui.shared.utils import opt_float
 from elisa.utc import UTC
 
 if TYPE_CHECKING:
@@ -29,34 +30,6 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
-
-def _opt_float(value: Float | str | None) -> Float | None:
-    """Return a float if *value* is a non-empty, non-``None`` value.
-
-    Accepts plain numbers and strings produced by ``gr.Textbox`` for
-    optional parameters.  An empty string or ``None`` both signal
-    "not supplied" and return ``None`` so that ELISa can apply its own
-    defaults.
-
-    :param value: Numeric value, string representation, or ``None``.
-    :type value: Float | str | None
-    :returns: Parsed float or ``None``.
-    :rtype: Float | None
-    :raises ValueError: If *value* is a non-empty string that cannot be
-        parsed as a float.
-    """
-    if value is None:
-        return None
-    if isinstance(value, str):
-        stripped = value.strip()
-        if stripped == "":
-            return None
-        try:
-            return float(stripped)
-        except ValueError as exc:
-            msg = f"Cannot parse '{stripped}' as a number."
-            raise ValueError(msg) from exc
-    return float(value)
 
 
 def _opt_int(value: Float | str | None) -> Int | None:
@@ -114,7 +87,7 @@ def _validated_float(
     :rtype: Float | None
     :raises ValueError: If the parsed value lies outside ``[lo, hi]``.
     """
-    parsed = _opt_float(value)
+    parsed = opt_float(value)
     if parsed is None:
         return None
     if lo is not None and parsed < lo:
@@ -148,7 +121,7 @@ def _validated_positive_int(value: Float | str | None, *, name: str) -> Int | No
     return parsed
 
 
-def _build_star(
+def build_star(
     params: dict[str, object],
     *,
     label: str,
@@ -173,16 +146,20 @@ def _build_star(
         optional keys accepted by :class:`~elisa.pulse.mode.PulsationMode`.
         Pass ``None`` or an empty list for no pulsations.
     :type pulsations: list[dict[str, object]] | None
+    :param spots: Optional list of spot parameter dicts, each with keys
+        ``longitude``, ``latitude``, ``angular_radius``, and
+        ``temperature_factor``. Pass ``None`` or an empty list for no spots.
+    :type spots: list[dict[str, object]] | None
     :returns: Initialised :class:`~elisa.base.star.Star` instance.
     :rtype: Star
     :raises ValueError: If any mandatory parameter is ``None`` or
         missing from *params*.
     """
     # --- mandatory ---
-    mass_raw = _opt_float(params.get("mass"))  # type: ignore[arg-type]
-    t_eff_raw = _opt_float(params.get("t_eff"))  # type: ignore[arg-type]
-    surface_potential_raw = _opt_float(params.get("surface_potential"))  # type: ignore[arg-type]
-    synchronicity_raw = _opt_float(params.get("synchronicity"))  # type: ignore[arg-type]
+    mass_raw = opt_float(params.get("mass"))  # type: ignore[arg-type]
+    t_eff_raw = opt_float(params.get("t_eff"))  # type: ignore[arg-type]
+    surface_potential_raw = opt_float(params.get("surface_potential"))  # type: ignore[arg-type]
+    synchronicity_raw = opt_float(params.get("synchronicity"))  # type: ignore[arg-type]
 
     for name, val in [
         ("mass", mass_raw),
@@ -214,7 +191,7 @@ def _build_star(
         lo=0.0,
         hi=1.0,
     )
-    metallicity = _opt_float(params.get("metallicity"))  # type: ignore[arg-type]
+    metallicity = opt_float(params.get("metallicity"))  # type: ignore[arg-type]
     discretization_factor = _validated_positive_int(
         params.get("discretization_factor"),  # type: ignore[arg-type]
         name=f"{label}.discretization_factor",
@@ -239,7 +216,7 @@ def _build_star(
     return Star(**kwargs)
 
 
-def _build_system(
+def build_system(
     primary: Star,
     secondary: Star,
     params: dict[str, object],
@@ -260,10 +237,10 @@ def _build_system(
     :raises ValueError: If any mandatory parameter is ``None`` or missing.
     """
     # --- mandatory ---
-    inclination_raw = _opt_float(params.get("inclination"))  # type: ignore[arg-type]
-    period_raw = _opt_float(params.get("period"))  # type: ignore[arg-type]
-    eccentricity_raw = _opt_float(params.get("eccentricity"))  # type: ignore[arg-type]
-    aop_raw = _opt_float(params.get("argument_of_periastron"))  # type: ignore[arg-type]
+    inclination_raw = opt_float(params.get("inclination"))  # type: ignore[arg-type]
+    period_raw = opt_float(params.get("period"))  # type: ignore[arg-type]
+    eccentricity_raw = opt_float(params.get("eccentricity"))  # type: ignore[arg-type]
+    aop_raw = opt_float(params.get("argument_of_periastron"))  # type: ignore[arg-type]
 
     for name, val in [
         ("inclination", inclination_raw),
@@ -283,15 +260,15 @@ def _build_system(
     }
 
     # --- optional ---
-    gamma_raw = _opt_float(params.get("gamma"))  # type: ignore[arg-type]
-    phase_shift_raw = _opt_float(params.get("phase_shift"))  # type: ignore[arg-type]
+    gamma_raw = opt_float(params.get("gamma"))  # type: ignore[arg-type]
+    phase_shift_raw = opt_float(params.get("phase_shift"))  # type: ignore[arg-type]
     additional_light_raw = _validated_float(
         params.get("additional_light"),  # type: ignore[arg-type]
         name="additional_light",
         lo=0.0,
         hi=1.0,
     )
-    pmt_raw = _opt_float(params.get("primary_minimum_time"))  # type: ignore[arg-type]
+    pmt_raw = opt_float(params.get("primary_minimum_time"))  # type: ignore[arg-type]
     distance_raw = _validated_float(
         params.get("distance"),  # type: ignore[arg-type]
         name="distance",
@@ -395,6 +372,18 @@ def run_lc(
         including ``passband`` (list of str), ``from_phase``, ``to_phase``,
         ``phase_step``, and ``normalize`` (bool).
     :type observer_params: dict[str, object]
+    :param primary_pulsation_params: Primary star pulsation mode parameters.
+        When ``None`` or empty, no pulsations are applied to the primary.
+    :type primary_pulsation_params: dict[str, object] | None
+    :param secondary_pulsation_params: Secondary star pulsation mode parameters.
+        When ``None`` or empty, no pulsations are applied to the secondary.
+    :type secondary_pulsation_params: dict[str, object] | None
+    :param primary_spot_params: Primary star spot parameters. When ``None`` or
+        empty, no spots are applied to the primary.
+    :type primary_spot_params: dict[str, object] | None
+    :param secondary_spot_params: Secondary star spot parameters. When ``None``
+        or empty, no spots are applied to the secondary.
+    :type secondary_spot_params: dict[str, object] | None
     :returns: A tuple of ``(figure, dataframe, csv_path)`` where *figure* is a
         Matplotlib figure suitable for ``gr.Plot``, *dataframe* contains
         columns ``phase`` and one column per passband, and *csv_path* is the
@@ -413,9 +402,9 @@ def run_lc(
         msg = "At least one passband must be selected."
         raise ValueError(msg)
 
-    from_phase_raw = _opt_float(observer_params.get("from_phase"))  # type: ignore[arg-type]
-    to_phase_raw = _opt_float(observer_params.get("to_phase"))  # type: ignore[arg-type]
-    phase_step_raw = _opt_float(observer_params.get("phase_step"))  # type: ignore[arg-type]
+    from_phase_raw = opt_float(observer_params.get("from_phase"))  # type: ignore[arg-type]
+    to_phase_raw = opt_float(observer_params.get("to_phase"))  # type: ignore[arg-type]
+    phase_step_raw = opt_float(observer_params.get("phase_step"))  # type: ignore[arg-type]
 
     from_phase = from_phase_raw if from_phase_raw is not None else -0.6
     to_phase = to_phase_raw if to_phase_raw is not None else 0.6
@@ -431,19 +420,19 @@ def run_lc(
     prim_spots = parse_spots(primary_spot_params)
     sec_spots = parse_spots(secondary_spot_params)
 
-    primary = _build_star(
+    primary = build_star(
         primary_params,
         label="primary",
         pulsations=prim_pulsations or None,
         spots=prim_spots or None,
     )
-    secondary = _build_star(
+    secondary = build_star(
         secondary_params,
         label="secondary",
         pulsations=sec_pulsations or None,
         spots=sec_spots or None,
     )
-    bs = _build_system(primary, secondary, system_params)
+    bs = build_system(primary, secondary, system_params)
     observer = Observer(passband=passbands, system=bs)
 
     # --- run light-curve synthesis ---

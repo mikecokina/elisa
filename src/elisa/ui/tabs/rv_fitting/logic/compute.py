@@ -14,8 +14,6 @@ from __future__ import annotations
 
 import contextlib
 import json
-import tempfile
-from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -27,7 +25,7 @@ from elisa import units as u
 from elisa.analytics import RVBinaryAnalyticsTask, RVData
 from elisa.ui.shared.logging_config import fit_logging
 from elisa.ui.shared.plotting import figure_to_pil
-from elisa.utc import UTC
+from elisa.ui.shared.utils import opt_float, result_temp_path
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -94,25 +92,6 @@ def _capture_figure() -> Iterator[list[Figure]]:
         plt.show = original_show  # type: ignore[assignment]
 
 
-def _opt_float(value: object) -> Float | None:
-    """Convert *value* to a floating value or return ``None``.
-
-    Accepts user-supplied values from Gradio number inputs and attempts to
-    coerce them to a numeric type used internally by ELISa.
-
-    :param value: Raw value from a Gradio Number component.
-    :type value: object
-    :returns: Parsed floating value or ``None`` when the input is empty or
-        cannot be converted.
-    :rtype: elisa.types.Float | None
-    """
-    if value is None:
-        return None
-    try:
-        return float(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        return None
-
 
 def load_rv_data(file_path: str | None, x_unit_str: str) -> RVData | None:
     """Load an RV data file into an :class:`~elisa.analytics.RVData` object.
@@ -155,12 +134,12 @@ def build_x0(param_values: dict[str, object]) -> dict:
     nuisance: dict[str, dict] = {}
 
     for name, unit_str in _PARAM_UNITS.items():
-        value = _opt_float(param_values.get(f"{name}_value"))
+        value = opt_float(param_values.get(f"{name}_value"))
         mode = str(param_values.get(f"{name}_mode", "free"))
         fixed = mode == "fixed"
         constraint = str(param_values.get(f"{name}_constraint", "") or "").strip()
-        lo = _opt_float(param_values.get(f"{name}_min"))
-        hi = _opt_float(param_values.get(f"{name}_max"))
+        lo = opt_float(param_values.get(f"{name}_min"))
+        hi = opt_float(param_values.get(f"{name}_max"))
 
         entry: dict[str, object] = {"value": value, "fixed": fixed}
         if mode == "constrained" and constraint:
@@ -215,17 +194,6 @@ def result_to_dataframe(result: dict) -> pd.DataFrame:
         )
     return pd.DataFrame(rows)
 
-
-def _result_temp_path(prefix: str) -> Path:
-    """Return a timestamped temp-file path for a fit result JSON.
-
-    :param prefix: Short label embedded in the filename, e.g. ``"lsqrt"`` or ``"mcmc"``.
-    :type prefix: str
-    :returns: Path inside the system temp directory.
-    :rtype: Path
-    """
-    ts = datetime.now(UTC).strftime("%Y-%m-%d_%H-%M-%S")
-    return Path(tempfile.gettempdir()) / f"elisa_rv_{prefix}_{ts}.json"
 
 
 # ---------------------------------------------------------------------------
@@ -301,7 +269,7 @@ def run_lsqrt(
     model_fig: Figure = task.plot.model(return_figure_instance=True)
     df = result_to_dataframe(task.fit_cls.flat_result)
 
-    json_path = _result_temp_path("lsqrt")
+    json_path = result_temp_path("rv", "lsqrt")
     task.save_result(str(json_path))
 
     return result, figure_to_pil(model_fig), df, str(json_path)
@@ -430,7 +398,7 @@ def run_mcmc(
 
     df = result_to_dataframe(task.fit_cls.flat_result)
 
-    json_path = _result_temp_path("mcmc")
+    json_path = result_temp_path("rv", "mcmc")
     task.save_result(str(json_path))
 
     return (

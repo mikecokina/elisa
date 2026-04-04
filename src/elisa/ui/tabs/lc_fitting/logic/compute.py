@@ -17,8 +17,6 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
-import tempfile
-from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypedDict
 
@@ -32,7 +30,8 @@ from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.ui.shared.const import MAX_SPOTS
 from elisa.ui.shared.logging_config import fit_logging
 from elisa.ui.shared.plotting import figure_to_pil
-from elisa.utc import UTC
+from elisa.ui.shared.utils import opt_float as _opt_float
+from elisa.ui.shared.utils import result_temp_path
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -136,33 +135,6 @@ def _capture_figure() -> Iterator[list[Figure]]:
     finally:
         plt.show = original_show  # type: ignore[assignment]
 
-
-def _opt_float(value: object) -> Float | None:
-    """Convert *value* to float or return ``None`` for empty/None inputs.
-
-    :param value: Raw value from a Gradio Number component.
-    :type value: object
-    :returns: Parsed float or ``None``.
-    :rtype: Float | None
-    """
-    if value is None:
-        return None
-    try:
-        return float(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        return None
-
-
-def _result_temp_path(prefix: str) -> Path:
-    """Return a timestamped temp-file path for a fit result JSON.
-
-    :param prefix: Short label embedded in the filename (e.g. ``"lsqrt"`` or ``"mcmc"``).
-    :type prefix: str
-    :returns: Path inside the system temp directory.
-    :rtype: Path
-    """
-    ts = datetime.now(UTC).strftime("%Y-%m-%d_%H-%M-%S")
-    return Path(tempfile.gettempdir()) / f"elisa_lc_{prefix}_{ts}.json"
 
 
 def _load_json_object_for_role(path: str, role: str) -> dict[str, object]:
@@ -871,7 +843,7 @@ def run_lsqrt(
     model_fig: Figure = task.plot.model(return_figure_instance=True)
     df = result_to_dataframe(task.fit_cls.flat_result)
 
-    json_path = _result_temp_path("lsqrt")
+    json_path = result_temp_path("lc", "lsqrt")
     task.save_result(str(json_path))
 
     return result, figure_to_pil(model_fig), df, str(json_path)
@@ -1087,7 +1059,7 @@ def run_mcmc(
 
     df = result_to_dataframe(task.fit_cls.flat_result)
 
-    json_path = _result_temp_path("mcmc")
+    json_path = result_temp_path("lc", "mcmc")
     task.save_result(str(json_path))
 
     return (
