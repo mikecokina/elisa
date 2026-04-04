@@ -213,6 +213,15 @@ setup(
             "pytest>=9.0.2",
             "parameterized>=0.7.4",
         ],
+        "ui": [
+            "gradio~=6.10.0",
+            # UI runtime dependencies used by the Gradio desktop app
+            # pandas and matplotlib are already listed in install_requires
+            'pandas>=2.2.3; python_version < "3.11"',
+            'pandas>=3.0.1; python_version >= "3.11"',
+            "matplotlib>=3.3.2",
+            "pillow>=9.0.0",
+        ],
     },
 
     # If there are data files included in your packages that need to be
