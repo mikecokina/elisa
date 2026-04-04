@@ -13,6 +13,8 @@ from elisa.ui.tabs.rv_modeling.logic import compute
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+
 _PRIMARY_DEFAULTS: dict[str, float | str | None] = {
     "mass": 2.15,
     "t_eff": 10000,
@@ -47,15 +49,30 @@ _OBSERVER_DEFAULTS: dict[str, float | str | None] = {
     "phase_step": 0.01,
     "method": "kinematic",
 }
+
+
 def _make_handler(
     prim_keys: tuple[str, ...],
     sec_keys: tuple[str, ...],
     sys_keys: tuple[str, ...],
     obs_keys: tuple[str, ...],
 ) -> Callable[..., tuple[Image.Image | None, pd.DataFrame, gr.DownloadButton]]:
-    """Return a Gradio event-handler function for RV computation."""
+    """Build a Gradio callback that maps flat UI values into RV inputs.
+
+    :param prim_keys: Ordered keys for primary-star parameters.
+    :type prim_keys: tuple[str, ...]
+    :param sec_keys: Ordered keys for secondary-star parameters.
+    :type sec_keys: tuple[str, ...]
+    :param sys_keys: Ordered keys for binary-system parameters.
+    :type sys_keys: tuple[str, ...]
+    :param obs_keys: Ordered keys for observer/sampling parameters.
+    :type obs_keys: tuple[str, ...]
+    :returns: Callback returning ``(plot_image, rv_table, download_button)``.
+    :rtype: Callable[..., tuple[PIL.Image.Image | None, pandas.DataFrame, gradio.DownloadButton]]
+    """
+
     def handler(
-            *values: tuple[float | str | bool | None, ...],
+        *values: tuple[float | str | bool | None, ...],
     ) -> tuple[Image.Image | None, pd.DataFrame, gr.DownloadButton]:
         idx = 0
         n_prim = len(prim_keys)
@@ -75,9 +92,16 @@ def _make_handler(
             return fig, df, gr.DownloadButton(value=csv_path, visible=True)
         except Exception as exc:
             raise gr.Error(str(exc)) from exc
+
     return handler
+
+
 def build() -> None:
-    """Build the RV Modeling tab inside the active gr.Blocks context."""
+    """Build the radial-velocity modeling tab in the active Gradio layout.
+
+    :returns: ``None``.
+    :rtype: None
+    """
     with gr.Tab("Radial Velocity Modeling"):
         gr.Markdown(
             "## Radial Velocity Modeling\n"

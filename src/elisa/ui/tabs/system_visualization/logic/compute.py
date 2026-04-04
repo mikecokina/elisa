@@ -262,10 +262,7 @@ def run_visualization(
         figure_to_pil(surface_fig),
     )
 
-    # Aggressive cleanup to prevent Gradio slowdown
-    plt.close("all")
-    plt.cla()
+    # Final garbage collection helps keep repeated UI calls responsive.
     gc.collect()
 
     return result
-

@@ -22,7 +22,8 @@ if TYPE_CHECKING:
 def _format_rv_df(df: pd.DataFrame) -> pd.DataFrame:
     """Format display precision of phase and RV columns.
 
-    Rounds phase to 4 decimal places and radial velocities to 2 decimal places.
+    Rounds phase to 4 decimal places and radial velocities to 2 decimal
+    places for easier inspection in the UI table.
 
     :param df: Raw DataFrame with ``phase`` and per-component RV columns.
     :type df: pandas.DataFrame;
@@ -79,10 +80,10 @@ def run_rv(
         (``"kinematic"`` or ``"radiometric"``).
     :type observer_params: dict[str, object]
     :returns: A tuple of ``(image, dataframe, csv_path)`` where *image* is a
-        PIL image suitable for ``gr.Image(type=\"pil\")``, *dataframe* contains
-        columns ``phase`` and one column per component (``"primary"``,
-        ``"secondary"``), and *csv_path* is the absolute path of the exported
-        CSV file with a datetime-stamped name.
+        PIL image suitable for ``gr.Image(type="pil")``. The *dataframe*
+        contains columns ``phase`` and one column per component
+        (``"primary"``, ``"secondary"``), and *csv_path* is the absolute
+        path of the exported CSV file with a datetime-stamped name.
     :rtype: tuple[PIL.Image.Image | None, pandas.DataFrame, str]
     :raises ValueError: If required parameters are missing or logically invalid.
     """
