@@ -4,18 +4,17 @@ Translates flat Gradio value dictionaries into ELISa analytics objects,
 runs the LSQRT or MCMC optimization, and returns plain Python / PIL image
 objects that the UI layer can display.
 
-The module-level :func:`_capture_figure` context manager intercepts
-``plt.show()`` so that MCMC diagnostic plots (corner, traces) which call
-``plt.show()`` internally can be captured and converted to PIL images
-suitable for ``gr.Image``.
+The shared :func:`elisa.ui.shared.plotting._capture_figure` context manager
+intercepts ``plt.show()`` so that MCMC diagnostic plots (corner, traces)
+which call ``plt.show()`` internally can be captured and converted to PIL
+images suitable for ``gr.Image``.
 """
 
 from __future__ import annotations
 
-import contextlib
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import gradio as gr
 import matplotlib.pyplot as plt
@@ -24,12 +23,10 @@ import pandas as pd
 from elisa import units as u
 from elisa.analytics import RVBinaryAnalyticsTask, RVData
 from elisa.ui.shared.logging_config import fit_logging
-from elisa.ui.shared.plotting import figure_to_pil
+from elisa.ui.shared.plotting import capture_figure, figure_to_pil
 from elisa.ui.shared.utils import opt_float, result_temp_path
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
     from matplotlib.figure import Figure
     from numpy.typing import NDArray
     from PIL import Image
@@ -61,35 +58,6 @@ _PARAM_UNITS: dict[str, str | None] = {
 
 # Parameters that belong to the "nuisance" section rather than "system".
 _NUISANCE_PARAMS: frozenset[str] = frozenset({"ln_f"})
-
-
-@contextlib.contextmanager
-def _capture_figure() -> Iterator[list[Figure]]:
-    """Replace ``plt.show`` temporarily to capture the figure it would display.
-
-    The context manager intercepts ``plt.show()`` and collects the
-    current :class:`matplotlib.figure.Figure` into a list which is
-    yielded to the caller. Only the figure present at the moment of
-    the ``plt.show()`` call is captured; subsequent calls overwrite the
-    captured value.
-
-    :yields: A list that will contain the captured
-        :class:`matplotlib.figure.Figure` after the context exits.
-    :rtype: list[matplotlib.figure.Figure]
-    """
-    captured: list[Figure] = []
-    original_show = plt.show
-
-    def _mock_show(*_args: object, **_kwargs: Any) -> None:
-        fig = plt.gcf()
-        if fig is not None:
-            captured.append(fig)
-
-    plt.show = _mock_show  # type: ignore[assignment]
-    try:
-        yield captured
-    finally:
-        plt.show = original_show  # type: ignore[assignment]
 
 
 
@@ -388,11 +356,11 @@ def run_mcmc(
 
     model_fig: Figure = task.plot.model(return_figure_instance=True)
 
-    with _capture_figure() as corner_captured:
+    with capture_figure() as corner_captured:
         task.plot.corner(truths=True)
     corner_fig: Figure | None = corner_captured[0] if corner_captured else None
 
-    with _capture_figure() as traces_captured:
+    with capture_figure() as traces_captured:
         task.plot.traces(truths=True)
     traces_fig: Figure | None = traces_captured[0] if traces_captured else None
 
@@ -599,7 +567,7 @@ def load_chain(
 
     plt.close("all")
     try:
-        with _capture_figure() as corner_captured:
+        with capture_figure() as corner_captured:
             task.plot.corner(truths=True)
         corner_fig = corner_captured[0] if corner_captured else None
     except Exception as exc:  # noqa: BLE001
@@ -608,7 +576,7 @@ def load_chain(
 
     plt.close("all")
     try:
-        with _capture_figure() as traces_captured:
+        with capture_figure() as traces_captured:
             task.plot.traces(truths=True)
         traces_fig = traces_captured[0] if traces_captured else None
     except Exception as exc:  # noqa: BLE001

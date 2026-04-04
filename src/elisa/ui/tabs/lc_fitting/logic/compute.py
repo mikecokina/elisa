@@ -14,7 +14,6 @@ The ``semi_major_axis`` parameter supports three modes via the
 
 from __future__ import annotations
 
-import contextlib
 import json
 import logging
 from pathlib import Path
@@ -29,13 +28,11 @@ from elisa.analytics import LCBinaryAnalyticsTask, LCData
 from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.ui.shared.const import MAX_SPOTS
 from elisa.ui.shared.logging_config import fit_logging
-from elisa.ui.shared.plotting import figure_to_pil
+from elisa.ui.shared.plotting import capture_figure, figure_to_pil
 from elisa.ui.shared.utils import opt_float as _opt_float
 from elisa.ui.shared.utils import result_temp_path
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
     from matplotlib.figure import Figure
     from numpy.typing import NDArray
     from PIL import Image
@@ -108,32 +105,6 @@ class LCRowData(TypedDict):
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-
-@contextlib.contextmanager
-def _capture_figure() -> Iterator[list[Figure]]:
-    """Replace ``plt.show`` temporarily to capture the figure it would display.
-
-    Yields a list that will contain the captured ``Figure`` after the
-    ``with`` block exits.  Only the figure alive at the moment
-    ``plt.show()`` is called is captured; subsequent calls overwrite it.
-
-    :yields: A list that will hold the captured ``matplotlib.figure.Figure``
-        after the context exits.
-    :rtype: list[matplotlib.figure.Figure]
-    """
-    captured: list[Figure] = []
-    original_show = plt.show
-
-    def _mock_show(*_args: object, **_kwargs: object) -> None:
-        fig = plt.gcf()
-        if fig is not None:
-            captured.append(fig)
-
-    plt.show = _mock_show  # type: ignore[assignment]
-    try:
-        yield captured
-    finally:
-        plt.show = original_show  # type: ignore[assignment]
 
 
 
@@ -891,7 +862,7 @@ def load_chain(
 
     plt.close("all")
     try:
-        with _capture_figure() as corner_captured:
+        with capture_figure() as corner_captured:
             task.plot.corner(truths=True)
         corner_fig = corner_captured[0] if corner_captured else None
     except Exception as exc:  # noqa: BLE001
@@ -900,7 +871,7 @@ def load_chain(
 
     plt.close("all")
     try:
-        with _capture_figure() as traces_captured:
+        with capture_figure() as traces_captured:
             task.plot.traces(truths=True)
         traces_fig = traces_captured[0] if traces_captured else None
     except Exception as exc:  # noqa: BLE001
@@ -1049,11 +1020,11 @@ def run_mcmc(
 
     model_fig: Figure = task.plot.model(return_figure_instance=True)
 
-    with _capture_figure() as corner_captured:
+    with capture_figure() as corner_captured:
         task.plot.corner(truths=True)
     corner_fig: Figure | None = corner_captured[0] if corner_captured else None
 
-    with _capture_figure() as traces_captured:
+    with capture_figure() as traces_captured:
         task.plot.traces(truths=True)
     traces_fig: Figure | None = traces_captured[0] if traces_captured else None
 

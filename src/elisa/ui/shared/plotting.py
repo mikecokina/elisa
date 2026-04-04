@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from io import BytesIO
 from typing import TYPE_CHECKING
 
@@ -11,6 +12,8 @@ import numpy as np
 from PIL import Image
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from matplotlib.figure import Figure
     from numpy.typing import NDArray
 
@@ -85,6 +88,44 @@ _RC: dict[str, object] = {
     "grid.linestyle": "--",
     "figure.dpi": 130,
 }
+
+
+@contextlib.contextmanager
+def _capture_figure() -> Iterator[list[Figure]]:
+    """Temporarily capture figures shown via ``plt.show()``.
+
+    Replaces :func:`matplotlib.pyplot.show` within the context and appends
+    the current figure to the yielded list each time ``show()`` is called.
+
+    :yields: List populated with captured figures.
+    :rtype: list[matplotlib.figure.Figure]
+    """
+    captured: list[Figure] = []
+    original_show = plt.show
+
+    def _mock_show(*_args: object, **_kwargs: object) -> None:
+        fig = plt.gcf()
+        if fig is not None:
+            captured.append(fig)
+
+    plt.show = _mock_show  # type: ignore[assignment]
+    try:
+        yield captured
+    finally:
+        plt.show = original_show  # type: ignore[assignment]
+
+
+def capture_figure() -> contextlib.AbstractContextManager[list[Figure]]:
+    """Return a context manager that captures figures shown via ``plt.show()``.
+
+    This public wrapper provides an ``AbstractContextManager`` return type
+    for static checkers while delegating the implementation to
+    :func:`_capture_figure`.
+
+    :returns: Context manager yielding captured figures.
+    :rtype: contextlib.AbstractContextManager[list[matplotlib.figure.Figure]]
+    """
+    return _capture_figure()
 
 
 def figure_to_pil(fig: Figure | None) -> Image.Image | None:
