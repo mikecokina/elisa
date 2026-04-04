@@ -10,9 +10,9 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 from elisa import Observer
+from elisa.ui.shared.binary_model import build_star, build_system
 from elisa.ui.shared.plotting import render_rv_figure
 from elisa.ui.shared.utils import opt_float
-from elisa.ui.tabs.lc_modeling.logic.compute import build_star, build_system
 from elisa.utc import UTC
 
 if TYPE_CHECKING:

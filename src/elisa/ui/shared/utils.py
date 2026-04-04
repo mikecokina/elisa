@@ -15,10 +15,10 @@ from typing import TYPE_CHECKING
 from elisa.utc import UTC
 
 if TYPE_CHECKING:
-    from elisa.types import Float
+    from elisa.types import Float, Int
 
 
-def opt_float(value: object) -> Float | None:
+def opt_float(value: str | float | None) -> Float | None:
     """Convert *value* to a float or return ``None`` for absent/empty inputs.
 
     Accepts numeric types, string representations produced by ``gr.Textbox``
@@ -45,6 +45,35 @@ def opt_float(value: object) -> Float | None:
         return float(value)  # type: ignore[arg-type]
     except (TypeError, ValueError):
         return None
+
+
+def opt_int(value: str | float | None) -> Int | None:
+    """Convert *value* to an int or return ``None`` for absent/empty inputs.
+
+    Accepts numeric types, string representations produced by ``gr.Textbox``
+    or ``gr.Number``, and ``None``. Empty strings and ``None`` both signal
+    "not supplied" and return ``None``.
+
+    :param value: Numeric value, string representation, or ``None``.
+    :type value: object
+    :returns: Parsed int or ``None``.
+    :rtype: Int | None
+    :raises ValueError: If *value* is a non-empty string that cannot be
+        parsed as a number.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped == "":
+            return None
+        try:
+            parsed = float(stripped)
+        except ValueError as exc:
+            msg = f"Cannot parse '{stripped}' as a number."
+            raise ValueError(msg) from exc
+        return int(parsed)
+    return int(value)
 
 
 def result_temp_path(category: str, prefix: str) -> Path:
