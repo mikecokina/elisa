@@ -1,4 +1,4 @@
-# ELISA
+# <img src="src/elisa/ui/assets/logo.png" width="80" align="middle"> ELISa
 
 [![Python](https://img.shields.io/badge/Python-3.10--3.14-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-GPLv3-green.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
