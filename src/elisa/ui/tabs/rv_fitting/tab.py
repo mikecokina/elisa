@@ -77,6 +77,11 @@ def _lsqrt_handler(
         secondary_path: str | None = getattr(data_vals.get("secondary_file"), "name", None)
         x_unit_str: str = str(data_vals.get("x_unit", "Julian days (JD)"))
 
+        # Validate that primary RV data is provided
+        if primary_path is None:
+            msg = "Primary RV data file is required."
+            raise gr.Error(msg)
+
         # Prepare an RVBinaryAnalyticsTask so the compute layer populates it
         rv_primary = compute.load_rv_data(primary_path, x_unit_str)
         rv_secondary = compute.load_rv_data(secondary_path, x_unit_str)
@@ -139,6 +144,11 @@ def _mcmc_handler(
         primary_path: str | None = getattr(data_vals.get("primary_file"), "name", None)
         secondary_path: str | None = getattr(data_vals.get("secondary_file"), "name", None)
         x_unit_str: str = str(data_vals.get("x_unit", "Julian days (JD)"))
+
+        # Validate that primary RV data is provided
+        if primary_path is None:
+            msg = "Primary RV data file is required."
+            raise gr.Error(msg)
 
         nwalkers = int(mcmc_vals.get("nwalkers") or 50)
         nsteps = int(mcmc_vals.get("nsteps") or 500)
