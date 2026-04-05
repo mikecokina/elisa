@@ -7,6 +7,48 @@
 [![Build](https://img.shields.io/badge/OS-Linux|Windows-magenta.svg)](https://en.wikipedia.org/wiki/Operating_system)
 
 
+## Desktop UI:
+
+The Gradio-based desktop UI is under active development in a separate branch: `feature/ui`.
+You can preview and test the UI from this branch; it contains the latest UI work-in-progress.
+
+If you want the latest Gradio desktop UI work-in-progress without
+checking out the repository locally you can install directly from the
+`feature/ui` branch on GitHub using pip. This is useful for quick testing
+or when you don't need to edit the source.
+
+- Branch on GitHub: https://github.com/mikecokina/elisa/tree/feature/ui
+
+Non-editable install (package is installed into the environment):
+
+The following PEP 508 direct-URL form installs the package and the UI extras
+in one step. This is the form tested and known to install Gradio and other UI
+extras correctly in most shells:
+
+```bash
+pip install "elisa[dev,test,ui] @ git+https://github.com/mikecokina/elisa.git@feature/ui"
+```
+
+Notes and troubleshooting
+
+- Shell quoting matters: include the quotes (double or single) around the whole PEP 508
+  URL expression so your shell does not split the argument. On POSIX shells use double
+  quotes as shown above; on Windows PowerShell you may need single quotes.
+- If you later see "ModuleNotFoundError: No module named 'gradio'", extras were not
+  installed. You can either re-run the PEP 508 install (make sure it's quoted), or
+  install Gradio manually:
+
+```bash
+pip install gradio
+# or re-run the PEP 508 form above with correct quoting
+```
+
+After installation, launch the desktop UI the same way:
+
+```bash
+python -m elisa.ui
+```
+
 
 ## Publications
 
