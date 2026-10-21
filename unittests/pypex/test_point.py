@@ -79,6 +79,30 @@ class SameSideTestCase(unittest.TestCase):
         self.assertTrue(point.same_side(p1, p2, a, b))
 
 
+class LineSideCompatibilityTestCase(unittest.TestCase):
+    def test_line_side_magnitude_and_orientation(self):
+        origin = np.array([-3.0, 2.0])
+        for direction in ((4, 0), (0, 4), (3, 4)):
+            ab = np.array(direction, dtype=float)
+            normal = np.array([-ab[1], ab[0]])
+            for side1, side2 in ((1, 2), (1, -2), (0, 2), (0, 0)):
+                p1 = origin + 0.25 * ab + side1 * normal
+                p2 = origin + 0.75 * ab + side2 * normal
+                expected = side1 * side2 * np.dot(ab, ab) ** 2
+                for reverse in (False, True):
+                    a, b = (origin + ab, origin) if reverse else (origin, origin + ab)
+                    for swap in (False, True):
+                        first, second = (p2, p1) if swap else (p1, p2)
+                        for as_list in (False, True):
+                            with self.subTest(direction=direction, sides=(side1, side2),
+                                              reverse=reverse, swap=swap, as_list=as_list):
+                                args = (first, second, a, b)
+                                if as_list:
+                                    args = tuple(value.tolist() for value in args)
+                                self.assertEqual(point._line_side(*args), expected)
+                                self.assertEqual(point.same_side(*args), expected >= 0)
+
+
 class BaseTestCase(unittest.TestCase):
     """Test cases for is_point_in_polygon function."""
 

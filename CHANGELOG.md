@@ -33,6 +33,8 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Restored Pypex point-side checks on NumPy 2.5 by explicitly computing
+  2D cross-product components instead of calling `np.cross` with 2D vectors.
 - Prevented multiprocessing worker hangs by explicitly closing and joining pools.
 - Guarded zero-point lookups against missing keys.
 - Corrected parallel-line distances in vectorized Pypex segment intersections,

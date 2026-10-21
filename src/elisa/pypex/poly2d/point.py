@@ -31,8 +31,11 @@ def _line_side(p1: NDArray, p2: NDArray, a: NDArray, b: NDArray) -> float:
     :rtype: float
     """
     p1, p2, a, b = np.array(p1), np.array(p2), np.array(a), np.array(b)
-    cp1 = np.cross(b - a, p1 - a)
-    cp2 = np.cross(b - a, p2 - a)
+    # Explicit z-components of the cross products for 2D vectors.
+    ab = b - a
+    ap1, ap2 = p1 - a, p2 - a
+    cp1 = ab[..., 0] * ap1[..., 1] - ab[..., 1] * ap1[..., 0]
+    cp2 = ab[..., 0] * ap2[..., 1] - ab[..., 1] * ap2[..., 0]
     return np.dot(cp1, cp2)
 
 
