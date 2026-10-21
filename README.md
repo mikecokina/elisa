@@ -390,7 +390,7 @@ workflow - modeling, fitting, and visualization - without writing any code.
 **Launch the UI:**
 
 ```bash
-python -m elisa.ui
+`python -m elisa.ui`
 ```
 
 The app opens in your browser at `http://localhost:7860` and provides five tabs:
