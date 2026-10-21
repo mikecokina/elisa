@@ -198,6 +198,9 @@ def separating_axis_theorem_line_adapt(
         for vertex in line2])
     projection_x = [np.round(projection_line1.T[0], round_tol), np.round(projection_line2.T[0], round_tol)]
 
+    # Order each interval independently of segment endpoint orientation.
+    projection_x = [np.sort(interval) for interval in projection_x]
+
     # Sort intervals
     # After sorting:
     # - projection_x[0] is the interval that starts first

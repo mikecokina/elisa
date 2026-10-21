@@ -3,7 +3,8 @@ import unittest
 
 import numpy as np
 
-from elisa.pypex.poly2d.intersection import sat
+from elisa.pypex.base.conf import ROUND_PRECISION
+from elisa.pypex.poly2d.intersection import linter, sat
 
 
 class SeparatingAxisTheoremTestCase(unittest.TestCase):
@@ -211,6 +212,66 @@ class IntersectsTestCase(unittest.TestCase):
         poly2 = [[1, 1], [3, 1], [3, 3], [1, 3]]
         # Should work with list input (ArrayLike)
         self.assertTrue(sat.intersects(poly1, poly2, touch_is_separated=False))
+
+
+class CollinearOrientationRegressionTestCase(unittest.TestCase):
+    def assert_overlap_entry_points(self, line1, line2, expected, touch_is_separated,
+                                    round_tol=ROUND_PRECISION):
+        kwargs = dict(touch_is_separated=touch_is_separated, round_tol=round_tol)
+        self.assertEqual(sat.separating_axis_theorem_line_adapt(line1, line2, **kwargs),
+                         not expected)
+        self.assertEqual(sat.intersects(line1, line2, **kwargs), expected)
+        scalar = linter.intersection(*line1, *line2, **kwargs)
+        self.assertEqual(scalar[:2], (True, expected))
+        self.assertTrue(np.isnan(scalar[2]))
+        self.assertEqual(scalar[3:], (0.0, 'COLINEAR'))
+        vector = linter.intersections(line1, line2, **kwargs)
+        np.testing.assert_array_equal(vector[0], np.ones(4, dtype=bool))
+        np.testing.assert_array_equal(vector[1], np.full(4, expected))
+        np.testing.assert_array_equal(vector[2], np.full((4, 2), np.nan))
+        np.testing.assert_array_equal(vector[3], np.zeros(4))
+        np.testing.assert_array_equal(vector[4], np.full(4, b'COLINEAR'))
+
+    def test_collinear_orientation_overlap_matrix(self):
+        cases = [('partial', (0, 2), (1, 3), True),
+                 ('contained', (0, 4), (1, 3), True),
+                 ('identical', (0, 2), (0, 2), True),
+                 ('disjoint', (0, 2), (3, 4), False),
+                 ('touch', (0, 2), (2, 4), None)]
+        for name, interval1, interval2, overlap in cases:
+            for direction in ((1, 0), (0, 1), (1, -1)):
+                origin = np.array([-2.0, 1.0])
+                line1 = origin + np.array(interval1)[:, None] * direction
+                line2 = origin + np.array(interval2)[:, None] * direction
+                for reverse1 in (False, True):
+                    for reverse2 in (False, True):
+                        for swap in (False, True):
+                            a = line1[::-1] if reverse1 else line1
+                            b = line2[::-1] if reverse2 else line2
+                            a, b = (b, a) if swap else (a, b)
+                            for touch_is_separated in (False, True):
+                                with self.subTest(case=name, direction=direction,
+                                                  reverse1=reverse1, reverse2=reverse2,
+                                                  swap=swap, touch_is_separated=touch_is_separated):
+                                    expected = not touch_is_separated if overlap is None else overlap
+                                    self.assert_overlap_entry_points(a, b, expected, touch_is_separated)
+
+    def test_collinear_orientation_round_tol(self):
+        for reverse1 in (False, True):
+            for reverse2 in (False, True):
+                for swap in (False, True):
+                    a = np.array([[0.0, 0.0], [1.0, 0.0]])
+                    b = np.array([[1.0001, 0.0], [2.0, 0.0]])
+                    a = a[::-1] if reverse1 else a
+                    b = b[::-1] if reverse2 else b
+                    a, b = (b, a) if swap else (a, b)
+                    for round_tol in (3, 5):
+                        for touch_is_separated in (False, True):
+                            with self.subTest(reverse1=reverse1, reverse2=reverse2, swap=swap,
+                                              round_tol=round_tol, touch_is_separated=touch_is_separated):
+                                expected = round_tol == 3 and not touch_is_separated
+                                self.assert_overlap_entry_points(a, b, expected, touch_is_separated,
+                                                                 round_tol=round_tol)
 
 
 if __name__ == '__main__':

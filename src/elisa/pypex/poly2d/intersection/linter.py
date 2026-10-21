@@ -244,7 +244,7 @@ def intersections(  # noqa: PLR0915
         c1 = multiple_determinants(face_dface)
         problem_poly2_edges = np.tile(poly2_edges, (poly1.shape[0], 1, 1))[non_intersections]
         c2 = -(a1 * problem_poly2_edges[:, 1, 0] + b1 * problem_poly2_edges[:, 1, 1])
-        dist = np.abs(c2 - c1) / (np.sqrt(np.power(a1, 2) + np.sqrt(np.power(b1, 2))))
+        dist = np.abs(c2 - c1) / np.hypot(a1, b1)
         # fill output
         distance[non_intersections] = dist
         msg[non_intersections] = "PARALLEL"
