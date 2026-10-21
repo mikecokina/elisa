@@ -1,8 +1,8 @@
-# ELISA
+# <img src="src/elisa/ui/assets/logo.png" width="80" align="middle"> ELISa
 
 [![Python](https://img.shields.io/badge/Python-3.10--3.14-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-GPLv3-green.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
-[![Version](https://img.shields.io/badge/Version-0.7.0dev0-yellow.svg)](https://github.com/mikecokina/elisa/commits/dev)
+[![Version](https://img.shields.io/badge/Version-1.0.0dev0-yellow.svg)](https://github.com/mikecokina/elisa/commits/dev)
 [![Build](https://img.shields.io/badge/Build-setuptools-blue.svg)](https://pypi.org/project/setuptools/)
 [![Build](https://img.shields.io/badge/OS-Linux|Windows-magenta.svg)](https://en.wikipedia.org/wiki/Operating_system)
 
@@ -453,6 +453,30 @@ The plotting interface supports visualization of multi-passband light curves and
 
 ---
 
+## Desktop UI
+
+ELISa ships with an interactive desktop application built on [Gradio](https://www.gradio.app/). It covers the full
+workflow - modeling, fitting, and visualization - without writing any code.
+
+**Launch the UI:**
+
+```bash
+`python -m elisa.ui`
+```
+
+The app opens in your browser at `http://localhost:7860` and provides five tabs:
+
+- **Light Curve Modeling** - generate synthetic light curves
+- **Radial Velocity Modeling** - generate synthetic RV curves (kinematic or radiometric method)
+- **Light Curve Fitting** - fit observed LC data using The Least Squares or MCMC
+- **Radial Velocity Fitting** - fit observed RV data using The Least Squares or MCMC
+- **System Visualization** - render surface, mesh, orbit, and equipotential plots
+
+For full usage instructions, parameter descriptions, and worked examples see
+**[UI_GUIDE.md](./UI_GUIDE.md)**.
+
+---
+
 ## Solving the Inverse Problem
 
 ELISa provides built-in functionality for inferring binary system parameters from observational data. Similar to the 
@@ -682,6 +706,7 @@ Metallicity (log10(X_Fe/X_H)):                       0.0                   -    
 
 Detailed step-by-step fitting guides are available in:
 
-- Notebook 10 - Working with ELISa datasets  
-- Notebook 11 - Light curve fitting  
-- Notebook 12 - Radial velocity fitting  
+- **[UI_GUIDE.md](./UI_GUIDE.md)** - complete user guide for the desktop application
+- Notebook 10 - Working with ELISa datasets
+- Notebook 11 - Light curve fitting
+- Notebook 12 - Radial velocity fitting

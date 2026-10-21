@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from elisa import const, settings
+from elisa.base.body import Body
 from elisa.logger import getLogger
 from elisa.umpy import sph_harm
 
@@ -135,7 +136,7 @@ def horizontal_displacement_normalization(
 
 
 def assign_amplitudes(
-    star_container: StarContainer,
+    star_container: StarContainer | Body,
     normalization_constant: float = 1.0,
 ) -> None:
     """Assign radial and horizontal displacement amplitudes to pulsation modes.

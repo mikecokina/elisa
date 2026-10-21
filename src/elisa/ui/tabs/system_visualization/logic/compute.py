@@ -1,0 +1,268 @@
+"""Core computation logic for system visualization.
+
+This module is a pure-logic layer with no Gradio dependency. It translates
+raw parameter dictionaries into ELISa objects, generates mesh and orbit
+visualizations, and returns PIL images that can be rendered by the UI layer.
+"""
+
+from __future__ import annotations
+
+import gc
+from typing import TYPE_CHECKING
+
+import matplotlib.pyplot as plt
+
+from elisa import BinarySystem, Star
+from elisa import units as u
+from elisa.ui.shared.plotting import figure_to_pil
+from elisa.ui.tabs.lc_modeling.components.pulsation_inputs import parse_pulsation_modes
+from elisa.ui.tabs.lc_modeling.components.spot_inputs import parse_spots
+
+if TYPE_CHECKING:
+    from PIL import Image
+
+    from elisa.types import Float
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+# Keys that should be converted to int rather than float.
+_INT_KEYS: frozenset[str] = frozenset({"discretization_factor"})
+
+# Keys that are plain strings and must never be coerced to a number.
+_STRING_KEYS: frozenset[str] = frozenset({"atmosphere"})
+
+
+def _ensure_float(value: Float | str | None) -> Float | None:
+    """Convert value to float, handling string inputs from Gradio.
+
+    :param value: Numeric value, string representation, or ``None``.
+    :type value: Float | str | None
+    :returns: Parsed float or ``None``.
+    :rtype: Float | None
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped == "":
+            return None
+        return float(stripped)
+    return float(value)
+
+
+def _ensure_int(value: Float | str | None) -> int | None:
+    """Convert value to int, handling string inputs from Gradio.
+
+    :param value: Numeric value, string representation, or ``None``.
+    :type value: Float | str | None
+    :returns: Parsed int or ``None``.
+    :rtype: int | None
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped == "":
+            return None
+        return int(float(stripped))
+    return int(value)
+
+
+def _convert_params(params: dict) -> dict:
+    """Convert all numeric string parameters to proper types.
+
+    Processes a parameter dictionary, converting any string values to
+    their appropriate numeric types. Empty strings are converted to
+    ``None`` so that optional parameters can be cleanly filtered out
+    before passing to ELISa. Non-numeric string values (e.g. atmosphere
+    names) are left unchanged.
+
+    :param params: Parameter dictionary (potentially with string values
+        as returned by Gradio ``gr.Textbox`` components).
+    :type params: dict
+    :returns: Parameter dictionary with converted numeric values and
+        empty strings replaced by ``None``.
+    :rtype: dict
+    """
+    converted = {}
+    for key, value in params.items():
+        if key in _STRING_KEYS:
+            converted[key] = value
+        elif key in _INT_KEYS:
+            converted[key] = _ensure_int(value)
+        elif isinstance(value, str):
+            stripped = value.strip()
+            if stripped == "":
+                # Empty optional textbox - let ELISa apply its own default
+                converted[key] = None
+            else:
+                converted[key] = _ensure_float(stripped)
+        else:
+            converted[key] = value
+    return converted
+
+
+def _filter_none(params: dict) -> dict:
+    """Return a copy of *params* with all ``None`` values removed.
+
+    ELISa constructors treat missing keyword arguments as "use default",
+    so we must not pass explicit ``None`` for optional fields.
+
+    :param params: Parameter dictionary possibly containing ``None`` values.
+    :type params: dict
+    :returns: New dict with ``None`` entries dropped.
+    :rtype: dict
+    """
+    return {k: v for k, v in params.items() if v is not None}
+
+
+
+# ---------------------------------------------------------------------------
+# Main computation
+# ---------------------------------------------------------------------------
+
+
+def run_visualization(
+    primary_params: dict,
+    secondary_params: dict,
+    system_params: dict,
+    observer_params: dict,
+    primary_pulsation_params: dict | None = None,
+    secondary_pulsation_params: dict | None = None,
+    primary_spot_params: dict | None = None,
+    secondary_spot_params: dict | None = None,
+) -> tuple[Image.Image | None, Image.Image | None, Image.Image | None, Image.Image | None]:
+    """Generate mesh, orbit, equipotential, and/or surface visualizations for a binary system.
+
+    Creates a binary system from the given parameters and produces PIL images
+    based on the visualization mode:
+
+    - ``"mesh"``: 3D surface geometry at a given phase
+    - ``"wireframe"``: 3D wireframe surface geometry at a given phase
+    - ``"orbit"``: 2D orbital motion trajectory
+    - ``"equipotential"``: 2D cross-section of Hill surface potentials
+    - ``"surface"``: 3D shaded surface with an optional physical colormap
+
+    Returns PIL images instead of matplotlib figures for better performance
+    with Gradio Image components (much lighter than Plot components).
+
+    :param primary_params: Primary star parameters (mass, T_eff, etc.).
+    :type primary_params: dict
+    :param secondary_params: Secondary star parameters.
+    :type secondary_params: dict
+    :param system_params: Binary system parameters (inclination, period, etc.).
+    :type system_params: dict
+    :param observer_params: Visualization parameters (mode, phase, components,
+        plane, frame, colormap).
+    :type observer_params: dict
+    :param primary_pulsation_params: Primary star pulsation parameters.
+    :type primary_pulsation_params: dict | None
+    :param secondary_pulsation_params: Secondary star pulsation parameters.
+    :type secondary_pulsation_params: dict | None
+    :param primary_spot_params: Primary star spot parameters.
+    :type primary_spot_params: dict | None
+    :param secondary_spot_params: Secondary star spot parameters.
+    :type secondary_spot_params: dict | None
+    :returns: Tuple of (mesh_or_wireframe_image, orbit_image, equipotential_image,
+        surface_image).
+    :rtype: tuple[Image.Image | None, Image.Image | None, Image.Image | None, Image.Image | None]
+    """
+    primary_params = _filter_none(_convert_params(primary_params))
+    secondary_params = _filter_none(_convert_params(secondary_params))
+    system_params = _filter_none(_convert_params(system_params))
+
+    primary_pulsation_modes = parse_pulsation_modes(primary_pulsation_params)
+    secondary_pulsation_modes = parse_pulsation_modes(secondary_pulsation_params)
+    primary_spots = parse_spots(primary_spot_params)
+    secondary_spots = parse_spots(secondary_spot_params)
+
+    # Close figures left open by the previous call - Gradio serialises them
+    # before the next request arrives, so they are safe to discard here.
+    plt.close("all")
+
+    visualization_mode: str = observer_params.get("visualization_mode") or ""
+    phase: Float = _ensure_float(observer_params["phase"])
+    components_to_plot: str = observer_params["components_to_plot"]
+    plane: str = observer_params.get("plane", "xy")
+    frame_of_reference: str = observer_params["frame_of_reference"]
+    colormap: str | None = observer_params.get("colormap") or None
+    elevation: Float | None = _ensure_float(observer_params.get("elevation"))
+    azimuth: Float | None = _ensure_float(observer_params.get("azimuth"))
+
+    if not visualization_mode:
+        msg = "No visualization mode selected. Please choose one from the 'What to plot' dropdown."
+        raise ValueError(msg)
+
+    primary = Star(
+        **primary_params,
+        pulsations=primary_pulsation_modes or None,
+        spots=primary_spots or None,
+    )
+    secondary = Star(
+        **secondary_params,
+        pulsations=secondary_pulsation_modes or None,
+        spots=secondary_spots or None,
+    )
+    binary = BinarySystem(primary=primary, secondary=secondary, **system_params)
+
+    mesh_fig = None
+    orbit_fig = None
+    equipotential_fig = None
+    surface_fig = None
+
+    if visualization_mode == "mesh":
+        mesh_fig = binary.plot.mesh(
+            phase=phase,
+            components_to_plot=components_to_plot,
+            return_figure_instance=True,
+        )
+    elif visualization_mode == "wireframe":
+        mesh_fig = binary.plot.wireframe(
+            phase=phase,
+            components_to_plot=components_to_plot,
+            inclination=elevation,
+            azimuth=azimuth,
+            return_figure_instance=True,
+        )
+    elif visualization_mode == "orbit":
+        orbit_fig = binary.plot.orbit(
+            start_phase=-0.5,
+            stop_phase=1.5,
+            number_of_points=300,
+            axis_units=u.solRad,
+            frame_of_reference=frame_of_reference,
+            return_figure_instance=True,
+        )
+    elif visualization_mode == "equipotential":
+        equipotential_fig = binary.plot.equipotential(
+            plane=plane,
+            phase=phase,
+            components_to_plot=components_to_plot,
+            return_figure_instance=True,
+        )
+    elif visualization_mode == "surface":
+        surface_fig = binary.plot.surface(
+            phase=phase,
+            components_to_plot=components_to_plot,
+            colormap=colormap,
+            elevation=elevation,
+            azimuth=azimuth,
+            return_figure_instance=True,
+        )
+
+    # Convert matplotlib figures to PIL images for lightweight Gradio rendering
+    # This avoids expensive matplotlib figure serialization in Gradio
+    result = (
+        figure_to_pil(mesh_fig),
+        figure_to_pil(orbit_fig),
+        figure_to_pil(equipotential_fig),
+        figure_to_pil(surface_fig),
+    )
+
+    # Final garbage collection helps keep repeated UI calls responsive.
+    gc.collect()
+
+    return result

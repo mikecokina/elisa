@@ -751,7 +751,7 @@ class BinarySystem(System):
             adj.discretization_factor = max(adj.discretization_factor, min_discretization)
 
             logger.info(
-                "setting discretization factor of %s component to %.2f"
+                "setting discretization factor of %s component to %.2f "
                 "according to discretization factor of the companion.",
                 adj_comp,
                 up.degrees(adj.discretization_factor),

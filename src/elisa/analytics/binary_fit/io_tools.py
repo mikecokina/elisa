@@ -166,7 +166,7 @@ def update_solution(
 
     else:
         error_msg = (
-            "Load fit parameters before loading the chain. For example, call load_solution() or similar method first."
+            "Load fit parameters before loading the chain. For example, call load_results() or similar method first."
         )
         raise ValueError(error_msg)
 

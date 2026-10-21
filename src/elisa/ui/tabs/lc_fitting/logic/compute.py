@@ -1,0 +1,1043 @@
+"""Core computation logic for LC fitting.
+
+Translates flat Gradio value dicts and passband row data into ELISa
+analytics objects, runs LSQRT or MCMC optimization, and returns plain
+Python / matplotlib objects for the UI layer.
+
+The ``semi_major_axis`` parameter supports three modes via the
+``system_semi_major_axis_mode`` key:
+
+- ``"free"`` - fitted freely with ``min`` / ``max`` bounds.
+- ``"fixed"`` - held at its initial value.
+- ``"constrained"`` - value expression from ``system_semi_major_axis_constraint``.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+from pathlib import Path
+from typing import TYPE_CHECKING, Literal, TypedDict
+
+import gradio as gr
+import matplotlib.pyplot as plt
+import pandas as pd
+
+from elisa import units as u
+from elisa.analytics import LCBinaryAnalyticsTask, LCData
+from elisa.analytics.params.parameters import BinaryInitialParameters
+from elisa.ui.shared.const import MAX_SPOTS
+from elisa.ui.shared.logging_config import fit_logging
+from elisa.ui.shared.plotting import capture_figure, figure_to_pil
+from elisa.ui.shared.utils import opt_float as _opt_float
+from elisa.ui.shared.utils import result_temp_path
+
+if TYPE_CHECKING:
+    from matplotlib.figure import Figure
+    from numpy.typing import NDArray
+    from PIL import Image
+
+    from elisa.types import Float, Int
+
+_logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Unit maps
+# ---------------------------------------------------------------------------
+
+_X_UNIT_MAP: dict[str, object] = {
+    "Julian days (JD)": u.d,
+    "Phases (dimensionless)": u.dimensionless_unscaled,
+}
+
+_Y_UNIT_MAP: dict[str, object] = {
+    "Flux (dimensionless)": u.dimensionless_unscaled,
+    "Magnitude (mag)": u.mag,
+}
+
+_X_UNIT_JD = "Julian days (JD)"
+
+# Unit strings injected into the x0 dict for each parameter.
+# None means dimensionless (unit key omitted).
+_SYSTEM_PARAM_UNITS: dict[str, str | None] = {
+    "inclination": "deg",
+    "eccentricity": None,
+    "argument_of_periastron": "deg",
+    "mass_ratio": None,
+    "period": "d",
+    "primary_minimum_time": "d",
+    "additional_light": None,
+    "phase_shift": None,
+    "semi_major_axis": "solRad",
+}
+
+_COMPONENT_PARAM_UNITS: dict[str, str | None] = {
+    "mass": "solMass",
+    "t_eff": "K",
+    "surface_potential": None,
+    "gravity_darkening": None,
+    "albedo": None,
+}
+
+
+# ---------------------------------------------------------------------------
+# Passband row typing
+# ---------------------------------------------------------------------------
+
+
+class LCRowData(TypedDict):
+    """Flat data for one passband row collected from the UI.
+
+    :cvar passband: Photometric passband name.
+    :cvar file_path: Absolute path to the uploaded data file, or ``None``.
+    :cvar y_unit: Y-axis unit choice string from the UI dropdown.
+    :cvar reference_magnitude: Reference magnitude for mag-to-flux conversion,
+        or ``None`` when y-unit is flux.
+    """
+
+    passband: str
+    file_path: str | None
+    y_unit: str
+    reference_magnitude: Float | None
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+
+
+
+def _load_json_object_for_role(path: str, role: str) -> dict[str, object]:
+    """Load a JSON file and validate it is an object.
+
+    :param path: Path to the JSON file.
+    :type path: str
+    :param role: Human-readable role label used in error messages.
+    :type role: str
+    :returns: Parsed JSON object.
+    :rtype: dict[str, object]
+    :raises gr.Error: If the file cannot be read or root is not a JSON object.
+    """
+    try:
+        loaded = json.loads(Path(path).read_text(encoding="utf-8"))
+    except Exception as exc:
+        msg = f"Failed to read {role} file '{path}': {exc}"
+        raise gr.Error(msg) from exc
+    if not isinstance(loaded, dict):
+        msg = f"The {role} file '{path}' is not a JSON object."
+        raise gr.Error(msg)
+    return loaded
+
+
+def _normalize_chain_and_result_paths(
+    chain_file_path: str,
+    result_file_path: str,
+) -> tuple[str, str]:
+    """Validate required keys and normalize chain/result file ordering.
+
+    Handles a common UI mistake where chain and result files are uploaded into
+    opposite inputs by detecting the mismatch and swapping the paths.
+
+    :param chain_file_path: Path provided in the chain-file input.
+    :type chain_file_path: str
+    :param result_file_path: Path provided in the result-file input.
+    :type result_file_path: str
+    :returns: Normalized tuple ``(chain_file_path, result_file_path)``.
+    :rtype: tuple[str, str]
+    :raises gr.Error: If required keys are missing after normalization.
+    """
+    chain_json = _load_json_object_for_role(chain_file_path, "chain")
+    result_json = _load_json_object_for_role(result_file_path, "result")
+
+    chain_has_flat_chain = "flat_chain" in chain_json
+    result_has_flat_chain = "flat_chain" in result_json
+    chain_looks_like_result = "system" in chain_json
+    result_looks_like_result = "system" in result_json
+
+    if not chain_has_flat_chain and result_has_flat_chain and chain_looks_like_result:
+        gr.Warning("Detected swapped files - using the uploaded files in reversed order.")
+        chain_file_path, result_file_path = result_file_path, chain_file_path
+        chain_has_flat_chain = True
+        result_looks_like_result = True
+
+    if not chain_has_flat_chain:
+        msg = (
+            "Invalid chain file: missing 'flat_chain' key. "
+            "Please upload the JSON produced by MCMC chain saving, not the result JSON."
+        )
+        raise gr.Error(msg)
+
+    if not result_looks_like_result:
+        msg = "Invalid result file: missing 'system' key expected in ELISa result JSON."
+        raise gr.Error(msg)
+
+    return chain_file_path, result_file_path
+
+
+# ---------------------------------------------------------------------------
+# Public API - data loading
+# ---------------------------------------------------------------------------
+
+
+def load_lc_data(
+    file_path: str,
+    passband: str,
+    x_unit_str: str,
+    y_unit_str: str,
+    reference_magnitude: Float | None,
+) -> LCData:
+    """Load a single LC data file into an :class:`~elisa.analytics.LCData` object.
+
+    :param file_path: Absolute path to the whitespace-delimited data file.
+        Columns: ``x`` (time/phase) | ``flux or mag`` | ``err`` (optional).
+    :type file_path: str
+    :param passband: Photometric passband name (e.g. ``"Generic.Bessell.V"``).
+    :type passband: str
+    :param x_unit_str: X-axis unit label from the UI dropdown.
+    :type x_unit_str: str
+    :param y_unit_str: Y-axis unit label from the UI dropdown.
+    :type y_unit_str: str
+    :param reference_magnitude: Reference magnitude for magnitude-to-flux
+        conversion.  Required when *y_unit_str* is ``"Magnitude (mag)"``;
+        ignored for flux data.
+    :type reference_magnitude: Float | None
+    :returns: Loaded :class:`~elisa.analytics.LCData`.
+    :rtype: LCData
+    """
+    x_unit = _X_UNIT_MAP.get(x_unit_str, u.d)
+    y_unit = _Y_UNIT_MAP.get(y_unit_str, u.dimensionless_unscaled)
+
+    kwargs: dict[str, object] = {"passband": passband}
+    if y_unit is u.mag and reference_magnitude is not None:
+        kwargs["reference_magnitude"] = float(reference_magnitude)
+
+    return LCData.load_from_file(file_path, x_unit=x_unit, y_unit=y_unit, **kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Public API - x0 construction
+# ---------------------------------------------------------------------------
+
+
+def _build_regular_param_entry(
+    param_values: dict[str, object],
+    prefix: str,
+    unit_str: str | None,
+) -> dict[str, object]:
+    """Build one regular parameter entry for the x0 dict.
+
+    Supports three parameter modes via the ``{prefix}_mode`` key:
+
+    - ``"free"`` - fitted freely with ``min`` / ``max`` bounds.
+    - ``"fixed"`` - held at its initial value.
+    - ``"constrained"`` - value determined by expression from ``{prefix}_constraint``.
+
+    :param param_values: Flat UI parameter dict.
+    :type param_values: dict[str, object]
+    :param prefix: Full key prefix, e.g. ``"system_inclination"`` or
+        ``"primary_t_eff"``.
+    :type prefix: str
+    :param unit_str: Unit string to inject, or ``None`` for dimensionless.
+    :type unit_str: str | None
+    :returns: Per-parameter entry dict ready for ``BinaryInitialParameters``.
+    :rtype: dict[str, object]
+    """
+    mode = str(param_values.get(f"{prefix}_mode", "free"))
+    value = _opt_float(param_values.get(f"{prefix}_value"))
+    entry: dict[str, object] = {"value": value}
+
+    if mode == "constrained":
+        entry["constraint"] = str(param_values.get(f"{prefix}_constraint", ""))
+    elif mode == "fixed":
+        entry["fixed"] = True
+    else:  # free
+        entry["fixed"] = False
+        entry["min"] = _opt_float(param_values.get(f"{prefix}_min"))
+        entry["max"] = _opt_float(param_values.get(f"{prefix}_max"))
+
+    if unit_str is not None:
+        entry["unit"] = unit_str
+    return entry
+
+
+def _build_sma_entry(param_values: dict[str, object]) -> dict[str, object]:
+    """Build the ``semi_major_axis`` parameter entry for the x0 dict.
+
+    Reads ``system_semi_major_axis_mode`` and constructs either a free,
+    fixed, or constrained entry accordingly.
+
+    :param param_values: Flat UI parameter dict.
+    :type param_values: dict[str, object]
+    :returns: ``semi_major_axis`` entry dict.
+    :rtype: dict[str, object]
+    """
+    mode = str(param_values.get("system_semi_major_axis_mode", "constrained"))
+    entry: dict[str, object] = {
+        "value": _opt_float(param_values.get("system_semi_major_axis_value")),
+        "unit": "solRad",
+    }
+    if mode == "constrained":
+        entry["constraint"] = str(
+            param_values.get("system_semi_major_axis_constraint", ""),
+        )
+    elif mode == "fixed":
+        entry["fixed"] = True
+    else:  # free
+        entry["fixed"] = False
+        entry["min"] = _opt_float(param_values.get("system_semi_major_axis_min"))
+        entry["max"] = _opt_float(param_values.get("system_semi_major_axis_max"))
+    return entry
+
+
+def _build_component_params(
+    param_values: dict[str, object],
+    section: str,
+    base_params: tuple[str, ...],
+    *,
+    include_mass: bool,
+) -> dict[str, dict]:
+    """Build one component section (primary or secondary) for the x0 dict.
+
+    Iterates over *base_params* (community component params without mass),
+    then appends the optional ``mass`` entry when present in *param_values*
+    (standard approach).
+
+    :param param_values: Flat UI parameter dict.
+    :type param_values: dict[str, object]
+    :param section: Component section prefix (``"primary"`` or ``"secondary"``).
+    :type section: str
+    :param base_params: Ordered names of the common component parameters.
+    :type base_params: tuple[str, ...]
+    :param include_mass: Whether the ``mass`` entry should be included.
+    :type include_mass: bool
+    :returns: Per-component parameter dict ready for ``BinaryInitialParameters``.
+    :rtype: dict[str, dict]
+    """
+    result: dict[str, dict] = {
+        name: _build_regular_param_entry(
+            param_values,
+            f"{section}_{name}",
+            _COMPONENT_PARAM_UNITS.get(name),
+        )
+        for name in base_params
+    }
+    if include_mass and f"{section}_mass_value" in param_values:
+        result["mass"] = _build_regular_param_entry(
+            param_values,
+            f"{section}_mass",
+            _COMPONENT_PARAM_UNITS.get("mass"),
+        )
+    return result
+
+
+def _normalize_approach(approach: str) -> Literal["community", "standard"]:
+    """Normalize approach label to internal lowercase representation.
+
+    :param approach: User/UI approach label.
+    :type approach: str
+    :returns: Lowercase normalized approach.
+    :rtype: Literal["community", "standard"]
+    :raises ValueError: If *approach* is not recognized.
+    """
+    normalized = approach.strip().lower()
+    if normalized == "community":
+        return "community"
+    if normalized == "standard":
+        return "standard"
+    msg = f"Unknown fitting approach: {approach}"
+    raise ValueError(msg)
+
+
+def _build_nuisance_entry(param_values: dict[str, object]) -> dict[str, object]:
+    """Build the ``ln_f`` nuisance parameter entry for the x0 dict.
+
+    :param param_values: Flat UI parameter dict.
+    :type param_values: dict[str, object]
+    :returns: ``ln_f`` entry dict.
+    :rtype: dict[str, object]
+    """
+    ln_f_mode = str(param_values.get("nuisance_ln_f_mode", "fixed"))
+    entry: dict[str, object] = {
+        "value": _opt_float(param_values.get("nuisance_ln_f_value")),
+    }
+    if ln_f_mode == "constrained":
+        entry["constraint"] = str(param_values.get("nuisance_ln_f_constraint", ""))
+    elif ln_f_mode == "fixed":
+        entry["fixed"] = True
+    else:  # free
+        entry["fixed"] = False
+        ln_f_min = _opt_float(param_values.get("nuisance_ln_f_min"))
+        ln_f_max = _opt_float(param_values.get("nuisance_ln_f_max"))
+        if ln_f_min is not None:
+            entry["min"] = ln_f_min
+        if ln_f_max is not None:
+            entry["max"] = ln_f_max
+    return entry
+
+
+def build_x0(
+    param_values: dict[str, object],
+    *,
+    include_nuisance: bool = False,
+    approach: str = "community",
+    include_primary_minimum_time: bool = True,
+) -> dict:
+    """Build the ``BinaryInitialParameters`` input dict from flat UI values.
+
+    Constructs the nested
+    ``{"system": {...}, "primary": {...}, "secondary": {...}}`` structure
+    expected by :class:`~elisa.analytics.LCBinaryAnalyticsTask`. Optionally
+    includes nuisance parameters required for MCMC fitting.
+
+    Parameters are built from the flat UI dict using the ``{section}_{name}_mode``
+    key to determine the mode (free, fixed, or constrained):
+
+    - ``"free"`` - ``{"value": ..., "fixed": False, "min": ..., "max": ..., ...}``
+    - ``"fixed"`` - ``{"value": ..., "fixed": True, ...}``
+    - ``"constrained"`` - ``{"value": ..., "constraint": "...", ...}``
+
+    :param param_values: Flat dict keyed by
+        :data:`~elisa.ui.tabs.lc_fitting.components.param_inputs.FIELD_ORDER`
+        entries.
+    :type param_values: dict[str, object]
+    :param include_nuisance: Whether to include nuisance parameters (used only for MCMC).
+        Defaults to False (LSQRT fitting).
+    :type include_nuisance: bool
+    :param approach: Fitting approach used to select exclusive parameters.
+    :type approach: str
+    :param include_primary_minimum_time: Whether to include
+        ``system@primary_minimum_time`` in the serialized x0.
+        Set to ``False`` when observational x-axis is phase data.
+    :type include_primary_minimum_time: bool
+    :returns: Nested initial-parameter dict suitable for
+        ``LCBinaryAnalyticsTask.fit(x0=...)``.
+    :rtype: dict
+    """
+    from elisa.ui.tabs.lc_fitting.components.param_inputs import (  # noqa: PLC0415
+        COMPONENT_PARAMS,
+        SYSTEM_REGULAR_PARAMS,
+        parse_spots_fit,
+    )
+
+    normalized_approach = _normalize_approach(approach)
+
+    # Build all regular system parameters (common to both standard and community)
+    system: dict[str, dict] = {
+        name: _build_regular_param_entry(
+            param_values,
+            f"system_{name}",
+            _SYSTEM_PARAM_UNITS.get(name),
+        )
+        for name in SYSTEM_REGULAR_PARAMS
+        if include_primary_minimum_time or name != "primary_minimum_time"
+    }
+
+    if normalized_approach == "community":
+        for optional_param in ("semi_major_axis", "mass_ratio"):
+            if f"system_{optional_param}_value" in param_values:
+                if optional_param == "semi_major_axis":
+                    system[optional_param] = _build_sma_entry(param_values)
+                else:
+                    system[optional_param] = _build_regular_param_entry(
+                        param_values,
+                        f"system_{optional_param}",
+                        _SYSTEM_PARAM_UNITS.get(optional_param),
+                    )
+
+    result: dict[str, dict] = {
+        "system": system,
+        "primary": _build_component_params(
+            param_values,
+            "primary",
+            COMPONENT_PARAMS,
+            include_mass=(normalized_approach == "standard"),
+        ),
+        "secondary": _build_component_params(
+            param_values,
+            "secondary",
+            COMPONENT_PARAMS,
+            include_mass=(normalized_approach == "standard"),
+        ),
+    }
+
+    # Attach spots if present in the flat param_values for primary and secondary
+    primary_spots = parse_spots_fit(param_values, section="primary")
+    if primary_spots:
+        result["primary"]["spots"] = primary_spots
+
+    secondary_spots = parse_spots_fit(param_values, section="secondary")
+    if secondary_spots:
+        result["secondary"]["spots"] = secondary_spots
+
+    if include_nuisance:
+        result["nuisance"] = {"ln_f": _build_nuisance_entry(param_values)}
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Public API - result helpers
+# ---------------------------------------------------------------------------
+
+
+def result_to_dataframe(flat_result: dict) -> pd.DataFrame:
+    """Convert a flat fit result dict into a display DataFrame.
+
+    :param flat_result: Flat result dict as returned by
+        ``task.fit_cls.flat_result`` (``"section@param"`` keys).
+    :type flat_result: dict
+    :returns: DataFrame with columns *Parameter*, *Value*, *-1s*, *+1s*,
+        *Unit*, *Status*.
+    :rtype: pandas.DataFrame
+    """
+    rows = []
+    for key, meta in flat_result.items():
+        value = meta.get("value")
+        ci = meta.get("confidence_interval") or {}
+        lo = ci.get("min")
+        hi = ci.get("max")
+        unit = meta.get("unit") or "-"
+        fixed = meta.get("fixed", False)
+        constraint = meta.get("constraint")
+        if constraint:
+            status = f"constrained: {constraint}"
+        elif fixed:
+            status = "fixed"
+        else:
+            status = "free"
+
+        rows.append(
+            {
+                "Parameter": key,
+                "Value": f"{value:.6g}" if value is not None else "-",
+                "-1s": f"{lo:.6g}" if lo is not None else "-",
+                "+1s": f"{hi:.6g}" if hi is not None else "-",
+                "Unit": unit,
+                "Status": status,
+            },
+        )
+    return pd.DataFrame(rows)
+
+
+def extract_values_for_transfer(result: dict) -> dict[str, object]:
+    """Extract fitted parameter values from a result dict for form population.
+
+    Maps the nested result structure (``system``, ``primary``, ``secondary``,
+    ``nuisance`` sections) to the flat
+    ``"{section}_{name}_value"`` keys used by the parameter form.
+
+    :param result: Nested fit result dict as returned by
+        :class:`~elisa.analytics.LCBinaryAnalyticsTask`.
+    :type result: dict
+    :returns: Flat dict with ``"{section}_{name}_value"`` keys.
+    :rtype: dict[str, object]
+    """
+    out: dict[str, object] = {}
+    for section in ("system", "primary", "secondary"):
+        for name, meta in (result.get(section) or {}).items():
+            if isinstance(meta, dict) and "value" in meta:
+                out[f"{section}_{name}_value"] = meta["value"]
+    for name, meta in (result.get("nuisance") or {}).items():
+        if isinstance(meta, dict) and "value" in meta:
+            out[f"nuisance_{name}_value"] = meta["value"]
+    return out
+
+
+def _param_meta_to_flat(
+    section: str,
+    name: str,
+    meta: dict,
+) -> dict[str, object]:
+    """Convert one parameter's result metadata to flat form entries.
+
+    Handles the special ``semi_major_axis`` case where a ``"constraint"``
+    key determines the mode rather than ``"fixed"``.
+
+    :param section: Section name (``"system"``, ``"primary"``, etc.).
+    :type section: str
+    :param name: Parameter name.
+    :type name: str
+    :param meta: Per-parameter metadata dict from the JSON result.
+    :type meta: dict
+    :returns: Flat dict entries for this parameter.
+    :rtype: dict[str, object]
+    """
+    value = meta.get("value")
+    fixed = bool(meta.get("fixed", False))
+    constraint = meta.get("constraint")
+    min_val = meta.get("min")
+    max_val = meta.get("max")
+
+    # Always use the full "{section}_{name}" prefix so keys match the UI
+    # component dict (e.g. "nuisance_ln_f_value", not "ln_f_value").
+    prefix = f"{section}_{name}"
+
+    out: dict[str, object] = {}
+    if value is not None:
+        out[f"{prefix}_value"] = value
+
+    # Derive mode uniformly for all params.
+    if constraint:
+        out[f"{prefix}_mode"] = "constrained"
+        out[f"{prefix}_constraint"] = constraint
+    elif fixed:
+        out[f"{prefix}_mode"] = "fixed"
+    else:
+        out[f"{prefix}_mode"] = "free"
+
+    if min_val is not None:
+        out[f"{prefix}_min"] = min_val
+    if max_val is not None:
+        out[f"{prefix}_max"] = max_val
+
+    return out
+
+
+def detect_approach_from_json(path: str) -> str:
+    """Detect whether a saved LC result JSON uses Community or Standard approach.
+
+    Uses :func:`~elisa.binary_system.utils.resolve_json_kind` to inspect
+    the ``system``, ``primary``, and ``secondary`` sections and determine
+    whether the file was produced by a Community fit (``mass_ratio`` +
+    ``semi_major_axis``) or a Standard fit (individual component masses).
+
+    :param path: Absolute path to the JSON file produced by ``save_result()``.
+    :type path: str
+    :returns: ``"Community"`` or ``"Standard"``.
+    :rtype: str
+    :raises ValueError: If the file cannot be read or the approach cannot be determined.
+    """
+    from elisa.binary_system.utils import resolve_json_kind  # noqa: PLC0415
+
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except Exception as exc:
+        msg = f"Cannot read result file: {exc}"
+        raise ValueError(msg) from exc
+
+    # resolve_json_kind expects plain values, not the fitting meta-dicts.
+    # Extract just the first-level keys per section so it can check presence.
+    def _extract_keys(section_data: object) -> dict:
+        if not isinstance(section_data, dict):
+            return {}
+        return {name: meta.get("value") for name, meta in section_data.items() if isinstance(meta, dict)}
+
+    plain = {
+        "system": _extract_keys(data.get("system")),
+        "primary": _extract_keys(data.get("primary")),
+        "secondary": _extract_keys(data.get("secondary")),
+    }
+
+    try:
+        kind = resolve_json_kind(plain)
+    except LookupError as exc:
+        msg = f"Cannot determine fitting approach from JSON: {exc}"
+        raise ValueError(msg) from exc
+
+    return "Community" if kind == "community" else "Standard"
+
+
+def load_params_from_json(path: str) -> dict[str, object]:  # noqa: C901
+    """Load parameter values, bounds, and modes from a saved LC result JSON.
+
+    Parses the ``system``, ``primary``, ``secondary``, and ``nuisance``
+    sections written by
+    :meth:`~elisa.analytics.LCBinaryAnalyticsTask.save_result` and returns
+    a flat dict compatible with the LC parameter form.
+
+    The ``semi_major_axis`` entry is analysed: if it contains a
+    ``"constraint"`` key the mode is set to ``"constrained"``; if
+    ``"fixed": True`` then ``"fixed"``; otherwise ``"free"``.
+
+    :param path: Absolute path to the JSON file produced by ``save_result()``.
+    :type path: str
+    :returns: Flat dict with ``"{section}_{name}_{sub}"`` keys.
+    :rtype: dict[str, object]
+    :raises ValueError: If the file cannot be read or lacks a ``"system"`` key.
+    """
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except Exception as exc:
+        msg = f"Cannot read result file: {exc}"
+        raise ValueError(msg) from exc
+
+    if "system" not in data:
+        msg = "File does not look like an ELISa LC result - missing 'system' key."
+        raise ValueError(msg)
+
+    out: dict[str, object] = {}
+
+    def _flatten_spots(section_: str, spots_raw_: object) -> None:
+        if not isinstance(spots_raw_, list):
+            return
+
+        for idx, spot in enumerate(spots_raw_[:MAX_SPOTS]):
+            if not isinstance(spot, dict):
+                continue
+
+            out[f"{section_}_spot_{idx}_enabled"] = True
+            for param_name in ("longitude", "latitude", "angular_radius", "temperature_factor"):
+                meta_ = spot.get(param_name)
+                if isinstance(meta_, dict):
+                    out.update(_param_meta_to_flat(section_, f"spot_{idx}_{param_name}", meta_))
+
+    for section in ("system", "primary", "secondary", "nuisance"):
+        for name, meta in (data.get(section) or {}).items():
+            if name == "spots" and section in {"primary", "secondary"}:
+                _flatten_spots(section, meta)
+                continue
+            if isinstance(meta, dict):
+                out.update(_param_meta_to_flat(section, name, meta))
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Public API - fit runners
+# ---------------------------------------------------------------------------
+
+
+def load_lc_dataset(
+    lc_rows: list[LCRowData],
+    x_unit_str: str,
+) -> dict[str, LCData]:
+    """Load all valid passband rows into a passband -> :class:`~elisa.analytics.LCData` mapping.
+
+    Skips rows that have no file path or no passband name.  Raises
+    :exc:`ValueError` when the result is empty (no rows with valid files).
+
+    This helper is exposed so the UI layer can load data and construct a
+    :class:`~elisa.analytics.LCBinaryAnalyticsTask` with *real* data before
+    calling :func:`run_lsqrt`, mirroring the RV fitting pattern where the tab
+    owns the task instance.
+
+    :param lc_rows: List of passband row descriptors from the UI.
+    :type lc_rows: list[LCRowData]
+    :param x_unit_str: X-axis unit label from the UI dropdown.
+    :type x_unit_str: str
+    :returns: Mapping from passband name to loaded :class:`~elisa.analytics.LCData`.
+    :rtype: dict[str, LCData]
+    :raises ValueError: If no rows with a valid file path and passband are found.
+    """
+    data: dict[str, LCData] = {}
+    for row in lc_rows:
+        passband = row["passband"]
+        file_path = row["file_path"]
+        if not passband or not file_path:
+            continue
+        data[passband] = load_lc_data(
+            file_path,
+            passband,
+            x_unit_str,
+            row["y_unit"],
+            row["reference_magnitude"],
+        )
+    if not data:
+        msg = "At least one light curve with a valid data file must be provided."
+        raise ValueError(msg)
+    return data
+
+
+def run_lsqrt(
+    lc_rows: list[LCRowData],
+    x_unit_str: str,
+    param_values: dict[str, object],
+    morphology: str,
+    approach: str = "community",
+    *,
+    task: LCBinaryAnalyticsTask | None = None,
+) -> tuple[dict, Image.Image, pd.DataFrame, str]:
+    """Run a least-squares LC fit and return all displayable artifacts.
+
+    Loads :class:`~elisa.analytics.LCData` objects from the supplied row
+    descriptors, builds the initial-parameter structure, runs the LSQRT
+    optimisation via :class:`~elisa.analytics.LCBinaryAnalyticsTask`, and
+    returns the fitted result together with a model plot, a results table,
+    and a path to the saved JSON result.
+
+    When a pre-constructed *task* is supplied (already initialized with the
+    correct ``data``) it is used directly and populated with fit state
+    in-place, so the caller can retain the instance across UI actions (e.g.
+    for parameter transfer to MCMC).  The caller is responsible for ensuring
+    that ``task.data`` is set before calling this function.
+
+    :param lc_rows: List of passband row dicts.  Only used when *task* is
+        ``None`` to load the observational data.
+    :type lc_rows: list[LCRowData]
+    :param x_unit_str: X-axis unit label from the UI dropdown.  Only used
+        when *task* is ``None``.
+    :type x_unit_str: str
+    :param param_values: Flat parameter dict from the Gradio form.
+    :type param_values: dict[str, object]
+    :param morphology: Expected binary morphology (``"detached"`` or
+        ``"over-contact"``).
+    :type morphology: str
+    :param approach: Fitting approach (``"community"`` or ``"standard"``).
+    :type approach: str
+    :param task: Optional pre-constructed :class:`~elisa.analytics.LCBinaryAnalyticsTask`
+        already initialized with observational data.  When ``None`` a fresh
+        task is built from *lc_rows* internally.
+    :type task: LCBinaryAnalyticsTask | None
+    :returns: Tuple of ``(result_dict, model_image, results_dataframe, json_path)``.
+    :rtype: tuple[dict, PIL.Image.Image, pandas.DataFrame, str]
+    :raises ValueError: If no valid LC data rows are provided (only when
+        *task* is ``None``).
+    """
+    x0_dict = build_x0(
+        param_values,
+        include_nuisance=False,
+        approach=approach,
+        include_primary_minimum_time=(x_unit_str == _X_UNIT_JD),
+    )
+    x0 = BinaryInitialParameters(**x0_dict)
+
+    _logger.debug(
+        "run_lsqrt: starting fit | method=least_squares | morphology=%s\nx0:\n%s",
+        morphology,
+        json.dumps(x0_dict, indent=2, default=str),
+    )
+
+    plt.close("all")
+    # noinspection PyTypeChecker
+    with fit_logging():
+        if task is None:
+            # No task provided - load data and create the task from scratch.
+            data = load_lc_dataset(lc_rows, x_unit_str)
+            task = LCBinaryAnalyticsTask(
+                data=data,
+                method="least_squares",
+                expected_morphology=morphology,
+            )
+        # else: caller already constructed the task with real data; use it directly.
+        result = task.fit(x0=x0)
+
+    model_fig: Figure = task.plot.model(return_figure_instance=True)
+    df = result_to_dataframe(task.fit_cls.flat_result)
+
+    json_path = result_temp_path("lc", "lsqrt")
+    task.save_result(str(json_path))
+
+    return result, figure_to_pil(model_fig), df, str(json_path)
+
+
+def load_chain(
+    chain_file_path: str,
+    result_file_path: str,
+    discard: Int = 0,
+) -> tuple[LCBinaryAnalyticsTask, Image.Image | None, Image.Image | None, pd.DataFrame | None]:
+    """Load a previously saved MCMC chain and results for plotting and reuse.
+
+    :param chain_file_path: Path to the saved flat-chain JSON file.
+    :type chain_file_path: str
+    :param result_file_path: Path to the saved result JSON file.
+    :type result_file_path: str
+    :param discard: Number of initial chain samples to discard per walker.
+    :type discard: elisa.types.Int
+    :returns: Tuple of ``(task, corner_image, traces_image, results_dataframe)``.
+    :rtype: tuple[LCBinaryAnalyticsTask, PIL.Image.Image | None, PIL.Image.Image | None, pandas.DataFrame | None]
+    :raises gr.Error: If loading result or chain file fails.
+    """
+    chain_file_path, result_file_path = _normalize_chain_and_result_paths(
+        chain_file_path,
+        result_file_path,
+    )
+
+    task = LCBinaryAnalyticsTask(data={}, method="mcmc")
+
+    try:
+        task.load_result(filename=result_file_path)
+    except Exception as exc:
+        msg = f"Failed to load result file '{result_file_path}': {exc}"
+        raise gr.Error(msg) from exc
+
+    try:
+        task.load_chain(chain_file_path, discard=discard)
+    except Exception as exc:
+        msg = f"Failed to load chain file '{chain_file_path}': {exc}"
+        raise gr.Error(msg) from exc
+
+    corner_fig: Figure | None = None
+    traces_fig: Figure | None = None
+    results_df: pd.DataFrame | None = None
+
+    plt.close("all")
+    try:
+        with capture_figure() as corner_captured:
+            task.plot.corner(truths=True)
+        corner_fig = corner_captured[0] if corner_captured else None
+    except Exception as exc:  # noqa: BLE001
+        msg = f"Corner plot generation failed: {exc}"
+        gr.Warning(msg)
+
+    plt.close("all")
+    try:
+        with capture_figure() as traces_captured:
+            task.plot.traces(truths=True)
+        traces_fig = traces_captured[0] if traces_captured else None
+    except Exception as exc:  # noqa: BLE001
+        msg = f"Traces plot generation failed: {exc}"
+        gr.Warning(msg)
+
+    try:
+        results_df = result_to_dataframe(task.fit_cls.flat_result)
+    except Exception as exc:  # noqa: BLE001
+        msg = f"Results dataframe generation failed: {exc}"
+        gr.Warning(msg)
+
+    return task, figure_to_pil(corner_fig), figure_to_pil(traces_fig), results_df
+
+
+def extract_initial_state_from_chain(
+    task: LCBinaryAnalyticsTask,
+    nwalkers: Int,
+) -> NDArray:
+    """Extract the last *nwalkers* samples from a loaded chain as initial state.
+
+    :param task: Task with loaded chain (``task.fit_cls.flat_chain`` populated).
+    :type task: LCBinaryAnalyticsTask
+    :param nwalkers: Number of walkers for the next MCMC run.
+    :type nwalkers: elisa.types.Int
+    :returns: Array of shape ``(nwalkers, n_params)`` with initial walker positions.
+    :rtype: numpy.typing.NDArray
+    :raises gr.Error: If chain is empty or shorter than requested walker count.
+    """
+    try:
+        chain = task.fit_cls.flat_chain
+    except Exception as exc:
+        msg = f"Failed to access chain from loaded task: {exc}"
+        raise gr.Error(msg) from exc
+
+    if chain is None or chain.size == 0:
+        msg = "Chain is empty or not loaded."
+        raise gr.Error(msg)
+
+    n_samples = chain.shape[0]
+    if n_samples < nwalkers:
+        msg = (
+            f"Chain has {n_samples} samples but {nwalkers} walkers requested. "
+            f"Load a longer chain or reduce the number of walkers."
+        )
+        raise gr.Error(msg)
+
+    return chain[-nwalkers:, :]
+
+
+def run_mcmc(
+    lc_rows: list[LCRowData],
+    x_unit_str: str,
+    param_values: dict[str, object],
+    morphology: str,
+    approach: str = "community",
+    nwalkers: Int = 50,
+    nsteps: Int = 500,
+    burn_in: Int = 50,
+    fit_id: str = "mcmc_lc_fit",
+    *,
+    save: bool = True,
+    progress: bool = True,
+    task: LCBinaryAnalyticsTask | None = None,
+    initial_state: object = None,
+) -> tuple[dict, Image.Image, Image.Image | None, Image.Image | None, pd.DataFrame, str]:
+    """Run an MCMC LC fit and return all displayable artifacts.
+
+    Loads LC data, constructs parameters, runs the MCMC sampler, and captures
+    the model plot, corner plot, and traces plot as ``Figure`` instances by
+    temporarily intercepting ``plt.show()``.
+
+    :param lc_rows: List of passband row dicts.
+    :type lc_rows: list[LCRowData]
+    :param x_unit_str: X-axis unit label from the UI dropdown.
+    :type x_unit_str: str
+    :param param_values: Flat parameter dict from the Gradio form.
+    :type param_values: dict[str, object]
+    :param morphology: Expected binary morphology (``"detached"`` or
+        ``"over-contact"``).
+    :type morphology: str
+    :param approach: Fitting approach (``"community"`` or ``"standard"``).
+    :type approach: str
+    :param nwalkers: Number of MCMC walkers.
+    :type nwalkers: elisa.types.Int
+    :param nsteps: Number of MCMC steps per walker.
+    :type nsteps: elisa.types.Int
+    :param burn_in: Number of burn-in steps to discard.
+    :type burn_in: elisa.types.Int
+    :param fit_id: Chain file identifier used when *save* is ``True``.
+    :type fit_id: str
+    :param save: Whether to save the chain to disk.
+    :type save: bool
+    :param progress: Whether to show progress bar during MCMC sampling.
+    :type progress: bool
+    :param task: Optional pre-constructed :class:`~elisa.analytics.LCBinaryAnalyticsTask`.
+        When supplied, this task instance is reused for fitting.
+    :type task: LCBinaryAnalyticsTask | None
+    :param initial_state: Optional initial walker state for MCMC.
+    :type initial_state: object
+    :returns: Tuple of
+        ``(result_dict, model_image, corner_image, traces_image,
+        results_dataframe, json_path)``.
+    :rtype: tuple[dict, PIL.Image.Image, PIL.Image.Image | None, PIL.Image.Image | None, pandas.DataFrame, str]
+    :raises ValueError: If no valid LC data rows are provided.
+    """
+    x0_dict = build_x0(
+        param_values,
+        include_nuisance=True,
+        approach=approach,
+        include_primary_minimum_time=(x_unit_str == _X_UNIT_JD),
+    )
+    x0 = BinaryInitialParameters(**x0_dict)
+
+    _logger.debug(
+        "run_mcmc: starting fit | method=mcmc | morphology=%s | nwalkers=%d | nsteps=%d | burn_in=%d\nx0:\n%s",
+        morphology,
+        nwalkers,
+        nsteps,
+        burn_in,
+        json.dumps(x0_dict, indent=2, default=str),
+    )
+
+    plt.close("all")
+    # noinspection PyTypeChecker
+    with fit_logging():
+        if task is None:
+            data: dict[str, LCData] = load_lc_dataset(lc_rows, x_unit_str)
+            task = LCBinaryAnalyticsTask(
+                data=data,
+                method="mcmc",
+                expected_morphology=morphology,
+            )
+        fit_kwargs: dict[str, object] = {
+            "x0": x0,
+            "nwalkers": nwalkers,
+            "nsteps": nsteps,
+            "burn_in": burn_in,
+            "save": save,
+            "fit_id": fit_id,
+            "progress": progress,
+        }
+        if initial_state is not None:
+            fit_kwargs["initial_state"] = initial_state
+        result = task.fit(**fit_kwargs)
+
+    model_fig: Figure = task.plot.model(return_figure_instance=True)
+
+    with capture_figure() as corner_captured:
+        task.plot.corner(truths=True)
+    corner_fig: Figure | None = corner_captured[0] if corner_captured else None
+
+    with capture_figure() as traces_captured:
+        task.plot.traces(truths=True)
+    traces_fig: Figure | None = traces_captured[0] if traces_captured else None
+
+    df = result_to_dataframe(task.fit_cls.flat_result)
+
+    json_path = result_temp_path("lc", "mcmc")
+    task.save_result(str(json_path))
+
+    return (
+        result,
+        figure_to_pil(model_fig),
+        figure_to_pil(corner_fig),
+        figure_to_pil(traces_fig),
+        df,
+        str(json_path),
+    )

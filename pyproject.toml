@@ -65,6 +65,17 @@ test = [
     "parameterized>=0.7.4",
 ]
 
+ui = [
+    "gradio~=6.10.0",
+    # UI runtime dependencies used by the Gradio desktop app
+    # pandas and matplotlib are already listed in [project].dependencies but
+    # are included here for clarity when installing the `ui` extras.
+    'pandas>=2.2.3; python_version < "3.11"',
+    'pandas>=3.0.1; python_version >= "3.11"',
+    "matplotlib>=3.3.2",
+    "pillow>=9.0.0",
+]
+
 [project.urls]
 Homepage = "https://github.com/mikecokina/elisa"
 
@@ -136,5 +147,7 @@ ignore = [
     "ANN002", # Missing type annotation for `*args`
     "ANN003", # Missing type annotation for `**kwargs`
     "ANN401", # Any type annotation
-    "EXE002"# Shebang is missing executable file
+    "EXE002", # Shebang is missing executable file
+    "D213", # Multiline summary docstring should start at the first line
+    "D203", # Incorrect blank lines before class docstring
 ]

@@ -52,7 +52,7 @@ if TYPE_CHECKING:
     from elisa.observer.observer import Observer
     from elisa.single_system.system import SingleSystem  # noqa: F401
 
-__version__ = "0.7.0.dev0"
+__version__ = "1.0.0.dev0"
 
 # Map of public names to (module, attribute) for lazy import
 _PUBLIC_OBJECTS = {

@@ -250,7 +250,7 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
         useful in case of bimodal distribution of the MCMC chain. Allows restricting
         the posterior distribution to specific parameter ranges.
 
-        :param boundaries: Dictionary of param  eter boundaries in format
+        :param boundaries: Dictionary of parameter boundaries in format
                           {param_name: (min_value, max_value), ...}
                           Example: {'primary@t_eff': (5000, 6000), ...}
         :type boundaries: dict
@@ -304,7 +304,7 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
         - **nwalkers** (:class:`int`) - The number of walkers in the ensemble.
           Minimum is 2 * number of free parameters.
         - **nsteps** (:class:`int`) - The number of steps to run (default: 1000)
-        - **initial_state** (:class:`ndarray`) - The initial state or position vector
+        - **initial_state** (:class:`ndarray`) - The initial state or MCMC
           made of free parameters with shape (nwalkers, number of free parameters).
           The order is specified by parameter order in `x0`. Initial states should
           be supplied in normalized form (0, 1). For example, 0 means value at `min`

@@ -363,6 +363,82 @@ def validate_binary_json(data: JSONDict) -> bool:
     return True
 
 
+def _build_found_params_msg(
+    m1: JSONValue | None,
+    m2: JSONValue | None,
+    q: JSONValue | None,
+    a: JSONValue | None,
+) -> str:
+    """Build message describing which parameters were found in the JSON.
+
+    :param m1: Primary mass value or None.
+    :type m1: JSONValue | None
+    :param m2: Secondary mass value or None.
+    :type m2: JSONValue | None
+    :param q: Mass ratio value or None.
+    :type q: JSONValue | None
+    :param a: Semi-major axis or asini value or None.
+    :type a: JSONValue | None
+    :return: Formatted message of found parameters.
+    :rtype: str
+    """
+    found_params = []
+    if m1 is not None:
+        found_params.append("primary.mass")
+    if m2 is not None:
+        found_params.append("secondary.mass")
+    if q is not None:
+        found_params.append("system.mass_ratio")
+    if a is not None:
+        found_params.append("system.semi_major_axis")
+    return f"Found parameters: {', '.join(found_params) if found_params else 'none'}"
+
+
+def _build_missing_parts_msg(
+    m1: JSONValue | None,
+    m2: JSONValue | None,
+    q: JSONValue | None,
+    a: JSONValue | None,
+    lookup: str,
+) -> str:
+    """Build message describing what parameters are missing for each approach.
+
+    :param m1: Primary mass value or None.
+    :type m1: JSONValue | None
+    :param m2: Secondary mass value or None.
+    :type m2: JSONValue | None
+    :param q: Mass ratio value or None.
+    :type q: JSONValue | None
+    :param a: Semi-major axis or asini value or None.
+    :type a: JSONValue | None
+    :param lookup: Parameter name being looked up ("semi_major_axis" or "asini").
+    :type lookup: str
+    :return: Formatted message of missing parameters for each approach.
+    :rtype: str
+    """
+    missing_parts = []
+
+    # Check standard approach
+    std_parts = []
+    if m1 is None:
+        std_parts.append("primary.mass")
+    if m2 is None:
+        std_parts.append("secondary.mass")
+    if std_parts:
+        missing_parts.append(f"Standard (M1, M2): missing {', '.join(std_parts)}")
+
+    # Check community approach
+    community_parts = []
+    if q is None:
+        community_parts.append("system.mass_ratio")
+    if a is None:
+        community_parts.append(f"system.{lookup}")
+    if community_parts:
+        missing_parts.append(f"Community (q, a): missing {', '.join(community_parts)}")
+
+    return " OR ".join(missing_parts)
+
+
 def resolve_json_kind(data: JSONDict, *, _sin: bool = False) -> Literal["std", "community"]:
     """Resolve whether the input JSON uses ``std`` or ``community`` format.
 
@@ -398,8 +474,10 @@ def resolve_json_kind(data: JSONDict, *, _sin: bool = False) -> Literal["std", "
     if q is not None and a is not None:
         return "community"
 
-    message = "It seems your JSON is invalid."
-    raise LookupError(message)
+    found_msg = _build_found_params_msg(m1, m2, q, a)
+    missing_msg = _build_missing_parts_msg(m1, m2, q, a, lookup)
+    error_msg = f"Invalid fitting parameters. {found_msg}. You need either: {missing_msg}"
+    raise LookupError(error_msg)
 
 
 def transform_json_community_to_std(data: JSONDict) -> JSONDict:
