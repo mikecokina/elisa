@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from functools import lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, NamedTuple
 
 import numpy as np
 import pandas as pd
@@ -22,6 +23,39 @@ if TYPE_CHECKING:
 logger = getLogger(__name__)
 
 _LD_LAWS_LINEAR: Final[set[str]] = {"linear", "cosine"}
+
+
+class LDFileRevision(NamedTuple):
+    """Filesystem revision used to invalidate cached LD source data."""
+
+    device: int
+    inode: int
+    size: int
+    mtime_ns: int
+    ctime_ns: int
+
+
+class LDTableIdentity(NamedTuple):
+    """An ordered source table filename and its filesystem revision."""
+
+    filename: str
+    revision: LDFileRevision
+
+
+class LDSourceIdentity(NamedTuple):
+    """Immutable, hashable identity of one complete LD interpolation source.
+
+    Table and column order are significant. Both cache layers use this identity
+    so changes to files, law, directory or column selection cannot reuse stale
+    structures or evaluated coefficients.
+    """
+
+    directory: str
+    law: str
+    tables: tuple[LDTableIdentity, ...]
+    csv_columns: tuple[str, ...]
+    domain_columns: tuple[str, ...]
+    coefficient_columns: tuple[str, ...]
 
 
 def get_metallicity_from_ld_table_filename(filename: str) -> float:
@@ -107,6 +141,86 @@ def get_relevant_ld_tables(passband: str, metallicity: float, law: str | None = 
     return [get_ld_table_filename(passband, m, resolved_law) for m in surrounded]
 
 
+def clear_ld_caches() -> None:
+    """Release process-local LD caches after an asset update or on demand.
+
+    Ordinary file edits/replacements are detected by stat revision keys. Call
+    this after updates on filesystems that do not provide reliable nanosecond
+    mtime/ctime/inode metadata, and before resuming calculations after such an
+    update. Do not modify tables concurrently with an active calculation.
+    """
+    from elisa.base.curves.utils import interpolate_on_ld_grid_cached  # noqa: PLC0415
+
+    buffer.LD_CFS_TABLES.clear()
+    get_ld_source_interpolator.cache_clear()
+    interpolate_on_ld_grid_cached.cache_clear()
+
+
+def get_ld_source_identities(
+    metallicity: float,
+    passbands: Iterable[str],
+) -> tuple[LDSourceIdentity, ...]:
+    """Snapshot every effective source input without reading/hashing CSV contents.
+
+    Ordered filenames (including duplicates), column order, resolved directory,
+    law and file revisions are shared by both cache layers. ctime catches
+    same-size rewrites with restored mtime; inode/device detect replacement.
+    """
+    directory = str(Path(settings.LD_TABLES).resolve())
+    law = settings.LIMB_DARKENING_LAW
+    sources = []
+    for band in passbands:
+        tables = []
+        for name in get_relevant_ld_tables("bolometric" if band == "rv_band" else band, metallicity, law):
+            path = Path(directory) / name
+            if not path.is_file():
+                msg = f"There is no file like {path}."
+                raise FileNotFoundError(msg)
+            revision = path.stat()
+            tables.append(LDTableIdentity(
+                filename=name,
+                revision=LDFileRevision(
+                    device=revision.st_dev,
+                    inode=revision.st_ino,
+                    size=revision.st_size,
+                    mtime_ns=revision.st_mtime_ns,
+                    ctime_ns=revision.st_ctime_ns,
+                ),
+            ))
+        sources.append(LDSourceIdentity(
+            directory=directory,
+            law=law,
+            tables=tuple(tables),
+            csv_columns=tuple(settings.LD_LAW_COLS_ORDER[law]),
+            domain_columns=tuple(settings.LD_DOMAIN_COLS),
+            coefficient_columns=tuple(settings.LD_LAW_CFS_COLUMNS[law]),
+        ))
+    return tuple(sources)
+
+
+@lru_cache(maxsize=32)
+def get_ld_source_interpolator(source: LDSourceIdentity) -> interpolate.LinearNDInterpolator:
+    """Retain complete source interpolators until LRU eviction or explicit clear.
+
+    The 32-entry bound is per process, independent of the 128 evaluated-result
+    entries. No surface coordinates or evaluated coefficients are stored here.
+    """
+    frames = []
+    for table in source.tables:
+        frame_key = (source.directory, table.filename, table.revision, source.csv_columns)
+        if frame_key not in buffer.LD_CFS_TABLES:
+            path = Path(source.directory) / table.filename
+            buffer.LD_CFS_TABLES[frame_key] = pd.read_csv(path)[list(source.csv_columns)]
+        frames.append(buffer.LD_CFS_TABLES[frame_key])
+    buffer.reduce_buffer(buffer.LD_CFS_TABLES)
+    # Preserve ordered concatenation and full-row (not coordinate) deduplication.
+    frame = pd.concat(frames, ignore_index=True).drop_duplicates()
+    return interpolate.LinearNDInterpolator(
+        frame[list(source.domain_columns)].to_numpy(), frame[list(source.coefficient_columns)].to_numpy(),
+        fill_value=np.nan, rescale=False,
+    )
+
+
 # noinspection PyUnusedLocal
 def interpolate_on_ld_grid(
     temperature: NDArray,
@@ -117,8 +231,9 @@ def interpolate_on_ld_grid(
 ) -> dict[str, NDArray[Float]]:
     """Interpolate limb darkening coefficients on the Van Hamme grid.
 
-    The interpolation is performed in the (T_eff, log_g, metallicity) domain using
-    :func:`scipy.interpolate.griddata`. Input *log_g* is expected in log(SI) and is
+    The interpolation is piecewise linear in (T_eff, log_g) using cached
+    :class:`scipy.interpolate.LinearNDInterpolator` instances. Metallicity selects
+    the same ordered source tables as before. Input *log_g* is expected in log(SI) and is
     converted to log(cgs) prior to interpolation.
 
     :param temperature: Effective temperature values (triangle-wise).
@@ -142,36 +257,10 @@ def interpolate_on_ld_grid(
     results: dict[str, NDArray[Float]] = {}
     logger.debug("interpolating limb darkening coefficients")
 
+    uvw_domain = np.column_stack((t_eff, log_g_cgs))
     for band in bands:
-        interp_band = "bolometric" if band == "rv_band" else band
-
-        relevant_tables = get_relevant_ld_tables(
-            passband=interp_band,
-            metallicity=metallicity,
-            law=settings.LIMB_DARKENING_LAW,
-        )
-
-        csv_columns = settings.LD_LAW_COLS_ORDER[settings.LIMB_DARKENING_LAW]
-        frames: list[pd.DataFrame] = []
-
-        for table in relevant_tables:
-            if table in buffer.LD_CFS_TABLES:
-                df_tbl = buffer.LD_CFS_TABLES[table]
-            else:
-                df_tbl = get_ld_table_by_name(table)[csv_columns]
-                buffer.LD_CFS_TABLES[table] = df_tbl
-            frames.append(df_tbl)
-
-        buffer.reduce_buffer(buffer.LD_CFS_TABLES)
-
-        df = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=csv_columns)
-        df = df.drop_duplicates()
-
-        xyz_domain = df[settings.LD_DOMAIN_COLS].to_numpy()
-        xyz_values = df[settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW]].to_numpy()
-
-        uvw_domain = np.column_stack((t_eff, log_g_cgs))
-        uvw_values = interpolate.griddata(xyz_domain, xyz_values, uvw_domain, method="linear")
+        source = get_ld_source_identities(metallicity, (band,))[0]
+        uvw_values = get_ld_source_interpolator(source)(uvw_domain)
 
         uvw_values_arr = np.asarray(uvw_values)
 

@@ -114,11 +114,22 @@ def elisa_ini(tmp_path: Path, monkeypatch):
 
     monkeypatch.setenv("ELISA_CONFIG", str(ini_path))
 
-    # Make sure next import uses our env var and rebuilds the singleton
-    sys.modules.pop("elisa", None)
-    sys.modules.pop("elisa.settings", None)
-
-    return ini_path, expected
+    # Fresh imports replace the entire ELISA module graph. Restore the original
+    # objects afterward: already-collected tests retain references to them,
+    # including Settings singletons and cached functions imported at module scope.
+    original_modules = {
+        name: module for name, module in sys.modules.items()
+        if name == "elisa" or name.startswith("elisa.")
+    }
+    try:
+        sys.modules.pop("elisa", None)
+        sys.modules.pop("elisa.settings", None)
+        yield ini_path, expected
+    finally:
+        for name in list(sys.modules):
+            if name == "elisa" or name.startswith("elisa."):
+                sys.modules.pop(name, None)
+        sys.modules.update(original_modules)
 
 
 def test_elisa_config_ini_types_do_not_raise(elisa_ini):

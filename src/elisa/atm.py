@@ -582,7 +582,7 @@ class NaiveInterpolatedAtm:
         result = (weights * (top_flux_matrix.T - bottom_flux_matrix.T) + bottom_flux_matrix.T).T
 
         elapsed = time.time() - t
-        logger.info("time %.6f seconds for interpolation of flux matrices", elapsed)
+        logger.debug("time %.6f seconds for interpolation of flux matrices", elapsed)
         return result.get()
 
     @staticmethod

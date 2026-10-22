@@ -30,6 +30,34 @@ if TYPE_CHECKING:
 FEBRUARY_MONTH_NUMBER = 2
 
 
+# A fixed byte order makes equal float64 values produce equal cache keys on any
+# host. Encoding and decoding must use the same dtype; native byte order alone
+# would make decoding serialized keys platform-dependent.
+_CACHE_FLOAT64_DTYPE = np.dtype(np.float64).newbyteorder("<")
+
+
+def float64_array_to_cache_key(arr: NDArray) -> tuple[tuple[int, ...], bytes]:
+    """Encode exact float64 values and shape as an immutable array cache key.
+
+    Normalize dtype and endianness to little-endian float64 without rounding.
+    Preserve C ordering, signed zero and NaN payload bits, avoiding Python
+    float/NaN equality rules. Only the bytes copy is retained, not the input.
+    Keep the dtype consistent with :func:`float64_array_from_cache_key`.
+    """
+    values = np.asarray(arr, dtype=_CACHE_FLOAT64_DTYPE)
+    return values.shape, values.tobytes(order="C")
+
+
+def float64_array_from_cache_key(key: tuple[tuple[int, ...], bytes]) -> NDArray:
+    """Decode an array key as a read-only float64 view without copying its bytes.
+
+    Use the same fixed byte order as :func:`float64_array_to_cache_key` so the
+    reconstructed coordinates preserve the original float64 values exactly.
+    """
+    shape, data = key
+    return np.frombuffer(data, dtype=_CACHE_FLOAT64_DTYPE).reshape(shape)
+
+
 def polar_to_cartesian(radius: Float | NDArray, phi: Float | NDArray) -> tuple[Float, Float] | tuple[NDArray, NDArray]:
     """Transform polar coordinates to cartesian.
 

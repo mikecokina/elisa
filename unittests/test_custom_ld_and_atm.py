@@ -192,7 +192,7 @@ class TestCurvesUtilsCachingAndBroadcast(ElisaTestCase):
         inputs.
         """
         # Ensure caching is cleared at test start
-        curves_utils._interpolate_on_ld_grid_cached.cache_clear()
+        curves_utils.interpolate_on_ld_grid_cached.cache_clear()
 
         # Create a component without explicit LD coefficients so interpolation is used
         comp = DummyComponent(temperatures=[5500.0, 5500.0], log_g=[4.0, 4.0], metallicity=0.0,

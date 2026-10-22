@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from elisa import ld, settings
+from elisa import ld, settings, utils
 from elisa import umpy as up
 from elisa.base.types import FLOAT, INT
 from elisa.observer.passband import init_rv_passband
@@ -28,39 +28,39 @@ def _get_rv_passband() -> tuple[Any, Any, Any]:
     return init_rv_passband()
 
 
-def _ndarray_to_hashable(arr: NDArray) -> tuple[float, ...]:
-    """Convert a numpy array to a stable, hashable tuple for caching.
-
-    Round to 9 decimal places to avoid tiny floating point noise causing
-    unnecessary cache misses. Use vectorized numpy ops to minimize Python-level
-    overhead for large arrays.
-    """
-    a = np.asarray(arr).ravel()
-    if a.size == 0:
-        return ()
-    rounded = np.round(a, 9).astype(float)
-    return tuple(rounded.tolist())
-
-
+# noinspection PyUnusedLocal
 @lru_cache(maxsize=128)
-def _interpolate_on_ld_grid_cached(
-    temps_key: tuple[float, ...],
-    logg_key: tuple[float, ...],
+def interpolate_on_ld_grid_cached(
+    temps_key: tuple[tuple[int, ...], bytes],
+    logg_key: tuple[tuple[int, ...], bytes],
     metallicity: float,
     passbands_key: tuple[str, ...],
+    source_key: tuple[ld.LDSourceIdentity, ...],  # noqa: ARG001 - Used by @lru_cache as part of the cache key.
 ) -> dict[str, NDArray]:
-    """Cache result of :func:`ld.interpolate_on_ld_grid` for repeated inputs.
+    """Cache exact evaluations for a source revision, until eviction/explicit clear.
 
-    Parameters are passed as hashable keys (tuples) to allow caching.
+    The @lru_cache key includes ALL arguments: temps_key, logg_key,
+    metallicity, passbands_key and source_key. A hit requires all of them to
+    match; changing any argument causes a new evaluation.
+
+    source_key is used only by the decorator to identify source tables and
+    configuration. The function body does not need it for the calculation.
+    The caller supplies the current source identity before every lookup so
+    changed tables/configuration cannot reuse stale evaluated coefficients.
+
+    The component helper mirrors or copies cached arrays before returning them.
     """
-    temps = np.asarray(temps_key, dtype=float)
-    logg = np.asarray(logg_key, dtype=float)
-    return ld.interpolate_on_ld_grid(
+    temps = utils.float64_array_from_cache_key(temps_key)
+    logg = utils.float64_array_from_cache_key(logg_key)
+    result = ld.interpolate_on_ld_grid(
         temperature=temps,
         log_g=logg,
         metallicity=metallicity,
         passband=list(passbands_key),
     )
+    for values in result.values():
+        values.setflags(write=False)
+    return result
 
 
 def include_passband_data_to_kwargs(**kwargs: Any) -> dict[str, Any]:
@@ -177,14 +177,15 @@ def get_component_limbdarkening_cfs(
         temperatures, log_g = generate_teff_logg_for_ld_cfs(component_instance, symmetry_test=symmetry_test)
 
         # Use cached interpolation helper to avoid repeated expensive interpolation
-        temps_key = _ndarray_to_hashable(temperatures)
-        logg_key = _ndarray_to_hashable(log_g)
+        temps_key = utils.float64_array_to_cache_key(temperatures)
+        logg_key = utils.float64_array_to_cache_key(log_g)
         passbands_key = tuple(passbands)
-        ld_cfs = _interpolate_on_ld_grid_cached(
+        ld_cfs = interpolate_on_ld_grid_cached(
             temps_key,
             logg_key,
             float(component_instance.metallicity),
             passbands_key,
+            ld.get_ld_source_identities(float(component_instance.metallicity), passbands_key),
         )
 
         if symmetry_test:
@@ -193,5 +194,7 @@ def get_component_limbdarkening_cfs(
                 ld_cfs = {fltr: vals[_zeros_idx] for fltr, vals in ld_cfs.items()}
             else:
                 ld_cfs = {fltr: component_instance.mirror_face_values(vals) for fltr, vals in ld_cfs.items()}
+        else:
+            ld_cfs = {fltr: vals.copy() for fltr, vals in ld_cfs.items()}
 
     return ld_cfs

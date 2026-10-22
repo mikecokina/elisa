@@ -11,6 +11,8 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Added
 
+- `ld.clear_ld_caches()` to clear loaded LD tables, prepared interpolators, and
+  evaluated coefficient results together.
 - Independent Sutherland-Hodgman polygon/triangle intersection area kernels: a
   float64 reference and a Numba implementation without fastmath, with analytic,
   exact-rational, transformation, and captured eclipse geometry validation.
@@ -27,6 +29,12 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Changed
 
+- Reuse bounded, cached `LinearNDInterpolator` instances for unchanged
+  limb-darkening sources while retaining the evaluated-result LRU and evaluating
+  current surface parameters on eccentric-orbit rebuilds.
+- Evaluate limb-darkening queries at their original float64 coordinates instead
+  of rounding to nine decimal places. Cache keys preserve exact values, array
+  shape, and ordering
 - Use Sutherland-Hodgman clipping by default for eclipse intersection areas.
   Configure it through `INTERSECTION_BACKEND` or `[computational].intersection_backend`;
   `pypex` and `reference` remain available.
@@ -47,6 +55,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Prevent stale limb-darkening table, interpolator, and coefficient reuse after
+  directory, law, column configuration, or source-file revision changes.
+- Prevent caller mutations of returned LD coefficient arrays from corrupting
+  cached results.
 - Restored Pypex point-side checks on NumPy 2.5 by explicitly computing
   2D cross-product components instead of calling `np.cross` with 2D vectors.
 - Prevented multiprocessing worker hangs by explicitly closing and joining pools.
