@@ -246,7 +246,9 @@ def apply_reflection_effect(  # noqa: C901, PLR0912, PLR0915
         q_ab = get_symmetrical_q_ab(shp_xy, shp_reduced, gamma, distance)
 
         # calculating limb darkening factor for each combination of surface faces
-        d_gamma = get_symmetrical_d_gamma(shp_xy, shp_reduced, ldc, gamma)
+        d_gamma = get_symmetrical_d_gamma(
+            shp_xy, shp_reduced, ldc, gamma, reflection_only=True,
+        )
 
         # calculating limb darkening factors for each combination of faces shape
         # (N_faces_primary * N_faces_secondary)
@@ -704,6 +706,8 @@ def get_symmetrical_d_gamma(
     shape_reduced: tuple[Int, Int],
     ldc: dict[str, NDArray[Float]],
     gamma: GammaDict,
+    *,
+    reflection_only: bool = False,
 ) -> GammaDict:
     """Use symmetries to compute limb-darkening factor matrices.
 
@@ -715,6 +719,9 @@ def get_symmetrical_d_gamma(
     :type ldc: dict[str, NDArray[Float]]
     :param gamma: Cosines of angles between the join vector and face normals.
     :type gamma: dict[str, NDArray[Float]]
+    :param reflection_only: Compute only the primary column block and secondary
+        row block consumed by reflection. Other entries remain uninitialized.
+        The default also computes the complementary symmetry blocks.
     :return: Limb-darkening factor matrices.
     :rtype: dict[str, NDArray[Float]]
     """
@@ -730,12 +737,13 @@ def get_symmetrical_d_gamma(
         cos_theta=cos_theta,
     )
 
-    cos_theta = gamma["primary"][:shape_reduced[0], shape_reduced[1]:]
-    d_gamma["primary"][:shape_reduced[0], shape_reduced[1]:] = ld.limb_darkening_factor(
-        coefficients=ldc["primary"][:, :shape_reduced[0]].T,
-        limb_darkening_law=settings.LIMB_DARKENING_LAW,
-        cos_theta=cos_theta,
-    )
+    if not reflection_only:
+        cos_theta = gamma["primary"][:shape_reduced[0], shape_reduced[1]:]
+        d_gamma["primary"][:shape_reduced[0], shape_reduced[1]:] = ld.limb_darkening_factor(
+            coefficients=ldc["primary"][:, :shape_reduced[0]].T,
+            limb_darkening_law=settings.LIMB_DARKENING_LAW,
+            cos_theta=cos_theta,
+        )
 
     cos_theta = gamma["secondary"][:shape_reduced[0], :]
     d_gamma["secondary"][:shape_reduced[0], :] = ld.limb_darkening_factor(
@@ -744,12 +752,13 @@ def get_symmetrical_d_gamma(
         cos_theta=cos_theta.T,
     ).T
 
-    cos_theta = gamma["secondary"][shape_reduced[0]:, :shape_reduced[1]]
-    d_gamma["secondary"][shape_reduced[0]:, :shape_reduced[1]] = ld.limb_darkening_factor(
-        coefficients=ldc["secondary"][:, :shape_reduced[1]].T,
-        limb_darkening_law=settings.LIMB_DARKENING_LAW,
-        cos_theta=cos_theta.T,
-    ).T
+    if not reflection_only:
+        cos_theta = gamma["secondary"][shape_reduced[0]:, :shape_reduced[1]]
+        d_gamma["secondary"][shape_reduced[0]:, :shape_reduced[1]] = ld.limb_darkening_factor(
+            coefficients=ldc["secondary"][:, :shape_reduced[1]].T,
+            limb_darkening_law=settings.LIMB_DARKENING_LAW,
+            cos_theta=cos_theta.T,
+        ).T
 
     return d_gamma
 

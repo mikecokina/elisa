@@ -29,6 +29,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Changed
 
+- Skip unused limb-darkening factor blocks during symmetric reflection and remove
+  a redundant matrix copy in `limb_darkening_factor()`. Preserve symmetry
+  eligibility, standalone helper defaults, full non-symmetric matrices, and
+  bitwise-identical reflection factors, surface temperatures, and light curves.
 - Reduce passband preparation overhead by removing a redundant deep copy and
   reusing exact numeric bandwidth-trimming results in a bounded LRU cache.
   Store 128-bit BLAKE2b content digests instead of complete spectra in cache keys

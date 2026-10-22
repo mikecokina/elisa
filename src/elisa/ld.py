@@ -327,7 +327,7 @@ def limb_darkening_factor(
     else:
         mu = np.asarray(cos_theta, dtype=float)
 
-    mu = mu[:, np.newaxis] if mu.ndim == 1 else mu.copy()
+    mu = mu[:, np.newaxis] if mu.ndim == 1 else mu
 
     mu = mu.copy()
     neg = mu <= 0
