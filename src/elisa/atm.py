@@ -643,11 +643,14 @@ class NaiveInterpolatedAtm:
     ) -> list[str | Path]:
         """Find out related atmospheric csv tables and return list of paths to them.
 
+        Format filenames and paths once per unique selected grid identity, then
+        gather them back into the original face order.
+
         :param temperature: Iterable[float];
         :param log_g: Iterable[float];
         :param metallicity: float;
         :param atlas: str; atmosphere model identificator (see settings.ATLAS_TO_ATM_FILE_PREFIX.keys())
-        :return: List[str];
+        :return: List[str]; lower-temperature paths followed by upper-temperature paths.
         """
         atlas = validated_atlas(atlas)
         log_g = utils.convert_gravity_acceleration_array(log_g, "log_cgs")
@@ -670,23 +673,27 @@ class NaiveInterpolatedAtm:
         )
         directory = get_atm_directory(m, atlas)
 
-        # Vectorized string conversions (faster than pandas .apply())
+        # Keep DataFrame length validation, but format only unique selected grid identities.
+        domain, inverse = np.unique(domain_df.to_records(index=False), return_inverse=True)
+        # Vectorized string conversions for the unique identities.
         # Metallicity: 0.5 -> 'p05', -1.1 -> 'm11'
-        signs = np.where(domain_df["mh"].to_numpy() >= 0, "p", "m")
-        abs_mh = np.abs(domain_df["mh"].to_numpy() * 10).astype(int)
+        signs = np.where(domain["mh"] >= 0, "p", "m")
+        abs_mh = np.abs(domain["mh"] * 10).astype(int)
         mh_name = np.char.add(signs, np.char.zfill(abs_mh.astype(str), 2))
 
         # Temperature: simple int conversion
-        temp_name = domain_df["temp"].to_numpy().astype(int).astype(str)
+        temp_name = domain["temp"].astype(int).astype(str)
 
         # Surface gravity: 0.5 -> 'g05', 1.0 -> 'g10'
-        logg_int = (domain_df["log_g"].to_numpy() * 10).astype(int)
+        logg_int = (domain["log_g"] * 10).astype(int)
         log_g_name = np.char.add("g", np.char.zfill(logg_int.astype(str), 2))
 
         # Build filenames
         fnames = [f"{atlas}{mh}_{temp}_{g}" for mh, temp, g in zip(mh_name, temp_name, log_g_name)]
 
-        return [str(Path(settings.ATLAS_TO_BASE_DIR[atlas]) / directory / (fname + ".csv")) for fname in fnames]
+        base_directory = Path(settings.ATLAS_TO_BASE_DIR[atlas]) / directory
+        paths = [str(base_directory / (fname + ".csv")) for fname in fnames]
+        return np.asarray(paths, dtype=object)[inverse].tolist()
 
 
 def arange_atm_to_same_wavelength(

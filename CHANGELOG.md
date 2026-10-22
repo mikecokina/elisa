@@ -29,6 +29,9 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Changed
 
+- Deduplicate selected CK04 and K93 atmosphere grid combinations before
+  constructing filenames and paths, preserving table selection, ordering,
+  interpolation results, and error behavior.
 - Reuse bounded, cached `LinearNDInterpolator` instances for unchanged
   limb-darkening sources while retaining the evaluated-result LRU and evaluating
   current surface parameters on eccentric-orbit rebuilds.
