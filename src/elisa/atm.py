@@ -956,7 +956,6 @@ def extend_atm_container_on_bandwidth_boundary(
     atm_model: AtmModel = atm_container.model
     atm_model.wavelength[np.array([0, -1])] = [left_bandwidth, right_bandwidth]
     atm_model.flux[np.array([0, -1])] = [on_border_flux[0], on_border_flux[1]]
-    atm_model.flux = np.round(atm_model.flux, 10)
 
     atm_container.model = atm_model
     return atm_container

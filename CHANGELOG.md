@@ -58,6 +58,9 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Preserve atmospheric spectral flux precision during bandwidth boundary
+  interpolation by removing decimal rounding that could erase small nonzero
+  flux values.
 - Prevent stale limb-darkening table, interpolator, and coefficient reuse after
   directory, law, column configuration, or source-file revision changes.
 - Prevent caller mutations of returned LD coefficient arrays from corrupting
