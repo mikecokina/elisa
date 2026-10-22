@@ -31,6 +31,8 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 - Reduce passband preparation overhead by removing a redundant deep copy and
   reusing exact numeric bandwidth-trimming results in a bounded LRU cache.
+  Store 128-bit BLAKE2b content digests instead of complete spectra in cache keys
+  to reduce retained memory, preserving exact boundary bits and cache limits.
   Preserve independent writable outputs, input isolation, Akima interpolation,
   and bitwise-identical spectra, radiances, and light curves.
 - Deduplicate selected CK04 and K93 atmosphere grid combinations before

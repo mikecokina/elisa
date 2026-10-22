@@ -1,5 +1,6 @@
 """Exact numeric strip reuse, error parity and mutable container isolation."""
 
+import hashlib
 from copy import deepcopy
 from pathlib import Path
 from unittest.mock import patch
@@ -49,6 +50,40 @@ def empty_strip_cache():
     atm.clear_atm_strip_cache()
     yield
     atm.clear_atm_strip_cache()
+
+
+def test_key_contains_framed_array_digest_and_exact_boundary_bits():
+    source = spectrum()
+    digest = hashlib.blake2b(digest_size=16)
+    for values in (source.model.wavelength, source.model.flux):
+        digest.update(values.dtype.str.encode("ascii") + b"\0")
+        digest.update(np.asarray(values.shape, dtype=np.int64).tobytes())
+        digest.update(values.tobytes())
+    key = atm._atm_strip_cache_key(source, -0.0, 8.75)
+    assert key[0] == digest.digest()
+    assert len(key[0]) == 16
+    assert key[1] == source.model.wavelength.nbytes + source.model.flux.nbytes
+    assert key[2:4] == (np.float64(-0.0).tobytes(), np.float64(8.75).tobytes())
+    assert max(len(part) for part in key if isinstance(part, bytes)) == 16
+    swapped = deepcopy(source)
+    swapped.model.wavelength, swapped.model.flux = swapped.model.flux, swapped.model.wavelength
+    assert atm._atm_strip_cache_key(swapped, -0.0, 8.75)[0] != key[0]
+
+
+def test_digest_preserves_legacy_combined_payload_limit(monkeypatch):
+    source = spectrum()
+    result = original_strip(source, 1.25, 8.75)
+    budget = (source.model.wavelength.nbytes + source.model.flux.nbytes + 16
+              + result.model.wavelength.nbytes + result.model.flux.nbytes)
+    monkeypatch.setattr(atm, "_STRIP_CACHE_MAX_PAYLOAD", budget - 1)
+    atm.strip_to_bandwidth(source, 1.25, 8.75)
+    assert atm.atm_strip_cache_info()["currsize"] == 0
+    assert atm.atm_strip_cache_info()["bypasses"] == 1
+    monkeypatch.setattr(atm, "_STRIP_CACHE_MAX_PAYLOAD", budget)
+    assert_model(atm.strip_to_bandwidth(source, 1.25, 8.75), result)
+    assert atm.atm_strip_cache_info()["currsize"] == 1
+    assert_model(atm.strip_to_bandwidth(source, 1.25, 8.75), result)
+    assert atm.atm_strip_cache_info()["hits"] == 1
 
 
 @pytest.mark.parametrize("inplace", [False, True])

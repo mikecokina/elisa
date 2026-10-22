@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import itertools
 import json
 import warnings
@@ -865,7 +866,7 @@ def _atm_strip_cache_key(
     left: Float,
     right: Float,
 ) -> tuple | None:
-    """Snapshot ordinary float64 inputs; leave other conversion/validation paths uncached."""
+    """Digest ordinary float64 inputs; leave other conversion/validation paths uncached."""
     if type(container) is not AtmDataContainer or type(container.model) is not AtmModel:
         return None
     wave, flux = container.model.wavelength, container.model.flux
@@ -881,8 +882,13 @@ def _atm_strip_cache_key(
     # Large integers can have comparison semantics lost by conversion to float64.
     if any(isinstance(bound, (int, np.integer)) and abs(int(bound)) > 2**53 for bound in (left, right)):
         return None
+    digest = hashlib.blake2b(digest_size=16)
+    for values in (wave, flux):
+        digest.update(values.dtype.str.encode("ascii") + b"\0")
+        digest.update(np.asarray(values.shape, dtype=np.int64).tobytes())
+        digest.update(values.tobytes())
     return (
-        wave.dtype.str, wave.shape, wave.tobytes(), flux.dtype.str, flux.shape, flux.tobytes(),
+        digest.digest(), wave.nbytes + flux.nbytes,
         np.float64(left).tobytes(), np.float64(right).tobytes(),
         tuple(np.geterr().values()), extend_atm_container_on_bandwidth_boundary,
     )
@@ -943,7 +949,8 @@ def strip_to_bandwidth(
     result = _strip_to_bandwidth_uncached(atm_container, left_bandwidth, right_bandwidth, inplace=inplace)
     if key is not None:
         wave, flux = result.model.wavelength, result.model.flux
-        payload = len(key[2]) + len(key[5]) + 16 + wave.nbytes + flux.nbytes
+        # Retain the original input/output payload budget, despite the smaller stored key.
+        payload = key[1] + 16 + wave.nbytes + flux.nbytes
         with _STRIP_CACHE_LOCK:
             if payload <= _STRIP_CACHE_MAX_PAYLOAD:
                 # Immutable bytes backing also prevents re-enabling write access on these private views.
