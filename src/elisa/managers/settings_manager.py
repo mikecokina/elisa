@@ -34,6 +34,7 @@ class DefaultSettings:
     RV_LAMBDA_INTERVAL: tuple = (5500, 5600)
 
     # computational
+    INTERSECTION_BACKEND: str = "sutherland_hodgman"
     MAX_DISCRETIZATION_FACTOR: int = 8
     MIN_DISCRETIZATION_FACTOR: int = 3
     DEFAULT_DISCRETIZATION_FACTOR: int = 5

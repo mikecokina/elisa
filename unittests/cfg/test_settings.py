@@ -36,6 +36,7 @@ def elisa_ini(tmp_path: Path, monkeypatch):
         "DEFAULT_DISCRETIZATION_FACTOR": 5,
         "NUMBER_OF_THREADS": 1,
         "NUMBER_OF_PROCESSES": -1,
+        "INTERSECTION_BACKEND": "sutherland_hodgman",
         "NUMBER_OF_MCMC_PROCESSES": -1,
         "MAX_NU_SEPARATION": 0.045,
         "MAX_D_FLUX": 0.0,
@@ -78,6 +79,7 @@ def elisa_ini(tmp_path: Path, monkeypatch):
         rv_lambda_interval = ({expected["RV_LAMBDA_INTERVAL"][0]}, {expected["RV_LAMBDA_INTERVAL"][1]})
 
         [computational]
+        intersection_backend = {expected["INTERSECTION_BACKEND"]}
         max_discretization_factor = {expected["MAX_DISCRETIZATION_FACTOR"]}
         min_discretization_factor = {expected["MIN_DISCRETIZATION_FACTOR"]}
         default_discretization_factor = {expected["DEFAULT_DISCRETIZATION_FACTOR"]}
@@ -263,3 +265,34 @@ def test_missing_tables_warn(elisa_ini):
 
     with pytest.warns(UserWarning):
         import_fresh_elisa_settings()
+
+
+@pytest.mark.parametrize("backend", ["pypex", "reference", "sutherland_hodgman"])
+def test_intersection_backend_configure_and_serialize(elisa_ini, backend):
+    s = import_fresh_elisa_settings()
+    s.configure(INTERSECTION_BACKEND=backend)
+    assert s.INTERSECTION_BACKEND == backend
+    assert s.settings_serializer()["INTERSECTION_BACKEND"] == backend
+
+
+def test_intersection_backend_rejects_invalid_configure(elisa_ini):
+    s = import_fresh_elisa_settings()
+    before = s.INTERSECTION_BACKEND
+    with pytest.raises(ValueError, match="INTERSECTION_BACKEND"):
+        s.configure(INTERSECTION_BACKEND="invalid")
+    assert s.INTERSECTION_BACKEND == before
+
+
+def test_intersection_backend_rejects_invalid_ini(elisa_ini):
+    ini_path, _ = elisa_ini
+    ini_path.write_text(ini_path.read_text().replace("intersection_backend = sutherland_hodgman", "intersection_backend = invalid"))
+    with pytest.raises(ValueError, match="INTERSECTION_BACKEND"):
+        import_fresh_elisa_settings()
+
+
+def test_intersection_backend_defaults_to_sutherland_hodgman(elisa_ini):
+    ini_path, _ = elisa_ini
+    ini_path.write_text(ini_path.read_text().replace("intersection_backend = sutherland_hodgman", ""))
+    s = import_fresh_elisa_settings()
+    assert s.INTERSECTION_BACKEND == "sutherland_hodgman"
+    assert s.DEFAULT_SETTINGS["INTERSECTION_BACKEND"] == "sutherland_hodgman"

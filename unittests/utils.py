@@ -2,6 +2,9 @@
 # due to stupid astropy units/constants implementation
 from unittests import set_astropy_units
 
+from fractions import Fraction as F
+from typing import Literal, TypeAlias, overload
+
 import json
 import logging
 import os
@@ -9,6 +12,7 @@ import os.path as op
 import tempfile
 import unittest
 import numpy as np
+from numpy.typing import NDArray
 
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -24,10 +28,13 @@ from elisa.single_system.system import SingleSystem
 from elisa.const import Position
 from elisa.binary_system.orbit import orbit
 from elisa.utils import is_empty
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 
 set_astropy_units()
 ax3 = Axes3D
+
+FloatArray: TypeAlias = NDArray[np.float64]
+RationalPoint: TypeAlias = tuple[F, F]
 
 
 def plot_points(points_1, points_2, label):
@@ -281,6 +288,64 @@ def surface_closed(faces, points):
             return False
 
     return True
+
+
+def signed_double_area(vertices: Sequence[RationalPoint]) -> F:
+    """Accumulate a rational shoelace sum without an integer zero fallback."""
+    total = F(0)
+    for i, (x, y) in enumerate(vertices):
+        previous_x, previous_y = vertices[i - 1]
+        total += previous_x * y - previous_y * x
+    return total
+
+
+def _cross(first: RationalPoint, second: RationalPoint, point: RationalPoint) -> F:
+    return (second[0] - first[0]) * (point[1] - first[1]) - (second[1] - first[1]) * (point[0] - first[0])
+
+
+@overload
+def exact_area(polygon: FloatArray, triangle: FloatArray, return_vertices: Literal[False] = False) -> float: ...
+
+
+@overload
+def exact_area(polygon: FloatArray, triangle: FloatArray, return_vertices: Literal[True]) -> list[RationalPoint]: ...
+
+
+@overload
+def exact_area(polygon: FloatArray, triangle: FloatArray, return_vertices: bool) -> float | list[RationalPoint]: ...
+
+
+def exact_area(
+    polygon: FloatArray,
+    triangle: FloatArray,
+    return_vertices: bool = False,
+) -> float | list[RationalPoint]:
+    """Exact rational oracle: clip TRIANGLE against POLYGON (opposite direction).
+
+    Fraction(float) preserves the actual supplied binary64 input exactly.
+    """
+    polygon_vertices: list[RationalPoint] = [(F(float(x)), F(float(y))) for x, y in polygon]
+    clipped_vertices: list[RationalPoint] = [(F(float(x)), F(float(y))) for x, y in triangle]
+    sign = F(1) if signed_double_area(polygon_vertices) >= 0 else F(-1)
+    for i in range(len(polygon_vertices)):
+        output_vertices: list[RationalPoint] = []
+        if not clipped_vertices:
+            break
+        edge_start, edge_end = polygon_vertices[i - 1], polygon_vertices[i]
+        start = clipped_vertices[-1]
+        fs = sign * _cross(edge_start, edge_end, start)
+        for end in clipped_vertices:
+            fe = sign * _cross(edge_start, edge_end, end)
+            if (fs >= 0) != (fe >= 0):
+                t = fs / (fs - fe)
+                output_vertices.append((start[0] + t * (end[0] - start[0]), start[1] + t * (end[1] - start[1])))
+            if fe >= 0:
+                output_vertices.append(end)
+            start, fs = end, fe
+        clipped_vertices = output_vertices
+    if return_vertices:
+        return clipped_vertices
+    return float(abs(signed_double_area(clipped_vertices)) / 2)
 
 
 class ElisaTestCase(unittest.TestCase):

@@ -200,6 +200,7 @@ class Settings(_Const, DefaultSettings):
             "DEFAULT_DISCRETIZATION_FACTOR": cls.DEFAULT_DISCRETIZATION_FACTOR,
             "NUMBER_OF_THREADS": cls.NUMBER_OF_THREADS,
             "NUMBER_OF_PROCESSES": cls.NUMBER_OF_PROCESSES,
+            "INTERSECTION_BACKEND": cls.INTERSECTION_BACKEND,
             "NUMBER_OF_MCMC_PROCESSES": cls.NUMBER_OF_MCMC_PROCESSES,
             "MAX_NU_SEPARATION": cls.MAX_NU_SEPARATION,
             "MAX_D_FLUX": cls.MAX_D_FLUX,
@@ -297,10 +298,19 @@ class Settings(_Const, DefaultSettings):
             if not hasattr(cls, key):
                 msg = "You are about to set configuration which doesn't exist"
                 raise ValueError(msg)
+            if key == "INTERSECTION_BACKEND":
+                cls._validate_intersection_backend(value)
             setattr(cls, key, value)
             if key == "LOG_CONFIG":
                 cls.set_up_logging()
         cls._update_atlas_to_base_dir()
+
+    @staticmethod
+    def _validate_intersection_backend(value: object) -> None:
+        """Reject unsupported polygon intersection area backends."""
+        if value not in ("pypex", "reference", "sutherland_hodgman"):
+            msg = "INTERSECTION_BACKEND must be one of: pypex, reference, sutherland_hodgman"
+            raise ValueError(msg)
 
     @classmethod
     def _create_home(cls) -> None:
@@ -361,6 +371,9 @@ class Settings(_Const, DefaultSettings):
             cls.PULSATION_MODEL = c_parse.get("physics", "pulsation_model", fallback=cls.PULSATION_MODEL)
         # **************************************************************************************************************
         if c_parse.has_section("computational"):
+            backend = c_parse.get("computational", "intersection_backend", fallback=cls.INTERSECTION_BACKEND)
+            cls._validate_intersection_backend(backend)
+            cls.INTERSECTION_BACKEND = backend
             cls.MAX_DISCRETIZATION_FACTOR = c_parse.getfloat("computational", "max_discretization_factor",
                                                              fallback=cls.MAX_DISCRETIZATION_FACTOR)
             cls.MIN_DISCRETIZATION_FACTOR = c_parse.getfloat("computational", "min_discretization_factor",

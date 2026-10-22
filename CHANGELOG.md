@@ -11,6 +11,9 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Added
 
+- Independent Sutherland-Hodgman polygon/triangle intersection area kernels: a
+  float64 reference and a Numba implementation without fastmath, with analytic,
+  exact-rational, transformation, and captured eclipse geometry validation.
 - Gradio desktop UI, launched with `python -m elisa.ui`, with tabs for light curve
   modeling, radial velocity modeling, light curve fitting, radial velocity fitting,
   and system visualization.
@@ -24,6 +27,17 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Changed
 
+- Use Sutherland-Hodgman clipping by default for eclipse intersection areas.
+  Configure it through `INTERSECTION_BACKEND` or `[computational].intersection_backend`;
+  `pypex` and `reference` remain available.
+- Eliminate intersection coordinate rounding. Measured maximum area error decreased
+  from **3.36e-12 to 1.87e-18 SMA²** against exact geometry. Reference and compiled
+  results agreed bitwise.
+- Measured normalized light-curve differences versus Pypex were at most
+  **4.27e-11 (0.0000427 ppm)**, reflecting removal of legacy geometric rounding.
+  The physical model and mesh accuracy are unchanged.
+- Measured speedups: **236x** for intersection areas, **124x** for partial coverage,
+  and approximately **2x** for complete light curves.
 - Reduced fitting overhead in MCMC likelihood evaluation, parameter serialization,
   curve integration, and logging-dependent R² calculations.
 - Cached albedo and correction factor calculations to reduce repeated I/O.

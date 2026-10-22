@@ -23,6 +23,27 @@ if TYPE_CHECKING:
 logger = getLogger("binary_system.surface.coverage")
 
 
+def _calculate_intersection_areas(
+    hull: NDArray[Float],
+    triangles: NDArray[Float],
+) -> NDArray[Float]:
+    """Calculate hull/triangle intersection areas with the configured backend."""
+    backend = settings.INTERSECTION_BACKEND
+    if backend == "pypex":
+        pypex_hull = bsutils.hull_to_pypex_poly(hull)
+        pypex_faces = bsutils.faces_to_pypex_poly(triangles)
+        intersections = bsutils.pypex_poly_hull_intersection(pypex_faces, pypex_hull)
+        # The area adapter maps missing intersections to zero.
+        return np.array(bsutils.pypex_poly_surface_area(intersections), dtype=FLOAT)
+
+    if backend in {"reference", "sutherland_hodgman"}:
+        from elisa.binary_system.surface.clipping import intersection_areas  # noqa: PLC0415 - optional backend
+
+        return intersection_areas(hull, triangles, compiled=backend == "sutherland_hodgman")
+
+    message = f"Unknown intersection backend: {backend}"
+    raise ValueError(message)
+
 
 def partial_visible_faces_surface_coverage(
     points: NDArray[Float],
@@ -44,21 +65,7 @@ def partial_visible_faces_surface_coverage(
     :return: Surface coverage of partially visible faces.
     :rtype: NDArray[Float]
     """
-    pypex_hull = bsutils.hull_to_pypex_poly(hull)
-    pypex_faces = bsutils.faces_to_pypex_poly(points[faces])
-
-    # it is possible to None happens in intersection, tkae care about it latter
-    pypex_intersection = bsutils.pypex_poly_hull_intersection(
-        pypex_faces,
-        pypex_hull,
-    )
-
-    # think about surface normalisation like and avoid surface areas like 1e-6
-    # which lead to loss in precission
-    pypex_polys_surface_area = np.array(
-        bsutils.pypex_poly_surface_area(pypex_intersection),
-        dtype=FLOAT,
-    )
+    intersection_areas = _calculate_intersection_areas(hull, points[faces])
 
     inplane_points_3d = np.column_stack((points, np.zeros(points.shape[0])))
     inplane_surface_area = utils.triangle_areas(
@@ -66,7 +73,7 @@ def partial_visible_faces_surface_coverage(
         points=inplane_points_3d,
     )
     correction_cosine = utils.calculate_cos_theta_los_x(normals)
-    return (inplane_surface_area - pypex_polys_surface_area) / correction_cosine
+    return (inplane_surface_area - intersection_areas) / correction_cosine
 
 
 def calculate_centre_of_star_projection(
