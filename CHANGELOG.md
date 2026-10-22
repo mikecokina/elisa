@@ -29,6 +29,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Changed
 
+- Reduce passband preparation overhead by removing a redundant deep copy and
+  reusing exact numeric bandwidth-trimming results in a bounded LRU cache.
+  Preserve independent writable outputs, input isolation, Akima interpolation,
+  and bitwise-identical spectra, radiances, and light curves.
 - Deduplicate selected CK04 and K93 atmosphere grid combinations before
   constructing filenames and paths, preserving table selection, ordering,
   interpolation results, and error behavior.

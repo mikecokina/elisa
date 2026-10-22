@@ -3,11 +3,12 @@ from __future__ import annotations
 import itertools
 import json
 import warnings
+from collections import OrderedDict
 from collections.abc import Iterable
 from copy import deepcopy
 from pathlib import Path
 from queue import Queue
-from threading import Thread
+from threading import Lock, Thread
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -836,6 +837,57 @@ def strip_atm_container_by_bandwidth(
     )
 
 
+_STRIP_CACHE_MAXSIZE = 128
+_STRIP_CACHE_MAX_PAYLOAD = 128 * 1024
+_STRIP_CACHE: OrderedDict[tuple, tuple[NDArray[Float], NDArray[Float]]] = OrderedDict()
+_STRIP_CACHE_LOCK = Lock()
+_STRIP_CACHE_COUNTS = {"hits": 0, "misses": 0, "bypasses": 0}
+
+
+def clear_atm_strip_cache() -> None:
+    """Clear cached numeric bandwidth strips and reset their hit/miss counters."""
+    with _STRIP_CACHE_LOCK:
+        _STRIP_CACHE.clear()
+        _STRIP_CACHE_COUNTS.update(hits=0, misses=0, bypasses=0)
+
+
+def atm_strip_cache_info() -> dict[str, int]:
+    """Return bandwidth-strip cache counters and capacity, without exposing cached arrays.
+
+    An oversized result counts as both a miss and a bypass. Errors are not cached.
+    """
+    with _STRIP_CACHE_LOCK:
+        return {**_STRIP_CACHE_COUNTS, "maxsize": _STRIP_CACHE_MAXSIZE, "currsize": len(_STRIP_CACHE)}
+
+
+def _atm_strip_cache_key(
+    container: AtmDataContainer,
+    left: Float,
+    right: Float,
+) -> tuple | None:
+    """Snapshot ordinary float64 inputs; leave other conversion/validation paths uncached."""
+    if type(container) is not AtmDataContainer or type(container.model) is not AtmModel:
+        return None
+    wave, flux = container.model.wavelength, container.model.flux
+    if (
+        type(wave) is not np.ndarray or type(flux) is not np.ndarray
+        or wave.dtype != np.dtype(FLOAT) or flux.dtype != np.dtype(FLOAT)
+        or wave.ndim != 1 or wave.shape != flux.shape
+        or wave.nbytes + flux.nbytes + 16 > _STRIP_CACHE_MAX_PAYLOAD
+        or type(left) not in (int, float, np.float32, np.float64, np.int32, np.int64)
+        or type(right) not in (int, float, np.float32, np.float64, np.int32, np.int64)
+    ):
+        return None
+    # Large integers can have comparison semantics lost by conversion to float64.
+    if any(isinstance(bound, (int, np.integer)) and abs(int(bound)) > 2**53 for bound in (left, right)):
+        return None
+    return (
+        wave.dtype.str, wave.shape, wave.tobytes(), flux.dtype.str, flux.shape, flux.tobytes(),
+        np.float64(left).tobytes(), np.float64(right).tobytes(),
+        tuple(np.geterr().values()), extend_atm_container_on_bandwidth_boundary,
+    )
+
+
 def strip_to_bandwidth(
     atm_container: AtmDataContainer,
     left_bandwidth: Float,
@@ -852,6 +904,11 @@ def strip_to_bandwidth(
     :func:`extend_atm_container_on_bandwidth_boundary` to ensure the
     returned model has exact boundary values.
 
+    Ordinary float64 inputs reuse a bounded cache of exact numeric results.
+    Returned models own writable arrays; cached arrays are never exposed.
+    Use :func:`clear_atm_strip_cache` and :func:`atm_strip_cache_info` to manage
+    and inspect this cache.
+
     :param atm_container: Atmosphere container to strip.
     :type atm_container: AtmDataContainer
     :param left_bandwidth: Left (minimum) wavelength boundary in
@@ -866,6 +923,50 @@ def strip_to_bandwidth(
     :returns: The bandwidth-stripped :class:`AtmDataContainer`.
     :rtype: AtmDataContainer
     """
+    key = _atm_strip_cache_key(atm_container, left_bandwidth, right_bandwidth)
+    if key is not None:
+        with _STRIP_CACHE_LOCK:
+            cached = _STRIP_CACHE.get(key)
+            if cached is not None:
+                _STRIP_CACHE.move_to_end(key)
+                _STRIP_CACHE_COUNTS["hits"] += 1
+            else:
+                _STRIP_CACHE_COUNTS["misses"] += 1
+        if cached is not None:
+            result = atm_container if inplace else deepcopy(atm_container)
+            result.model = AtmModel(wavelength=cached[0], flux=cached[1])
+            return result
+    else:
+        with _STRIP_CACHE_LOCK:
+            _STRIP_CACHE_COUNTS["bypasses"] += 1
+
+    result = _strip_to_bandwidth_uncached(atm_container, left_bandwidth, right_bandwidth, inplace=inplace)
+    if key is not None:
+        wave, flux = result.model.wavelength, result.model.flux
+        payload = len(key[2]) + len(key[5]) + 16 + wave.nbytes + flux.nbytes
+        with _STRIP_CACHE_LOCK:
+            if payload <= _STRIP_CACHE_MAX_PAYLOAD:
+                # Immutable bytes backing also prevents re-enabling write access on these private views.
+                _STRIP_CACHE[key] = (
+                    np.frombuffer(wave.tobytes(), dtype=FLOAT),
+                    np.frombuffer(flux.tobytes(), dtype=FLOAT),
+                )
+                _STRIP_CACHE.move_to_end(key)
+                while len(_STRIP_CACHE) > _STRIP_CACHE_MAXSIZE:
+                    _STRIP_CACHE.popitem(last=False)
+            else:
+                _STRIP_CACHE_COUNTS["bypasses"] += 1
+    return result
+
+
+def _strip_to_bandwidth_uncached(
+    atm_container: AtmDataContainer,
+    left_bandwidth: Float,
+    right_bandwidth: Float,
+    *,
+    inplace: bool = False,
+) -> AtmDataContainer:
+    """Compute the original strip, preserving validation and partial mutations on errors."""
     # Select indices within bandwidth
     valid_indices = list(
         np.where(
@@ -1003,7 +1104,7 @@ def apply_passband(
                 atm_container=deepcopy(atm_container),
                 left_bandwidth=band_container.left_bandwidth,
                 right_bandwidth=band_container.right_bandwidth,
-                inplace=False,
+                inplace=True,
             )
 
             # Apply passband response
