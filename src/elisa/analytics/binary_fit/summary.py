@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from multiprocessing.pool import Pool
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -20,10 +19,12 @@ from elisa.base.error import MaxIterationError, MorphologyError
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.surface.gravity import calculate_polar_gravity_acceleration
 from elisa.logger import getLogger
+from elisa.observer.mp_manager import get_mp_context
 from elisa.utils import split_to_batches
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from multiprocessing.pool import Pool
 
     from numpy.typing import NDArray
 
@@ -1711,7 +1712,7 @@ def _manage_chain_evaluation(
     if settings.NUMBER_OF_MCMC_PROCESSES > 1:
         logger.info("starting multiprocessor workers for error propagation technique")
         batches: list[NDArray] = split_to_batches(array=renormalized_chain, n_proc=settings.NUMBER_OF_MCMC_PROCESSES)
-        pool: Pool = Pool(processes=settings.NUMBER_OF_MCMC_PROCESSES)
+        pool: Pool = get_mp_context().Pool(processes=settings.NUMBER_OF_MCMC_PROCESSES)
         result: list[Any] = [pool.apply_async(eval_function, (*args, batch)) for batch in batches]
         pool.close()
         pool.join()

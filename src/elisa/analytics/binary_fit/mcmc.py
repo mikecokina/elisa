@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from multiprocessing import Pool
 from typing import TYPE_CHECKING, Any
 
 import emcee
@@ -21,6 +20,7 @@ from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
 from elisa.graphic.mcmc_graphics import Plot
 from elisa.logger import getPersistentLogger
+from elisa.observer.mp_manager import get_mp_context
 from elisa.observer.utils import normalize_light_curve
 
 from . import mixins
@@ -251,7 +251,7 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
             "log_prob_fn": self.ln_probability,
         }
         if settings.NUMBER_OF_MCMC_PROCESSES > 1:
-            with Pool(processes=settings.NUMBER_OF_MCMC_PROCESSES) as pool:
+            with get_mp_context().Pool(processes=settings.NUMBER_OF_MCMC_PROCESSES) as pool:
                 logger.info("starting parallel mcmc")
                 sampler = emcee.EnsembleSampler(pool=pool, **kwargs)  # type: ignore[arg-type]
                 self.worker(

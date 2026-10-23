@@ -51,7 +51,8 @@ class TestManageChainEvaluation:
             return chain * 2
 
         with patch.object(settings, "NUMBER_OF_MCMC_PROCESSES", 2):
-            with patch("elisa.analytics.binary_fit.summary.Pool") as mock_pool_class:
+            with patch("elisa.analytics.binary_fit.summary.get_mp_context") as mock_context:
+                mock_pool_class = mock_context.return_value.Pool
                 mock_pool = MagicMock()
                 mock_pool_class.return_value = mock_pool
 
@@ -66,6 +67,7 @@ class TestManageChainEvaluation:
                 result = _manage_chain_evaluation(mock_chain, mock_eval_func, "test_arg")
 
                 assert isinstance(result, np.ndarray)
+                mock_pool_class.assert_called_once_with(processes=2)
                 mock_pool.close.assert_called_once()
                 mock_pool.join.assert_called_once()
 
