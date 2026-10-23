@@ -9,21 +9,21 @@ elisa.base.curves.rv\_point module
 
 .. automodule:: elisa.base.curves.rv_point
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.base.curves.utils module
 ------------------------------
 
 .. automodule:: elisa.base.curves.utils
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: elisa.base.curves
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

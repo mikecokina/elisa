@@ -21,21 +21,21 @@ elisa.analytics.tasks module
 
 .. automodule:: elisa.analytics.tasks
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.analytics.transform module
 --------------------------------
 
 .. automodule:: elisa.analytics.transform
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: elisa.analytics
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

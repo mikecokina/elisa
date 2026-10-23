@@ -1,3 +1,4 @@
+# Documentation builds require Python >=3.12 (Sphinx 9.1).
 # Core deps
 astropy>=6.1.7; python_version < '3.11'
 astropy>=7.2.0; python_version >= '3.11'  # Requires-Python >=3.11
@@ -35,5 +36,7 @@ requests>=2.32.5
 setuptools>=82.0.0
 wheel>=0.46.3
 
+# UI modules are included by sphinx-apidoc; keep in sync with the ui extra.
+gradio~=6.10.0
+
 Sphinx==9.1.0
-sphinx-rtd-theme===3.1.0

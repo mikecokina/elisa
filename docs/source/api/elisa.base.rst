@@ -20,69 +20,69 @@ elisa.base.body module
 
 .. automodule:: elisa.base.body
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.base.container module
 ---------------------------
 
 .. automodule:: elisa.base.container
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.base.error module
 -----------------------
 
 .. automodule:: elisa.base.error
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.base.spot module
 ----------------------
 
 .. automodule:: elisa.base.spot
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.base.star module
 ----------------------
 
 .. automodule:: elisa.base.star
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.base.system module
 ------------------------
 
 .. automodule:: elisa.base.system
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.base.transform module
 ---------------------------
 
 .. automodule:: elisa.base.transform
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.base.types module
 -----------------------
 
 .. automodule:: elisa.base.types
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: elisa.base
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

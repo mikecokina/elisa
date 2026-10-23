@@ -18,13 +18,13 @@ elisa.pypex.utils module
 
 .. automodule:: elisa.pypex.utils
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: elisa.pypex
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

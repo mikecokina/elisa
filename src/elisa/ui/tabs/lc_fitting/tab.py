@@ -13,10 +13,11 @@ least-squares (LSQRT) or MCMC method:
 8. Download the JSON result file.
 
 The ``semi_major_axis`` parameter supports a three-way mode selector:
+
 - **free** - fitted with explicit min/max bounds.
 - **fixed** - held at its initial value.
 - **constrained** - derived via a Python/math expression referencing other
-  parameters (e.g. ``"16.515 / sin(radians(system@inclination))"`).
+  parameters (e.g. ``"16.515 / sin(radians(system@inclination))"``).
 """
 
 from __future__ import annotations

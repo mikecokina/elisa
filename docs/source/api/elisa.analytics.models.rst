@@ -9,37 +9,37 @@ elisa.analytics.models.cost\_fns module
 
 .. automodule:: elisa.analytics.models.cost_fns
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.analytics.models.lc module
 --------------------------------
 
 .. automodule:: elisa.analytics.models.lc
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.analytics.models.rv module
 --------------------------------
 
 .. automodule:: elisa.analytics.models.rv
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.analytics.models.serializers module
 -----------------------------------------
 
 .. automodule:: elisa.analytics.models.serializers
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: elisa.analytics.models
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

@@ -9,45 +9,45 @@ elisa.observer.mp\_manager module
 
 .. automodule:: elisa.observer.mp_manager
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.observer.observer module
 ------------------------------
 
 .. automodule:: elisa.observer.observer
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.observer.passband module
 ------------------------------
 
 .. automodule:: elisa.observer.passband
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.observer.plot module
 --------------------------
 
 .. automodule:: elisa.observer.plot
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.observer.utils module
 ---------------------------
 
 .. automodule:: elisa.observer.utils
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: elisa.observer
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

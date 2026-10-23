@@ -9,21 +9,21 @@ elisa.binary\_system.graphic.animation module
 
 .. automodule:: elisa.binary_system.graphic.animation
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.binary\_system.graphic.plot module
 ----------------------------------------
 
 .. automodule:: elisa.binary_system.graphic.plot
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: elisa.binary_system.graphic
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

@@ -7,6 +7,7 @@ Welcome to elisa's documentation!
 =================================
 
 .. automodule:: elisa
+   :no-index:
 
 Module Index
 ~~~~~~~~~~~~

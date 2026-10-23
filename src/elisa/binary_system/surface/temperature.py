@@ -579,9 +579,9 @@ def get_symmetrical_distance_matrix(
     :param centres: Face centres for both components.
     :type centres: dict[str, NDArray[Float]]
     :param vis_test: Visibility masks for both components.
-    :type vis_test: dict[str, NDArray[NP_BOOL_]]
+    :type vis_test: ``dict[str, NDArray[NP_BOOL_]]``
     :param vis_test_symmetry: Symmetry visibility masks for both components.
-    :type vis_test_symmetry: dict[str, NDArray[NP_BOOL_] | None]
+    :type vis_test_symmetry: ``dict[str, NDArray[NP_BOOL_] | None]``
     :return: Tuple ``(distance, join_vector)``.
     :rtype: tuple[NDArray[Float], NDArray[Float]]
     """
@@ -638,9 +638,9 @@ def get_symmetrical_gammma(
     :param join_vector: Join-vector matrix.
     :type join_vector: NDArray[Float]
     :param vis_test: Visibility masks for both components.
-    :type vis_test: dict[str, NDArray[NP_BOOL_]]
+    :type vis_test: ``dict[str, NDArray[NP_BOOL_]]``
     :param vis_test_symmetry: Symmetry visibility masks for both components.
-    :type vis_test_symmetry: dict[str, NDArray[NP_BOOL_] | None]
+    :type vis_test_symmetry: ``dict[str, NDArray[NP_BOOL_] | None]``
     :return: Cosine matrices ``gamma`` for both components.
     :rtype: dict[str, NDArray[Float]]
     """
@@ -815,7 +815,7 @@ def get_distance_matrix_shape(
     :param system: Orbital position container.
     :type system: OrbitalPositionContainer
     :param vis_test: Visibility masks for both components.
-    :type vis_test: dict[str, NDArray[NP_BOOL_]]
+    :type vis_test: ``dict[str, NDArray[NP_BOOL_]]``
     :return: Tuple ``(shape, shape_reduced)``.
     :rtype: tuple[tuple[Int, Int, Int], tuple[Int, Int]]
     """

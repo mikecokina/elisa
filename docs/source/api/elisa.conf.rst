@@ -12,26 +12,34 @@ Subpackages
 Submodules
 ----------
 
+elisa.conf.logconfig module
+---------------------------
+
+.. automodule:: elisa.conf.logconfig
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 elisa.conf.parsers module
 -------------------------
 
 .. automodule:: elisa.conf.parsers
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.conf.settings module
 --------------------------
 
 .. automodule:: elisa.conf.settings
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: elisa.conf
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
