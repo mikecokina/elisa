@@ -72,6 +72,9 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Resolve stellar fitting temperature and metallicity defaults from the current
+  `ATM_ATLAS` when creating parameters, preserving existing instances and explicit
+  user bounds. Support CK04/K93 aliases and use CK04 fitting bounds for blackbody.
 - Prevent stale RV passband, atmosphere, correction-factor, albedo, and photometric
   calibration caches after configuration or source-file changes.
 - Preserve atmospheric spectral flux precision during bandwidth boundary

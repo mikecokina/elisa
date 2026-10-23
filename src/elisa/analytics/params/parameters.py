@@ -801,7 +801,7 @@ class InitialParameters(metaclass=abc.ABCMeta):
     """
 
     TRANSFORM_PROPERTIES_CLS: ClassVar[TransformPropertiesType]
-    DEFAULT_NORMALIZATION: ClassVar[dict[str, tuple]]
+    DEFAULT_NORMALIZATION: dict[str, tuple]
 
     @property
     def slots_(self) -> list:
@@ -942,7 +942,6 @@ class StarInitialParameters(InitialParameters):
     ]
 
     TRANSFORM_PROPERTIES_CLS = StarInitialProperties
-    DEFAULT_NORMALIZATION = conf.DEFAULT_NORMALIZATION_STAR
 
     def __init__(self, **kwargs) -> None:
         """Initialize stellar component parameters from provided dictionary.
@@ -950,6 +949,7 @@ class StarInitialParameters(InitialParameters):
         :param kwargs: Stellar parameter definitions including optional spots and pulsations.
         :type kwargs: dict
         """
+        self.DEFAULT_NORMALIZATION = conf.get_default_normalization_star()
         self.label = None
 
         spots = kwargs.pop("spots", [])

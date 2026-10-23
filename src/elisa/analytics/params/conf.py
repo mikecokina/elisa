@@ -4,16 +4,12 @@ import numpy as np
 
 from elisa import settings
 from elisa import units as u
-from elisa.atm import atm_file_prefix_to_quantity_list
+from elisa.atm import atm_file_prefix_to_quantity_list, validated_atlas
 from elisa.utc import UTC
 from elisa.utils import jd_from_datetime
 
 PARAM_PARSER = "@"
 NUISANCE_PARSER = "nuisance"
-
-TEMPERATURES = atm_file_prefix_to_quantity_list("temperature", settings.ATM_ATLAS)
-METALLICITY = atm_file_prefix_to_quantity_list("metallicity", settings.ATM_ATLAS)
-
 
 COMPOSITE_FLAT_PARAMS = [
     "spot",
@@ -43,13 +39,30 @@ DEFAULT_NORMALIZATION_PULSATION = {
 
 DEFAULT_NORMALIZATION_STAR = {
     "mass": (0.1, 50),
-    "t_eff": (np.min(TEMPERATURES), np.max(TEMPERATURES)),
-    "metallicity": (np.min(METALLICITY), np.max(METALLICITY)),
     "surface_potential": (2.0, 50.0),
     "albedo": (0, 1),
     "gravity_darkening": (0, 1),
     "synchronicity": (0.01, 10),
 }
+
+
+def get_default_normalization_star() -> dict:
+    """Return independent stellar defaults for the currently selected atlas.
+
+    Blackbody spectra have no tabulated temperature/metallicity domain. Use
+    CK04, ELISA's default atlas, as the legacy fitting normalization fallback;
+    these are finite fitting defaults, not physical limits on blackbodies.
+    """
+    atlas = validated_atlas(settings.ATM_ATLAS)
+    atlas = "ck04" if atlas == "bb" else atlas
+    temperatures = atm_file_prefix_to_quantity_list("temperature", atlas)
+    metallicity = atm_file_prefix_to_quantity_list("metallicity", atlas)
+    return {
+        **DEFAULT_NORMALIZATION_STAR,
+        "t_eff": (np.min(temperatures), np.max(temperatures)),
+        "metallicity": (np.min(metallicity), np.max(metallicity)),
+    }
+
 
 CURRENT_TIME_JD = jd_from_datetime(datetime.datetime.now(tz=UTC))
 
