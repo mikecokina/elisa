@@ -357,6 +357,8 @@ class Settings(_Const, DefaultSettings):
                 "rv_lambda_interval",
                 fallback=f"({cls.RV_LAMBDA_INTERVAL[0]}, {cls.RV_LAMBDA_INTERVAL[1]})",
             ), name="rv_lambda_interval")
+            
+            cls.LSF_METHOD = c_parse.getfloat('physics', 'lsf_method', fallback=cls.LSF_METHOD)
 
             cls.PULSATION_MODEL = c_parse.get("physics", "pulsation_model", fallback=cls.PULSATION_MODEL)
         # **************************************************************************************************************
