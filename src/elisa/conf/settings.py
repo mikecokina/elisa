@@ -349,6 +349,20 @@ class Settings(_Const):
         parser.read(conf_path)
         self.update_config(parser)
 
+    @contextmanager
+    def override(self, **kwargs: object) -> Iterator[None]:
+        """Temporarily configure settings, restoring all effective values on exit.
+
+        Nested contexts restore their own entry state, including settings changed
+        in the body that were not named in the override.
+        """
+        previous = self.settings_serializer()
+        self.configure(**kwargs)
+        try:
+            yield
+        finally:
+            self.configure(**previous)
+
     def configure(self, **kwargs: object) -> None:
         """Validate a full candidate and publish it once, or retain all old values.
 

@@ -131,6 +131,7 @@ class MockSelf(object):
 
 class SupportMethodsTestCase(ElisaTestCase):
     def setUp(self):
+        super().setUp()
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves")
 
     def test_compute_filling_factor(self):

@@ -36,6 +36,7 @@ def test_get_approx_ecl_angular_width():
 class OrbitTestCase(ElisaTestCase):
 
     def setUp(self):
+        super().setUp()
         self.params_combination = np.array(
             [{"argument_of_periastron": np.pi / 2.0, "period": 0.9,
               "eccentricity": 0.0, "inclination": c.HALF_PI},

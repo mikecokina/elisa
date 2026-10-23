@@ -1,4 +1,4 @@
-import unittest
+from unittests.utils import ElisaTestCase
 import numpy as np
 
 from numpy.testing import assert_array_equal
@@ -7,7 +7,7 @@ from elisa.pypex.poly2d.intersection import linter
 from elisa.pypex.poly2d.point import Point
 
 
-class LinterTestCase(unittest.TestCase):
+class LinterTestCase(ElisaTestCase):
     @staticmethod
     def intersection_equal(a, b):
         for x, y, in zip(a, b):
@@ -104,7 +104,7 @@ class LinterTestCase(unittest.TestCase):
         self.intersection_equal(obtained, expected)
 
 
-class LinterMultipleTestCase(unittest.TestCase):
+class LinterMultipleTestCase(ElisaTestCase):
     @staticmethod
     def test_linter_intersections():
         lines1 = np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]])
@@ -127,7 +127,7 @@ class LinterMultipleTestCase(unittest.TestCase):
         assert_array_equal([True, True, True, True, True, True, True, True, True], intersection_status)
 
 
-class ParallelDistanceRegressionTestCase(unittest.TestCase):
+class ParallelDistanceRegressionTestCase(ElisaTestCase):
     def assert_parallel_results(self, line1, line2, expected_distance, tol=PRECISION,
                                 rtol=1e-12, atol=0.0):
         result = linter.intersections(line1, line2, tol=tol)

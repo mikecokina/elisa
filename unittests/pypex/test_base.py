@@ -1,4 +1,4 @@
-import unittest
+from unittests.utils import ElisaTestCase
 import numpy as np
 
 from numpy.testing import assert_array_equal
@@ -6,7 +6,7 @@ from elisa.pypex.base import shape
 from elisa.pypex import poly2d
 
 
-class BaseTestCase(unittest.TestCase):
+class BaseTestCase(ElisaTestCase):
     def test_polygon_validity_check_valid(self):
         valid_hull = [[0, 0], [1, 0], [0.5, 1]]
         self.assertTrue(shape.Shape2D.polygon_validity_check(valid_hull, _raise=False))

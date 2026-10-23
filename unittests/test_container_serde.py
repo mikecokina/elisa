@@ -26,6 +26,7 @@ class StarContainerSerDeTestCase(ElisaTestCase):
              'metallicity', 'polar_log_g', 'critical_surface_potential', 'side_radius']
 
     def setUp(self):
+        super().setUp()
         self.s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS['detached'])
         self.s.primary.discretization_factor = up.radians(10)
         self.s.secondary.discretization_factor = up.radians(10)
@@ -47,6 +48,7 @@ class OrbitalPositionContainerSerDeTestCase(ElisaTestCase):
     props = ["semi_major_axis", "morphology", "mass_ratio"] + list(BinarySystem.ALL_KWARGS)
 
     def setUp(self):
+        super().setUp()
         self.s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS['detached-physical'])
         self.s.primary.discretization_factor = up.radians(10)
         self.s.secondary.discretization_factor = up.radians(10)

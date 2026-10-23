@@ -1,5 +1,5 @@
 """Unit tests for Separating Axis Theorem (SAT) intersection detection."""
-import unittest
+from unittests.utils import ElisaTestCase
 
 import numpy as np
 
@@ -7,7 +7,7 @@ from elisa.pypex.base.conf import ROUND_PRECISION
 from elisa.pypex.poly2d.intersection import linter, sat
 
 
-class SeparatingAxisTheoremTestCase(unittest.TestCase):
+class SeparatingAxisTheoremTestCase(ElisaTestCase):
     """Test cases for separating_axis_theorem() function."""
 
     def test_separated_squares(self):
@@ -81,7 +81,7 @@ class SeparatingAxisTheoremTestCase(unittest.TestCase):
         self.assertFalse(sat.separating_axis_theorem(poly1, poly2, touch_is_separated=False))
 
 
-class SeparatingAxisTheoremLineAdaptTestCase(unittest.TestCase):
+class SeparatingAxisTheoremLineAdaptTestCase(ElisaTestCase):
     """Test cases for separating_axis_theorem_line_adapt() function."""
 
     def test_overlapping_collinear_segments(self):
@@ -156,7 +156,7 @@ class SeparatingAxisTheoremLineAdaptTestCase(unittest.TestCase):
         self.assertFalse(sat.separating_axis_theorem_line_adapt(line1, line2, round_tol=3))
 
 
-class IntersectsTestCase(unittest.TestCase):
+class IntersectsTestCase(ElisaTestCase):
     """Test cases for intersects() function."""
 
     def test_two_overlapping_squares(self):
@@ -214,7 +214,7 @@ class IntersectsTestCase(unittest.TestCase):
         self.assertTrue(sat.intersects(poly1, poly2, touch_is_separated=False))
 
 
-class CollinearOrientationRegressionTestCase(unittest.TestCase):
+class CollinearOrientationRegressionTestCase(ElisaTestCase):
     def assert_overlap_entry_points(self, line1, line2, expected, touch_is_separated,
                                     round_tol=ROUND_PRECISION):
         kwargs = dict(touch_is_separated=touch_is_separated, round_tol=round_tol)

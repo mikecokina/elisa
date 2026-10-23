@@ -1,4 +1,4 @@
-import unittest
+from unittests.utils import ElisaTestCase
 import numpy as np
 
 from elisa.pypex.poly2d.polygon import Polygon
@@ -12,7 +12,7 @@ def asser_points_equal(ps1, ps2):
         assert p1, p2
 
 
-class LineSideTestCase(unittest.TestCase):
+class LineSideTestCase(ElisaTestCase):
     """Test cases for _line_side function."""
 
     def test_line_side_same_side_positive(self):
@@ -43,7 +43,7 @@ class LineSideTestCase(unittest.TestCase):
         self.assertGreater(result, 0)
 
 
-class SameSideTestCase(unittest.TestCase):
+class SameSideTestCase(ElisaTestCase):
     """Test cases for same_side function."""
 
     def test_same_side_true(self):
@@ -79,7 +79,7 @@ class SameSideTestCase(unittest.TestCase):
         self.assertTrue(point.same_side(p1, p2, a, b))
 
 
-class LineSideCompatibilityTestCase(unittest.TestCase):
+class LineSideCompatibilityTestCase(ElisaTestCase):
     def test_line_side_magnitude_and_orientation(self):
         origin = np.array([-3.0, 2.0])
         for direction in ((4, 0), (0, 4), (3, 4)):
@@ -103,7 +103,7 @@ class LineSideCompatibilityTestCase(unittest.TestCase):
                                 self.assertEqual(point.same_side(*args), expected >= 0)
 
 
-class BaseTestCase(unittest.TestCase):
+class BaseTestCase(ElisaTestCase):
     """Test cases for is_point_in_polygon function."""
 
     def test_is_point_in_polygon_positive(self):
@@ -139,7 +139,7 @@ class BaseTestCase(unittest.TestCase):
             point.is_point_in_polygon(p, poly)
 
 
-class PointInitTestCase(unittest.TestCase):
+class PointInitTestCase(ElisaTestCase):
     """Test cases for Point initialization."""
 
     def test_point_init(self):
@@ -161,7 +161,7 @@ class PointInitTestCase(unittest.TestCase):
         self.assertEqual(p.y, -2.5)
 
 
-class PointStringRepresentationTestCase(unittest.TestCase):
+class PointStringRepresentationTestCase(ElisaTestCase):
     """Test cases for Point string representations."""
 
     def test_point_str(self):
@@ -185,7 +185,7 @@ class PointStringRepresentationTestCase(unittest.TestCase):
         self.assertEqual(str(p), "Point [-1.5, -2.5]")
 
 
-class PointEqualityTestCase(unittest.TestCase):
+class PointEqualityTestCase(ElisaTestCase):
     """Test cases for Point equality and hashing."""
 
     def test_point_equality_true(self):
@@ -231,7 +231,7 @@ class PointEqualityTestCase(unittest.TestCase):
         self.assertEqual(point_dict[p1], "second")
 
 
-class PointArithmeticTestCase(unittest.TestCase):
+class PointArithmeticTestCase(ElisaTestCase):
     """Test cases for Point arithmetic operations."""
 
     def test_point_add(self):
@@ -285,7 +285,7 @@ class PointArithmeticTestCase(unittest.TestCase):
         self.assertEqual(result.y, -2.0)
 
 
-class PointConversionTestCase(unittest.TestCase):
+class PointConversionTestCase(ElisaTestCase):
     """Test cases for Point conversion methods."""
 
     def test_point_to_list(self):
@@ -329,7 +329,7 @@ class PointConversionTestCase(unittest.TestCase):
         np.testing.assert_array_equal(result, np.array([-1.5, -2.5]))
 
 
-class PointTestCase(unittest.TestCase):
+class PointTestCase(ElisaTestCase):
     """Test cases for Point set method and polygon membership."""
 
     def test_is_inside_polygon_positive(self):

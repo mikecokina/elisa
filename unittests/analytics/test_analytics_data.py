@@ -159,6 +159,7 @@ class CentralMovingAverageTestCase(ElisaTestCase):
     """Test central_moving_average function for smoothing data."""
 
     def setUp(self):
+        super().setUp()
         """Set up test data."""
         # Create simple test data
         self.phases = np.linspace(0, 1, 100)

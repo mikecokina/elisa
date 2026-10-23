@@ -1,6 +1,6 @@
 # keep it first
 # due to stupid astropy units/constants implementation
-from unittests import set_astropy_units
+from unittests import CONFIG_FILE, DEFAULT_TEST_CONFIG, set_astropy_units
 
 from fractions import Fraction as F
 from typing import Literal, TypeAlias, overload
@@ -9,7 +9,6 @@ import json
 import logging
 import os
 import os.path as op
-import tempfile
 import unittest
 import numpy as np
 from numpy.typing import NDArray
@@ -349,11 +348,11 @@ def exact_area(
 
 
 class ElisaTestCase(unittest.TestCase):
-    CONFIG_FILE = op.join(tempfile.gettempdir(), "elisa.ini")
+    CONFIG_FILE = CONFIG_FILE
 
     def touch_default_config(self):
         with open(self.CONFIG_FILE, "w") as f:
-            f.write("")
+            f.write(DEFAULT_TEST_CONFIG)
 
     def write_default_support(self, ld_tables, atm_tables):
         # because of stupid windows MP implementation
@@ -368,18 +367,36 @@ class ElisaTestCase(unittest.TestCase):
         # logging.disable(logging.NOTSET)
         pass
 
-    def setUp(self):
-        os.environ["ELISA_CONFIG"] = self.CONFIG_FILE
-        settings.configure(**settings.DEFAULT_SETTINGS)
-        settings.configure(MESH_GENERATOR='trapezoidal')
-        settings.configure(MAX_DISCRETIZATION_FACTOR=12)
+    def reset_test_settings(self):
+        """Reload the canonical test INI over all built-in defaults."""
+        os.environ["ELISA_CONFIG"] = ElisaTestCase.CONFIG_FILE
+        # Tests may rewrite/remove this file for worker imports. Recreate the
+        # designated test configuration, never a snapshot of live settings.
         self.touch_default_config()
-        settings.configure(**{"CONFIG_FILE": ElisaTestCase.CONFIG_FILE})
+        defaults = dict(settings.DEFAULT_SETTINGS)
+        defaults["CONFIG_FILE"] = ElisaTestCase.CONFIG_FILE
+        settings.configure(**defaults)
+        settings.read_and_update_config(conf_path=ElisaTestCase.CONFIG_FILE)
 
-    def tearDown(self):
-        settings.configure(**settings.DEFAULT_SETTINGS)
-        if op.isfile(self.CONFIG_FILE):
-            os.remove(self.CONFIG_FILE)
+        # Mocks can populate caches with synthetic scientific results. Clearing
+        # these is test isolation policy, not a production configure side effect.
+        from elisa import atm, ld
+        from elisa.buffer import buffer
+        from elisa.base.curves.utils import _get_rv_passband
+        from elisa.binary_system.surface.mesh import _load_correction_factors
+        from elisa.binary_system.surface.temperature import _load_albedo_data
+
+        ld.clear_ld_caches()
+        buffer.ATMOSPHERE_TABLES.clear()
+        atm.clear_atm_strip_cache()
+        _get_rv_passband.cache_clear()
+        _load_correction_factors.cache_clear()
+        _load_albedo_data.cache_clear()
+
+    def setUp(self):
+        # Register first: unittest runs cleanups even when later setup fails.
+        self.addCleanup(self.reset_test_settings)
+        self.reset_test_settings()
 
 
 BINARY_SYSTEM_PARAMS = {

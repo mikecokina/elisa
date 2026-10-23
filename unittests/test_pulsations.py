@@ -63,6 +63,7 @@ TOL = 1e-3
 
 class PulsatingStarInitTestCase(ElisaTestCase):
     def setUp(self):
+        super().setUp()
         self.pulsation_modes = [
             {
                 "l": 1,

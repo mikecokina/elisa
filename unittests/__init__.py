@@ -36,9 +36,11 @@ def set_astropy_units():
 # create default elisa confing file for unittests
 CONFIG_FILE = os.path.join(tempfile.gettempdir(), "elisa.ini")
 
+DEFAULT_TEST_CONFIG = "[computational]\nmesh_generator = trapezoidal\nmax_discretization_factor = 12\n"
+
 os.environ["ELISA_CONFIG"] = CONFIG_FILE
 with open(CONFIG_FILE, "w") as f:
-    f.write("")
+    f.write(DEFAULT_TEST_CONFIG)
 
 set_astropy_units()
 

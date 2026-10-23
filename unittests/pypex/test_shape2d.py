@@ -1,5 +1,5 @@
 import numpy as np
-import unittest
+from unittests.utils import ElisaTestCase
 
 from numpy.testing import assert_array_equal
 from elisa.pypex.poly2d.polygon import Polygon
@@ -10,10 +10,11 @@ from elisa.pypex.poly2d.intersection.sat import intersects
 parray = np.array([[0.5, 1.5], [0, 0], [1, 0], [0, 1], [1, 1]])
 
 
-class Shape2DTestCase(unittest.TestCase):
+class Shape2DTestCase(ElisaTestCase):
     __parray__ = np.array([[0.5, 1.5], [0, 0], [1, 0], [0, 1], [1, 1]])
 
     def setUp(self):
+        super().setUp()
         self.poly = Polygon(hull=self.__parray__)
 
     def test_sort_clockwise(self):
@@ -125,7 +126,7 @@ class Shape2DTestCase(unittest.TestCase):
         self.assertFalse(intersects(line1, line2, touch_is_separated=True))
 
 
-class Line2DTestCase(unittest.TestCase):
+class Line2DTestCase(ElisaTestCase):
     def test_intersects_negative(self):
         line1 = Line(np.array([[0, 0], [1, 0]]))
         line2 = Line(np.array([[2, 0], [4, 0]]))
@@ -181,7 +182,7 @@ class Line2DTestCase(unittest.TestCase):
         self.assertIsNone(obtained)
 
 
-class PolygonIntersectionObjectTestCase(unittest.TestCase):
+class PolygonIntersectionObjectTestCase(ElisaTestCase):
     @staticmethod
     def test_polygons_intersection_positive_standard():
         faces = [[[0.0, 0.0],
@@ -304,7 +305,7 @@ class PolygonIntersectionObjectTestCase(unittest.TestCase):
         assert_array_equal(obtained, expected)
 
 
-class PolygonSurfaceAreaObjectTestCase(unittest.TestCase):
+class PolygonSurfaceAreaObjectTestCase(ElisaTestCase):
 
     def test_surface_area(self):
         faces = [[[0.0, 0.0],

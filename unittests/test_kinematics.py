@@ -32,6 +32,7 @@ class TestCalculateHorizontalDisplacements(ElisaTestCase):
     """Unit tests for calculate_horizontal_displacements function."""
 
     def setUp(self):
+        super().setUp()
         """Set up test fixtures."""
         self.thetas = np.linspace(0.1, np.pi - 0.1, 10)
         self.harmonics_derivatives = np.random.random((2, 10)) + 1j * np.random.random((2, 10))
@@ -160,6 +161,7 @@ class TestCalculateDisplacementCoordinates(ElisaTestCase):
     """Unit tests for calculate_displacement_coordinates function."""
 
     def setUp(self):
+        super().setUp()
         """Set up test fixtures."""
         self.points = np.array([[1.0, 0.0, 0.1], [1.0, 0.1, 0.5], [1.0, 0.2, 1.0]])
         self.harmonics = np.array([1.0 + 0.1j, 0.9 + 0.2j, 0.8 + 0.3j])

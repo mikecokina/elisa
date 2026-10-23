@@ -89,6 +89,7 @@ class TestSingleSystemOrbit(ElisaTestCase):
     """Tests for single-system orbit utilities and Orbit.rotational_motion methods."""
 
     def setUp(self) -> None:
+        super().setUp()
         """Create a simple Orbit instance for testing rotational methods."""
         # supply minimal valid kwargs for single-system Orbit
         self.orbit = single_orbit.Orbit(rotation_period=1.0, inclination=1.0)
