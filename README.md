@@ -26,7 +26,7 @@ in one step. This is the form tested and known to install Gradio and other UI
 extras correctly in most shells:
 
 ```bash
-pip install "elisa[dev,test,ui] @ git+https://github.com/mikecokina/elisa.git@feature/ui"
+pip install "elisa[dev,test,ui] @ git+https://github.com/mikecokina/elisa.git@dev"
 ```
 
 Notes and troubleshooting
