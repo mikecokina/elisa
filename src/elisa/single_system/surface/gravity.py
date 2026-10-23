@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from elisa.types import Float
 
 
-logger = getLogger("single_system.surface.gravity")
+logger = getLogger(__name__)
 
 
 def build_surface_gravity(system_container: SinglePositionContainer) -> SinglePositionContainer:

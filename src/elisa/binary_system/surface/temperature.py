@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from elisa.binary_system.container import OrbitalPositionContainer
     from elisa.types import ComponentSelection, Int
 
-logger = getLogger("binary_system.surface.temperature")
+logger = getLogger(__name__)
 
 SurfaceDataDict: TypeAlias = dict[str, NDArray[Float]]
 VisibilityDict: TypeAlias = dict[str, NDArray[NP_BOOL_]]

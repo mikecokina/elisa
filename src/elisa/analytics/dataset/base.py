@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from elisa.analytics.dataset.graphic.plot import Plot
     from elisa.types import TransformPropertiesType
 
-logger = logger_module.getLogger("analytics.dataset.base")
+logger = logger_module.getLogger(__name__)
 
 
 class DataSet(metaclass=ABCMeta):  # noqa: B024

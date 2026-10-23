@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
     from elisa.types import Float
 
-logger = getLogger("opt.fsolver")
+logger = getLogger(__name__)
 
 MAX_EXPECTED_SOLUTION_BOUNDARY = 1e15
 

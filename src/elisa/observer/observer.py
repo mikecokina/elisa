@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from elisa import BinarySystem, SingleSystem
     from elisa.types import Float, UnitType, ZeroPointType
 
-logger = getLogger("observer.observer")
+logger = getLogger(__name__)
 
 
 class Observables:

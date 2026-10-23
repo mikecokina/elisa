@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from elisa.types import Float
 
 
-logger = getLogger("single_system.surface.coverage")
+logger = getLogger(__name__)
 
 
 def compute_surface_coverage(system: SinglePositionContainer) -> dict[str, NDArray[Float]]:

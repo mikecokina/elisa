@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from elisa.binary_system.system import BinarySystem
     from elisa.types import ComponentName, ComponentSelection, Float, Int
 
-logger = getLogger("binary_system.surface.mesh")
+logger = getLogger(__name__)
 
 
 MESH_NUM_POINTS_TRAPEZOIDAL_OVECONTACT = 4

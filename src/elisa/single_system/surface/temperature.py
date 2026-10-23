@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from elisa.single_system.container import SinglePositionContainer
 
 
-logger = getLogger("single_system.surface.temperature")
+logger = getLogger(__name__)
 
 
 def build_temperature_distribution(system_container: SinglePositionContainer) -> SinglePositionContainer:

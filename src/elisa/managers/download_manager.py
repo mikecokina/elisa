@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
     from elisa.conf.settings import Settings
 
-logger = getLogger("elisa.managers.download_manager")
+logger = getLogger(__name__)
 
 # HTTP status threshold used to detect client/server errors
 HTTP_ERROR_STATUS = 400

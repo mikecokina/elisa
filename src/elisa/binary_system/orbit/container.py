@@ -13,7 +13,7 @@ from elisa.logger import getLogger
 from elisa.types import Float, NumpyBool
 from elisa.utils import is_empty, polar_to_cartesian
 
-logger = getLogger("orbit.container")
+logger = getLogger(__name__)
 
 
 class OrbitalSupplements(Sequence[tuple[NDArray[Float], NDArray[Float]]]):

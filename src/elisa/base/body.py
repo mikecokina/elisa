@@ -15,7 +15,7 @@ from elisa.utils import is_empty
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-logger = getLogger("base.body")
+logger = getLogger(__name__)
 
 
 class Body(metaclass=ABCMeta):

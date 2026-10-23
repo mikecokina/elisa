@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from elisa.base.container import StarContainer
     from elisa.pulse.mode import PulsationMode
 
-logger = getLogger("pulse.pulsations")
+logger = getLogger(__name__)
 
 
 def spherical_harmonics(

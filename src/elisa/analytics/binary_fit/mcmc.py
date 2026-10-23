@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 # log N(z; 0, 1) = -0.5*z**2 - _HALF_LOG_2PI  — avoids scipy.stats.norm instantiation per call.
 _HALF_LOG_2PI: float = 0.5 * float(np.log(2.0 * np.pi))
 
-logger = getPersistentLogger("analytics.binary_fit.mcmc")
+logger = getPersistentLogger(__name__)
 
 
 class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):

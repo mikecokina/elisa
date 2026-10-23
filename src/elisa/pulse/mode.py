@@ -15,7 +15,7 @@ from elisa.pulse.transform import PulsationModeProperties
 if TYPE_CHECKING:
     from elisa.units import _DefaultPulsationsInputUnits, _DefaultPulsationsUnits
 
-logger = getLogger("pulse.mode")
+logger = getLogger(__name__)
 
 
 class PulsationMode:

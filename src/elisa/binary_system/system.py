@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from elisa.types import ComponentName, Float
     from elisa.units import _DefaultBinarySystemInputUnits, _DefaultBinarySystemUnits
 
-logger = getLogger("binary_system.system")
+logger = getLogger(__name__)
 
 ComponentSelection: TypeAlias = Literal["primary", "secondary", "all", "both"]
 

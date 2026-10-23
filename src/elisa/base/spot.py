@@ -37,7 +37,7 @@ if TYPE_CHECKING:
         def remove_spot(self, spot_index: Int) -> None: ...
 
 
-logger = getLogger("base.spots")
+logger = getLogger(__name__)
 
 _IS_ZERO_TOLERANCE = 1e-9
 

@@ -12,7 +12,7 @@ from elisa.base.types import FLOAT, INT
 from elisa.logger import getLogger
 from elisa.single_system.orbit.transform import OrbitProperties
 
-logger = getLogger("single_system.orbit.orbit")
+logger = getLogger(__name__)
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray

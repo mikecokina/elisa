@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from elisa.types import Float, Int
 
 
-logger = getLogger("single_system.surface.mesh")
+logger = getLogger(__name__)
 
 CORRECTION_FACTORS = np.load(settings.PATH_TO_SINGLE_CORRECTIONS, allow_pickle=False)
 

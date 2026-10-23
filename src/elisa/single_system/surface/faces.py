@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from elisa.single_system.container import SinglePositionContainer
 
 
-logger = getLogger("single_system.surface.faces")
+logger = getLogger(__name__)
 
 
 def build_faces(system_container: SinglePositionContainer) -> SinglePositionContainer:

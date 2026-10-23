@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from elisa.types import Float  # pragma: no cover
 
 
-logger = getLogger("single_system.curves.curves")
+logger = getLogger(__name__)
 
 
 def resolve_curve_method(system: SingleSystem, fn_array: Sequence[Callable[..., Any]]) -> Callable[..., Any]:

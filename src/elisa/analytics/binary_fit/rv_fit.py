@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
     from elisa.analytics.params.parameters import BinaryInitialParameters
 
-logger = getLogger("analytics.binary_fit.rv_fit")
+logger = getLogger(__name__)
 
 
 class RVFit(FitResultHandler):

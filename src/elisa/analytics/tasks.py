@@ -20,7 +20,7 @@ from elisa.logger import getLogger
 if TYPE_CHECKING:
     from elisa.types import Float
 
-logger = getLogger("analytics.tasks")
+logger = getLogger(__name__)
 
 
 class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024

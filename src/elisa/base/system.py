@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from elisa.types import Float
 
 
-logger = getLogger("base.system")
+logger = getLogger(__name__)
 
 
 class System(metaclass=ABCMeta):

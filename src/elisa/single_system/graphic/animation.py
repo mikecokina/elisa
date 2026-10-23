@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from elisa.types import Float
 
 
-logger = getLogger("single_system.graphic.animation")
+logger = getLogger(__name__)
 
 
 class Animation:

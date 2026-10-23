@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from elisa.binary_system.system import BinarySystem
     from elisa.types import Float
 
-logger = getLogger("binary_system.graphic.animation")
+logger = getLogger(__name__)
 
 
 class Animation:

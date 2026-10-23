@@ -25,7 +25,7 @@ from elisa.single_system.transform import SingleSystemProperties
 # Backwards-compatible alias expected by many functions in this module
 c = const
 
-logger = getLogger("single_system.system")
+logger = getLogger(__name__)
 
 if TYPE_CHECKING:
     from collections.abc import Callable

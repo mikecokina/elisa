@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from elisa.types import Float
 
 
-logger = getLogger("binary_system.curves.c_router")
+logger = getLogger(__name__)
 
 
 PHASE_SPAN_TEST_THRESHOLD = 0.79

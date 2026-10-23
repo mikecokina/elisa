@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     from elisa.binary_system.container import OrbitalPositionContainer
     from elisa.types import NP_BOOL_, Float, Int
 
-logger = getLogger("binary_system.surface.faces")
+logger = getLogger(__name__)
 
 ComponentSelection: TypeAlias = Literal["primary", "secondary", "all", "both"]
 SurfaceComponent: TypeAlias = ComponentName

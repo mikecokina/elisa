@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 else:
     Float = float
 
-logger = getLogger("analytics.binary_fit.lc_fit")
+logger = getLogger(__name__)
 
 DASH_N = 126
 

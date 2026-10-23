@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from elisa.types import Float
 
 
-logger = getLogger("analytics.binary_fit.summary")
+logger = getLogger(__name__)
 
 DASH_N = 126
 

@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from elisa.types import Float
     from elisa.units import _DefaultStarInputUnits, _DefaultStarUnits
 
-logger = getLogger("elisa.base.star")
+logger = getLogger(__name__)
 
 
 class Star(Body):

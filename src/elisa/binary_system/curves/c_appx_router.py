@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from elisa.types import NP_BOOL_, Float
 
 
-logger = getLogger("binary_system.curves.c_appx_router")
+logger = getLogger(__name__)
 
 # Constant to avoid magic number lint warning
 _PHASES_COUNT_THRESHOLD = 10

@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from elisa.types import Float, Int
 
 
-logger = getLogger("analytics.binary_fit.plot")
+logger = getLogger(__name__)
 
 PLOT_UNITS: dict[str, UnitBase] = {
     "system@asini": u.solRad,

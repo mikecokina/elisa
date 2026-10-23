@@ -11,7 +11,7 @@ from elisa import settings
 from elisa import umpy as up
 from elisa.logger import getLogger
 
-logger = getLogger("base.surface.temperature")
+logger = getLogger(__name__)
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray

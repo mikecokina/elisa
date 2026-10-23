@@ -10,7 +10,7 @@ from elisa.base.container import PositionContainer, StarContainer
 from elisa.logger import getLogger
 from elisa.single_system.surface import faces, gravity, mesh, pulsations, temperature
 
-logger = getLogger("single_system.container")
+logger = getLogger(__name__)
 
 
 if TYPE_CHECKING:

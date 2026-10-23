@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
     from elisa.types import Float
 
-logger = getPersistentLogger("analytics.binary_fit.mixins")
+logger = getPersistentLogger(__name__)
 
 
 class MCMCMixin:

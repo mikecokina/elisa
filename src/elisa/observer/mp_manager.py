@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
-logger = getLogger("observer.mp")
+logger = getLogger(__name__)
 
 # Use forkserver so pool workers are forked from a clean, single-threaded
 # server process rather than directly from the main process.  This avoids

@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from elisa.binary_system.container import OrbitalPositionContainer
     from elisa.types import ComponentName, ComponentSelection, Float
 
-logger = getLogger("binary_system.surface.gravity")
+logger = getLogger(__name__)
 
 
 

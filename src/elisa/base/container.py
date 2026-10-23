@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from elisa.const import Position
     from elisa.types import Float
 
-logger = getLogger("base.container")
+logger = getLogger(__name__)
 
 
 class PropertiesContainer:

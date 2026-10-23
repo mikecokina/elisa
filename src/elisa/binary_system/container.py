@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from elisa.const import Position
     from elisa.types import ComponentSelection, Float
 
-logger = getLogger("binary_system.container")
+logger = getLogger(__name__)
 
 
 class OrbitalPositionContainer(PositionContainer):

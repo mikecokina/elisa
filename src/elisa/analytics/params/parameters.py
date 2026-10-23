@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 
     from elisa.types import AstropyUnit, Float, Number, TransformPropertiesType
 
-logger = getLogger("analytics.params.parameters")
+logger = getLogger(__name__)
 
 
 def deflate_phenomena(flatten: dict) -> dict:

@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from elisa.binary_system.container import OrbitalPositionContainer
     from elisa.types import NP_BOOL_, ComponentName, Float, Int, NumpyBool
 
-logger = getLogger("binary_system.surface.coverage")
+logger = getLogger(__name__)
 
 
 def _calculate_intersection_areas(

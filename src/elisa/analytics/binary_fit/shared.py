@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
     from elisa.types import Float
 
-logger = getPersistentLogger("analytics.binary_fit.shared")
+logger = getPersistentLogger(__name__)
 
 
 class AbstractFit(metaclass=ABCMeta):
