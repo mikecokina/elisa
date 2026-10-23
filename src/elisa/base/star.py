@@ -76,7 +76,9 @@ class Star(Body):
         coefficients for the entire star (useful when the object lies
         outside the supported atmosphere grid). It may be a single numeric
         value or a mapping of passband name to coefficients, e.g.
-        ``{ 'V': [a, b, ...] }``.
+        ``{ 'V': [a, b, ...] }``. Custom coefficients retain the current
+        ``settings.LIMB_DARKENING_LAW``; using them under an incompatible law
+        raises an error. Supply new coefficients when changing laws.
     :type limb_darkening_coefficients: float | dict[str, list[float]]
 
     Mandatory arguments (BinarySystem)
@@ -206,7 +208,7 @@ class Star(Body):
         self.gravity_darkening = up.NaN
         # Test against None value is provided across the codebase, so we need to
         # set it to None here instead of any other value (for example an empty dict) to avoid confusion.
-        self.limb_darkening_coefficients: dict[str, list[float]] | None = None
+        self.limb_darkening_coefficients = None
         self._pulsations: dict[int, PulsationMode] | list[PulsationMode] = []
 
         self.side_radius = up.NaN
@@ -240,6 +242,15 @@ class Star(Body):
         :rtype: elisa.units.DefaultStarUnits
         """
         return u.DefaultStarUnits
+
+    @property
+    def limb_darkening_coefficients(self) -> dict[str, list[float]] | None:
+        """Return custom coefficients retaining their defining law."""
+        return self._limb_darkening_coefficients
+
+    @limb_darkening_coefficients.setter
+    def limb_darkening_coefficients(self, value: dict | None) -> None:
+        self._limb_darkening_coefficients = StarProperties.limb_darkening_coefficients(value)
 
     def transform_input(self, **kwargs) -> dict[str, Any]:
         """Transform and validate initialization keyword arguments.

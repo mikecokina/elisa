@@ -72,6 +72,9 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Reject reuse of custom limb-darkening coefficients under an incompatible law,
+  including logarithmic/square-root switches. Preserve linear/cosine compatibility
+  and runtime law switching for automatically interpolated coefficients.
 - Resolve stellar fitting temperature and metallicity defaults from the current
   `ATM_ATLAS` when creating parameters, preserving existing instances and explicit
   user bounds. Support CK04/K93 aliases and use CK04 fitting bounds for blackbody.

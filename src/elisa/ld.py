@@ -25,6 +25,30 @@ logger = getLogger(__name__)
 _LD_LAWS_LINEAR: Final[set[str]] = {"linear", "cosine"}
 
 
+class CustomLimbDarkeningCoefficients(dict):
+    """Custom passband coefficients with the law used to validate them."""
+
+    def __init__(self, coefficients: dict, law: str) -> None:
+        super().__init__(coefficients)
+        self.law = law
+
+    def copy(self) -> CustomLimbDarkeningCoefficients:
+        """Copy the mapping without losing its defining law."""
+        return type(self)(self, self.law)
+
+    def validate_law(self) -> None:
+        """Reject reinterpretation of custom coefficients under another law."""
+        current = settings.LIMB_DARKENING_LAW
+        if self.law == current or {self.law, current} <= _LD_LAWS_LINEAR:
+            return
+        msg = (
+            f"Custom limb-darkening coefficients were defined for '{self.law}', "
+            f"but the current limb-darkening law is '{current}'. "
+            "Supply new coefficients for the current law or restore the original law."
+        )
+        raise LimbDarkeningError(msg)
+
+
 class LDFileRevision(NamedTuple):
     """Filesystem revision used to invalidate cached LD source data."""
 
@@ -408,6 +432,8 @@ def get_bolometric_ld_coefficients(
     t_eff = np.asarray(temperature, dtype=float)
 
     if custom_ld_coefs is not None:
+        if isinstance(custom_ld_coefs, CustomLimbDarkeningCoefficients):
+            custom_ld_coefs.validate_law()
         if "bolometric" not in custom_ld_coefs:
             msg = (
                 "Please add `bolometric` limb-darkening coefficients to your custom set of limb-darkening coefficients."

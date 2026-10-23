@@ -169,6 +169,8 @@ def get_component_limbdarkening_cfs(
     coefficients are interpolated from the limb-darkening grid.
     """
     if component_instance.limb_darkening_coefficients is not None:
+        if isinstance(component_instance.limb_darkening_coefficients, ld.CustomLimbDarkeningCoefficients):
+            component_instance.limb_darkening_coefficients.validate_law()
         desired_repeats = (component_instance.temperatures.shape[0], 1)
         try:
             # tile per-passband arrays to faces count (avoid unnecessary copies)

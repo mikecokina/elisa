@@ -8,6 +8,7 @@ from packaging import version
 from elisa import const, settings
 from elisa import units as u
 from elisa.base.types import FLOAT, INT
+from elisa.ld import CustomLimbDarkeningCoefficients
 from elisa.units import (
     DefaultBinarySystemInputUnits,
     DefaultStarInputUnits,
@@ -393,6 +394,8 @@ class StarProperties(BodyProperties):
             retval: dict[str, Any] | None = None  # default case of interpolated LD coefficients
             return retval
         if isinstance(value, dict):
+            if isinstance(value, CustomLimbDarkeningCoefficients):
+                value.validate_law()
             retval: dict[str, Any] = {}
             for passband, ld_coeffs in value.items():
                 if isinstance(ld_coeffs, WHEN_FLOAT64):
@@ -422,7 +425,8 @@ class StarProperties(BodyProperties):
             )
             raise TypeError(msg)
 
-        return retval
+        law = value.law if isinstance(value, CustomLimbDarkeningCoefficients) else settings.LIMB_DARKENING_LAW
+        return CustomLimbDarkeningCoefficients(retval, law)
 
 
 class SpotProperties(BodyProperties):
