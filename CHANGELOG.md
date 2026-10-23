@@ -29,10 +29,14 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Changed
 
-- Skip unused limb-darkening factor blocks during symmetric reflection and remove
-  a redundant matrix copy in `limb_darkening_factor()`. Preserve symmetry
-  eligibility, standalone helper defaults, full non-symmetric matrices, and
-  bitwise-identical reflection factors, surface temperatures, and light curves.
+- Keep settings mutable with atomic, validated updates and consistent attribute
+  access and serialization.
+- Use module-based loggers and configurable logging profiles, with scoped changes
+  and host-handler preservation for built-in profiles.
+- Use explicit fork contexts for observation and fitting workers without changing
+  the application's multiprocessing default.
+- Skip unused symmetric reflection blocks and a redundant limb-darkening matrix
+  copy while preserving numerical results.
 - Reduce passband preparation overhead by removing a redundant deep copy and
   reusing exact numeric bandwidth-trimming results in a bounded LRU cache.
   Store 128-bit BLAKE2b content digests instead of complete spectra in cache keys
@@ -68,6 +72,8 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Prevent stale RV passband, atmosphere, correction-factor, albedo, and photometric
+  calibration caches after configuration or source-file changes.
 - Preserve atmospheric spectral flux precision during bandwidth boundary
   interpolation by removing decimal rounding that could erase small nonzero
   flux values.

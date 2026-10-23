@@ -207,9 +207,9 @@ class TestLimbDarkeningModule(ElisaTestCase):
 
 @pytest.fixture(name="ld_sources")
 def synthetic_ld_sources(tmp_path, monkeypatch):
-    monkeypatch.setattr(type(settings), 'LD_TABLES', str(tmp_path))
-    monkeypatch.setattr(type(settings), 'LIMB_DARKENING_LAW', 'cosine')
-    monkeypatch.setattr(type(settings), 'USE_SINGLE_LD_COEFFICIENTS', False)
+    monkeypatch.setattr(settings, 'LD_TABLES', str(tmp_path))
+    monkeypatch.setattr(settings, 'LIMB_DARKENING_LAW', 'cosine')
+    monkeypatch.setattr(settings, 'USE_SINGLE_LD_COEFFICIENTS', False)
     points = np.array([[5000., 3.], [6000., 3.], [5000., 4.], [6000., 4.]])
     for law in ('cosine', 'logarithmic', 'square_root'):
         for band in ('Generic.Bessell.U', 'bolometric', 'Generic.Bessell.V'):
@@ -242,7 +242,7 @@ def legacy_source(band, metal):
 @pytest.mark.parametrize('metal', [0., .05])
 @pytest.mark.parametrize('band', ['Generic.Bessell.U', 'bolometric', 'Generic.Bessell.V'])
 def test_unrounded_griddata_equivalence(ld_sources, monkeypatch, law, metal, band):
-    monkeypatch.setattr(type(settings), 'LIMB_DARKENING_LAW', law)
+    monkeypatch.setattr(settings, 'LIMB_DARKENING_LAW', law)
     points, values = legacy_source(band, metal)
     queries = np.array([[5000., 3.], [6000., 4.], [5500., 3.], [5000., 3.5],
                         [5523.123456789123, 3.456789123456], [5500., 3.5], [5500., 3.5],
@@ -333,15 +333,15 @@ def test_source_reuse_and_invalidation(ld_sources, monkeypatch, tmp_path):
         os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns))
         assert_array_equal(evaluate(component()), original + 1)
         assert build.call_count == 2
-        monkeypatch.setattr(type(settings), 'LIMB_DARKENING_LAW', 'logarithmic')
+        monkeypatch.setattr(settings, 'LIMB_DARKENING_LAW', 'logarithmic')
         assert evaluate(component()).shape == (1, 2)
         assert build.call_count == 3
         other = ld_sources / 'other'
         other.mkdir()
         frame['xlin'] += 1
         frame.to_csv(other / ld.get_ld_table_filename('bolometric', 0., 'cosine'), index=False)
-        monkeypatch.setattr(type(settings), 'LIMB_DARKENING_LAW', 'cosine')
-        monkeypatch.setattr(type(settings), 'LD_TABLES', str(other))
+        monkeypatch.setattr(settings, 'LIMB_DARKENING_LAW', 'cosine')
+        monkeypatch.setattr(settings, 'LD_TABLES', str(other))
         assert_array_equal(evaluate(component()), original + 2)
         assert build.call_count == 4
         ld.clear_ld_caches()
@@ -371,7 +371,7 @@ def test_source_lru_eviction_and_schema(ld_sources, monkeypatch):
     assert info.currsize == 32 and info.misses == 33
     ld.interpolate_on_ld_grid(np.array([5500.]), np.array([1.5]), 0., ['test0'])
     assert ld.get_ld_source_interpolator.cache_info().misses == 34
-    monkeypatch.setattr(type(settings), 'LIMB_DARKENING_LAW', 'logarithmic')
+    monkeypatch.setattr(settings, 'LIMB_DARKENING_LAW', 'logarithmic')
     first = evaluate(component())
     monkeypatch.setitem(settings.LD_LAW_CFS_COLUMNS, 'logarithmic', ['ylog', 'xlog'])
     assert_array_equal(evaluate(component()), first[:, ::-1])
@@ -400,10 +400,10 @@ def test_circular_complete_curve_lru(monkeypatch):
     table_dir = Path.home() / '.elisa/limbdarkening/ld'
     if not (table_dir / 'lin.Generic.Bessell.U.p00.csv').is_file():
         pytest.skip('Configured Van Hamme assets are required for the audit baseline')
-    monkeypatch.setattr(type(settings), 'LD_TABLES', str(table_dir))
-    monkeypatch.setattr(type(settings), 'LIMB_DARKENING_LAW', 'cosine')
-    monkeypatch.setattr(type(settings), 'NUMBER_OF_PROCESSES', 1)
-    monkeypatch.setattr(type(settings), 'USE_SINGLE_LD_COEFFICIENTS', False)
+    monkeypatch.setattr(settings, 'LD_TABLES', str(table_dir))
+    monkeypatch.setattr(settings, 'LIMB_DARKENING_LAW', 'cosine')
+    monkeypatch.setattr(settings, 'NUMBER_OF_PROCESSES', 1)
+    monkeypatch.setattr(settings, 'USE_SINGLE_LD_COEFFICIENTS', False)
     ld.clear_ld_caches()
     original_worker = c_managed.produce_circ_sync_curves_mp
     def worker(*worker_args, **worker_kwargs):
@@ -442,8 +442,8 @@ def test_installed_asset_hull_parity(monkeypatch, law, metal, band):
     names = ld.get_relevant_ld_tables(band, metal, law)
     if not all((directory / name).is_file() for name in names):
         pytest.skip('Installed Van Hamme asset not available')
-    monkeypatch.setattr(type(settings), 'LD_TABLES', str(directory))
-    monkeypatch.setattr(type(settings), 'LIMB_DARKENING_LAW', law)
+    monkeypatch.setattr(settings, 'LD_TABLES', str(directory))
+    monkeypatch.setattr(settings, 'LIMB_DARKENING_LAW', law)
     points, values = legacy_source(band, metal)
     hull = points[ConvexHull(points).vertices]
     center = hull.mean(axis=0)
@@ -487,10 +487,10 @@ def test_complete_scientific_unrounded_parity(monkeypatch, eccentricity, bands):
     directory = Path.home() / '.elisa/limbdarkening/ld'
     if not (directory / 'lin.Generic.Bessell.U.p00.csv').is_file():
         pytest.skip('Configured Van Hamme assets required')
-    monkeypatch.setattr(type(settings), 'LD_TABLES', str(directory))
-    monkeypatch.setattr(type(settings), 'LIMB_DARKENING_LAW', 'cosine')
-    monkeypatch.setattr(type(settings), 'NUMBER_OF_PROCESSES', 1)
-    monkeypatch.setattr(type(settings), 'USE_SINGLE_LD_COEFFICIENTS', False)
+    monkeypatch.setattr(settings, 'LD_TABLES', str(directory))
+    monkeypatch.setattr(settings, 'LIMB_DARKENING_LAW', 'cosine')
+    monkeypatch.setattr(settings, 'NUMBER_OF_PROCESSES', 1)
+    monkeypatch.setattr(settings, 'USE_SINGLE_LD_COEFFICIENTS', False)
     lc_kwargs = dict(from_phase=-.6, to_phase=.6, phase_step=.01)
     optimized = ld.interpolate_on_ld_grid
     original_prep = binary_curve_utils.prep_surface_params

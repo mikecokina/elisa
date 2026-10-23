@@ -50,7 +50,7 @@ def test_rv_interval_round_trip_precision_hits_and_limit(monkeypatch):
     retained = []
     with patch.object(curves, "init_rv_passband", wraps=init_rv_passband) as load:
         for interval in (first, second, first):
-            monkeypatch.setattr(type(settings), "RV_LAMBDA_INTERVAL", interval)
+            monkeypatch.setattr(settings, "RV_LAMBDA_INTERVAL", interval)
             result = curves._get_rv_passband()
             retained.append(result)
             assert result is curves._get_rv_passband()
@@ -246,7 +246,7 @@ def test_observer_zero_points_source_round_trip_replacement_and_actual_magnitude
     phases = np.array([0., .1])
     monkeypatch.setattr(observer, "manage_time_series", lambda *args: phases)
     monkeypatch.setattr(observer, "phase_interval_reduce", lambda *args: (phases, np.array([0, 1])))
-    monkeypatch.setattr(type(settings), "MAGNITUDE_SYSTEM", "vega")
+    monkeypatch.setattr(settings, "MAGNITUDE_SYSTEM", "vega")
     with patch.object(observer_module, "load_standard", wraps=observer_module.load_standard) as load:
         previous = []
         for root, value in ((a, 1.), (b, 2.), (a, 1.)):
@@ -266,7 +266,7 @@ def test_observer_zero_points_source_round_trip_replacement_and_actual_magnitude
         updated_magnitudes = observer.lc(phases=phases, flux_unit=u.mag)[1]["bolometric"]
         np.testing.assert_array_equal(updated_magnitudes, -2.5 * np.log10(np.array([1., 2.]) / 9.))
         write_standard(a, "ab", 3.)
-        monkeypatch.setattr(type(settings), "MAGNITUDE_SYSTEM", "AB")
+        monkeypatch.setattr(settings, "MAGNITUDE_SYSTEM", "AB")
         assert observer._get_zero_points()["system"] == "ab"
         assert load.call_count == 5
 

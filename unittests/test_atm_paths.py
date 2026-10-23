@@ -148,10 +148,10 @@ def test_paths_are_formatted_once_per_selected_identity(atlas):
 def test_base_directory_changes_and_missing_files(atlas, monkeypatch, tmp_path):
     prefix = atm.validated_atlas(atlas)
     args = np.array([10000.0]), np.array([2.0]), 0.0, atlas
-    monkeypatch.setitem(settings.ATLAS_TO_BASE_DIR, prefix, tmp_path / "first directory")
+    monkeypatch.setattr(settings, "CK04_ATM_TABLES" if prefix == "ck" else "K93_ATM_TABLES", tmp_path / "first directory")
     first = atm.NaiveInterpolatedAtm.atm_files(*args)
     assert first == original_atm_files(*args)
-    monkeypatch.setitem(settings.ATLAS_TO_BASE_DIR, prefix, tmp_path / "second")
+    monkeypatch.setattr(settings, "CK04_ATM_TABLES" if prefix == "ck" else "K93_ATM_TABLES", tmp_path / "second")
     second = atm.NaiveInterpolatedAtm.atm_files(*args)
     assert second == original_atm_files(*args)
     assert first != second
@@ -169,7 +169,7 @@ def test_base_directory_changes_and_missing_files(atlas, monkeypatch, tmp_path):
 @pytest.mark.parametrize("atlas", ["ck04", "k93"])
 def test_selected_tables_preserve_spectra_and_radiances(atlas, monkeypatch, tmp_path):
     """Exercise both filename families through loading and spectral interpolation."""
-    monkeypatch.setitem(settings.ATLAS_TO_BASE_DIR, atm.validated_atlas(atlas), tmp_path)
+    monkeypatch.setattr(settings, "CK04_ATM_TABLES" if atm.validated_atlas(atlas) == "ck" else "K93_ATM_TABLES", tmp_path)
     monkeypatch.setattr(atm.buffer, "ATMOSPHERE_TABLES", {})
     args = np.array([10000.0, 10001.0, 10250.0, 10001.0]), np.repeat(2.0, 4), 0.0, atlas
     wave = np.linspace(1000.0, 8000.0, 29)

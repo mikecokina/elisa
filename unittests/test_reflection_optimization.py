@@ -66,7 +66,7 @@ def test_factor_bitwise_and_input_ownership(law, layout, dtype):
 @pytest.mark.parametrize('law', LAWS)
 @pytest.mark.parametrize('shape,reduced', (((17, 11), (4, 3)), ((7, 19), (2, 5)), ((4, 3), (4, 3))))
 def test_symmetrical_helper_default_and_reflection_blocks(monkeypatch, law, shape, reduced):
-    monkeypatch.setattr(type(settings), 'LIMB_DARKENING_LAW', law)
+    monkeypatch.setattr(settings, 'LIMB_DARKENING_LAW', law)
     rng = np.random.default_rng(10)
     gamma = {k: rng.uniform(0, 1, shape) for k in ('primary', 'secondary')}
     n_coeff = 1 if law in ('linear', 'cosine') else 2
@@ -117,7 +117,7 @@ def test_factor_errors_preserve_inputs(law):
 
 @pytest.mark.parametrize('iterations', (-1, 0, 1))
 def test_disabled_reflection_returns_before_accessing_surface(monkeypatch, iterations):
-    monkeypatch.setattr(type(settings), 'REFLECTION_EFFECT', iterations <= 0)
+    monkeypatch.setattr(settings, 'REFLECTION_EFFECT', iterations <= 0)
     system = object()
     assert temperature.apply_reflection_effect(system, 1., iterations) is system
 
@@ -135,7 +135,8 @@ def test_factor_vector_route(law):
 
 @pytest.mark.parametrize('defect', ('law', 'missing_primary', 'missing_secondary', 'short_primary', 'short_secondary'))
 def test_reflection_only_keeps_required_validation(monkeypatch, defect):
-    monkeypatch.setattr(type(settings), 'LIMB_DARKENING_LAW', 'invalid' if defect == 'law' else 'cosine')
+    # Deliberately bypass Settings validation to exercise the numerical defense.
+    monkeypatch.setitem(settings.__dict__, 'LIMB_DARKENING_LAW', 'invalid' if defect == 'law' else 'cosine')
     gamma = {k: np.ones((7, 9)) for k in ('primary', 'secondary')}
     ldc = {'primary': np.ones((1, 7)), 'secondary': np.ones((1, 9))}
     if defect.startswith('missing_'):

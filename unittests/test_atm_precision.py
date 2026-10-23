@@ -140,7 +140,7 @@ def test_alignment_uses_wavelengths_and_retains_unrounded_akima_values():
 
 def test_ck04_spectra_and_absolute_radiance_match_unrounded_pipeline(monkeypatch):
     directory = Path(__file__).parent / "data" / "ck04"
-    monkeypatch.setitem(settings.ATLAS_TO_BASE_DIR, "ck", directory)
+    monkeypatch.setattr(settings, "CK04_ATM_TABLES", directory)
     monkeypatch.setattr(atm.buffer, "ATMOSPHERE_TABLES", {})
     band = PassbandContainer.from_name("Generic.Bessell.U")
     args = np.array([10000.0, 10001.0, 10250.0]), np.repeat(2.0, 3), 0.0, "ck04"
@@ -174,7 +174,7 @@ def test_ck04_raw_and_normalized_eccentric_curves(normalize, monkeypatch):
     from unittests.utils import BINARY_SYSTEM_PARAMS, prepare_binary_system
 
     directory = Path(__file__).parent / "data" / "light_curves"
-    monkeypatch.setitem(settings.ATLAS_TO_BASE_DIR, "ck", directory / "atmosphere")
+    monkeypatch.setattr(settings, "CK04_ATM_TABLES", directory / "atmosphere")
     monkeypatch.setattr(settings, "LD_TABLES", str(directory / "limbdarkening"))
     monkeypatch.setattr(atm.buffer, "ATMOSPHERE_TABLES", {})
     binary = prepare_binary_system(BINARY_SYSTEM_PARAMS["detached.ecc"])

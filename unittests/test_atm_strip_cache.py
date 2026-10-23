@@ -337,7 +337,7 @@ def test_error_type_message_and_partial_mutation_match(bad, inplace):
 
 @pytest.mark.parametrize("atlas", ["ck04", "k93"])
 def test_table_families_and_throughput_remain_uncached(atlas, monkeypatch, tmp_path):
-    monkeypatch.setitem(settings.ATLAS_TO_BASE_DIR, atm.validated_atlas(atlas), tmp_path)
+    monkeypatch.setattr(settings, "CK04_ATM_TABLES" if atm.validated_atlas(atlas) == "ck" else "K93_ATM_TABLES", tmp_path)
     monkeypatch.setattr(atm.buffer, "ATMOSPHERE_TABLES", {})
     args = np.array([10000.0, 10001.0]), np.repeat(2.0, 2), 0.0, atlas
     wave = np.arange(2500., 5501., 100.)

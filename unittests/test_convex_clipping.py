@@ -448,7 +448,7 @@ def test_private_integration_replay() -> None:
         with patch.object(settings, "INTERSECTION_BACKEND", "sutherland_hodgman"):
             compiled_coverage = coverage.partial_visible_faces_surface_coverage(*batch_args)
         np.testing.assert_array_equal(reference_coverage, compiled_coverage)
-    with patch.object(settings, "INTERSECTION_BACKEND", "invalid"), pytest.raises(ValueError):
+    with pytest.raises(ValueError), patch.object(settings, "INTERSECTION_BACKEND", "invalid"):
         coverage.partial_visible_faces_surface_coverage(*first_batch_args)
 
 

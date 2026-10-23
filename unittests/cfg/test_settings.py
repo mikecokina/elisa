@@ -307,3 +307,218 @@ def test_intersection_backend_defaults_to_sutherland_hodgman(elisa_ini):
     s = import_fresh_elisa_settings()
     assert s.INTERSECTION_BACKEND == "sutherland_hodgman"
     assert s.DEFAULT_SETTINGS["INTERSECTION_BACKEND"] == "sutherland_hodgman"
+
+
+def test_singleton_effective_values_and_independent_serialization(elisa_ini):
+    s = import_fresh_elisa_settings()
+    assert type(s)() is s
+    snapshot = s.settings_serializer()
+    assert all(getattr(s, name) == value for name, value in snapshot.items())
+    snapshot['REFLECTION_EFFECT'] = not s.REFLECTION_EFFECT
+    assert snapshot['REFLECTION_EFFECT'] != s.REFLECTION_EFFECT
+    # Defaults are startup inputs, never a second live owner.
+    from elisa.managers.settings_manager import DefaultSettings
+    s.configure(REFLECTION_EFFECT=False)
+    assert DefaultSettings.REFLECTION_EFFECT is True
+    assert not hasattr(type(s), 'REFLECTION_EFFECT')
+
+
+def test_direct_assignment_updates_the_single_store(elisa_ini):
+    s = import_fresh_elisa_settings()
+    s.REFLECTION_EFFECT_ITERATIONS = 7
+    assert s.REFLECTION_EFFECT_ITERATIONS == s.settings_serializer()['REFLECTION_EFFECT_ITERATIONS'] == 7
+    before = s.__dict__
+    with pytest.raises(ValueError):
+        s.REFLECTION_EFFECT_ITERATIONS = 'seven'
+    assert s.__dict__ is before
+    with pytest.raises(AttributeError):
+        del s.REFLECTION_EFFECT_ITERATIONS
+
+
+@pytest.mark.parametrize('name', [
+    'BASE_DIR', 'FIRST_TIME_USER', 'ATLAS_TO_BASE_DIR', 'SCHEMA_REGISTRY',
+    'DEFAULT_SETTINGS', 'PATH_TO_SINGLE_CORRECTIONS', 'PASSBANDS', 'configure', '_instance', 'UNKNOWN',
+])
+def test_constants_services_and_unknown_fields_are_not_writable(elisa_ini, name):
+    s = import_fresh_elisa_settings()
+    before = s.__dict__
+    with pytest.raises(AttributeError):
+        setattr(s, name, None)
+    with pytest.raises(ValueError):
+        s.configure(**{'REFLECTION_EFFECT': False, name: None})
+    assert s.__dict__ is before
+
+
+@pytest.mark.parametrize('bad', [
+    {'UNKNOWN': True}, {'NUMBER_OF_THREADS': 0}, {'REFLECTION_EFFECT': 'false'},
+    {'NUMBER_OF_PROCESSES': 1.5}, {'MAX_D_FLUX': 'small'}, {'RV_LAMBDA_INTERVAL': (2, 1)},
+    {'RV_LAMBDA_INTERVAL': (1,)}, {'RV_LAMBDA_INTERVAL': ('1', '2')},
+    {'LIMB_DARKENING_LAW': 'unsupported'}, {'INTERSECTION_BACKEND': 'unsupported'},
+    {'HOME': None}, {'LOG_CONFIG': 'missing-logging-policy.json'},
+])
+@pytest.mark.parametrize('invalid_first', [True, False])
+def test_invalid_first_or_second_argument_never_publishes(elisa_ini, bad, invalid_first):
+    s = import_fresh_elisa_settings()
+    good = {'REFLECTION_EFFECT_ITERATIONS': 19}
+    changes = {**bad, **good} if invalid_first else {**good, **bad}
+    before = s.__dict__
+    snapshot = s.settings_serializer()
+    with pytest.raises(ValueError):
+        s.configure(**changes)
+    assert s.__dict__ is before
+    assert s.settings_serializer() == snapshot
+
+
+def test_multifield_transaction_publishes_values_and_derived_map_together(elisa_ini, monkeypatch):
+    s = import_fresh_elisa_settings()
+    before = s.__dict__
+    import importlib
+    module = importlib.import_module('elisa.conf.settings')
+    observed = []
+
+    def apply_logging(profile):
+        # Even the final external preparation step sees the complete old state.
+        observed.append(profile)
+        assert s.__dict__ is before
+
+    monkeypatch.setattr(module, 'configure_logging', apply_logging)
+    s.configure(REFLECTION_EFFECT_ITERATIONS=11, CK04_ATM_TABLES='new-ck',
+                K93_ATM_TABLES='new-k', LOG_CONFIG='fit')
+    assert observed == ['fit']
+    assert s.REFLECTION_EFFECT_ITERATIONS == 11
+    assert s.ATLAS_TO_BASE_DIR['ck04'] == s.CK04_ATM_TABLES == 'new-ck'
+    assert s.ATLAS_TO_BASE_DIR['k93'] == s.K93_ATM_TABLES == 'new-k'
+    assert before['ATLAS_TO_BASE_DIR']['ck04'] != 'new-ck'
+    with pytest.raises(TypeError):
+        s.ATLAS_TO_BASE_DIR['ck04'] = 'shadow'
+    assert all(getattr(s, key) == value for key, value in s.settings_serializer().items())
+
+
+@pytest.mark.parametrize('law', ['linear', 'cosine', 'logarithmic', 'square_root'])
+def test_scientific_modes_and_sentinels_remain_mutable(elisa_ini, law):
+    s = import_fresh_elisa_settings()
+    for mesh in ('auto', 'trapezoidal', 'improved_trapezoidal'):
+        for rv in ('kinematic', 'radiometric'):
+            s.configure(LIMB_DARKENING_LAW=law, MESH_GENERATOR=mesh, RV_METHOD=rv,
+                        NUMBER_OF_PROCESSES=-1, NUMBER_OF_MCMC_PROCESSES=0,
+                        MAX_D_FLUX=0.0, MAX_NU_SEPARATION=-1.0,
+                        REFLECTION_EFFECT_ITERATIONS=0, RV_LAMBDA_INTERVAL=(5500, 5500))
+            assert s.MESH_GENERATOR == mesh
+            assert s.RV_METHOD == rv
+            assert s.NUMBER_OF_PROCESSES == -1
+            assert s.NUMBER_OF_MCMC_PROCESSES == 0
+            assert s.LIMB_DARKENING_LAW == law
+    s.configure(RV_LAMBDA_INTERVAL=(1, float('inf')), MAX_D_FLUX=float('inf'),
+                SUPPRESS_LOGGER=None, CUDA=True)
+    assert s.RV_LAMBDA_INTERVAL[1] == float('inf')
+    assert s.CUDA is True  # Backend availability remains outside runtime core validation.
+
+
+def test_ini_failure_does_not_change_effective_state_or_logging(elisa_ini):
+    ini, _ = elisa_ini
+    s = import_fresh_elisa_settings()
+    before = s.__dict__
+    ini.write_text('[general]\nlog_config=fit\n[physics]\nreflection_effect_iterations=29\n'
+                   '[computational]\nnumber_of_threads=0\n')
+    with pytest.raises(ValueError, match='number_of_threads'):
+        s.read_and_update_config(conf_path=str(ini))
+    assert s.__dict__ is before
+    assert s.LOG_CONFIG == 'default'
+
+
+def test_each_ini_read_uses_only_its_own_options(elisa_ini, tmp_path):
+    ini, _ = elisa_ini
+    s = import_fresh_elisa_settings()
+    ini.write_text('[physics]\nreflection_effect_iterations=17\n')
+    s.read_and_update_config(conf_path=str(ini))
+    s.configure(REFLECTION_EFFECT_ITERATIONS=3)
+    empty = tmp_path / 'empty.ini'
+    empty.write_text('')
+    s.read_and_update_config(conf_path=str(empty))
+    assert s.REFLECTION_EFFECT_ITERATIONS == 3
+
+
+def test_home_preparation_failure_retains_all_values(elisa_ini, tmp_path):
+    s = import_fresh_elisa_settings()
+    blocked = tmp_path / 'file'
+    blocked.write_text('not a directory')
+    before = s.__dict__
+    with pytest.raises(FileExistsError):
+        s.configure(REFLECTION_EFFECT_ITERATIONS=5, HOME=str(blocked))
+    assert s.__dict__ is before
+
+
+def test_logging_application_failure_retains_all_settings(elisa_ini, tmp_path):
+    s = import_fresh_elisa_settings()
+    bad = tmp_path / 'invalid.json'
+    bad.write_text('{"version": 999}')
+    before = s.__dict__
+    with pytest.raises(ValueError):
+        s.configure(REFLECTION_EFFECT_ITERATIONS=5, LOG_CONFIG=str(bad))
+    assert s.__dict__ is before
+    # dictConfig owns external side effects; restore logging through its public API.
+    s.configure_logging('default')
+
+
+def test_config_file_selector_and_pathlike_values(elisa_ini, tmp_path):
+    s = import_fresh_elisa_settings()
+    selected = tmp_path / 'selected.ini'
+    selected.write_text('[physics]\nreflection_effect_iterations=23\n')
+    s.CONFIG_FILE = selected
+    s.read_and_update_config()
+    assert s.settings_serializer()['CONFIG_FILE'] == str(selected)
+    assert s.REFLECTION_EFFECT_ITERATIONS == 23
+    s.CK04_ATM_TABLES = tmp_path / 'optional-not-installed'
+    assert s.ATLAS_TO_BASE_DIR['ck04'] == str(tmp_path / 'optional-not-installed')
+
+
+def test_fresh_scientific_objects_follow_mutable_defaults(elisa_ini):
+    s = import_fresh_elisa_settings()
+    from elisa.base.star import Star
+    from elisa.base.curves.utils import _get_rv_passband
+    import numpy as np
+
+    s.configure(DEFAULT_DISCRETIZATION_FACTOR=5, RV_LAMBDA_INTERVAL=(5000, 5500))
+    first = Star(mass=1., t_eff=6000.)
+    bounds_a = _get_rv_passband()[1:]
+    s.configure(DEFAULT_DISCRETIZATION_FACTOR=9, RV_LAMBDA_INTERVAL=(6000, 6500))
+    second = Star(mass=1., t_eff=6000.)
+    assert first.discretization_factor == pytest.approx(np.radians(5))
+    assert second.discretization_factor == pytest.approx(np.radians(9))
+    assert _get_rv_passband()[1:] != bounds_a
+    s.configure(RV_LAMBDA_INTERVAL=(5000, 5500))
+    assert _get_rv_passband()[1:] == bounds_a
+
+
+def test_ini_preserves_numerical_sentinels_and_overflow_interval(elisa_ini):
+    ini, _ = elisa_ini
+    s = import_fresh_elisa_settings()
+    ini.write_text('[physics]\nrv_lambda_interval=(1e309, 1e309)\nreflection_effect_iterations=0\n'
+                   '[computational]\nnumber_of_processes=-1\nnumber_of_mcmc_processes=0\n'
+                   'max_d_flux=0.0\nmax_nu_separation=-1.0\nmin_discretization_factor=1.5\n')
+    s.read_and_update_config(conf_path=str(ini))
+    assert s.RV_LAMBDA_INTERVAL == (float('inf'), float('inf'))
+    assert s.NUMBER_OF_PROCESSES == -1
+    assert s.NUMBER_OF_MCMC_PROCESSES == 0
+    assert s.MAX_D_FLUX == 0.0
+    assert s.MAX_NU_SEPARATION == -1.0
+    assert s.MIN_DISCRETIZATION_FACTOR == 1.5
+    # Missing options keep their effective typed values, without stringifying
+    # an interval that the numeric INI parser would not accept literally.
+    ini.write_text('[physics]\nreflection_effect_iterations=3\n')
+    s.read_and_update_config(conf_path=str(ini))
+    assert s.RV_LAMBDA_INTERVAL == (float('inf'), float('inf'))
+
+
+def test_direct_log_assignment_uses_existing_logging_apis(elisa_ini):
+    s = import_fresh_elisa_settings()
+    try:
+        s.LOG_CONFIG = 'fit'
+        assert s.LOG_CONFIG == s.settings_serializer()['LOG_CONFIG'] == 'fit'
+        with s.logging_context('default'):
+            assert s.LOG_CONFIG == 'default'
+        assert s.LOG_CONFIG == 'fit'
+        s.configure(LOG_CONFIG=s.DEFAULT_SETTINGS['LOG_CONFIG'])
+        assert s.LOG_CONFIG == 'default'
+    finally:
+        s.configure_logging('default')
