@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from elisa.analytics.dataset.base import LCData, RVData
     from elisa.types import Float
 
-logger = getPersistentLogger("analytics.binary_fit.least_squares")
+logger = getPersistentLogger(__name__)
 
 
 def logger_decorator(*, suppress_logger: bool = False) -> Any:
@@ -216,6 +216,8 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
         :param kwargs: Optional arguments for scipy.optimize.least_squares function.
             Common options: jac, method, ftol, xtol, gtol, x_scale, loss, f_scale,
             diff_step, tr_solver, tr_options, jac_sparsity, max_nfev, verbose.
+            Solver diagnostics default to verbose=0; pass verbose=2 explicitly
+            to print SciPy iteration tables.
         :type kwargs: Any
         :return: Optimized model parameters in standard JSON format.
         :rtype: dict[str, Any]
@@ -259,7 +261,7 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
             tr_options=kwargs.get("tr_options", {}),
             jac_sparsity=kwargs.get("jac_sparsity"),
             max_nfev=kwargs.get("max_nfev"),
-            verbose=kwargs.get("verbose", 2),
+            verbose=kwargs.get("verbose", 0),
             args=kwargs.get("args", ()),
             kwargs=kwargs.get("kwargs", {}),
         )
@@ -427,6 +429,8 @@ class CentralRadialVelocity(AbstractRVFit):
         :param kwargs: Optional arguments for scipy.optimize.least_squares function.
             Common options: jac, method, ftol, xtol, gtol, x_scale, loss, f_scale,
             diff_step, tr_solver, tr_options, jac_sparsity, max_nfev, verbose.
+            Solver diagnostics default to verbose=0; pass verbose=2 explicitly
+            to print SciPy iteration tables.
         :type kwargs: Any
         :return: Optimized model parameters in standard JSON format.
         :rtype: dict[str, Any]

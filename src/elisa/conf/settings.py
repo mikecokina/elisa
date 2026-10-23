@@ -1,18 +1,21 @@
 from __future__ import annotations
 
-import json
 import os
 import warnings
 from configparser import ConfigParser
-from logging import config as log_conf
+from contextlib import contextmanager
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 
+from elisa.conf.logconfig import LoggingProfile, configure_logging
 from elisa.conf.parsers import parse_tuple_interval
 from elisa.managers.settings_manager import DefaultSettings, SettingsManager
 from elisa.schema_registry import registry
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 first_time_user = False
 c_parse = ConfigParser()
@@ -235,27 +238,46 @@ class Settings(_Const, DefaultSettings):
         :returns: None
         :rtype: None
         """
-        conf_dict = json.loads(Path(path).read_text())
-        log_conf.dictConfig(conf_dict)
+        Settings.configure_logging(path)
 
     @classmethod
     def set_up_logging(cls) -> None:
-        """Set up logging configuration from file or default schema.
+        """Apply the selected logging policy without resolving LOG_CONFIG in place.
 
-        :returns: None
-        :rtype: None
+        :returns: None.
         """
-        if Path(cls.LOG_CONFIG).is_file():
-            cls.load_conf(cls.LOG_CONFIG)
-            return
-        if cls.LOG_CONFIG == "default":
-            cls.LOG_CONFIG = str(Path(__file__).resolve().parent / "logging_schemas" / "default.json")
-        elif cls.LOG_CONFIG == "fit":
-            cls.LOG_CONFIG = str(Path(__file__).resolve().parent / "logging_schemas" / "fit.json")
-        else:
-            cls.LOG_CONFIG = str(Path(__file__).resolve().parent / "logging_schemas" / "default.json")
+        profile = cls.LOG_CONFIG
+        # The historical default points at a nonexistent managers/logging_schemas
+        # file. Retain its startup fallback without hiding missing custom files.
+        if profile == DefaultSettings.LOG_CONFIG and not Path(profile).is_file():
+            profile = LoggingProfile.DEFAULT.value
+        cls.configure_logging(profile)
 
-        cls.load_conf(cls.LOG_CONFIG)
+    @classmethod
+    def configure_logging(cls, profile: str) -> None:
+        """Configure logging independently of other Settings mutations.
+
+        :param profile: ``default``, ``fit`` or a trusted custom JSON file path.
+        :raises ValueError: If the profile or logging policy is invalid.
+        :returns: None.
+        """
+        configure_logging(profile)
+        cls.LOG_CONFIG = str(profile)
+
+    @classmethod
+    @contextmanager
+    def logging_context(cls, profile: str) -> Iterator[None]:
+        """Temporarily change logging and reload the previously selected JSON policy.
+
+        :param profile: Built-in profile name or trusted custom JSON file path.
+        :yields: Control with the temporary policy applied.
+        """
+        previous_selector = cls.LOG_CONFIG
+        cls.configure_logging(profile)
+        try:
+            yield
+        finally:
+            cls.configure_logging(previous_selector)
 
     @classmethod
     def read_and_update_config(cls, *, conf_path: str | None = None) -> None:
@@ -300,9 +322,16 @@ class Settings(_Const, DefaultSettings):
                 raise ValueError(msg)
             if key == "INTERSECTION_BACKEND":
                 cls._validate_intersection_backend(value)
-            setattr(cls, key, value)
             if key == "LOG_CONFIG":
-                cls.set_up_logging()
+                # Preserve resets through the pre-existing DEFAULT_SETTINGS
+                # snapshot, whose historical default logging path is absent.
+                profile = (
+                    LoggingProfile.DEFAULT.value
+                    if value == DefaultSettings.LOG_CONFIG and not Path(value).is_file() else value
+                )
+                cls.configure_logging(profile)
+            else:
+                setattr(cls, key, value)
         cls._update_atlas_to_base_dir()
 
     @staticmethod
@@ -335,9 +364,11 @@ class Settings(_Const, DefaultSettings):
         # **************************************************************************************************************
         if c_parse.has_section("general"):
             cls.SUPPRESS_WARNINGS = c_parse.getboolean("general", "suppress_warnings", fallback=cls.SUPPRESS_WARNINGS)
-            cls.LOG_CONFIG = c_parse.get("general", "log_config", fallback=cls.LOG_CONFIG)
-
-            cls.set_up_logging()
+            log_config = c_parse.get("general", "log_config", fallback=None)
+            if log_config is None:
+                cls.set_up_logging()
+            else:
+                cls.configure_logging(log_config)
 
             cls.SUPPRESS_LOGGER = c_parse.getboolean("general", "suppress_logger", fallback=cls.SUPPRESS_LOGGER)
             cls.HOME = c_parse.get("general", "home", fallback=cls.HOME)

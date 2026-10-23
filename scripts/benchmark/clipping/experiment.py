@@ -116,7 +116,7 @@ def main():
     parser.add_argument("--repeats", type=int, default=5)
     args = parser.parse_args()
     settings.configure(NUMBER_OF_PROCESSES=1, INTERSECTION_BACKEND="pypex")
-    logging.getLogger("observer.observer").setLevel(logging.WARNING)
+    logging.getLogger(Observer.__module__).setLevel(logging.WARNING)
     result = {
         "environment": dict(
             python=sys.version,

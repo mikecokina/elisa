@@ -10,6 +10,7 @@ from __future__ import annotations
 import contextlib
 from typing import TYPE_CHECKING, Any
 
+from elisa.conf.logconfig import LoggingProfile
 from elisa.conf.settings import Settings
 
 if TYPE_CHECKING:
@@ -20,9 +21,9 @@ if TYPE_CHECKING:
 def fit_logging() -> Generator[None, Any, None]:
     """Context manager to temporarily enable fit logging configuration.
 
-    Sets the logging configuration to 'fit' (which is more verbose for
-    analytics operations) upon entry, and restores the original
-    configuration upon exit.
+    Sets the logging configuration to 'fit' to suppress noisy model logs
+    while retaining fitting output, then restores the prior effective policy
+    on exit, including nested contexts and exceptions.
 
     Example::
 
@@ -33,12 +34,5 @@ def fit_logging() -> Generator[None, Any, None]:
     :rtype: contextlib.AbstractContextManager[None]
     """
     settings = Settings()
-    original_log_config = settings.LOG_CONFIG
-
-    try:
-        settings.configure(LOG_CONFIG="fit")
+    with settings.logging_context(LoggingProfile.FIT.value):
         yield
-    finally:
-        # Restore original logging configuration
-        settings.configure(LOG_CONFIG=original_log_config)
-
