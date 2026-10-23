@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -25,7 +26,21 @@ if TYPE_CHECKING:
 
 logger = getLogger(__name__)
 
-CORRECTION_FACTORS = np.load(settings.PATH_TO_SINGLE_CORRECTIONS, allow_pickle=False)
+
+def _load_correction_factors() -> NDArray:
+    """Resolve the current single-star correction resource before lookup."""
+    return _load_correction_factors_cached(utils.file_source_identity(settings.PATH_TO_SINGLE_CORRECTIONS))
+
+
+@lru_cache(maxsize=1)
+def _load_correction_factors_cached(source: utils.FileSourceIdentity) -> NDArray:
+    """Retain one loaded correction array, as with the former module global."""
+    return np.load(source[0], allow_pickle=False)
+
+
+_load_correction_factors.cache_clear = _load_correction_factors_cached.cache_clear
+_load_correction_factors.cache_info = _load_correction_factors_cached.cache_info
+_load_correction_factors.cache_parameters = _load_correction_factors_cached.cache_parameters
 
 
 def build_mesh(system: SinglePositionContainer) -> SinglePositionContainer:
@@ -687,6 +702,6 @@ def correct_mesh(system: SinglePositionContainer) -> SinglePositionContainer:
     :rtype: SinglePositionContainer
     """
     star = system.star
-    correct_component_mesh(star, com=0.0, correction_factors=CORRECTION_FACTORS)
+    correct_component_mesh(star, com=0.0, correction_factors=_load_correction_factors())
 
     return system

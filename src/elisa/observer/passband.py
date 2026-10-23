@@ -41,25 +41,44 @@ def init_bolometric_passband() -> tuple[PassbandContainer, Float, Float]:
     return bol_passband, right_bandwidth, left_bandwidth
 
 
-def init_rv_passband() -> tuple[PassbandContainer, Float, Float]:
-    """Initialize passband used to calculate radial velocities.
+def init_rv_passband(
+    wavelength_interval: tuple | None = None,
+    wave_column: str | None = None,
+    throughput_column: str | None = None,
+) -> tuple[PassbandContainer, Float, Float]:
+    """Initialize the passband used to calculate radial velocities.
 
-    Creates a passband container with constant throughput of 1.0 within the
-    radial velocity wavelength interval. Returns the passband container along
-    with its left and right bandwidth boundaries.
+    Creates a passband container with constant throughput of 1.0 within
+    the specified radial velocity wavelength interval. If an argument
+    is not provided, its value is obtained from the current settings.
 
-    :returns: Tuple containing the radial velocity passband container, right
-        bandwidth (RV_LAMBDA_INTERVAL[1]), and left bandwidth (RV_LAMBDA_INTERVAL[0]).
-    :rtype: tuple[PassbandContainer, float, float]
+    :param wavelength_interval: Wavelength interval, or the current
+        RV_LAMBDA_INTERVAL setting if None.
+    :param wave_column: Wavelength column name, or the current
+        PASSBAND_DATAFRAME_WAVE setting if None.
+    :param throughput_column: Throughput column name, or the current
+        PASSBAND_DATAFRAME_THROUGHPUT setting if None.
+    :returns: Tuple containing the radial velocity passband container,
+        right bandwidth (interval[1]), and left bandwidth (interval[0]).
+    :rtype: tuple[PassbandContainer, Float, Float]
     """
+    interval = settings.RV_LAMBDA_INTERVAL if wavelength_interval is None else wavelength_interval
+    wave_column = settings.PASSBAND_DATAFRAME_WAVE if wave_column is None else wave_column
+    throughput_column = (
+        settings.PASSBAND_DATAFRAME_THROUGHPUT
+        if throughput_column is None
+        else throughput_column
+    )
+
     df = pd.DataFrame(
         {
-            settings.PASSBAND_DATAFRAME_THROUGHPUT: [1.0, 1.0],
-            settings.PASSBAND_DATAFRAME_WAVE: settings.RV_LAMBDA_INTERVAL,
+            throughput_column: [1.0, 1.0],
+            wave_column: interval,
         },
     )
-    right_bandwidth = settings.RV_LAMBDA_INTERVAL[1]
-    left_bandwidth = settings.RV_LAMBDA_INTERVAL[0]
+
+    right_bandwidth = interval[1]
+    left_bandwidth = interval[0]
     psmbnd = PassbandContainer(table=df, passband="rv_band")
 
     return psmbnd, right_bandwidth, left_bandwidth

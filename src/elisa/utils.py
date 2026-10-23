@@ -4,6 +4,7 @@ import datetime
 import re
 from collections.abc import Iterable, Iterator, Sized
 from copy import copy, deepcopy
+from pathlib import Path
 from queue import Empty, Queue
 from re import Match
 from typing import TYPE_CHECKING, Any
@@ -28,6 +29,21 @@ if TYPE_CHECKING:
     from elisa.types import Float, HasMeshData, Int, Number
 
 FEBRUARY_MONTH_NUMBER = 2
+
+FileSourceIdentity = tuple[str, int, int, int, int, int]
+
+
+def file_source_identity(path: str | Path) -> FileSourceIdentity:
+    """Resolve a resource and identify its current filesystem revision.
+
+    Call before cache lookup. No content hashing or file reading is performed.
+    Resources must not be edited concurrently with a calculation; filesystems
+    without reliable revision metadata require explicit cache clearing.
+    """
+    resolved = Path(path).resolve(strict=True)
+    revision = resolved.stat()
+    return (str(resolved), revision.st_dev, revision.st_ino, revision.st_size,
+            revision.st_mtime_ns, revision.st_ctime_ns)
 
 
 # A fixed byte order makes equal float64 values produce equal cache keys on any

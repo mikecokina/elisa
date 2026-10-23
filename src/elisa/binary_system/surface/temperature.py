@@ -828,17 +828,22 @@ def get_distance_matrix_shape(
 
 
 
-@functools.cache
 def _load_albedo_data() -> tuple[list, list]:
-    """Load and cache albedo interpolation tables from disk.
+    """Resolve the current albedo resource before cache lookup."""
+    return _load_albedo_data_cached(utils.file_source_identity(settings.PATH_TO_ALBEDOS))
 
-    :return: Tuple ``(temperatures, albedos)`` of interpolation data loaded
-        from ``settings.PATH_TO_ALBEDOS``.
-    :rtype: tuple[list, list]
-    """
-    with Path(settings.PATH_TO_ALBEDOS).open("r") as f:
+
+@functools.cache
+def _load_albedo_data_cached(source: utils.FileSourceIdentity) -> tuple[list, list]:
+    """Load the selected source revision without consulting mutable settings."""
+    with Path(source[0]).open("r") as f:
         data = json.load(f)
     return data["x"], data["y"]
+
+
+_load_albedo_data.cache_clear = _load_albedo_data_cached.cache_clear
+_load_albedo_data.cache_info = _load_albedo_data_cached.cache_info
+_load_albedo_data.cache_parameters = _load_albedo_data_cached.cache_parameters
 
 
 def interpolate_albedo(temperature: Float) -> Float:

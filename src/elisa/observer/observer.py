@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -14,7 +15,7 @@ from elisa.observer import utils as outils
 from elisa.observer.passband import PassbandContainer, init_bolometric_passband
 from elisa.observer.plot import Plot
 from elisa.photometric_standards.standards_handlers import load_standard
-from elisa.utils import is_empty, jd_to_phase
+from elisa.utils import file_source_identity, is_empty, jd_to_phase
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -171,6 +172,7 @@ class Observer:
         self.rv_unit: object | None = None
         # noinspection PyTypeChecker
         self.zero_points: ZeroPointType = {}
+        self._zero_points_source: tuple | None = None
 
         self.plot = Plot(self)
         self.observe = Observables(self)
@@ -250,6 +252,19 @@ class Observer:
         """
         self.left_bandwidth = min(self.left_bandwidth, left_bandwidth)
         self.right_bandwidth = max(self.right_bandwidth, right_bandwidth)
+
+    def _get_zero_points(self) -> ZeroPointType:
+        """Refresh the one-entry calibration cache when its source changes."""
+        system = settings.MAGNITUDE_SYSTEM.lower()
+        source = file_source_identity(Path(settings.DATA_PATH) / "zero_points" / f"{system}.json")
+        key = (system, source)
+        if (
+            is_empty(self.zero_points) or self._zero_points_source != key
+            or self.zero_points["system"] != system
+        ):
+            self.zero_points = load_standard(system, source_path=source[0])
+            self._zero_points_source = key
+        return self.zero_points
 
     def lc(
             self,
@@ -367,9 +382,7 @@ class Observer:
             if self.flux_unit in [None, u.W / u.m ** 2]:
                 self.fluxes = curves
             elif self.flux_unit == u.mag:
-                if is_empty(self.zero_points) or self.zero_points["system"] != settings.MAGNITUDE_SYSTEM.lower():
-                    self.zero_points = load_standard(settings.MAGNITUDE_SYSTEM)
-                self.fluxes = outils.convert_to_magnitudes(curves, self.zero_points)
+                self.fluxes = outils.convert_to_magnitudes(curves, self._get_zero_points())
                 self.magnitudes = self.fluxes
             else:
                 msg = f"Unknown value for `Observer.flux_unit`: {self.flux_unit}"

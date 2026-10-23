@@ -36,24 +36,32 @@ MESH_NUM_POINTS_OVERCONTACT_NECK = 5
 SPOT_POINTS_NDIM = 2
 
 
-@functools.cache
 def _load_correction_factors() -> dict[str, NDArray[Float]]:
-    """Load mesh correction factor tables.
-
-    :return: Mapping of morphology names to correction-factor tables.
-    :rtype: dict[str, NDArray[Float]]
-    """
-    detached = np.load(settings.PATH_TO_DETACHED_CORRECTIONS, allow_pickle=False)
-    over_contact = np.load(
-        settings.PATH_TO_OVER_CONTACT_CORRECTIONS,
-        allow_pickle=False,
+    """Resolve both current correction resources before cache lookup."""
+    return _load_correction_factors_cached(
+        utils.file_source_identity(settings.PATH_TO_DETACHED_CORRECTIONS),
+        utils.file_source_identity(settings.PATH_TO_OVER_CONTACT_CORRECTIONS),
     )
+
+
+@functools.cache
+def _load_correction_factors_cached(
+    detached_source: utils.FileSourceIdentity, over_contact_source: utils.FileSourceIdentity,
+) -> dict[str, NDArray[Float]]:
+    """Load the exact selected resource revisions; preserve morphology aliases."""
+    detached = np.load(detached_source[0], allow_pickle=False)
+    over_contact = np.load(over_contact_source[0], allow_pickle=False)
     return {
         "detached": detached,
         "semi-detached": detached,
         "double-contact": detached,
         "over-contact": over_contact,
     }
+
+
+_load_correction_factors.cache_clear = _load_correction_factors_cached.cache_clear
+_load_correction_factors.cache_info = _load_correction_factors_cached.cache_info
+_load_correction_factors.cache_parameters = _load_correction_factors_cached.cache_parameters
 
 
 def build_mesh(

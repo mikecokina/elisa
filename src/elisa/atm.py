@@ -6,7 +6,7 @@ import json
 import warnings
 from collections import OrderedDict
 from collections.abc import Iterable
-from copy import deepcopy
+from copy import copy, deepcopy
 from pathlib import Path
 from queue import Queue
 from threading import Lock, Thread
@@ -1827,11 +1827,30 @@ def read_unique_atm_tables(
     """
     fpaths, fpaths_map = unique_atm_fpaths(fpaths)
 
-    # Check buffer for cached atmosphere tables
+    # Include the resolved source revision and interpretation before lookup.
     models, load_fpaths = [], []
+    source_keys = {}
     for fpath in fpaths:
-        if fpath in buffer.ATMOSPHERE_TABLES:
-            models.append(buffer.ATMOSPHERE_TABLES[fpath])
+        try:
+            source = utils.file_source_identity(fpath)
+        except FileNotFoundError as exc:
+            msg = (
+                f"file {fpath} doesn't exist. Your atmosphere tables are "
+                "either not properly installed or atmosphere parameters "
+                "of your stellar model are not covered by the currently "
+                "used table."
+            )
+            raise AtmosphereError(msg) from exc
+        key = (source, Path(fpath).name, settings.ATM_MODEL_DATAFRAME_FLUX, settings.ATM_MODEL_DATAFRAME_WAVE)
+        source_keys[fpath] = key
+        if key in buffer.ATMOSPHERE_TABLES:
+            model = buffer.ATMOSPHERE_TABLES[key]
+            if model.fpath != fpath:
+                # A source may be requested through equivalent relative/absolute paths.
+                # Keep the source arrays shared, but preserve the caller's remap label.
+                model = copy(model)
+                model.fpath = fpath
+            models.append(model)
         else:
             load_fpaths.append(fpath)
 
@@ -1840,8 +1859,9 @@ def read_unique_atm_tables(
         result_queue = multithread_atm_tables_reader_runner(load_fpaths)
         loaded_models = [qval[1] for qval in utils.IterableQueue(result_queue) if qval[1] is not None]
         # Cache loaded atmospheres
-        for ii, fpath in enumerate(load_fpaths):
-            buffer.ATMOSPHERE_TABLES[fpath] = loaded_models[ii]
+        for model in loaded_models:
+            # Reader completion order need not match submission order.
+            buffer.ATMOSPHERE_TABLES[source_keys[model.fpath]] = model
         models += loaded_models
 
     # Reduce buffer size if needed

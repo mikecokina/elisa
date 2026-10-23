@@ -12,7 +12,11 @@ if TYPE_CHECKING:
     from elisa.types import ZeroPointType
 
 
-def load_standard(system: Literal["vega", "ab", "st"]) -> ZeroPointType:
+def load_standard(
+        system: Literal["vega", "ab", "st"],
+        *,
+        source_path: str | Path | None = None,
+) -> ZeroPointType:
     """Load zero points for magnitude calculations.
 
     Load photometric zero-point fluxes for the requested ``system`` from the
@@ -24,6 +28,7 @@ def load_standard(system: Literal["vega", "ab", "st"]) -> ZeroPointType:
     :param system: Photometric zero-point system; allowed values are
         ``vega``, ``ab``, or ``st``.
     :type system: Literal['vega','ab','st']
+    :param source_path: Optional resolved resource selected by a cache owner.
     :returns: Mapping from filter name to zero-point flux value (flux
         units depend on the zero-points file contents).
     :rtype: dict[str, elisa.types.Float]
@@ -31,8 +36,10 @@ def load_standard(system: Literal["vega", "ab", "st"]) -> ZeroPointType:
         missing.
     :raises json.JSONDecodeError: If the zero-points file is not valid JSON.
     """
-    data_dir = Path(settings.DATA_PATH) / "zero_points"
-    file_path = data_dir / f"{system.lower()}.json"
+    file_path = (
+        Path(settings.DATA_PATH) / "zero_points" / f"{system.lower()}.json"
+        if source_path is None else Path(source_path)
+    )
 
     if not file_path.is_file():
         msg = f"Zero points file for system {system!r} not found at {file_path}"

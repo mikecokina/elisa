@@ -17,15 +17,31 @@ if TYPE_CHECKING:
     from elisa.types import Float
 
 
-@lru_cache(maxsize=1)
 def _get_rv_passband() -> tuple[Any, Any, Any]:
-    """Return cached RV passband tuple (passband, right_bw, left_bw).
+    """Resolve the current interval/schema before looking up the RV passband."""
+    return _get_rv_passband_cached(
+        tuple(settings.RV_LAMBDA_INTERVAL),
+        settings.PASSBAND_DATAFRAME_WAVE,
+        settings.PASSBAND_DATAFRAME_THROUGHPUT,
+    )
 
-    Caches the result of :func:`init_rv_passband` using an LRU cache so
-    repeated callers avoid reinitialization. This avoids module-level
-    mutable globals while providing the same performance benefit.
-    """
-    return init_rv_passband()
+
+@lru_cache(maxsize=1)
+def _get_rv_passband_cached(
+    interval: tuple,
+    wave_column: str,
+    throughput_column: str,
+) -> tuple[Any, Any, Any]:
+    return init_rv_passband(
+        wavelength_interval=interval,
+        wave_column=wave_column,
+        throughput_column=throughput_column,
+    )
+
+
+_get_rv_passband.cache_clear = _get_rv_passband_cached.cache_clear
+_get_rv_passband.cache_info = _get_rv_passband_cached.cache_info
+_get_rv_passband.cache_parameters = _get_rv_passband_cached.cache_parameters
 
 
 # noinspection PyUnusedLocal
