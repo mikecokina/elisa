@@ -25,10 +25,13 @@ __main__.py
 
 sandbox.py
 
-build/*
-dist/*
+build/
+dist/
 elisa.egg-info
-docs/build/*
+docs/build/
 /jupyter_tutorials/.ipynb_checkpoints/
 /env37/
 /my_scripts/
+
+# Alternative Sphinx build directory
+/docs/_build/
