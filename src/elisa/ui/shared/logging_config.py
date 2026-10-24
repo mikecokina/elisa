@@ -8,6 +8,7 @@ afterward.
 from __future__ import annotations
 
 import contextlib
+from threading import RLock
 from typing import TYPE_CHECKING, Any
 
 from elisa.conf.logconfig import LoggingProfile
@@ -17,13 +18,20 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
 
+# Fit callbacks may overlap across tabs/sessions. Protect only policy transitions,
+# retaining the fit profile until the last active callback exits.
+_fit_log_lock = RLock()
+_active_fits = 0
+_previous_profile: str | None = None
+
+
 @contextlib.contextmanager
 def fit_logging() -> Generator[None, Any, None]:
     """Context manager to temporarily enable fit logging configuration.
 
     Sets the logging configuration to 'fit' to suppress noisy model logs
     while retaining fitting output, then restores the prior effective policy
-    on exit, including nested contexts and exceptions.
+    after the last active fit exits, including overlapping callbacks and errors.
 
     Example::
 
@@ -33,6 +41,21 @@ def fit_logging() -> Generator[None, Any, None]:
     :yields: None
     :rtype: contextlib.AbstractContextManager[None]
     """
+    global _active_fits, _previous_profile
     settings = Settings()
-    with settings.logging_context(LoggingProfile.FIT.value):
+    with _fit_log_lock:
+        if _active_fits == 0:
+            previous = settings.LOG_CONFIG
+            settings.configure_logging(LoggingProfile.FIT.value)
+            _previous_profile = previous
+        _active_fits += 1
+    try:
         yield
+    finally:
+        with _fit_log_lock:
+            _active_fits -= 1
+            if _active_fits == 0:
+                previous = _previous_profile
+                assert previous is not None  # Set when the first fit enters.
+                _previous_profile = None
+                settings.configure_logging(previous)

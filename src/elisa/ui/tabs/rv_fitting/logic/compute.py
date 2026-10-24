@@ -17,13 +17,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import gradio as gr
-import matplotlib.pyplot as plt
 import pandas as pd
 
 from elisa import units as u
 from elisa.analytics import RVBinaryAnalyticsTask, RVData
 from elisa.ui.shared.logging_config import fit_logging
-from elisa.ui.shared.plotting import capture_figure, figure_to_pil
+from elisa.ui.shared.plotting import capture_figure, figure_to_pil, serialized_plot
 from elisa.ui.shared.utils import opt_float, result_temp_path
 
 if TYPE_CHECKING:
@@ -111,6 +110,7 @@ def build_x0(param_values: dict[str, object]) -> dict:
 
         entry: dict[str, object] = {"value": value, "fixed": fixed}
         if mode == "constrained" and constraint:
+            entry.pop("fixed")
             entry["constraint"] = constraint
         elif not fixed:
             entry["min"] = lo
@@ -148,7 +148,8 @@ def result_to_dataframe(result: dict) -> pd.DataFrame:
         hi = ci.get("max")
         unit = meta.get("unit") or "-"
         fixed = meta.get("fixed", False)
-        status = "fixed" if fixed else "free"
+        constraint = meta.get("constraint")
+        status = f"constrained: {constraint}" if constraint else "fixed" if fixed else "free"
 
         rows.append(
             {
@@ -219,8 +220,9 @@ def run_lsqrt(
             data["secondary"] = rv_secondary
 
         x0 = build_x0(param_values)
+        if x_unit_str == "Phases (dimensionless)":
+            x0.get("system", {}).pop("primary_minimum_time", None)
 
-        plt.close("all")
         # noinspection PyTypeChecker
         with fit_logging():
             task = RVBinaryAnalyticsTask(data=data, method="least_squares")
@@ -229,12 +231,13 @@ def run_lsqrt(
         # Use the provided task - caller is responsible for creating it and
         # ensuring its .data attribute is set if necessary.
         x0 = build_x0(param_values)
-        plt.close("all")
+        if x_unit_str == "Phases (dimensionless)":
+            x0.get("system", {}).pop("primary_minimum_time", None)
         # noinspection PyTypeChecker
         with fit_logging():
             result = task.fit(x0=x0)
 
-    model_fig: Figure = task.plot.model(return_figure_instance=True)
+    model_fig: Figure = serialized_plot(task.plot.model)(return_figure_instance=True)
     df = result_to_dataframe(task.fit_cls.flat_result)
 
     json_path = result_temp_path("rv", "lsqrt")
@@ -312,6 +315,8 @@ def run_mcmc(
 
     # Build x0 from the form values
     x0 = build_x0(param_values)
+    if x_unit_str == "Phases (dimensionless)":
+        x0.get("system", {}).pop("primary_minimum_time", None)
 
     # If caller provided a task instance, use it; otherwise build one from files
     if task is None:
@@ -338,7 +343,6 @@ def run_mcmc(
             if rv_secondary is not None:
                 task.data["secondary"] = rv_secondary
 
-    plt.close("all")
     # noinspection PyTypeChecker
     with fit_logging():
         fit_kwargs = {
@@ -354,7 +358,7 @@ def run_mcmc(
             fit_kwargs["initial_state"] = initial_state  # type: ignore[typeddict-unknown-key]
         result = task.fit(**fit_kwargs)
 
-    model_fig: Figure = task.plot.model(return_figure_instance=True)
+    model_fig: Figure = serialized_plot(task.plot.model)(return_figure_instance=True)
 
     with capture_figure() as corner_captured:
         task.plot.corner(truths=True)
@@ -565,7 +569,6 @@ def load_chain(
     traces_fig: Figure | None = None
     results_df: pd.DataFrame | None = None
 
-    plt.close("all")
     try:
         with capture_figure() as corner_captured:
             task.plot.corner(truths=True)
@@ -574,7 +577,6 @@ def load_chain(
         msg = f"Corner plot generation failed: {exc}"
         gr.Warning(msg)
 
-    plt.close("all")
     try:
         with capture_figure() as traces_captured:
             task.plot.traces(truths=True)

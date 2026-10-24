@@ -7,18 +7,21 @@ any layer.
 
 from __future__ import annotations
 
+import math
 import tempfile
 from datetime import datetime
+from numbers import Integral
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
+from uuid import uuid4
 
 from elisa.utc import UTC
 
 if TYPE_CHECKING:
-    from elisa.types import Float, Int
+    from typing import SupportsFloat, SupportsIndex
 
 
-def opt_float(value: str | float | None) -> Float | None:
+def opt_float(value: object) -> float | None:
     """Convert *value* to a float or return ``None`` for absent/empty inputs.
 
     Accepts numeric types, string representations produced by ``gr.Textbox``
@@ -42,12 +45,12 @@ def opt_float(value: str | float | None) -> Float | None:
         except ValueError:
             return None
     try:
-        return float(value)  # type: ignore[arg-type]
+        return float(cast("str | SupportsFloat | SupportsIndex", value))
     except (TypeError, ValueError):
         return None
 
 
-def opt_int(value: str | float | None) -> Int | None:
+def opt_int(value: object) -> int | None:
     """Convert *value* to an int or return ``None`` for absent/empty inputs.
 
     Accepts numeric types, string representations produced by ``gr.Textbox``
@@ -59,10 +62,12 @@ def opt_int(value: str | float | None) -> Int | None:
     :returns: Parsed int or ``None``.
     :rtype: Int | None
     :raises ValueError: If *value* is a non-empty string that cannot be
-        parsed as a number.
+        parsed as a finite integer without truncation.
     """
     if value is None:
         return None
+    if isinstance(value, Integral):
+        return int(value)
     if isinstance(value, str):
         stripped = value.strip()
         if stripped == "":
@@ -72,15 +77,21 @@ def opt_int(value: str | float | None) -> Int | None:
         except ValueError as exc:
             msg = f"Cannot parse '{stripped}' as a number."
             raise ValueError(msg) from exc
-        return int(parsed)
-    return int(value)
+        value = parsed
+    # Values arrive from untyped form dictionaries; float performs validation.
+    # noinspection PyUnnecessaryCast
+    parsed = float(cast("str | SupportsFloat | SupportsIndex", value))
+    if not math.isfinite(parsed) or not parsed.is_integer():
+        msg_0 = "Expected a finite integer."
+        raise ValueError(msg_0)
+    return int(parsed)
 
 
 def result_temp_path(category: str, prefix: str) -> Path:
     """Return a timestamped temp-file path for a fit result JSON.
 
     The filename follows the pattern
-    ``elisa_{category}_{prefix}_YYYY-MM-DD_HH-MM-SS.json``.
+    ``elisa_{category}_{prefix}_YYYY-MM-DD_HH-MM-SS_<uuid>.json``.
 
     :param category: Short type label embedded in the filename
         (e.g. ``"lc"`` or ``"rv"``).
@@ -91,8 +102,7 @@ def result_temp_path(category: str, prefix: str) -> Path:
     :returns: Path inside the system temp directory.
     :rtype: pathlib.Path
     """
-    ts = datetime.now(UTC).strftime("%Y-%m-%d_%H-%M-%S")
-    return Path(tempfile.gettempdir()) / f"elisa_{category}_{prefix}_{ts}.json"
+    return export_temp_path(f"{category}_{prefix}", ".json")
 
 
 def collect_param_values(
@@ -112,3 +122,9 @@ def collect_param_values(
     :rtype: dict[str, object]
     """
     return dict(zip(param_keys, values[offset : offset + len(param_keys)], strict=True))
+
+
+def export_temp_path(prefix: str, suffix: str) -> Path:
+    """Return a unique export path, retaining a readable timestamp and prefix."""
+    ts = datetime.now(UTC).strftime("%Y-%m-%d_%H-%M-%S")
+    return Path(tempfile.gettempdir()) / f"elisa_{prefix}_{ts}_{uuid4().hex}{suffix}"

@@ -24,7 +24,8 @@ import pandas as pd  # noqa: TC002 - needed at runtime for Gradio type hints
 from elisa import units as u
 from elisa.analytics import RVBinaryAnalyticsTask, RVData
 from elisa.analytics.binary_fit.shared import extend_observations_to_desired_interval
-from elisa.ui.shared.plotting import figure_to_pil
+from elisa.ui.shared.plotting import figure_to_pil, serialized_plot
+from elisa.ui.shared.validators import mcmc_integer
 from elisa.ui.shared.utils import collect_param_values
 from elisa.ui.tabs.rv_fitting.components import data_inputs, param_inputs
 from elisa.ui.tabs.rv_fitting.logic import compute
@@ -150,9 +151,9 @@ def _mcmc_handler(
             msg = "Primary RV data file is required."
             raise gr.Error(msg)
 
-        nwalkers = int(mcmc_vals.get("nwalkers") or 50)
-        nsteps = int(mcmc_vals.get("nsteps") or 500)
-        burn_in = int(mcmc_vals.get("burn_in") or 50)
+        nwalkers = mcmc_integer(mcmc_vals.get("nwalkers"), name="nwalkers", default=50)
+        nsteps = mcmc_integer(mcmc_vals.get("nsteps"), name="nsteps", default=500)
+        burn_in = mcmc_integer(mcmc_vals.get("burn_in"), name="burn_in", default=50, minimum=0)
         fit_id = str(mcmc_vals.get("fit_id") or "mcmc_rv_fit")
         save = bool(mcmc_vals.get("save_chain", True))
         progress = bool(mcmc_vals.get("progress", True))
@@ -197,6 +198,7 @@ def _plot_loaded_data_handler(_data_keys: tuple[str, ...]) -> Callable[..., tupl
     data with error bars.
     """
 
+    @serialized_plot
     def _plot_loaded_data(  # noqa: C901, PLR0912, PLR0915
         primary_file: object | None,
         secondary_file: object | None,
@@ -1057,9 +1059,9 @@ def build() -> None:  # noqa: C901, PLR0915
             secondary_path: str | None = getattr(data_vals.get("secondary_file"), "name", None)
             x_unit_str: str = str(data_vals.get("x_unit", "Julian days (JD)"))
 
-            nwalkers = int(mcmc_vals.get("nwalkers") or 50)
-            nsteps = int(mcmc_vals.get("nsteps") or 500)
-            burn_in = int(mcmc_vals.get("burn_in") or 50)
+            nwalkers = mcmc_integer(mcmc_vals.get("nwalkers"), name="nwalkers", default=50)
+            nsteps = mcmc_integer(mcmc_vals.get("nsteps"), name="nsteps", default=500)
+            burn_in = mcmc_integer(mcmc_vals.get("burn_in"), name="burn_in", default=50, minimum=0)
             fit_id = str(mcmc_vals.get("fit_id") or "mcmc_rv_fit")
             save = bool(mcmc_vals.get("save_chain", True))
             progress = bool(mcmc_vals.get("progress", True))

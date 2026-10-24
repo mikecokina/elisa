@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import tempfile
-from datetime import datetime
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pandas as pd
@@ -12,8 +9,8 @@ import pandas as pd
 from elisa import Observer
 from elisa.ui.shared.binary_model import build_star, build_system
 from elisa.ui.shared.plotting import figure_to_pil, render_rv_figure
-from elisa.ui.shared.utils import opt_float
-from elisa.utc import UTC
+from elisa.ui.shared.utils import export_temp_path
+from elisa.ui.shared.validators import phase_sampling
 
 if TYPE_CHECKING:
     from PIL import Image
@@ -40,7 +37,7 @@ def _format_rv_df(df: pd.DataFrame) -> pd.DataFrame:
 def _save_rv_csv(df: pd.DataFrame) -> str:
     """Save RV DataFrame to a datetime-stamped CSV in the system temp directory.
 
-    The filename has the form ``elisa_rv_YYYY-MM-DD_HH-MM-SS.csv`` so
+    The filename has the form ``elisa_rv_YYYY-MM-DD_HH-MM-SS_<uuid>.csv`` so
     successive downloads from the same session are distinct and easy to
     identify.
 
@@ -50,8 +47,7 @@ def _save_rv_csv(df: pd.DataFrame) -> str:
     :returns: Absolute path of the written CSV file.
     :rtype: str
     """
-    ts = datetime.now(UTC).strftime("%Y-%m-%d_%H-%M-%S")
-    path = Path(tempfile.gettempdir()) / f"elisa_rv_{ts}.csv"
+    path = export_temp_path("rv", ".csv")
     df.to_csv(path, index=False)
     return str(path)
 
@@ -87,12 +83,7 @@ def run_rv(
     :rtype: tuple[PIL.Image.Image | None, pandas.DataFrame, str]
     :raises ValueError: If required parameters are missing or logically invalid.
     """
-    from_phase_raw = opt_float(observer_params.get("from_phase"))
-    to_phase_raw = opt_float(observer_params.get("to_phase"))
-    phase_step_raw = opt_float(observer_params.get("phase_step"))
-    from_phase = from_phase_raw if from_phase_raw is not None else -0.6
-    to_phase = to_phase_raw if to_phase_raw is not None else 0.6
-    phase_step = phase_step_raw if phase_step_raw is not None else 0.01
+    from_phase, to_phase, phase_step = phase_sampling(observer_params)
     method: str | None = observer_params.get("method") or None
     primary = build_star(primary_params, label="primary")
     secondary = build_star(secondary_params, label="secondary")

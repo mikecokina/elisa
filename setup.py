@@ -209,6 +209,7 @@ setup(
             "ruff",
         ],
         "test": [
+            "playwright>=1.56",
             "coverage",
             "pytest>=9.0.2",
             "parameterized>=0.7.4",

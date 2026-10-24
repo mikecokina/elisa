@@ -79,6 +79,7 @@ def _make_handler(
     sys_keys: tuple[str, ...],
     obs_keys: tuple[str, ...],
     puls_keys: tuple[str, ...],
+    spot_keys: tuple[str, ...],
 ) -> Callable[..., tuple[Image.Image | None, pd.DataFrame, gr.DownloadButton]]:
     """Return a Gradio event-handler function bound to the given key sequences.
 
@@ -97,6 +98,8 @@ def _make_handler(
     :param puls_keys: Ordered keys for pulsation parameters (same order for
         both components, applied twice).
     :type puls_keys: tuple[str, ...]
+    :param spot_keys: Ordered spot keys, applied to primary and secondary blocks.
+    :type spot_keys: tuple[str, ...]
     :returns: A callable suitable for ``gr.Button.click(fn=...)``.
     :rtype: Callable[..., tuple[PIL.Image.Image | None, pandas.DataFrame, gr.DownloadButton]]
     """
@@ -122,6 +125,11 @@ def _make_handler(
         primary_pulsation_params = dict(zip(puls_keys, values[idx : idx + n_puls], strict=True))
         idx += n_puls
         secondary_pulsation_params = dict(zip(puls_keys, values[idx : idx + n_puls], strict=True))
+        idx += n_puls
+        n_spots = len(spot_keys)
+        primary_spot_params = dict(zip(spot_keys, values[idx : idx + n_spots], strict=True))
+        idx += n_spots
+        secondary_spot_params = dict(zip(spot_keys, values[idx : idx + n_spots], strict=True))
 
         try:
             fig, df, csv_path = compute.run_lc(
@@ -131,6 +139,8 @@ def _make_handler(
                 observer_params,
                 primary_pulsation_params,
                 secondary_pulsation_params,
+                primary_spot_params,
+                secondary_spot_params,
             )
             return fig, df, gr.DownloadButton(value=csv_path, visible=True)
         except Exception as exc:
@@ -228,10 +238,10 @@ def build() -> None:
         puls_keys = pulsation_inputs.FIELD_ORDER
 
         all_inputs: list[gr.Component] = (
-            list(prim_comps.values())
-            + list(sec_comps.values())
-            + list(sys_comps.values())
-            + list(obs_comps.values())
+            [prim_comps[k] for k in prim_keys]
+            + [sec_comps[k] for k in sec_keys]
+            + [sys_comps[k] for k in sys_keys]
+            + [obs_comps[k] for k in obs_keys]
             + [prim_puls_comps[k] for k in puls_keys]
             + [sec_puls_comps[k] for k in puls_keys]
             + [prim_spot_comps[k] for k in spot_inputs.FIELD_ORDER]
@@ -239,7 +249,7 @@ def build() -> None:
         )
 
         compute_btn.click(
-            fn=_make_handler(prim_keys, sec_keys, sys_keys, obs_keys, puls_keys),
+            fn=_make_handler(prim_keys, sec_keys, sys_keys, obs_keys, puls_keys, spot_inputs.FIELD_ORDER),
             inputs=all_inputs,
             outputs=[lc_plot, lc_table, dl_btn],
             show_progress="hidden",
@@ -255,9 +265,9 @@ def build() -> None:
         )
 
         all_form_outputs: list[gr.Component] = (
-            list(prim_comps.values())
-            + list(sec_comps.values())
-            + list(sys_comps.values())
+            [prim_comps[k] for k in prim_keys]
+            + [sec_comps[k] for k in sec_keys]
+            + [sys_comps[k] for k in sys_keys]
         )
         json_file_input.upload(
             fn=make_json_load_handler(prim_keys, sec_keys, sys_keys),

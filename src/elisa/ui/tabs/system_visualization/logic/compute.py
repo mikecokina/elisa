@@ -10,11 +10,10 @@ from __future__ import annotations
 import gc
 from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 
 from elisa import BinarySystem, Star
 from elisa import units as u
-from elisa.ui.shared.plotting import figure_to_pil
+from elisa.ui.shared.plotting import PLOT_LOCK, figure_to_pil
 from elisa.ui.tabs.lc_modeling.components.pulsation_inputs import parse_pulsation_modes
 from elisa.ui.tabs.lc_modeling.components.spot_inputs import parse_spots
 
@@ -179,10 +178,6 @@ def run_visualization(
     primary_spots = parse_spots(primary_spot_params)
     secondary_spots = parse_spots(secondary_spot_params)
 
-    # Close figures left open by the previous call - Gradio serialises them
-    # before the next request arrives, so they are safe to discard here.
-    plt.close("all")
-
     visualization_mode: str = observer_params.get("visualization_mode") or ""
     phase: Float = _ensure_float(observer_params["phase"])
     components_to_plot: str = observer_params["components_to_plot"]
@@ -213,45 +208,46 @@ def run_visualization(
     equipotential_fig = None
     surface_fig = None
 
-    if visualization_mode == "mesh":
-        mesh_fig = binary.plot.mesh(
-            phase=phase,
-            components_to_plot=components_to_plot,
-            return_figure_instance=True,
-        )
-    elif visualization_mode == "wireframe":
-        mesh_fig = binary.plot.wireframe(
-            phase=phase,
-            components_to_plot=components_to_plot,
-            inclination=elevation,
-            azimuth=azimuth,
-            return_figure_instance=True,
-        )
-    elif visualization_mode == "orbit":
-        orbit_fig = binary.plot.orbit(
-            start_phase=-0.5,
-            stop_phase=1.5,
-            number_of_points=300,
-            axis_units=u.solRad,
-            frame_of_reference=frame_of_reference,
-            return_figure_instance=True,
-        )
-    elif visualization_mode == "equipotential":
-        equipotential_fig = binary.plot.equipotential(
-            plane=plane,
-            phase=phase,
-            components_to_plot=components_to_plot,
-            return_figure_instance=True,
-        )
-    elif visualization_mode == "surface":
-        surface_fig = binary.plot.surface(
-            phase=phase,
-            components_to_plot=components_to_plot,
-            colormap=colormap,
-            elevation=elevation,
-            azimuth=azimuth,
-            return_figure_instance=True,
-        )
+    with PLOT_LOCK:
+        if visualization_mode == "mesh":
+            mesh_fig = binary.plot.mesh(
+                phase=phase,
+                components_to_plot=components_to_plot,
+                return_figure_instance=True,
+            )
+        elif visualization_mode == "wireframe":
+            mesh_fig = binary.plot.wireframe(
+                phase=phase,
+                components_to_plot=components_to_plot,
+                inclination=elevation,
+                azimuth=azimuth,
+                return_figure_instance=True,
+            )
+        elif visualization_mode == "orbit":
+            orbit_fig = binary.plot.orbit(
+                start_phase=-0.5,
+                stop_phase=1.5,
+                number_of_points=300,
+                axis_units=u.solRad,
+                frame_of_reference=frame_of_reference,
+                return_figure_instance=True,
+            )
+        elif visualization_mode == "equipotential":
+            equipotential_fig = binary.plot.equipotential(
+                plane=plane,
+                phase=phase,
+                components_to_plot=components_to_plot,
+                return_figure_instance=True,
+            )
+        elif visualization_mode == "surface":
+            surface_fig = binary.plot.surface(
+                phase=phase,
+                components_to_plot=components_to_plot,
+                colormap=colormap,
+                elevation=elevation,
+                azimuth=azimuth,
+                return_figure_instance=True,
+            )
 
     # Convert matplotlib figures to PIL images for lightweight Gradio rendering
     # This avoids expensive matplotlib figure serialization in Gradio

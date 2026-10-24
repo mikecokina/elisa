@@ -60,6 +60,7 @@ dev = [
     "ruff"
 ]
 test = [
+    "playwright>=1.56",
     "coverage",
     "pytest>=9.0.2",
     "parameterized>=0.7.4",
@@ -99,7 +100,8 @@ version = { attr = "elisa.__version__" }
 
 
 [tool.ruff]
-exclude = ["unittests"]
+exclude = ["unittests", "tests"]
+force-exclude = true
 
 line-length = 120
 target-version = "py310"
@@ -150,4 +152,5 @@ ignore = [
     "EXE002", # Shebang is missing executable file
     "D213", # Multiline summary docstring should start at the first line
     "D203", # Incorrect blank lines before class docstring
+    "CPY001", # Missing copyright notice
 ]

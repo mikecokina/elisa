@@ -30,7 +30,8 @@ import numpy as np
 
 from elisa.analytics import LCBinaryAnalyticsTask
 from elisa.analytics.binary_fit.shared import extend_observations_to_desired_interval
-from elisa.ui.shared.plotting import figure_to_pil
+from elisa.ui.shared.plotting import figure_to_pil, serialized_plot
+from elisa.ui.shared.validators import mcmc_integer
 from elisa.ui.shared.utils import collect_param_values
 from elisa.ui.tabs.lc_fitting.components import data_inputs, param_inputs
 from elisa.ui.tabs.lc_fitting.components.data_inputs import MAX_PASSBAND_ROWS
@@ -299,8 +300,7 @@ def _build_active_param_update(k: str, params: dict[str, object], approach: str,
     else:
         if k in params:
             update_kwargs["value"] = params[k]
-        if not interactive_allowed:
-            update_kwargs["interactive"] = False
+        update_kwargs["interactive"] = interactive_allowed
 
     return gr.update(**update_kwargs)
 
@@ -824,10 +824,13 @@ def build() -> None:  # noqa: C901, PLR0915
         approach_toggle_label_keys = [k for k in param_inputs.APPROACH_TOGGLED_LABEL_KEYS if k in fit_comps]
         approach_toggle_label_outputs = [fit_comps[k] for k in approach_toggle_label_keys]
 
-        def _on_approach_change(approach: str) -> list[object]:
+        def _on_approach_change(approach: str, *modes: str) -> list[object]:
             normalized = _normalize_ui_approach(approach)
+            mode_values = dict(zip(approach_toggle_prefixes, modes, strict=True))
             field_updates = [
-                gr.update(interactive=param_inputs.is_key_interactive_for_approach(k, normalized))
+                gr.update(interactive=param_inputs.is_field_interactive(
+                    k, normalized, mode_values[k.rsplit("_", 1)[0]],
+                ))
                 for k in approach_toggle_keys
             ]
 
@@ -845,7 +848,7 @@ def build() -> None:  # noqa: C901, PLR0915
 
         approach_comp.change(
             fn=_on_approach_change,
-            inputs=[approach_comp],
+            inputs=[approach_comp] + [fit_comps[f"{p}_mode"] for p in approach_toggle_prefixes],
             outputs=approach_toggle_outputs + approach_toggle_label_outputs,
             show_progress="hidden",
             show_progress_on=[],
@@ -1046,9 +1049,9 @@ def build() -> None:  # noqa: C901, PLR0915
             fit_vals = collect_param_values(fit_keys, values, n_lc)
             mcmc_vals = collect_param_values(mcmc_keys, values, n_lc + n_fit)
 
-            nwalkers = int(mcmc_vals.get("nwalkers") or 100)
-            nsteps = int(mcmc_vals.get("nsteps") or 100)
-            burn_in = int(mcmc_vals.get("burn_in") or 20)
+            nwalkers = mcmc_integer(mcmc_vals.get("nwalkers"), name="nwalkers", default=100)
+            nsteps = mcmc_integer(mcmc_vals.get("nsteps"), name="nsteps", default=100)
+            burn_in = mcmc_integer(mcmc_vals.get("burn_in"), name="burn_in", default=20, minimum=0)
             fit_id = str(mcmc_vals.get("fit_id") or "mcmc_lc_fit")
             save = bool(mcmc_vals.get("save_chain", True))
             progress = bool(mcmc_vals.get("progress", True))
@@ -1250,6 +1253,7 @@ def build() -> None:  # noqa: C901, PLR0915
         )
 
         # Observed-data plotting handler - plot uploaded LC files (does not run fit)
+        @serialized_plot
         def _plot_loaded_lc_handler(  # noqa: C901, PLR0912, PLR0915
             *values: SupportsIndex,
         ) -> tuple[object, dict]:
