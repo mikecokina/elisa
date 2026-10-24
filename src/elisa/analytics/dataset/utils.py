@@ -6,13 +6,14 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
-from packaging import version
 
 from elisa import settings, utils
 from elisa import units as u
 from elisa.base.types import FLOAT, INT
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from numpy.typing import NDArray
 
     from elisa.types import Float
@@ -81,40 +82,56 @@ def convert_flux(
 
 
 def convert_flux_error(
-    error: NDArray[Float],
+    error: NDArray | Sequence[Float],
     unit: u.Unit,
     *,
     zero_point: Float | None = None,
-) -> NDArray[Float]:
-    """Convert flux error array from magnitudes to normalized flux.
+    flux: NDArray | Sequence[Float] | None = None,
+) -> NDArray[np.float64]:
+    """Propagate magnitude uncertainties using the Gaussian-flux approximation.
 
-    If error data is in magnitudes (mag or mmag), it is converted to
-    normalized flux error. Dimensionless error is returned unchanged.
+    Uses sigma_F = ln(10)/2.5 * F * sigma_m at each observation. This
+    first-order approximation assumes small Gaussian magnitude uncertainties.
 
-    :param error: Input flux error array.
-    :type error: NDArray[Float]
-    :param unit: Unit of the input error (dimensionless, mag, or mmag).
-    :type unit: u.Unit
-    :param zero_point: Reference magnitude for magnitude-to-flux conversion.
-        Required if unit is magnitude-based.
-    :type zero_point: Float | None
-    :returns: Converted error array (dimensionless or normalized flux error).
-    :rtype: NDArray[Float]
-    :raises ValueError: If unit is magnitude-based but zero_point is not provided.
+    :param error: Uncertainties in the same unit as the observations.
+    :param unit: Dimensionless, mag or mmag uncertainty unit.
+    :param zero_point: Reference magnitude, required for magnitude units.
+    :param flux: Pointwise converted flux using the same reference magnitude.
+        Required for magnitude units; a zero point alone cannot set flux errors.
+    :returns: Absolute flux uncertainties, with mmag errors divided by 1000.
+    :raises ValueError: If magnitude conversion metadata or shapes are invalid.
     """
-    if unit in [u.mag, u.mmag] and zero_point is None:
-        error_msg = (
-            "You supplied your data in magnitudes. Please also specify "
-            "a zero point using keyword argument `reference_magnitude`."
-        )
-        raise ValueError(error_msg)
+    errors = np.asarray(error, dtype=float)
+    if unit not in (u.mag, u.mmag):
+        return errors
+    fluxes = _magnitude_error_flux(errors, zero_point, flux)
+    sigma_mag = errors / 1000.0 if unit == u.mmag else errors
+    return (np.log(10.0) / 2.5) * fluxes * sigma_mag
 
-    if unit == u.mag:
-        error = utils.magnitude_error_to_flux_error(error)
-    elif unit == u.mmag:
-        error = utils.magnitude_error_to_flux_error(error / 1000.0)
 
-    return error
+
+def _magnitude_error_flux(
+    errors: NDArray[np.float64], zero_point: Float | None, flux: NDArray | Sequence[Float] | None,
+) -> NDArray[np.float64]:
+    """Validate magnitude-error metadata and its pointwise flux correspondence.
+
+    :param errors: Magnitude or mmag uncertainty vector.
+    :param zero_point: Reference magnitude used to convert the observations.
+    :param flux: Converted pointwise flux vector.
+    :returns: Converted flux with the same shape as the errors.
+    :raises ValueError: If the reference, flux or array correspondence is invalid.
+    """
+    if zero_point is None or not np.isfinite(zero_point):
+        msg = "Magnitude uncertainty conversion requires a finite zero point"
+        raise ValueError(msg)
+    if flux is None:
+        msg = "Magnitude uncertainty conversion requires pointwise converted flux"
+        raise ValueError(msg)
+    fluxes = np.asarray(flux, dtype=float)
+    if errors.ndim != 1 or errors.shape != fluxes.shape:
+        msg = "Magnitude errors and converted flux must be matching one-dimensional arrays"
+        raise ValueError(msg)
+    return fluxes
 
 
 def convert_unit(unit: u.Unit, to_unit: u.Unit) -> u.Unit:
@@ -141,11 +158,10 @@ def read_data_file(
     *,
     delimiter: str = settings.DELIM_WHITESPACE,
 ) -> NDArray[Float]:
-    """Load observation data from file, handling missing values gracefully.
+    """Load finite numeric observation columns, rejecting malformed data.
 
     Reads a data file and extracts specified columns. Lines starting with
-    ``#`` are treated as comments and skipped. Bad lines are skipped during
-    reading, and any remaining NaN values are removed.
+    ``#`` are treated as comments and skipped. Malformed or nonfinite selected values raise an error.
 
     :param filename: Path to the data file to read.
     :type filename: str
@@ -158,20 +174,21 @@ def read_data_file(
         and error.
     :rtype: NDArray[Float]
     """
-    reader_kwargs: dict[str, bool | str] = {"on_bad_lines": "skip"}
-    if version.parse(pd.__version__) < version.parse("1.3.0"):
-        reader_kwargs = {"error_bad_lines": False}
-
+    # noinspection PyArgumentList
     data = pd.read_csv(
         filename,
         header=None,
         comment="#",
         delimiter=delimiter,
         engine="python",
-        **reader_kwargs,
+        on_bad_lines="error",
     )[list(data_columns)]
-    data = data.apply(lambda s: pd.to_numeric(s, errors="coerce")).dropna()
-    return data.to_numpy(dtype=FLOAT)
+    data = data.apply(lambda column: pd.to_numeric(column, errors="raise"))
+    values = data.to_numpy(dtype=FLOAT)
+    if not np.all(np.isfinite(values)):
+        msg = "Observation file contains nonfinite values"
+        raise ValueError(msg)
+    return values
 
 
 def central_moving_average(
@@ -203,14 +220,33 @@ def central_moving_average(
     :returns: None (modifies dt_set in-place).
     :rtype: None
     """
+    bin_centres, bin_masks = _moving_average_bins(dt_set.x_data, n_bins, radius, cyclic_boundaries=cyclic_boundaries)
+    bin_averages, bin_errors = _average_binned_observations(dt_set.y_data, dt_set.y_err, bin_masks)
+
+    dt_set.x_data = bin_centres
+    dt_set.y_data = bin_averages
+    dt_set.y_err = bin_errors
+
+
+def _moving_average_bins(
+    coordinates: NDArray, n_bins: int, radius: int, *, cyclic_boundaries: bool,
+) -> tuple[NDArray[np.float64], list[NDArray[np.bool_]]]:
+    """Prepare the centers and observation masks for nonempty moving-average bins.
+
+    :param coordinates: Observation phases used to define bin boundaries.
+    :param n_bins: Number of bins across the observation interval.
+    :param radius: Number of neighboring bins on either side.
+    :param cyclic_boundaries: Whether neighboring bins wrap around the interval.
+    :returns: Nonempty bin centers and corresponding observation masks.
+    """
     bin_boundaries = np.linspace(
-        dt_set.x_data.min(),
-        dt_set.x_data.max(),
+        coordinates.min(),
+        coordinates.max(),
         num=n_bins + 1,
         endpoint=True,
     )
     bin_centres = 0.5 * (bin_boundaries[:-1] + bin_boundaries[1:])
-    bin_idxs = np.digitize(dt_set.x_data, bin_boundaries[1:], right=True)
+    bin_idxs = np.digitize(coordinates, bin_boundaries[1:], right=True)
 
     # Create bin masks based on boundaries
     if cyclic_boundaries:
@@ -225,25 +261,27 @@ def central_moving_average(
     bin_masks_count = np.sum(bin_masks, axis=1)
 
     non_empty_bins = bin_masks_count > 0
-    iterator = np.arange(n_bins)[non_empty_bins]
+    selected_masks = [mask for mask, nonempty in zip(bin_masks, non_empty_bins, strict=True) if nonempty]
+    return bin_centres[non_empty_bins], selected_masks
 
-    # Calculate binned averages and errors
-    if dt_set.y_err is not None:
-        bin_averages = np.array(
-            [
-                np.average(
-                    dt_set.y_data[bin_masks[ii]],
-                    weights=1 / dt_set.y_err[bin_masks[ii]] ** 2,
-                )
-                for ii in iterator
-            ],
-        )
-        bin_errors = np.array([np.mean(dt_set.y_err[bin_masks[ii]]) for ii in iterator])
-    else:
-        bin_averages = np.array([np.average(dt_set.y_data[bin_masks[ii]]) for ii in iterator])
-        bin_errors = np.array([np.std(dt_set.y_data[bin_masks[ii]]) for ii in iterator])
 
-    # Update dataset with binned results
-    dt_set.x_data = bin_centres[non_empty_bins]
-    dt_set.y_data = bin_averages
-    dt_set.y_err = bin_errors
+def _average_binned_observations(
+    values: NDArray, errors: NDArray | None, bin_masks: list[NDArray[np.bool_]],
+) -> tuple[NDArray[np.float64], NDArray[np.float64] | None]:
+    """Average observations with inverse-variance weights when errors are supplied.
+
+    :param values: Observed values before smoothing.
+    :param errors: Supplied measurement errors, or None to preserve their absence.
+    :param bin_masks: Observation masks for each nonempty bin.
+    :returns: Bin averages and mean supplied errors, preserving omitted errors.
+    """
+    if errors is None:
+        return np.array([np.average(values[mask]) for mask in bin_masks]), None
+    averages = []
+    mean_errors = []
+    for mask in bin_masks:
+        bin_errors = errors[mask]
+        weights = 1 / bin_errors**2
+        averages.append(np.average(values[mask], weights=weights))
+        mean_errors.append(np.mean(bin_errors))
+    return np.asarray(averages), np.asarray(mean_errors)

@@ -17,12 +17,30 @@ from elisa.analytics.dataset.transform import LCDataProperties, RVDataProperties
 from elisa.base.types import INT
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from numpy.typing import NDArray
 
     from elisa.analytics.dataset.graphic.plot import Plot
-    from elisa.types import TransformPropertiesType
+    from elisa.types import Float, TransformPropertiesType
 
 logger = logger_module.getLogger(__name__)
+
+
+def _observation_vector(value: NDArray | Sequence[Float] | None, name: str) -> NDArray[np.generic]:
+    """Validate a single nonempty finite observation vector without unit conversion.
+
+    :param value: Coordinate, observable or uncertainty values.
+    :param name: Dataset field name used in diagnostics.
+    :returns: The validated values as a one-dimensional NumPy array.
+    :raises ValueError: If the values are empty, nonfinite or not a vector.
+    """
+    array = np.asarray(value)
+    is_nonempty_vector = array.ndim == 1 and array.size > 0
+    if not is_nonempty_vector or not np.all(np.isfinite(array)):
+        msg = f"`{name}` must be a nonempty finite one-dimensional array"
+        raise ValueError(msg)
+    return array
 
 
 class DataSet(metaclass=ABCMeta):  # noqa: B024
@@ -116,33 +134,26 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
 
         - Checks that x_data and y_data have the same shape
         - Checks that y_err (if present) has the same shape as x_data and y_data
-        - Checks for NaN values in all arrays
+        - Requires nonempty finite one-dimensional arrays and positive supplied errors
 
         :param kwargs: Dictionary containing data arrays (x_data, y_data, y_err).
         :type kwargs: Any
-        :raises ValueError: If data shapes are incompatible or NaN values are found.
+        :raises ValueError: If arrays are malformed, nonfinite, or supplied errors are not positive.
         """
-        if np.shape(kwargs["x_data"]) != np.shape(kwargs["y_data"]):
-            error_msg = "`x_data` and `y_data` are not of the same shape."
-            raise ValueError(error_msg)
-        if (
-            "y_err" in kwargs
-            and not utils.is_empty(kwargs["y_err"])
-            and np.shape(kwargs["x_data"]) != np.shape(kwargs["y_err"])
-        ):
-            error_msg = "`y_err` are not of the same shape to `x_data` and `y_data`."
-            raise ValueError(error_msg)
-
-        # check for nans
-        if np.isnan(kwargs["x_data"]).any():
-            error_msg = "`x_data` contains NaN"
-            raise ValueError(error_msg)
-        if np.isnan(kwargs["y_data"]).any():
-            error_msg = "`y_data` contains NaN"
-            raise ValueError(error_msg)
-        if "y_err" in kwargs and not utils.is_empty(kwargs["y_err"]) and np.isnan(kwargs["y_err"]).any():
-            error_msg = "`y_err` contains NaN"
-            raise ValueError(error_msg)
+        coordinates = _observation_vector(kwargs.get("x_data"), "x_data")
+        observed = _observation_vector(kwargs.get("y_data"), "y_data")
+        if observed.shape != coordinates.shape:
+            msg = "`y_data` must have the same shape as `x_data`"
+            raise ValueError(msg)
+        if kwargs.get("y_err") is None:
+            return
+        errors = _observation_vector(kwargs["y_err"], "y_err")
+        if errors.shape != coordinates.shape:
+            msg = "`y_err` must have the same shape as `x_data`"
+            raise ValueError(msg)
+        if np.any(np.less_equal(errors, 0)):
+            msg = "`y_err` must contain strictly positive uncertainties"
+            raise ValueError(msg)
 
     @classmethod
     def load_from_file(
@@ -184,6 +195,8 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
         """
         data_columns = (0, 1, 2) if data_columns is None else data_columns
         data = dutils.read_data_file(filename, data_columns, delimiter=delimiter)
+        observation_columns = dict(zip(("x_data", "y_data", "y_err"), data.T, strict=False))
+        cls.check_data_validity(**observation_columns)
 
         if downselect_ratio is not None:
             idxs = np.arange(
@@ -420,7 +433,7 @@ class RVData(DataSet):
         )
 
         # convert errors
-        if "y_err" in kwargs:
+        if kwargs.get("y_err") is not None:
             kwargs["y_err"] = dutils.convert_data(
                 kwargs["y_err"],
                 kwargs["y_unit"],
@@ -563,20 +576,15 @@ class LCData(DataSet):
         kwargs["x_unit"] = dutils.convert_unit(kwargs["x_unit"], u.DEFAULT_PERIOD_UNIT)
         kwargs["reference_magnitude"] = kwargs.get("reference_magnitude")
 
-        # convert errors
-        if "y_err" in kwargs:
-            kwargs["y_err"] = dutils.convert_flux_error(
-                kwargs["y_err"],
-                kwargs["y_unit"],
-                zero_point=kwargs["reference_magnitude"],
-            )
-
-        # converting y-axis
-        kwargs["y_data"] = dutils.convert_flux(
-            kwargs["y_data"],
-            kwargs["y_unit"],
-            zero_point=kwargs["reference_magnitude"],
+        flux = dutils.convert_flux(
+            kwargs["y_data"], kwargs["y_unit"], zero_point=kwargs["reference_magnitude"],
         )
+        if kwargs.get("y_err") is not None:
+            kwargs["y_err"] = dutils.convert_flux_error(
+                kwargs["y_err"], kwargs["y_unit"],
+                zero_point=kwargs["reference_magnitude"], flux=flux,
+            )
+        kwargs["y_data"] = flux
         kwargs["y_unit"] = dutils.convert_unit(
             kwargs["y_unit"], u.dimensionless_unscaled,
         )

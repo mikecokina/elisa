@@ -94,80 +94,18 @@ class TestLightcurvesMeanError(ElisaTestCase):
 
 
 class TestRadialcurvesMeanError(ElisaTestCase):
-    """Test cases for :func:`radialcurves_mean_error` function."""
+    """RV fallback uses spread independently of the systemic velocity."""
 
-    def test_radialcurves_mean_error_basic(self) -> None:
-        """Test basic radial velocity error calculation.
+    def test_scaled_mad_and_translation(self) -> None:
+        values = np.array([-10.0, -5.0, 0.0, 5.0, 10.0])
+        expected = 0.05 * 1.482602218505602 * 5.0
+        for offset in (0.0, 12000.0, -12000.0):
+            self.assertAlmostEqual(utils.radialcurves_mean_error(values + offset), expected)
 
-        Verifies that the function returns 5% of the mean absolute value
-        of the radial velocity curve.
-
-        :return: None
-        """
-        rv: NDArray = np.array([-10.0, -5.0, 0.0, 5.0, 10.0])
-        expected_error: float = np.mean(rv) * 0.05
-
-        result: float = utils.radialcurves_mean_error(rv)
-
-        self.assertAlmostEqual(result, expected_error, places=10)
-
-    def test_radialcurves_mean_error_constant_values(self) -> None:
-        """Test error calculation with constant radial velocity values.
-
-        Verifies that the function correctly calculates 5% error for
-        a radial velocity curve with all identical values.
-
-        :return: None
-        """
-        rv: NDArray = np.array([50.0, 50.0, 50.0, 50.0])
-        expected_error: float = 50.0 * 0.05
-
-        result: float = utils.radialcurves_mean_error(rv)
-
-        self.assertAlmostEqual(result, expected_error, places=10)
-
-    def test_radialcurves_mean_error_zero_mean(self) -> None:
-        """Test error calculation with zero mean radial velocity.
-
-        Verifies that the function returns zero error when the mean of
-        the radial velocities is zero.
-
-        :return: None
-        """
-        rv: NDArray = np.array([-50.0, -25.0, 25.0, 50.0])
-        expected_error: float = np.mean(rv) * 0.05
-
-        result: float = utils.radialcurves_mean_error(rv)
-
-        self.assertAlmostEqual(result, expected_error, places=10)
-
-    def test_radialcurves_mean_error_negative_values(self) -> None:
-        """Test error calculation with negative radial velocities.
-
-        Verifies that the function correctly handles negative velocity values.
-
-        :return: None
-        """
-        rv: NDArray = np.array([-100.0, -200.0, -300.0])
-        expected_error: float = np.mean(rv) * 0.05
-
-        result: float = utils.radialcurves_mean_error(rv)
-
-        self.assertAlmostEqual(result, expected_error, places=10)
-
-    def test_radialcurves_mean_error_single_value(self) -> None:
-        """Test error calculation with single-element radial velocity.
-
-        Verifies that the function correctly handles a single-element array.
-
-        :return: None
-        """
-        rv: NDArray = np.array([25.0])
-        expected_error: float = 25.0 * 0.05
-
-        result: float = utils.radialcurves_mean_error(rv)
-
-        self.assertAlmostEqual(result, expected_error, places=10)
+    def test_uninformative_data_require_errors(self) -> None:
+        for values in ([50.0] * 4, [25.0]):
+            with self.assertRaises(ValueError):
+                utils.radialcurves_mean_error(values)
 
 
 class TestIsTimeDependent(ElisaTestCase):

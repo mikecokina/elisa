@@ -27,7 +27,7 @@ class DataTestCase(ElisaTestCase):
 
 class DataReadTestCase(DataTestCase):
     def test_read_data_file(self):
-        fpath = op.join(self.DATA, "dummy.csv")
+        fpath = op.join(self.DATA, "clean.csv")
         data = read_data_file(fpath, data_columns=(0, 1, 2)).T
 
         self.assertEqual(len(data), 3)
@@ -123,16 +123,16 @@ class ConvertFluxErrorTestCase(ElisaTestCase):
     def test_convert_flux_error_mag_with_zero_point(self):
         """Test conversion from magnitude errors to flux errors."""
         error = np.array([0.05])
-        result = convert_flux_error(error, u.mag, zero_point=0.0)
+        result = convert_flux_error(error, u.mag, zero_point=0.0, flux=np.array([0.4]))
         # Error should be positive and converted properly
         self.assertGreater(result[0], 0)
 
     def test_convert_flux_error_mmag_with_zero_point(self):
         """Test conversion from millimagnitude errors to flux errors."""
         error = np.array([50.0])  # 50 mmag = 0.05 mag
-        result = convert_flux_error(error, u.mmag, zero_point=0.0)
+        result = convert_flux_error(error, u.mmag, zero_point=0.0, flux=np.array([0.4]))
         # Should give same result as 0.05 mag
-        expected = convert_flux_error(np.array([0.05]), u.mag, zero_point=0.0)
+        expected = convert_flux_error(np.array([0.05]), u.mag, zero_point=0.0, flux=np.array([0.4]))
         assert_array_almost_equal(result, expected)
 
 
@@ -221,7 +221,7 @@ class CentralMovingAverageTestCase(ElisaTestCase):
         # Check that output has expected length
         self.assertLessEqual(len(lc_data.x_data), 15)
         self.assertEqual(len(lc_data.y_data), len(lc_data.x_data))
-        self.assertEqual(len(lc_data.y_err), len(lc_data.x_data))
+        self.assertIsNone(lc_data.y_err)
 
     def test_central_moving_average_non_cyclic(self):
         """Test averaging with non-cyclic boundaries."""
@@ -262,7 +262,7 @@ class CentralMovingAverageTestCase(ElisaTestCase):
 
 class LVDataTestCase(DataTestCase):
     def test_from_file(self):
-        fpath = op.join(self.DATA, "dummy.csv")
+        fpath = op.join(self.DATA, "clean.csv")
         x_unit = u.dimensionless_unscaled
         y_unit = u.km/u.s
         rv_data = RVData.from_file(fpath, x_unit, y_unit=y_unit)
@@ -276,7 +276,7 @@ class LVDataTestCase(DataTestCase):
 
 class RVDataTestCase(DataTestCase):
     def test_from_file(self):
-        fpath = op.join(self.DATA, "dummy.csv")
+        fpath = op.join(self.DATA, "clean.csv")
         x_unit = u.dimensionless_unscaled
         y_unit = u.dimensionless_unscaled
         lc_data = LCData.from_file(fpath, x_unit, y_unit=y_unit)
@@ -288,7 +288,7 @@ class RVDataTestCase(DataTestCase):
         assert_array_equal(lc_data.y_data, [0.1] * 5)
 
     def test_from_file_in_mag(self):
-        fpath = op.join(self.DATA, "dummy.csv")
+        fpath = op.join(self.DATA, "clean.csv")
         x_unit = u.dimensionless_unscaled
         y_unit = u.mag
         lc_data = LCData.from_file(fpath, x_unit, y_unit=y_unit, reference_magnitude=1.0)

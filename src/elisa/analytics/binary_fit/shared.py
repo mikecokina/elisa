@@ -12,6 +12,7 @@ from elisa.analytics.binary_fit.lc_prediction import (
     validate_observations,
 )
 from elisa.analytics.binary_fit.sampling import SamplingMethod
+from elisa.analytics.dataset.base import DataSet
 from elisa.analytics.models import lc as lc_model
 from elisa.analytics.models import rv as rv_model
 from elisa.analytics.params import parameters
@@ -29,13 +30,109 @@ from elisa.observer.utils import normalize_light_curve
 from elisa.utils import is_empty
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Callable, Iterable, Mapping
 
     from numpy.typing import NDArray
 
-    from elisa.types import Float
+    from elisa.types import Float, UnitType
 
 logger = getPersistentLogger(__name__)
+
+
+def _fit_passbands(passband: Iterable[str] | None, data: Mapping[str, DataSet]) -> str | list[str]:
+    """Resolve observer passbands and check their dataset correspondence.
+
+    :param passband: Requested LC passbands, or None for RV fitting.
+    :param data: Observations keyed by passband or RV component.
+    :returns: Observer passbands, using bolometric for RV fitting.
+    :raises ValueError: If requested LC passbands differ from the dataset keys.
+    """
+    if passband is None:
+        return "bolometric"
+    bands = list(passband)
+    if set(bands) != set(data):
+        msg = "Fitting passbands must match observation dataset identifiers"
+        raise ValueError(msg)
+    return bands
+
+
+def _observation_coordinate_unit(data: Mapping[str, DataSet]) -> UnitType:
+    """Validate dataset identifiers and resolve their common coordinate unit.
+
+    :param data: Nonempty observations keyed by dataset identifier.
+    :returns: Common coordinate unit for the supplied observations.
+    :raises ValueError: If identifiers or coordinate units are inconsistent.
+    """
+    if not data:
+        msg = "Fitting requires at least one observational dataset"
+        raise ValueError(msg)
+    if any(not isinstance(key, str) or not key for key in data):
+        msg = "Observation dataset identifiers must be nonempty strings"
+        raise ValueError(msg)
+    x_units = {key: dataset.x_unit for key, dataset in data.items()}
+    unique_units = set(x_units.values())
+    if len(unique_units) > 1:
+        msg = (
+            "Please make sure that all synthetic observations are supplied "
+            f"in BJD or photometric phases. Current state: {x_units}"
+        )
+        raise ValueError(msg)
+    return unique_units.pop()
+
+
+def _validate_lc_normalization(
+    y_data: Mapping[str, NDArray], kind: str, top_fraction_to_average: Float,
+) -> None:
+    """Check normalization settings and the observed mean flux scales.
+
+    :param y_data: Observed flux vectors keyed by passband.
+    :param kind: Requested normalization method.
+    :param top_fraction_to_average: Finite fraction in ``(0, 1]``, used only for
+        maximum, global_maximum and minimum normalization; ignored for mean modes.
+    :raises ValueError: If the fraction or a mean normalization scale is invalid.
+    """
+    uses_fraction = kind in ("maximum", "global_maximum", "minimum")
+    if uses_fraction and (not np.isfinite(top_fraction_to_average) or not 0 < top_fraction_to_average <= 1):
+        msg = "LC normalization fraction must be finite and satisfy 0 < fraction <= 1"
+        raise ValueError(msg)
+    if kind != "average":
+        return
+    for key, values in y_data.items():
+        scale = np.mean(values)
+        if not np.isfinite(scale) or scale <= 0:
+            msg = f"LC normalization requires a finite positive mean flux for {key}"
+            raise ValueError(msg)
+
+
+def _validated_normalized_errors(
+    y_data: Mapping[str, NDArray], y_err: Mapping[str, NDArray | None] | None,
+) -> dict[str, NDArray]:
+    """Check normalized observations and return their usable uncertainties.
+
+    :param y_data: Normalized observed flux vectors.
+    :param y_err: Normalized errors returned by the public normalization utility.
+    :returns: Matching finite, strictly positive uncertainty vectors.
+    :raises ValueError: If normalization produced unusable fluxes or errors.
+    """
+    if y_err is None:
+        msg = "LC fitting requires prepared uncertainties"
+        raise ValueError(msg)
+    validated: dict[str, NDArray] = {}
+    for key, values in y_data.items():
+        errors = y_err[key]
+        if errors is None:
+            msg = f"LC normalization produced nonfinite data or uncertainties for {key}"
+            raise ValueError(msg)
+        finite_flux = np.all(np.isfinite(values))
+        finite_errors = np.all(np.isfinite(errors))
+        if not finite_flux or not finite_errors:
+            msg = f"LC normalization produced nonfinite data or uncertainties for {key}"
+            raise ValueError(msg)
+        if np.any(errors <= 0):
+            msg = f"LC normalization requires strictly positive uncertainties for {key}"
+            raise ValueError(msg)
+        validated[key] = errors
+    return validated
 
 
 class AbstractFit(metaclass=ABCMeta):
@@ -116,7 +213,7 @@ class AbstractFit(metaclass=ABCMeta):
         self,
         x0: BinaryInitialParameters,
         data: dict[str, Any],
-        passband: Iterable | None = None,
+        passband: Iterable[str] | None = None,
         **kwargs: Any,
     ) -> None:
         """Set up class attributes listed in __slots__.
@@ -129,29 +226,27 @@ class AbstractFit(metaclass=ABCMeta):
         :param data: Observational data in photometric filters or radial velocity.
         :type data: dict[str, Any]
         :param passband: List of used passbands, use None in case of RV fit.
-        :type passband: Iterable | None
+        :type passband: Iterable[str] | None
         :param kwargs: Class dependent content (see inheritor classes).
         :type kwargs: Any
         """
+        self.atmosphere_model = getattr(self, "atmosphere_model", None)
+        self.limb_darkening_coefficients = getattr(self, "limb_darkening_coefficients", None)
         self._check_data_param_consistency(x0, data)
         self.fixed = x0.get_fixed(jsonify=False)
         self.constrained = x0.get_constrained(jsonify=False)
         self.fitable = x0.get_fitable(jsonify=False)
         self.normalization = x0.get_normalization_map()
 
-        observer = Observer(passband="bolometric" if passband is None else passband, system=None)
+        observer = Observer(passband=_fit_passbands(passband, data), system=None)
         self.observer = observer
         self.observer.system_cls = kwargs.get("observer_system_cls")
 
         self.x_data = {key: val.x_data for key, val in data.items()}
         self.y_data = {key: val.y_data for key, val in data.items()}
-        self.num_of_points = {key: np.shape(val.y_data)[0] for key, val in data.items()}
 
-        err = {
-            key: (abs(self.__class__.MEAN_ERROR_FN(val)) if data[key].y_err is None else data[key].y_err)
-            for key, val in self.y_data.items()
-        }
-        self.y_err = err
+        self.y_err = self._prepare_observation_errors(data)
+        self.num_of_points = {key: len(values) for key, values in self.y_data.items()}
 
         x_data_reduced, x_data_reducer = parameters.xs_reducer(
             {key: val.x_data for key, val in data.items()},
@@ -162,6 +257,37 @@ class AbstractFit(metaclass=ABCMeta):
         self.initial_vector = [val.value for val in self.fitable.values()]
         self.flat_result = {}
 
+        self._validate_atmosphere_parameters()
+
+    def _prepare_observation_errors(self, data: Mapping[str, DataSet]) -> dict[str, NDArray[np.float64]]:
+        """Validate observations and prepare supplied or estimated errors once.
+
+        :param data: Observations keyed by passband or RV component.
+        :returns: Uncertainty vectors, warning for each estimated dataset.
+        :raises ValueError: If observations, supplied errors or estimates are invalid.
+        """
+        errors: dict[str, NDArray[np.float64]] = {}
+        for key, dataset in data.items():
+            DataSet.check_data_validity(x_data=dataset.x_data, y_data=dataset.y_data, y_err=dataset.y_err)
+            if dataset.y_err is not None:
+                errors[key] = dataset.y_err
+                continue
+            scale = abs(self.__class__.MEAN_ERROR_FN(dataset.y_data))
+            if not np.isfinite(scale) or scale <= 0:
+                msg = f"Cannot estimate positive y_err for {key}; supply explicit positive y_err"
+                raise ValueError(msg)
+            errors[key] = np.full(dataset.y_data.shape, scale, dtype=float)
+            logger.warning(
+                "Dataset %s uses estimated y_err=%s: heuristic weights, not calibrated measurement "
+                "uncertainties; MCMC posterior credible intervals depend on this assumed scale.", key, scale,
+            )
+        return errors
+
+    def _validate_atmosphere_parameters(self) -> None:
+        """Validate optional atmosphere and limb-darkening configuration dictionaries.
+
+        :raises TypeError: If either existing option has an unsupported type.
+        """
         if not isinstance(getattr(self, "atmosphere_model", None), (dict, type(None))):
             error_msg = (
                 "Please provide argument `atmosphere_model` in format "
@@ -190,36 +316,24 @@ class AbstractFit(metaclass=ABCMeta):
         :type data: dict[str, Any]
         :raises ValueError: When data and parameters are incompatible.
         """
-        x_units = {key: val.x_unit for key, val in data.items()}
-        x_units_reduced = list(set(x_units.values()))
-        if len(x_units_reduced) > 1:
-            error_msg = (
-                f"Please make sure that all synthetic observations are supplied "
-                f"in BJD or photometric phases. Current state: {x_units}"
+        coordinate_unit = _observation_coordinate_unit(data)
+        has_epoch = hasattr(x0, "primary_minimum_time")
+        if coordinate_unit == units.d and not has_epoch:
+            msg = (
+                "Your initial parameters do not contain `primary_minimum_time`, yet you provided "
+                "your synthetic observations in JD. Either convert your observations to photometric "
+                "phases using `DataSet.convert_to_phases(period, t0)` or include "
+                "`primary_minimum_time` to your initial fit parameters."
             )
-            raise ValueError(error_msg)
-
-        try:
-            # noinspection PyUnresolvedReferences
-            _ = x0.primary_minimum_time
-        except AttributeError as exc:
-            if x_units_reduced[0] == units.d:
-                error_msg = (
-                    "Your initial parameters do not contain `primary_minimum_time`, yet you provided "
-                    "your synthetic observations in JD. Either convert your observations to photometric "
-                    "phases using `DataSet.convert_to_phases(period, t0)` or include "
-                    "`primary_minimum_time` to your initial fit parameters."
-                )
-                raise ValueError(error_msg) from exc
-        else:
-            if x_units_reduced[0] == units.dimensionless_unscaled:
-                error_msg = (
-                    "Your initial parameters contain `primary_minimum_time`, yet you provided "
-                    "your synthetic observations in photometric phases. Either convert your observations "
-                    "to JD using `DataSet.convert_to_time(period, t0)` or remove `primary_minimum_"
-                    "time` from your initial fit parameters."
-                )
-                raise ValueError(error_msg)
+            raise ValueError(msg)
+        if coordinate_unit == units.dimensionless_unscaled and has_epoch:
+            msg = (
+                "Your initial parameters contain `primary_minimum_time`, yet you provided "
+                "your synthetic observations in photometric phases. Either convert your observations "
+                "to JD using `DataSet.convert_to_time(period, t0)` or remove `primary_minimum_"
+                "time` from your initial fit parameters."
+            )
+            raise ValueError(msg)
 
     @abstractmethod
     def fit(self, *args: Any, **kwargs: Any) -> Any:
@@ -315,6 +429,9 @@ class AbstractRVFit(AbstractFit):
               evaluate synthetic observations.
         :type kwargs: Any
         """
+        if not set(data).issubset(settings.BINARY_COUNTERPARTS):
+            msg = "RV datasets must be keyed by primary or secondary"
+            raise ValueError(msg)
         super().set_up(x0, data, passband=None, **kwargs)
 
     # noinspection PyUnusedLocal
@@ -372,8 +489,8 @@ class AbstractLCFit(AbstractFit):
     interp_treshold: int
     discretization: float
     observer: Observer
-    atmosphere_model: None
-    limb_darkening_coefficients: None
+    atmosphere_model: dict[str, Any] | None
+    limb_darkening_coefficients: dict[str, Any] | None
     fitable: dict[str, Any]
     constrained: dict[str, Any]
     fixed: dict[str, Any]
@@ -389,7 +506,7 @@ class AbstractLCFit(AbstractFit):
         self,
         x0: BinaryInitialParameters,
         data: dict[str, Any],
-        passband: Iterable | None = None,
+        passband: Iterable[str] | None = None,
         **kwargs: Any,
     ) -> None:
         """Set up class attributes inherited in __slots__.
@@ -399,7 +516,7 @@ class AbstractLCFit(AbstractFit):
         :param data: Observations in each filter.
         :type data: dict[str, Any]
         :param passband: List of used passbands.
-        :type passband: Iterable | None
+        :type passband: Iterable[str] | None
         :param kwargs: Optional arguments:
 
             * ``observer_system_cls`` - System used to evaluate synthetic observations.
@@ -511,14 +628,16 @@ class AbstractLCFit(AbstractFit):
             * ``maximum`` - Each curve is normalized to its own maximum.
             * ``global_maximum`` - Curves are normalized to their global maximum (default).
         :type kind: str
-        :param top_fraction_to_average: Top portion of the dataset (in y-axis direction) used
-            in the normalization process, from (0, 1) interval.
+        :param top_fraction_to_average: Finite fraction in ``(0, 1]`` used by maximum,
+            global_maximum and minimum normalization; ignored for average and global_average.
         :type top_fraction_to_average: float
         """
+        _validate_lc_normalization(self.y_data, kind, top_fraction_to_average)
         self.validate_observations()
         y_data, y_err = normalize_light_curve(self.y_data, self.y_err, kind, top_fraction_to_average)
+        normalized_errors = _validated_normalized_errors(y_data, y_err)
         self.y_data = y_data
-        self.y_err = y_err
+        self.y_err = normalized_errors
 
     def generate_sample_phases(self, samples: SamplingMethod | str | list | NDArray) -> NDArray[Float] | None:
         """Generate photometric phases for synthetic observations.

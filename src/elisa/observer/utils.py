@@ -39,8 +39,10 @@ def normalize_light_curve(
         Defaults to "global_maximum".
     :type kind: str
     :param top_fraction_to_average: Fraction of points used when computing top-fraction
-        or bottom-fraction averages. Expected to be in the interval ``(0, 1)``.
-        Defaults to 0.1.
+        or bottom-fraction averages; ignored for average and global_average.
+        Expected to be finite and in the interval ``(0, 1]``. Maximum modes retain their
+        floor-plus-one selection rule; minimum uses the floor, selecting at least
+        one point. Counts are capped at the available observations. Defaults to 0.1.
     :type top_fraction_to_average: Float
     :returns: Tuple containing normalized curves and normalized errors. The first element
         is a dictionary of normalized flux curves (dict[str, NDArray[Float]]), and the
@@ -61,20 +63,26 @@ def normalize_light_curve(
         c = np.mean(np.concatenate(list(y_data_arrays.values())))
         coeff = dict.fromkeys(y_data_arrays, c)
     elif kind == "maximum":
-        n = {key: int(top_fraction_to_average * len(val)) + 1 for key, val in y_data_arrays.items()}
+        n = {
+            key: min(len(val), int(top_fraction_to_average * len(val)) + 1)
+            for key, val in y_data_arrays.items()
+        }
         coeff = {
             key: np.average(np.partition(val, -n[key])[-n[key]:])
             for key, val in y_data_arrays.items()
         }
     elif kind == "global_maximum":
         vals = np.concatenate(list(y_data_arrays.values()))
-        n = int(top_fraction_to_average * len(vals) / len(y_data_arrays)) + 1
+        n = min(len(vals), int(top_fraction_to_average * len(vals) / len(y_data_arrays)) + 1)
         c = np.average(np.partition(vals, -n)[-n:])
         coeff = dict.fromkeys(y_data_arrays, c)
     elif kind == "minimum":
-        n = {key: int(top_fraction_to_average * len(val)) for key, val in y_data_arrays.items()}
+        n = {
+            key: min(len(val), max(1, int(top_fraction_to_average * len(val))))
+            for key, val in y_data_arrays.items()
+        }
         coeff = {
-            key: np.average(np.partition(val, n[key])[:n[key]])
+            key: np.average(np.partition(val, n[key] - 1)[:n[key]])
             for key, val in y_data_arrays.items()
         }
     else:

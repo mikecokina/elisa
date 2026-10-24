@@ -95,6 +95,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Accept finite LC normalization fractions in `(0, 1]` for `maximum`,
+  `global_maximum`, and `minimum`; ignore the fraction for mean normalization.
+  Prevent empty or out-of-range extrema selections while preserving existing
+  normalization formulas and `global_maximum` selection semantics.
 - Pass per-observation standardized residual vectors to SciPy for LC and RV least
   squares, so default linear loss minimizes `0.5 * chi2` instead of
   `0.5 * chi2**2`. Apply robust losses to individual observations and use a

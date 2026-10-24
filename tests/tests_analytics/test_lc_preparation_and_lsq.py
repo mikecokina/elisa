@@ -151,11 +151,11 @@ def test_second_setup_replaces_and_validates_data(science):
         assert len(calls) == 2
         data[scientific.V].y_err = np.ones(2)
         for fit in fits:
-            with pytest.raises(lc_prediction.PredictionAlignmentError, match='uncertainty length'):
+            with pytest.raises(ValueError, match='same shape'):
                 fit.set_up(p.BinaryInitialParameters(**deepcopy(cfg)), data, passband=data.keys(),
                            discretization=10., interp_treshold=100, observer_system_cls=BinarySystem,
                            samples='uniform')
-        assert len(calls) == 4
+        assert len(calls) == 2  # Malformed errors fail before reducer validation.
 
 
 def test_normalization_and_explicit_manual_revalidation(science):

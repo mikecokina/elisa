@@ -613,6 +613,40 @@ being `detached` and `over-contact`.
 
 ---
 
+## Observational Uncertainties
+
+LC and RV datasets accept `y_err=None` in both least squares and MCMC. Supplied
+uncertainties must be finite, strictly positive, one-dimensional arrays matching
+`y_data`. Observations and coordinates must be nonempty, finite, matching vectors.
+Malformed file rows raise an error rather than being silently discarded; use
+`data_columns=(0, 1)` for two-column files without uncertainties. Smoothing preserves
+`y_err=None` when errors were omitted.
+
+When uncertainties are omitted, fitting setup estimates a constant scale separately
+for each passband or RV component:
+
+- LC: `0.05 * abs(mean(flux))`, after magnitude conversion and before normalization.
+  Fitting divides both flux and its uncertainties by the same positive mean flux.
+- RV: `0.05 * 1.482602218505602 * median(abs(v - median(v)))`. If ties make MAD zero
+  despite nonzero variation, the fallback is `0.05 * std(v, ddof=1)`. The latter
+  fallback is sensitive to outliers. Constant, singleton or numerically unresolved
+  RV data require explicit positive errors; no absolute velocity floor is added.
+
+The RV estimate is invariant under an additive velocity offset, within floating-point
+rounding. It retains small representable variation; offsets that erase variation in
+the input cannot be undone. The factor 0.05 is a compatibility convention. These
+scales include astrophysical variability and do not estimate instrument precision.
+Each estimate emits a warning: these are heuristic weights, not calibrated measurement
+uncertainties. MCMC posterior credible intervals depend on the assumed uncertainties,
+priors and likelihood. Supply measured errors for scientific inference.
+
+For magnitude or mmag data, supply errors in the same unit and set
+`reference_magnitude`. The existing Gaussian-flux approximation is propagated
+pointwise as `sigma_F = ln(10)/2.5 * F * sigma_mag`; mmag errors are divided by 1000
+first. Direct callers of `convert_flux_error` must now supply the converted pointwise
+`flux` as well as the reference `zero_point`; the zero point alone cannot determine
+absolute flux uncertainties.
+
 ## Executing the Fit
 
 The fitting procedure can then be initiated with the following command:

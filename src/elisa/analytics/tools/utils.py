@@ -9,6 +9,8 @@ from elisa.base.types import FLOAT
 from elisa.binary_system import t_layer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from numpy.typing import NDArray
 
     from elisa.types import Float
@@ -28,18 +30,51 @@ def lightcurves_mean_error(lc: NDArray) -> Float:
     return FLOAT(np.mean(lc) * 0.05)
 
 
-def radialcurves_mean_error(rv: NDArray) -> Float:
-    """Return synthetic error for radial velocity observations.
+def radialcurves_mean_error(rv: NDArray | Sequence[Float]) -> Float:
+    """Estimate heuristic RV errors from translation-invariant spread.
 
-    If observation errors are not provided, the default 5 percent relative
-    error is used to generate synthetic errors for the radial velocities.
+    Uses 5% of Gaussian-scaled MAD (1.482602218505602 times MAD), falling
+    back to 5% of sample standard deviation when ties make MAD zero.
+    Centering and rescaling preserve small representable variations without
+    squaring tiny or huge velocities. No absolute velocity floor is used.
+    Orbital variation affects these weights; they do not estimate instrument
+    precision. MCMC credible intervals depend on the assumed error scale.
 
-    :param rv: Radial velocity observations
-    :type rv: NDArray
-    :return: Synthetic error value (5% of mean)
-    :rtype: float
+    :param rv: Finite one-dimensional velocities for a single component.
+    :returns: Positive heuristic uncertainty in the input velocity unit.
+    :raises ValueError: If a finite positive scale cannot be estimated.
     """
-    return FLOAT(np.mean(rv) * 0.05)
+    scaled, amplitude = _scaled_rv_deviations(rv)
+    mad = np.median(np.abs(scaled))
+    spread = 1.482602218505602 * mad if mad > 0 else np.std(scaled, ddof=1)
+    uncertainty = (0.05 * spread) * amplitude
+    if not np.isfinite(uncertainty) or uncertainty <= 0:
+        msg = "RV variation cannot produce a finite positive uncertainty; supply explicit positive y_err"
+        raise ValueError(msg)
+    return FLOAT(uncertainty)
+
+
+def _scaled_rv_deviations(rv: NDArray | Sequence[Float]) -> tuple[NDArray[np.float64], Float]:
+    """Prepare centered, scaled velocities for stable spread estimation.
+
+    :param rv: Velocity observations for one component.
+    :returns: Median-centered deviations divided by their positive amplitude,
+        together with that amplitude in the original velocity unit.
+    :raises ValueError: If observations cannot resolve a finite positive spread.
+    """
+    velocities = np.asarray(rv, dtype=float)
+    minimum_samples = 2
+    if velocities.ndim != 1 or velocities.size < minimum_samples or not np.all(np.isfinite(velocities)):
+        msg = "Estimating RV y_err requires at least two finite observations; supply explicit positive y_err"
+        raise ValueError(msg)
+    with np.errstate(over="ignore", invalid="ignore"):
+        centered = velocities - velocities[0]
+        deviations = centered - np.median(centered)
+        amplitude = np.max(np.abs(deviations))
+    if not np.isfinite(amplitude) or amplitude <= 0:
+        msg = "RV observations have no resolvable positive velocity scale; supply explicit positive y_err"
+        raise ValueError(msg)
+    return deviations / amplitude, amplitude
 
 
 def is_time_dependent(labels: list[str]) -> bool:
