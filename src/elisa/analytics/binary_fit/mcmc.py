@@ -15,6 +15,7 @@ from elisa.analytics.binary_fit.shared import (
     AbstractLCFit,
     AbstractRVFit,
     check_for_boundary_surface_potentials,
+    map_rv_predictions,
     rv_r_squared,
 )
 from elisa.analytics.models import cost_fns
@@ -593,6 +594,7 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
         :type xn: NDArray[Float]
         :return: Likelihood value.
         :rtype: Float
+        :raises PredictionAlignmentError: If raw RV components or shapes do not match the synthesis grid.
         """
         xn_list = parameters.vector_renormalizer(xn, self.fitable.keys(), self.normalization)
         xn_renorm = np.asarray(xn_list, dtype=FLOAT)
@@ -608,7 +610,7 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
             self.observer,
             **kwargs,
         )
-        synthetic = {comp: synthetic[comp][self.x_data_reducer[comp]] for comp in synthetic}
+        synthetic = map_rv_predictions(synthetic, self.x_data_reduced, self.x_data_reducer)
 
         ln_f_key = f"{NUISANCE_PARSER}{PARAM_PARSER}ln_f"
         ln_f: Float = parameters.prepare_nuisance_properties_set(

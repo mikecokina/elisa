@@ -9,6 +9,14 @@ from __future__ import annotations
 from jsonschema import ValidationError
 
 
+class PredictionAlignmentError(ValueError):
+    """Synthetic prediction keys or shapes do not align with observations.
+
+    Structural integration errors must propagate through fitting rather than
+    becoming physical-state rejections or least-squares penalties.
+    """
+
+
 class YouHaveNoIdeaError(ValidationError):
     """Raised when a JSON schema validation fails in an unexpected way."""
 

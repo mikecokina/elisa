@@ -20,6 +20,7 @@ from scipy.interpolate import interp1d
 from elisa.analytics.models import lc
 from elisa.analytics.params import parameters
 from elisa.analytics.tools.utils import time_layer_resolver
+from elisa.base.error import PredictionAlignmentError
 from elisa.observer.utils import normalize_light_curve
 
 if TYPE_CHECKING:
@@ -30,14 +31,6 @@ if TYPE_CHECKING:
     from elisa.observer.observer import Observer
 
 _MIN_CUBIC_SUPPORT = 4
-
-
-class PredictionAlignmentError(ValueError):
-    """Report incompatible observations, support or synthetic array alignment.
-
-    Both LS and the outer MCMC probability handler propagate this exception
-    instead of converting it into an invalid-physical-state penalty.
-    """
 
 
 class LCSynthesisError(Exception):
@@ -228,6 +221,8 @@ def predict_light_curves(
     )
     try:
         raw = synthesis(support, discretization, observer, **kwargs)
+    except PredictionAlignmentError:
+        raise
     except (ValueError, RuntimeError, TypeError) as exc:
         raise LCSynthesisError(str(exc)) from exc
     if raw.keys() != y_data.keys():

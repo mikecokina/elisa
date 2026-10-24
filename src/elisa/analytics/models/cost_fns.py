@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from elisa.base.error import PredictionAlignmentError
 from elisa.const import PI
 
 _TWO_PI = 2.0 * PI
@@ -114,8 +115,9 @@ def standardized_residuals(
         False after setup validation and dynamic prediction alignment checks.
     :return: Concatenated (observed - synthetic) / uncertainty. Its squared norm
         is chi² and SciPy's default linear-loss cost is half that value.
-    :raises ValueError: If dataset keys or vector/error shapes would broadcast
-        different observations together. Scalar uncertainties remain supported.
+    :raises PredictionAlignmentError: If prediction keys or shapes differ from observations.
+    :raises ValueError: If observation or uncertainty shapes are invalid.
+        Scalar uncertainties remain supported.
     """
     if validate:
         _validate_residual_shapes(y_data, y_err, synthetic)
@@ -128,15 +130,22 @@ def _validate_residual_shapes(y_data: dict, y_err: dict, synthetic: dict) -> Non
     :param y_data: Observed vectors by dataset.
     :param y_err: Matching uncertainty vectors or scalar uncertainty fallbacks.
     :param synthetic: Predictions mapped into each observation vector's order.
-    :raises ValueError: If keys or observation/prediction/error shapes differ.
+    :raises PredictionAlignmentError: If prediction keys or shapes differ.
+    :raises ValueError: If observation or uncertainty keys/shapes are invalid.
     """
-    if set(y_data) != set(synthetic) or set(y_data) != set(y_err):
+    if set(y_data) != set(synthetic):
+        message = "Residual observation and prediction datasets differ"
+        raise PredictionAlignmentError(message)
+    if set(y_data) != set(y_err):
         message = "Residual observation, prediction and uncertainty datasets differ"
         raise ValueError(message)
     for key, observed in y_data.items():
-        if np.ndim(observed) != 1 or np.shape(synthetic[key]) != np.shape(observed):
+        if np.ndim(observed) != 1:
             message = f"Residual prediction shape differs from observations for {key}"
             raise ValueError(message)
+        if np.shape(synthetic[key]) != np.shape(observed):
+            message = f"Residual prediction shape differs from observations for {key}"
+            raise PredictionAlignmentError(message)
         if np.shape(y_err[key]) not in ((), np.shape(observed)):
             message = f"Residual uncertainty shape differs from observations for {key}"
             raise ValueError(message)

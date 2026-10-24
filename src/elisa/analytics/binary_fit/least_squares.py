@@ -14,6 +14,7 @@ from elisa.analytics.binary_fit.sampling import SamplingMethod
 from elisa.analytics.binary_fit.shared import (
     AbstractLCFit,
     AbstractRVFit,
+    map_rv_predictions,
     r_squared,
     rv_r_squared,
 )
@@ -343,9 +344,10 @@ class CentralRadialVelocity(AbstractRVFit):
         :param xn: Normalized free-parameter vector.
         :return: Concatenated (observed - predicted) / uncertainty, in observation
             dictionary insertion order. Its squared norm is the actual chi².
+        :raises PredictionAlignmentError: If raw RV components or shapes do not match the synthesis grid.
         """
         synthetic: dict[str, NDArray] = self.prepare_synthetic(xn)
-        synthetic = {comp: synthetic[comp][self.x_data_reducer[comp]] for comp in synthetic}
+        synthetic = map_rv_predictions(synthetic, self.x_data_reduced, self.x_data_reducer)
         return cost_fns.standardized_residuals(self.y_data, self.y_err, synthetic)
 
     def fit(

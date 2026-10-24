@@ -23,6 +23,7 @@ from elisa.analytics.tools.utils import (
     radialcurves_mean_error,
     time_layer_resolver,
 )
+from elisa.base.error import PredictionAlignmentError
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
 from elisa.logger import getPersistentLogger
@@ -693,6 +694,7 @@ class AbstractLCFit(AbstractFit):
         :return: Photometric phases.
         :rtype: NDArray[Float]
         :raises RuntimeError: When initial parameters are invalid.
+        :raises PredictionAlignmentError: If synthesis reports a structural alignment error.
         """
         n = 3 * settings.MAX_CURVE_DATAPOINTS
         diff = 1.0 / n
@@ -716,6 +718,8 @@ class AbstractLCFit(AbstractFit):
         try:
             synthetic = lc_model.synthetic_binary(x, self.discretization, observer, **kwargs)
             synthetic, _ = normalize_light_curve(synthetic, kind="average")
+        except PredictionAlignmentError:
+            raise
         except Exception as e:
             error_msg = "Your initial parameters are invalid and phase sampling could not be generated."
             raise RuntimeError(error_msg) from e
@@ -808,6 +812,33 @@ def lc_r_squared(
     return r_squared(synthetic_result, y_data)
 
 
+def map_rv_predictions(
+    synthetic: dict[str, NDArray],
+    x_data_reduced: NDArray,
+    x_data_reducer: dict[str, NDArray],
+) -> dict[str, NDArray]:
+    """Validate raw RV curves before mapping them into observation order.
+
+    :param synthetic: Component curves on the full synthesis coordinate grid.
+    :param x_data_reduced: Coordinate grid supplied to RV synthesis.
+    :param x_data_reducer: Prepared component indices into that grid.
+    :returns: Curves in each component's original observation order.
+    :raises PredictionAlignmentError: If components or raw curve shapes differ.
+    """
+    if synthetic.keys() != x_data_reducer.keys():
+        msg = "RV synthesis and observation components differ"
+        raise PredictionAlignmentError(msg)
+    expected_shape = np.shape(x_data_reduced)
+    for component, curve in synthetic.items():
+        if np.shape(curve) != expected_shape:
+            msg = (
+                f"RV synthetic shape for {component} must match coordinate grid "
+                f"{expected_shape}, got {np.shape(curve)}"
+            )
+            raise PredictionAlignmentError(msg)
+    return {component: curve[x_data_reducer[component]] for component, curve in synthetic.items()}
+
+
 def rv_r_squared(synthetic: Callable[..., Any], *args: Any, **kwargs: Any) -> float:
     """Compute R^2 coefficient of determination between synthetic and observed RV curves.
 
@@ -825,13 +856,14 @@ def rv_r_squared(synthetic: Callable[..., Any], *args: Any, **kwargs: Any) -> fl
     :type kwargs: Any
     :return: Coefficient of determination (1.0 means perfect fit).
     :rtype: float
+    :raises PredictionAlignmentError: If raw RV components or shapes do not match the synthesis grid.
     """
     x_data_reduced, y_data, x_data_reducer, cls = args
 
     observer = Observer(passband="bolometric", system=None)
     observer._system_cls = cls  # noqa: SLF001
     synthetic_result = synthetic(x_data_reduced, observer, **kwargs)
-    synthetic_result = {comp: synthetic_result[comp][x_data_reducer[comp]] for comp in synthetic_result}
+    synthetic_result = map_rv_predictions(synthetic_result, x_data_reduced, x_data_reducer)
 
     return r_squared(synthetic_result, y_data)
 
