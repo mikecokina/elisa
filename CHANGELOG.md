@@ -14,14 +14,8 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 - Public `elisa.analytics.SamplingMethod` enum with `UNIFORM` and `ADAPTIVE`
   strategies shared by LC least-squares and MCMC fitting. Existing string values
   and manual phase lists/arrays remain supported.
-- 13 preparation-lifecycle and residual-vector regressions covering real LC/RV
-  parameter recovery, Jacobians, robust losses, and invalid-model penalties.
 - A reproducible LC prediction overhead benchmark separating validation,
   mapping/interpolation, and normalization from physical synthesis.
-- 41 deterministic light-curve fitting regressions using real ELISA synthesis,
-  covering LS/MCMC/R² prediction consistency, phase/JD inputs, Standard/Community
-  parameters, constraints, custom atmosphere/LD options, and independent chi²
-  and Gaussian likelihood calculations.
 - `ld.clear_ld_caches()` to clear loaded LD tables, prepared interpolators, and
   evaluated coefficient results together.
 - Independent Sutherland-Hodgman polygon/triangle intersection area kernels: a
@@ -95,6 +89,15 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Reject explicitly invalid MCMC physical configurations with `-np.inf`,
+  independently of previous likelihood evaluations. Propagate programming,
+  input-structure, and unexpected numerical errors instead of penalizing them.
+- Initialize MCMC walkers only at finite-posterior states within prior bounds,
+  with bounded automatic sampling attempts. Validate supplied ensembles without
+  clipping or mutating caller arrays.
+- Validate free-parameter bounds and Gaussian widths before MCMC sampling;
+  normalize widths directly by the physical bound span to avoid cancellation,
+  preserving existing prior definitions and fixed/constrained parameter handling.
 - Accept finite LC normalization fractions in `(0, 1]` for `maximum`,
   `global_maximum`, and `minimum`; ignore the fraction for mean normalization.
   Prevent empty or out-of-range extrema selections while preserving existing
@@ -175,10 +178,6 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 - Included all required files from the package data directory in build distributions.
 
 ## 0.6.1 - 2026-02-04
-
-### Changed
-
-- Added regression coverage for INI setting types and value integrity during import.
 
 ### Fixed
 

@@ -244,8 +244,9 @@ class LCScientificConsistencyTestCase(ElisaTestCase):
     def test_missing_error_scalar_noise_model(self, threshold):
         fits = self.prepare({V: X, B: [.25]}, threshold, missing_errors=True)
         for fit in fits:
-            for error in fit.y_err.values():
-                self.assertEqual(np.shape(error), ())
+            for band, error in fit.y_err.items():
+                self.assertEqual(error.shape, fit.y_data[band].shape)
+                assert_allclose(error, .05)
         self.check(fits)
 
     def test_invalid_physical_synthesis_retains_penalties(self):
@@ -260,10 +261,11 @@ class LCScientificConsistencyTestCase(ElisaTestCase):
                 assert_allclose(np.dot(penalty, penalty), const.MAX_USABLE_FLOAT, rtol=2e-15)
             else:
                 fit.norm_init_vector, fit.sigmas = xn, np.full(len(xn), np.nan)
-                last = fit._last_known_lhood
                 with self.assertRaises(ValueError):
                     fit.likelihood(xn)
-                self.assertEqual(fit.ln_probability(xn), last * 1e3)
+                # Mutated fixed input is not a current fitted physical proposal.
+                with self.assertRaises(ValueError):
+                    fit.ln_probability(xn)
 
     def test_jd_period_epoch_changes(self):
         fits = self.prepare({V: [1.6, 1., 1.1, 1.1, 1.5], B: [1.25]}, 4, jd=True)

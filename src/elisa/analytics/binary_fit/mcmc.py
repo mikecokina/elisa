@@ -8,7 +8,7 @@ import numpy as np
 
 from elisa import settings
 from elisa.analytics.binary_fit import mixins
-from elisa.analytics.binary_fit.lc_prediction import LCSynthesisError, PredictionAlignmentError
+from elisa.analytics.binary_fit.lc_prediction import LCSynthesisError
 from elisa.analytics.binary_fit.sampling import SamplingMethod
 from elisa.analytics.binary_fit.shared import (
     AbstractFit,
@@ -21,7 +21,7 @@ from elisa.analytics.models import cost_fns
 from elisa.analytics.models import rv as rv_model
 from elisa.analytics.params import parameters
 from elisa.analytics.params.conf import NUISANCE_PARSER, PARAM_PARSER
-from elisa.base.error import ElisaError
+from elisa.base.error import PhysicalStateError
 from elisa.base.types import FLOAT
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
@@ -69,7 +69,6 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         self.last_normalization: dict[str, Any] = {}
         self.flat_chain_path = ""
         self.eval_counter = 0
-        self._last_known_lhood = -np.finfo(float).max * np.finfo(float).eps
         self.sigmas: NDArray[Float] | None = None
 
     @staticmethod
@@ -140,9 +139,7 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         :return: Likelihood value.
         :rtype: Float
         """
-        lh = cost_fns.likelihood_fn(self.y_data, self.y_err, synthetic, ln_f)
-        self._last_known_lhood = min(self._last_known_lhood, lh)
-        return lh
+        return cost_fns.likelihood_fn(self.y_data, self.y_err, synthetic, ln_f)
 
     def ln_probability(self, xn: NDArray[Float]) -> Float:
         """Calculate resulting probability distribution made of likelihood and prior distribution.
@@ -159,15 +156,16 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         if prior == -np.inf:
             return -np.inf
         try:
-            likelihood = prior + self.likelihood(xn)
-        except PredictionAlignmentError:
-            raise
-        except (ElisaError, ValueError) as e:
+            likelihood = self.likelihood(xn)
+        except PhysicalStateError as e:
             if not settings.SUPPRESS_WARNINGS:
                 error_msg = f"mcmc hit invalid parameters, exception: {e!s}"
                 logger.warning(error_msg)
-            return self._last_known_lhood * 1e3
-        return likelihood
+            return -np.inf
+        if not np.isfinite(likelihood):
+            msg = "Nonfinite likelihood without an explicit physical exclusion"
+            raise FloatingPointError(msg)
+        return prior + likelihood
 
     def normalized_sigma(self, vector: NDArray[Float]) -> NDArray[Float]:
         """Assign normalized standard deviation for each variable parameter to attribute sigma.
@@ -179,17 +177,83 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         :return: Normalized sigma values for each parameter.
         :rtype: NDArray[Float]
         """
-        sigmas = np.array(
-            [val.sigma if val.sigma is not None else np.nan for val in self.fitable.values()],
+        if np.shape(vector) != (len(self.fitable),):
+            msg = "Normalized initial vector must match the fitted parameters"
+            raise ValueError(msg)
+        sigmas = []
+        for key, parameter in self.fitable.items():
+            if parameter.sigma is None:
+                sigmas.append(np.nan)
+                continue
+            lower, upper = self.normalization[key]
+            sigmas.append(parameter.sigma / (upper - lower))
+        return np.asarray(sigmas, dtype=FLOAT)
+
+    def prepare_priors(self) -> None:
+        """Validate free prior metadata once, before normalization or sampling.
+
+        Fixed and constrained parameters have no independent prior coordinate.
+        Preserve the existing box-truncated standardized Gaussian definition.
+        """
+        for key, parameter in self.fitable.items():
+            lower, upper = self.normalization[key]
+            if not np.all(np.isfinite([lower, upper])) or lower >= upper:
+                msg = f"Parameter {key} requires finite, strictly increasing bounds"
+                raise ValueError(msg)
+
+            width = upper - lower
+            if not np.isfinite(width):
+                msg = f"Parameter {key} requires a finite bound span"
+                raise ValueError(msg)
+
+            sigma = parameter.sigma
+            if sigma is not None and (not np.isfinite(sigma) or sigma <= 0):
+                msg = f"Parameter {key} requires a finite, strictly positive Gaussian width"
+                raise ValueError(msg)
+
+        self.norm_init_vector = np.asarray(
+            parameters.vector_normalizer(
+                self.initial_vector,
+                self.fitable.keys(),
+                self.normalization,
+            ),
             dtype=FLOAT,
         )
-        perturbed = np.array(self.initial_vector, dtype=FLOAT) + sigmas
-        perturbed_norm = parameters.vector_normalizer(
-            perturbed,
-            self.fitable.keys(),
-            self.normalization,
-        )
-        return np.array(perturbed_norm, dtype=FLOAT) - vector
+
+        if not np.all(np.isfinite(self.norm_init_vector)):
+            msg = "Initial free parameter values must have finite normalized coordinates"
+            raise ValueError(msg)
+
+        self.sigmas = self.normalized_sigma(self.norm_init_vector)
+        gaussian_widths = self.sigmas[~np.isnan(self.sigmas)]
+        if not np.all(np.isfinite(gaussian_widths) & (gaussian_widths > 0)):
+            msg = "Gaussian widths must remain finite and positive in normalized coordinates"
+            raise ValueError(msg)
+
+        self.validate_physical_parameters({key: parameter.value for key, parameter in self.fixed.items()})
+
+    @staticmethod
+    def validate_physical_parameters(model_parameters: dict[str, Any]) -> None:
+        """Reject explicit invalid physical scales; expose nonfinite numerical failures."""
+        positive = {"period", "mass_ratio", "semi_major_axis", "asini", "mass", "t_eff"}
+        for key, value in model_parameters.items():
+            name = key.rsplit(PARAM_PARSER, 1)[-1]
+            if name not in positive and name != "eccentricity":
+                continue
+            if not np.isfinite(value):
+                msg = f"Nonfinite physical parameter: {key}"
+                raise FloatingPointError(msg)
+            if name in positive and value <= 0:
+                msg = f"Physical parameter {key} must be strictly positive"
+                raise PhysicalStateError(msg)
+            if name == "eccentricity" and not 0 <= value < 1:
+                msg = "Physical eccentricity must satisfy 0 <= e < 1"
+                raise PhysicalStateError(msg)
+
+    def validate_current_physical_parameters(self, model_parameters: dict[str, Any]) -> None:
+        """Check current free and evaluated constrained values, excluding fixed metadata."""
+        current = {key: value for key, value in model_parameters.items() if key not in self.fixed}
+        self.validate_physical_parameters(current)
 
     def _fit(
         self,
@@ -229,18 +293,8 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         :return: MCMC ensemble sampler with results.
         :rtype: emcee.EnsembleSampler
         """
-        self.norm_init_vector = np.array(
-            parameters.vector_normalizer(
-                self.initial_vector,
-                self.fitable.keys(),
-                self.normalization,
-            ),
-            dtype=FLOAT,
-        )
-
-        self.sigmas = self.normalized_sigma(self.norm_init_vector)
-
-        p0 = self.generate_initial_states(p0, nwalkers, ndim, x0_vector=self.norm_init_vector)
+        self.prepare_priors()
+        p0 = self.prepare_initial_states(p0, nwalkers, ndim)
 
         logger.info("starting mcmc")
         kwargs: dict[str, Any] = {
@@ -291,6 +345,40 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
 
         return sampler
 
+    def prepare_initial_states(
+            self,
+            initial_state: NDArray[np.float64] | None,
+            nwalkers: int,
+            ndim: int,
+    ) -> NDArray[np.float64]:
+        """Validate supplied states or draw a physically admissible prior-box ensemble.
+
+        Automatic initialization tests x0 first, then uses uniform box draws.
+        At most ten candidate evaluations per requested walker are permitted;
+        narrow physical support requires a user-supplied admissible ensemble.
+        Full posterior checks occur here only, before emcee starts sampling.
+        """
+        if initial_state is not None:
+            ensemble = self.generate_initial_states(initial_state, nwalkers, ndim)
+            for index, row in enumerate(ensemble):
+                if not np.isfinite(self.ln_probability(row)):
+                    msg = f"Supplied initial walker {index} is physically inadmissible"
+                    raise ValueError(msg)
+            return ensemble
+
+        rng = np.random.default_rng()
+        accepted = []
+        candidate = self.norm_init_vector.copy()
+        for _ in range(10 * nwalkers):
+            if np.isfinite(self.ln_probability(candidate)):
+                accepted.append(candidate)
+                if len(accepted) == nwalkers:
+                    return np.asarray(accepted, dtype=FLOAT)
+            candidate = rng.uniform(0.0, 1.0, ndim)
+
+        msg = "Unable to initialize valid walkers within 10 draws per walker; supply admissible initial states"
+        raise ValueError(msg)
+
     @staticmethod
     def generate_initial_states(
         initial_state: NDArray[Float] | None,
@@ -301,7 +389,7 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         """Transform user initial state to normalized format suitable for MCMC chain.
 
         Function transforms user initial state to normalized format suitable for MCMC chain,
-        where all values are in the interval (0, 1).
+        where all values are in the interval [0, 1]. Supplied states are copied and validated.
 
         :param initial_state: Initial state matrix. If None, random
             initial states in (0, 1) are generated with the first walker set to x0_vector.
@@ -320,16 +408,21 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
             rng = np.random.default_rng()
             retval = rng.uniform(0.0, 1.0, (nwalkers, ndim))
             retval[0] = x0_vector if x0_vector is not None else retval[0]
-            return retval
+            initial_state = retval
         if initial_state.shape != (nwalkers, ndim):
             error_msg = (
                 f"Your initial values for sampler do not satisfy required shape ({nwalkers}, {ndim}). "
                 f"Shape of your initial state matrix is {initial_state.shape}"
             )
             raise ValueError(error_msg)
-        initial_state[initial_state < 0] = 0.0
-        initial_state[initial_state > 1] = 1.0
-        return initial_state
+        ensemble = np.array(initial_state, dtype=FLOAT, copy=True)
+        if not np.all(np.isfinite(ensemble)):
+            msg = "Supplied initial states must be finite"
+            raise ValueError(msg)
+        if np.any((ensemble < 0.0) | (ensemble > 1.0)):
+            msg = "Supplied initial states must lie within normalized prior bounds [0, 1]"
+            raise ValueError(msg)
+        return ensemble
 
 
 class LightCurveFit(MCMCFit, AbstractLCFit):
@@ -361,10 +454,12 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
             self.constrained,
             self.fixed,
         )
+        self.validate_current_physical_parameters(kwargs)
         try:
             synthetic = self.predict_light_curves(kwargs)
         except LCSynthesisError as exc:
-            # Keep the sampler's existing treatment of physical synthesis failures.
+            if exc.__cause__ is None:
+                raise
             raise exc.__cause__ from exc
 
         ln_f_key = f"{NUISANCE_PARSER}{PARAM_PARSER}ln_f"
@@ -532,6 +627,7 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
             self.constrained,
             self.fixed,
         )
+        self.validate_current_physical_parameters(kwargs)
         synthetic: dict[str, NDArray[Float]] = rv_model.central_rv_synthetic(
             self.x_data_reduced,
             self.observer,

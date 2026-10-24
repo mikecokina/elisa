@@ -48,7 +48,11 @@ class GravityError(ElisaError):
     """Raised when gravity-related validation fails."""
 
 
-class MorphologyError(ElisaError):
+class PhysicalStateError(ElisaError):
+    """An explicitly identified inadmissible physical configuration."""
+
+
+class MorphologyError(PhysicalStateError):
     """Raised when morphology computations fail or produce invalid results."""
 
 
