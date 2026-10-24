@@ -588,7 +588,8 @@ def pre_calculate_for_potential_value_secondary(
     :type return_as_tuple: bool
     :return: Either scalar coefficients ``(b, c, d, e, f)``, a coefficient
         matrix, or a tuple of coefficient vectors.
-    :rtype: tuple[Float, Float, Float, Float, Float] | NDArray[Float] | tuple[NDArray[Float], NDArray[Float], NDArray[Float], NDArray[Float], NDArray[Float]]
+    :rtype: tuple[Float, Float, Float, Float, Float] | NDArray[Float] |
+        tuple[NDArray[Float], NDArray[Float], NDArray[Float], NDArray[Float], NDArray[Float]]
     """
     sin_theta = up.sin(theta)
     cs = up.cos(phi) * sin_theta

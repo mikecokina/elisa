@@ -10,7 +10,6 @@ from __future__ import annotations
 import gc
 from typing import TYPE_CHECKING
 
-
 from elisa import BinarySystem, Star
 from elisa import units as u
 from elisa.ui.shared.plotting import PLOT_LOCK, figure_to_pil

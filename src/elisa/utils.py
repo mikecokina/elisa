@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import datetime
+import datetime  # noqa: ICN001
 import re
 from collections.abc import Iterable, Iterator, Sized
 from copy import copy, deepcopy

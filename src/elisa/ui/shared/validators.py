@@ -38,10 +38,12 @@ def validated_float(
     parsed = opt_float(value)
     if parsed is None:
         if value is not None and str(value).strip():
-            raise ValueError(f"'{name}' must be a number.")
+            msg = f"'{name}' must be a number."
+            raise ValueError(msg)
         return None
     if not math.isfinite(parsed):
-        raise ValueError(f"'{name}' must be finite.")
+        msg = f"'{name}' must be finite."
+        raise ValueError(msg)
     if lo is not None and parsed < lo:
         msg = f"'{name}' must be >= {lo}, got {parsed}."
         raise ValueError(msg)
@@ -76,7 +78,8 @@ def mcmc_integer(value: object, *, name: str, default: int, minimum: int = 1) ->
     parsed = opt_int(value)
     parsed = default if parsed is None else parsed
     if parsed < minimum:
-        raise ValueError(f"'{name}' must be >= {minimum}.")
+        msg = f"'{name}' must be >= {minimum}."
+        raise ValueError(msg)
     return parsed
 
 
@@ -91,14 +94,18 @@ def phase_sampling(params: dict[str, object]) -> tuple[float, float, float]:
         raw = params.get(key)
         value = default if raw is None or raw == "" else float(cast("str | SupportsFloat | SupportsIndex", raw))
         if not math.isfinite(value):
-            raise ValueError(f"'{key}' must be finite.")
+            msg = f"'{key}' must be finite."
+            raise ValueError(msg)
         values.append(value)
     start, stop, step = values
     if stop <= start:
-        raise ValueError("to_phase must be greater than from_phase.")
+        msg = "to_phase must be greater than from_phase."
+        raise ValueError(msg)
     if step <= 0 or start + step == start:
-        raise ValueError("phase_step must be positive and advance the phase.")
+        msg = "phase_step must be positive and advance the phase."
+        raise ValueError(msg)
     count = (stop - start) / step
     if not math.isfinite(count) or count > sys.maxsize:
-        raise ValueError("Phase sampling range is not representable.")
+        msg = "Phase sampling range is not representable."
+        raise ValueError(msg)
     return start, stop, step

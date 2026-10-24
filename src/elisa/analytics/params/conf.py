@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 
 import numpy as np
 
@@ -64,7 +64,7 @@ def get_default_normalization_star() -> dict:
     }
 
 
-CURRENT_TIME_JD = jd_from_datetime(datetime.datetime.now(tz=UTC))
+CURRENT_TIME_JD = jd_from_datetime(dt.datetime.now(tz=UTC))
 
 DEFAULT_NORMALIZATION_SYSTEM = {
     "inclination": (0, 180),

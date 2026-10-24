@@ -136,6 +136,7 @@ select = [
     "YTT", # flake8-2020
 ]
 ignore = [
+    "PLR0917", # Too many positional arguments
     "PLR0913", # to many arguments
     "F405", # os import
     "D100", # Missing docstring in public module

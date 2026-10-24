@@ -1,2 +1,3 @@
-from elisa.binary_system.graphic import plot
-from elisa.binary_system.graphic import animation
+from elisa.binary_system.graphic import animation, plot
+
+__all__ = ("animation", "plot")

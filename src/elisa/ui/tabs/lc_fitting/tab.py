@@ -31,8 +31,8 @@ import numpy as np
 from elisa.analytics import LCBinaryAnalyticsTask
 from elisa.analytics.binary_fit.shared import extend_observations_to_desired_interval
 from elisa.ui.shared.plotting import figure_to_pil, serialized_plot
-from elisa.ui.shared.validators import mcmc_integer
 from elisa.ui.shared.utils import collect_param_values
+from elisa.ui.shared.validators import mcmc_integer
 from elisa.ui.tabs.lc_fitting.components import data_inputs, param_inputs
 from elisa.ui.tabs.lc_fitting.components.data_inputs import MAX_PASSBAND_ROWS
 from elisa.ui.tabs.lc_fitting.components.param_inputs import (

@@ -7,13 +7,13 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from elisa import const, settings
-from elisa.base.body import Body
 from elisa.logger import getLogger
 from elisa.umpy import sph_harm
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
+    from elisa.base.body import Body
     from elisa.base.container import StarContainer
     from elisa.pulse.mode import PulsationMode
 
