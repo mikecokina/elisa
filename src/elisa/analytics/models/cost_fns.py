@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from math import exp, log1p
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 import numpy as np
 
@@ -10,11 +11,136 @@ from elisa.base.error import PredictionAlignmentError
 from elisa.const import PI
 
 _TWO_PI = 2.0 * PI
+_LOG_TWO = np.log(2.0)
+_HALF_LOG_TWO_PI = 0.5 * np.log(_TWO_PI)
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from elisa.types import Float
+
+
+class PreparedObservations(NamedTuple):
+    """Per-setup observation arrays and Gaussian constants; no global cache."""
+
+    labels: tuple[str, ...]
+    observed: tuple[NDArray[np.float64], ...]
+    log_errors: tuple[NDArray[np.float64], ...]
+    log_normalization: Float
+    size: int
+
+
+def _log_noise_scale(ln_f: Float) -> Float:
+    """Return log(sqrt(1 + exp(2*ln_f))) without exponential overflow.
+
+    :param ln_f: Current finite scalar noise parameter.
+    :return: Logarithm of the standard-deviation multiplier.
+    :raises ValueError: If the current noise parameter is malformed.
+    """
+    if np.ndim(ln_f) != 0 or not np.isfinite(ln_f):
+        msg = "ln_f must be finite and scalar"
+        raise ValueError(msg)
+    small = exp(-abs(ln_f))
+    return max(0.0, ln_f) + 0.5 * log1p(small * small)
+
+
+def prepare_observations(
+    y_data: dict[str, NDArray], y_errs: dict[str, NDArray],
+) -> PreparedObservations:
+    """Validate immutable data and prepare arrays/statistical constants once.
+
+    :param y_data: Nonempty finite observed vectors in residual order.
+    :param y_errs: Matching strictly positive errors in observation units.
+    :return: Reusable arrays and constants. New setup replaces this record.
+    :raises ValueError: If keys, dimensions, values or uncertainties are invalid.
+    """
+    if not y_data or y_data.keys() != y_errs.keys():
+        msg = "Likelihood observation, model and uncertainty dataset keys must match"
+        raise ValueError(msg)
+    observed_arrays, log_errors = [], []
+    for key, data in y_data.items():
+        observed = np.asarray(data, dtype=float)
+        errors = np.asarray(y_errs[key], dtype=float)
+        if observed.ndim != 1 or observed.size == 0 or errors.shape != observed.shape:
+            msg = f"Likelihood arrays for {key} must be matching nonempty one-dimensional vectors"
+            raise ValueError(msg)
+        if not np.all(np.isfinite(observed)) or not np.all(np.isfinite(errors)) or np.any(errors <= 0):
+            msg = f"Likelihood arrays for {key} must be finite with strictly positive uncertainties"
+            raise ValueError(msg)
+        observed_arrays.append(observed)
+        log_errors.append(np.log(errors))
+    size = sum(array.size for array in observed_arrays)
+    normalization = sum(np.sum(logs + _HALF_LOG_TWO_PI) for logs in log_errors)
+    return PreparedObservations(tuple(y_data), tuple(observed_arrays), tuple(log_errors), normalization, size)
+
+
+def validate_predictions(prepared: PreparedObservations, synthetic: dict[str, NDArray]) -> None:
+    """Validate current synthetic output at a standalone public cost boundary.
+
+    Fitters check dynamic output in the forward mapping and omit this duplicate.
+
+    :param prepared: Validated observations and expected array dimensions.
+    :param synthetic: Current synthetic output.
+    :raises PredictionAlignmentError: If prediction keys or shapes differ.
+    :raises ValueError: If predictions contain nonfinite values.
+    """
+    if len(synthetic) != len(prepared.labels) or any(key not in synthetic for key in prepared.labels):
+        msg = "Likelihood observation, model and uncertainty dataset keys must match"
+        raise PredictionAlignmentError(msg)
+    for key, observed in zip(prepared.labels, prepared.observed, strict=True):
+        model = np.asarray(synthetic[key])
+        if model.shape != observed.shape:
+            msg = f"Likelihood prediction shape differs from observations for {key}"
+            raise PredictionAlignmentError(msg)
+        if not np.all(np.isfinite(model)):
+            msg = f"Likelihood arrays for {key} must be matching finite one-dimensional vectors"
+            raise ValueError(msg)
+
+
+def prepared_likelihood(prepared: PreparedObservations, synthetic: dict[str, NDArray], ln_f: Float) -> Float:
+    """Evaluate the existing Gaussian using prepared data and checked predictions.
+
+    :param prepared: Per-setup observation statistics.
+    :param synthetic: Dynamically checked, observation-aligned predictions.
+    :param ln_f: Current scalar noise parameter.
+    :return: Gaussian log likelihood; no observation validation occurs here.
+    """
+    log_scale = _log_noise_scale(ln_f)
+    try:
+        with np.errstate(over="raise", invalid="raise", divide="ignore", under="ignore"):
+            total = -prepared.log_normalization - prepared.size * log_scale
+            for key, observed, logs in zip(prepared.labels, prepared.observed, prepared.log_errors, strict=True):
+                log_residual = np.log(np.abs(observed - synthetic[key]))
+                total -= np.sum(np.exp(2.0 * (log_residual - logs - log_scale) - _LOG_TWO))
+    except FloatingPointError:
+        total = _extended_likelihood(prepared, synthetic, log_scale)
+    if not np.isfinite(total):
+        msg = "Nonfinite likelihood: Gaussian log density is not representable as a finite float"
+        raise FloatingPointError(msg)
+    return total
+
+
+def _extended_likelihood(prepared: PreparedObservations, synthetic: dict[str, NDArray], log_scale: Float) -> Float:
+    """Resolve rare intermediate overflows before testing float64 representability.
+
+    Half the quadratic is evaluated directly, so a representable density is not
+    rejected merely because its squared standardized residual exceeds float64.
+    Extended subtraction also handles opposite-sign observations near float64 max.
+
+    :param prepared: Validated observation statistics.
+    :param synthetic: Aligned model predictions.
+    :param log_scale: Stable logarithm of the noise multiplier.
+    :return: Finite float64 density.
+    :raises FloatingPointError: If the resulting density cannot be represented.
+    """
+    with np.errstate(over="raise", invalid="raise", divide="ignore", under="ignore"):
+        total = np.longdouble(0)
+        for key, observed, logs in zip(prepared.labels, prepared.observed, prepared.log_errors, strict=True):
+            residual = observed.astype(np.longdouble) - np.asarray(synthetic[key], dtype=np.longdouble)
+            log_sigma = logs.astype(np.longdouble) + log_scale
+            half_square = np.exp(2 * (np.log(np.abs(residual)) - log_sigma) - _LOG_TWO)
+            total -= np.sum(half_square + log_sigma + _HALF_LOG_TWO_PI)
+        return float(total)
 
 
 def s_squared(
@@ -66,12 +192,9 @@ def likelihood_fn(
     :returns: Log-likelihood value.
     :rtype: Float
     """
-    sigma2 = s_squared(y_errs, ln_f)
-
-    return -0.5 * sum(
-        np.sum((y_data[key] - synthetic[key]) ** 2 / sigma2[key] + np.log(_TWO_PI * sigma2[key]))
-        for key in synthetic
-    )
+    prepared = prepare_observations(y_data, y_errs)
+    validate_predictions(prepared, synthetic)
+    return prepared_likelihood(prepared, synthetic, ln_f)
 
 
 def wssr(

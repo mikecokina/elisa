@@ -57,13 +57,14 @@ class McMcLCTestCase(AbstractFitTestCase):
     """
 
     def test_mcmc_lc_fit_std_params_detached(self):
+        # Keep surface temperatures and gravities inside the test LD grid.
         dinit = {
             "primary": {
                 "mass": {
                     'value': 1.8,  # 2.0
                     'fixed': False,
-                    'min': 1.5,
-                    'max': 2.2
+                    'min': 1.7,
+                    'max': 2.1
                 },
                 "t_eff": {
                     'value': 5000.0,
@@ -91,8 +92,8 @@ class McMcLCTestCase(AbstractFitTestCase):
                 "t_eff": {
                     'value': 6500.0,  # 7000
                     'fixed': False,
-                    'min': 5000.0,
-                    'max': 10000.0
+                    'min': 6000.0,
+                    'max': 7500.0
                 },
                 "surface_potential": {
                     'value': 5,
@@ -150,19 +151,20 @@ class McMcLCTestCase(AbstractFitTestCase):
             task.fit(x0=lc_initial, nsteps=10, discretization=5.0)
 
     def test_mcmc_lc_fit_community_params_detached(self):
+        # Keep sampled geometries in the interior of the test LD grid.
         dinit = {
             "system": {
                 'semi_major_axis': {
                     'value': 11.0,  # 12.62
                     'fixed': False,
-                    'min': 7.0,
-                    'max': 15.0
+                    'min': 10.0,
+                    'max': 13.0
                 },
                 'mass_ratio': {
                     'value': 0.7,  # 0.5
                     'fixed': False,
-                    'min': 0.3,
-                    'max': 2.0
+                    'min': 0.45,
+                    'max': 0.8
                 },
                 'inclination': {
                     'value': 90.0,

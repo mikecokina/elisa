@@ -13,6 +13,7 @@ from elisa.analytics.binary_fit.lc_prediction import (
 )
 from elisa.analytics.binary_fit.sampling import SamplingMethod
 from elisa.analytics.dataset.base import DataSet
+from elisa.analytics.models import cost_fns
 from elisa.analytics.models import lc as lc_model
 from elisa.analytics.models import rv as rv_model
 from elisa.analytics.params import parameters
@@ -190,7 +191,10 @@ class AbstractFit(metaclass=ABCMeta):
     atmosphere_model: dict[str, Any] | None
     limb_darkening_coefficients: dict[str, Any] | None
 
+    _prepared_observations: cost_fns.PreparedObservations | None
+
     __slots__ = [
+        "_prepared_observations",
         "atmosphere_model",
         "constrained",
         "discretization",
@@ -248,6 +252,7 @@ class AbstractFit(metaclass=ABCMeta):
         self.y_data = {key: val.y_data for key, val in data.items()}
 
         self.y_err = self._prepare_observation_errors(data)
+        self._prepared_observations = None
         self.num_of_points = {key: len(values) for key, values in self.y_data.items()}
 
         x_data_reduced, x_data_reducer = parameters.xs_reducer(
@@ -640,6 +645,8 @@ class AbstractLCFit(AbstractFit):
         normalized_errors = _validated_normalized_errors(y_data, y_err)
         self.y_data = y_data
         self.y_err = normalized_errors
+        if self._prepared_observations is not None:
+            self._prepared_observations = cost_fns.prepare_observations(self.y_data, self.y_err)
 
     def generate_sample_phases(self, samples: SamplingMethod | str | list | NDArray) -> NDArray[Float] | None:
         """Generate photometric phases for synthetic observations.

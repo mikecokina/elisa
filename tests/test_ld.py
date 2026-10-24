@@ -285,6 +285,23 @@ def test_interpolation_errors(ld_sources, defect, error):
         ld.interpolate_on_ld_grid(np.array([query[0]]), np.array([query[1]]), 0., ['bolometric'])
 
 
+def test_interpolation_error_identifies_table_and_requested_values(ld_sources: Path) -> None:
+    temperature = np.array([5500.0, 4999.999999, 7000.0])
+    log_g_si = np.array([1.5, 1.5, 2.5])
+
+    with pytest.raises(LimbDarkeningError) as raised:
+        ld.interpolate_on_ld_grid(temperature, log_g_si, 0.0, ['bolometric'])
+
+    message = str(raised.value)
+    table_path = ld_sources / ld.get_ld_table_filename('bolometric', 0.0)
+    assert str(table_path) in message
+    assert 'Passband: bolometric; law: cosine; metallicity: 0.0' in message
+    assert 'Failed interpolation points: 2 of 3' in message
+    assert 'input rows (zero-based): [1, 2]' in message
+    assert 't_eff [K], log_g [log10(cm/s^2)]' in message
+    assert '[[4999.999999, 3.5], [7000.0, 4.5]]' in message
+
+
 def component(temperature=5500.1234567891):
     return SimpleNamespace(temperatures=np.array([temperature]), log_g=np.array([1.543210987654]),
                            metallicity=0., limb_darkening_coefficients=None)

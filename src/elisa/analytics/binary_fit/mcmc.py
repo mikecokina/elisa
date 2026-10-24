@@ -72,6 +72,11 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         self.eval_counter = 0
         self.sigmas: NDArray[Float] | None = None
 
+    def set_up(self, *args: Any, **kwargs: Any) -> None:
+        """Prepare Gaussian statistics after RV setup or LC normalization."""
+        super().set_up(*args, **kwargs)
+        self._prepared_observations = cost_fns.prepare_observations(self.y_data, self.y_err)
+
     @staticmethod
     def ln_prior(
         xn: NDArray[Float],
@@ -140,7 +145,10 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         :return: Likelihood value.
         :rtype: Float
         """
-        return cost_fns.likelihood_fn(self.y_data, self.y_err, synthetic, ln_f)
+        if self._prepared_observations is None:
+            msg = "MCMC observation statistics require set_up()"
+            raise RuntimeError(msg)
+        return cost_fns.prepared_likelihood(self._prepared_observations, synthetic, ln_f)
 
     def ln_probability(self, xn: NDArray[Float]) -> Float:
         """Calculate resulting probability distribution made of likelihood and prior distribution.
