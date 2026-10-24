@@ -15,10 +15,6 @@ ROOT = Path(__file__).resolve().parents[3]
 ARTIFACTS = ROOT / 'artifacts/gui-fitting-e2e'
 
 
-def pytest_addoption(parser):
-    parser.addoption('--run-fitting-e2e', action='store_true', help='Run real scientific browser fits')
-
-
 def pytest_collection_modifyitems(config, items):
     if not config.getoption('--run-fitting-e2e'):
         for item in items:
