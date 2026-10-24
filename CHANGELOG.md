@@ -38,6 +38,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Changed
 
+- Remove redundant bolometric passband construction during binary surface
+  preparation by passing passband names directly to limb-darkening calculations.
+  Preserve array-identical coefficients and light curves, custom/table-based
+  limb darkening, and explicit bolometric observations.
 - Retain structured MCMC chains on LC/RV fit wrappers. Chain loading defaults to
   discarding ensemble steps for structured exports and flat rows for legacy files;
   `discard_unit` can select an explicit unit. Share production-chain retrieval
