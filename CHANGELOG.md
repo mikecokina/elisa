@@ -97,6 +97,13 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Render structured MCMC traces as individual walker trajectories against retained
+  ensemble steps; label flat-only inputs as flattened samples without inferring
+  temporal structure. Preserve physical units and posterior summary lines.
+- Correct custom trace column mapping for reordered and subset inputs. Reject
+  empty, duplicate and unknown diagnostic parameter selections before plotting.
+- Display connected MCMC ACF curves with ensemble-step lag and integrated-time
+  units, and explain unavailable estimates and constant-walker panels.
 - Compute MCMC autocorrelation functions and integrated times along ensemble
   steps, averaging individual walker ACFs instead of treating flattened walkers
   as consecutive times. Mark unreliable integrated times and parameters with

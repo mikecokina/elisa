@@ -9,7 +9,7 @@ from scipy.interpolate import interp1d
 
 from elisa import units as u
 from elisa.analytics.binary_fit import shared
-from elisa.analytics.binary_fit.chain_tools import ensemble_autocorrelation
+from elisa.analytics.binary_fit.chain_tools import ENSEMBLE_NDIM, FLAT_NDIM, ensemble_autocorrelation
 from elisa.analytics.binary_fit.mixins import MCMCMixin
 from elisa.analytics.models.lc import synthetic_binary
 from elisa.analytics.models.rv import central_rv_synthetic
@@ -18,6 +18,7 @@ from elisa.binary_system import t_layer
 from elisa.binary_system.system import BinarySystem
 from elisa.graphic import graphics
 from elisa.graphic.mcmc_graphics import Plot as MCMCPlot
+from elisa.graphic.mcmc_graphics import validate_selection
 from elisa.logger import getLogger
 from elisa.observer.observer import Observer
 from elisa.observer.utils import normalize_light_curve
@@ -156,8 +157,9 @@ class MCMCPlotMixin:
         :param traces_to_plot: Names of variables whose traces should be
             displayed.
         :type traces_to_plot: Sequence[str] | None
-        :param flat_chain: Optional flattened chain of all parameters. If
-            omitted, the internal ``flat_chain`` attribute is used.
+        :param flat_chain: Optional custom flat samples. If omitted, the stored
+            structured chain shows individual walkers against retained ensemble
+            steps. Otherwise, flat samples use flattened sample index.
         :type flat_chain: NDArray[elisa.types.Float] | None
         :param variable_labels: Variable names corresponding to columns in
             ``flat_chain``. Use only with a custom chain.
@@ -717,7 +719,9 @@ def autocorrelation(
     """
     chain = mcmc_fit_instance.chain if flat_chain is None else flat_chain
     variable_labels = mcmc_fit_instance.variable_labels if variable_labels is None else variable_labels
+    variable_labels = [] if variable_labels is None else list(variable_labels)
     correlations_to_plot = variable_labels if correlations_to_plot is None else correlations_to_plot
+    validate_selection(variable_labels, correlations_to_plot)
     autocorr_fns, autocorr_time = ensemble_autocorrelation(chain)
     if variable_labels is None or len(variable_labels) != autocorr_time.size:
         msg = "Chain parameter dimension does not match variable labels"
@@ -733,6 +737,47 @@ def autocorrelation(
     }
 
     MCMCPlot.autocorr(**autocorr_plot_kwargs)
+
+
+def _validate_trace_samples(
+    chain: NDArray[np.float64] | None,
+    source_labels: Sequence[str],
+    *,
+    custom: bool,
+) -> NDArray[np.float64]:
+    """Validate chain availability, supported dimensions and source column count."""
+    if chain is None:
+        msg = "You can use trace plot after running mcmc or loading a chain."
+        raise ValueError(msg)
+    samples = np.asarray(chain)
+    if custom and samples.ndim != FLAT_NDIM:
+        msg = "Custom trace samples must be a flat (samples, parameters) chain"
+        raise ValueError(msg)
+    if samples.ndim not in (FLAT_NDIM, ENSEMBLE_NDIM) or samples.size == 0:
+        msg = "Trace samples must be a nonempty flat or structured chain"
+        raise ValueError(msg)
+    if samples.shape[-1] != len(source_labels):
+        msg = "Chain parameter dimension does not match variable labels"
+        raise ValueError(msg)
+    return samples
+
+
+def _trace_source(
+    fit: RVFitMCMC | LCFitMCMC,
+    custom_chain: NDArray[np.float64] | None,
+    custom_labels: Sequence[str] | None,
+) -> tuple[NDArray[np.float64], list[str]]:
+    """Resolve samples and their source column labels, independently of panel selection."""
+    if custom_chain is None:
+        chain = fit.chain if fit.chain is not None else fit.flat_chain
+        source_labels = fit.variable_labels
+    else:
+        chain = custom_chain
+        source_labels = fit.variable_labels if custom_labels is None else custom_labels
+
+    source_labels = [] if source_labels is None else list(source_labels)
+    samples = _validate_trace_samples(chain, source_labels, custom=custom_chain is not None)
+    return samples, source_labels
 
 
 def traces(
@@ -751,8 +796,10 @@ def traces(
     :type mcmc_fit_instance: RVFitMCMC | LCFitMCMC
     :param traces_to_plot: Names of variables whose traces should be displayed.
     :type traces_to_plot: Sequence[str] | None
-    :param flat_chain: Optional flattened chain of all parameters. If omitted,
-        the internal ``flat_chain`` attribute is used.
+    :param flat_chain: Optional custom flat samples. If omitted, the stored
+        structured chain is used when available, otherwise ``flat_chain``.
+        Structured samples show walkers against retained ensemble steps; flat
+        samples show points against flattened sample index.
     :type flat_chain: NDArray[elisa.types.Float] | None
     :param variable_labels: Variable names corresponding to columns in
         ``flat_chain``. Use only with a custom chain.
@@ -768,18 +815,18 @@ def traces(
     """
     logger.debug("Producing/retrieving data for traces plot.")
 
-    variable_labels = mcmc_fit_instance.variable_labels if variable_labels is None else variable_labels
+    samples, source_labels = _trace_source(mcmc_fit_instance, flat_chain, variable_labels)
+    variable_labels = source_labels if variable_labels is None else list(variable_labels)
+    traces_to_plot = variable_labels if traces_to_plot is None else traces_to_plot
+    validate_selection(source_labels, variable_labels)
+    validate_selection(variable_labels, traces_to_plot)
+
     normalization = mcmc_fit_instance.normalization if normalization is None else normalization
-    flat_chain = deepcopy(mcmc_fit_instance.flat_chain) if flat_chain is None else deepcopy(flat_chain)
+    shape = (*samples.shape[:-1], len(variable_labels))
     flat_result = deepcopy(mcmc_fit_instance.flat_result)
-
-    if flat_chain is None:
-        msg = "You can use trace plot only in case of mcmc method or for some reason the flat chain was not found."
-        raise ValueError(msg)
-
     flat_chain = MCMCMixin.renormalize_flat_chain(
-        flat_chain,
-        mcmc_fit_instance.variable_labels,
+        samples.reshape(-1, samples.shape[-1]),
+        source_labels,
         variable_labels,
         normalization,
     )
@@ -801,11 +848,9 @@ def traces(
             )
             flat_result[lbl]["unit"] = plot_units[lbl].to_string()
 
-    traces_to_plot = variable_labels if traces_to_plot is None else traces_to_plot
-
     traces_plot_kwargs = {
         "traces_to_plot": traces_to_plot,
-        "flat_chain": flat_chain,
+        "flat_chain": flat_chain.reshape(shape),
         "variable_labels": variable_labels,
         "fit_params": flat_result,
         "truths": truths,

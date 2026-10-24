@@ -8,10 +8,29 @@ from matplotlib import gridspec
 from matplotlib import pyplot as plt
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from matplotlib.axes import Axes
     from numpy.typing import NDArray
 
     from elisa.types import Float
+
+
+_FLAT_NDIM = 2
+_ENSEMBLE_NDIM = 3
+
+
+def validate_selection(variable_labels: Sequence[str], selection: Sequence[str]) -> None:
+    """Reject ambiguous source labels and empty, repeated or unknown panels."""
+    if len(variable_labels) == 0 or len(set(variable_labels)) != len(variable_labels):
+        msg = "Variable labels must be nonempty and unique"
+        raise ValueError(msg)
+    if len(selection) == 0 or len(set(selection)) != len(selection):
+        msg = "Parameter selection must be nonempty and unique"
+        raise ValueError(msg)
+    if any(label not in variable_labels for label in selection):
+        msg = "Parameter selection contains unknown variable labels"
+        raise ValueError(msg)
 
 
 class Plot:
@@ -86,11 +105,13 @@ class Plot:
     ) -> None:
         """Show traces of an MCMC chain.
 
-        The function plots selected parameter traces from a flattened MCMC chain.
+        The function plots individual walkers for structured chains and sample points
+        for flat chains without temporal metadata.
         Optionally, it overlays the fitted central value and confidence interval
         bounds for each plotted parameter.
 
-        :param flat_chain: Flattened MCMC chain with shape ``(n_samples, ndim)``.
+        :param flat_chain: Samples with shape ``(samples, parameters)`` or
+            ``(steps, walkers, parameters)``.
         :type flat_chain: NDArray[Float]
         :param fit_params: Mapping containing fitted parameter values,
             confidence intervals, and units keyed by variable label.
@@ -109,7 +130,7 @@ class Plot:
         :return: ``None``.
         :rtype: None
         """
-        hash_map = {label: idx for idx, label in enumerate(variable_labels) if label in traces_to_plot}
+        validate_selection(variable_labels, traces_to_plot)
 
         height = len(traces_to_plot)
         fig = plt.figure(figsize=(8, 2.5 * height))
@@ -126,12 +147,13 @@ class Plot:
             else:
                 axes.append(fig.add_subplot(gs[plot_counter], sharex=axes[0]))
 
-            axes[-1].scatter(
-                np.arange(flat_chain.shape[0]),
-                flat_chain[:, hash_map[label]],
-                label=labels[idx],
-                s=0.2,
-            )
+            samples = flat_chain[..., idx]
+            steps = np.arange(flat_chain.shape[0])
+            if samples.ndim == _FLAT_NDIM:  # One connected line per walker, along ensemble steps.
+                lines = axes[-1].plot(steps, samples, linewidth=0.5, alpha=0.35)
+                lines[0].set_label(labels[idx])
+            else:
+                axes[-1].scatter(steps, samples, label=labels[idx], s=0.2)
             axes[-1].legend(loc=1)
 
             unit = fit_params[label]["unit"]
@@ -157,7 +179,8 @@ class Plot:
 
             plot_counter += 1
 
-        axes[-1].set_xlabel("N")
+        xlabel = "Retained ensemble step" if flat_chain.ndim == _ENSEMBLE_NDIM else "Flattened sample index"
+        axes[-1].set_xlabel(xlabel)
 
         plt.subplots_adjust(right=1.0, top=1.0, hspace=0)
         plt.show()
@@ -192,7 +215,7 @@ class Plot:
         :return: ``None``.
         :rtype: None
         """
-        hash_map = {label: idx for idx, label in enumerate(variable_labels) if label in correlations_to_plot}
+        validate_selection(variable_labels, correlations_to_plot)
 
         height = len(correlations_to_plot)
         fig = plt.figure(figsize=(8, 2.5 * height))
@@ -209,19 +232,26 @@ class Plot:
             else:
                 axes.append(fig.add_subplot(gs[plot_counter], sharex=axes[0]))
 
-            correlation_label = f"corr_time = {autocorr_time[idx]:.2f}"
-            axes[-1].scatter(
+            if np.isfinite(autocorr_time[idx]):
+                correlation_label = f"Integrated time = {autocorr_time[idx]:.2f} steps"
+            else:
+                correlation_label = "Integrated time unavailable\n(chain too short or estimate unreliable)"
+            axes[-1].plot(
                 np.arange(autocorr_fns.shape[0]),
-                autocorr_fns[:, hash_map[label]],
+                autocorr_fns[:, idx],
                 label=correlation_label,
-                s=0.2,
+                linewidth=1.0,
             )
+            if not np.any(np.isfinite(autocorr_fns[:, idx])):
+                axes[-1].text(
+                    0.5, 0.5, "ACF unavailable: constant walker", ha="center", transform=axes[-1].transAxes,
+                )
             axes[-1].set_ylabel(f"{labels[idx]} correlation fn")
             axes[-1].legend()
 
             plot_counter += 1
 
-        axes[-1].set_xlabel("N")
+        axes[-1].set_xlabel("Lag (ensemble steps)")
 
         plt.subplots_adjust(right=1.0, top=1.0, hspace=0)
         plt.show()
