@@ -294,7 +294,7 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         :rtype: emcee.EnsembleSampler
         """
         self.prepare_priors()
-        p0 = self.prepare_initial_states(p0, nwalkers, ndim)
+        p0 = self.generate_initial_states(p0, nwalkers, ndim, x0_vector=self.norm_init_vector)
 
         logger.info("starting mcmc")
         kwargs: dict[str, Any] = {
@@ -344,40 +344,6 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
             )
 
         return sampler
-
-    def prepare_initial_states(
-            self,
-            initial_state: NDArray[np.float64] | None,
-            nwalkers: int,
-            ndim: int,
-    ) -> NDArray[np.float64]:
-        """Validate supplied states or draw a physically admissible prior-box ensemble.
-
-        Automatic initialization tests x0 first, then uses uniform box draws.
-        At most ten candidate evaluations per requested walker are permitted;
-        narrow physical support requires a user-supplied admissible ensemble.
-        Full posterior checks occur here only, before emcee starts sampling.
-        """
-        if initial_state is not None:
-            ensemble = self.generate_initial_states(initial_state, nwalkers, ndim)
-            for index, row in enumerate(ensemble):
-                if not np.isfinite(self.ln_probability(row)):
-                    msg = f"Supplied initial walker {index} is physically inadmissible"
-                    raise ValueError(msg)
-            return ensemble
-
-        rng = np.random.default_rng()
-        accepted = []
-        candidate = self.norm_init_vector.copy()
-        for _ in range(10 * nwalkers):
-            if np.isfinite(self.ln_probability(candidate)):
-                accepted.append(candidate)
-                if len(accepted) == nwalkers:
-                    return np.asarray(accepted, dtype=FLOAT)
-            candidate = rng.uniform(0.0, 1.0, ndim)
-
-        msg = "Unable to initialize valid walkers within 10 draws per walker; supply admissible initial states"
-        raise ValueError(msg)
 
     @staticmethod
     def generate_initial_states(
