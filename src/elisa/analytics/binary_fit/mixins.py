@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from elisa import settings
+from elisa.analytics.binary_fit.chain_tools import prepare_chain_samples
 from elisa.logger import getPersistentLogger
 from elisa.utc import UTC
 
@@ -124,11 +125,16 @@ class MCMCMixin:
         fitable: dict[str, Any],
         norm: dict[str, tuple[Float, Float]],
         fit_id: str | None = None,
+        *,
+        chain_shape: tuple[int, int, int] | None = None,
     ) -> str:
         """Store samples of the MCMC run to a JSON file.
 
         Saves the flattened MCMC chain along with parameter labels, normalization
         bounds, and fitable parameter metadata to a JSON file.
+
+        Optional ``chain_shape`` asserts step-major, walker-major ordering and
+        preserves temporal axes without changing the legacy flat sample field.
 
         :param flat_chain: Flattened array of parameter values in each MCMC step.
             Shape: (n_samples, n_parameters).
@@ -140,6 +146,11 @@ class MCMCMixin:
         :param fit_id: ID or location (ending with .json) identifying the fit file.
             If None, current datetime is used.
         :type fit_id: str | None
+        :param chain_shape: Original ``(steps, walkers, parameters)`` shape of samples
+            flattened in C order, with walkers varying fastest within each step.
+            Must match ``flat_chain``. If provided, temporal shape and ordering
+            metadata are saved; ``None`` preserves the legacy flat-only format.
+        :type chain_shape: tuple[int, int, int] | None
         :return: Path to the saved file.
         :rtype: str
         """
@@ -167,6 +178,11 @@ class MCMCMixin:
             "normalization": norm,
             "fitable": {key: val.to_dict() for key, val in fitable.items()},
         }
+
+        if chain_shape is not None:
+            data["chain_shape"] = list(chain_shape)
+            data["chain_order"] = "step,walker,parameter"
+        prepare_chain_samples(data)
 
         with fpath.open("w") as f:
             f.write(json.dumps(data, indent=4))
@@ -258,6 +274,7 @@ class MCMCMixin:
                         fitable=fitable,
                         norm=normalization,
                         fit_id=fit_id,
+                        chain_shape=sampler.get_chain().shape,
                     )
                     t_between_dumps = time()
         else:

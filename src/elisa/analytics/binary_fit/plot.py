@@ -5,11 +5,11 @@ from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import numpy as np
-from emcee.autocorr import function_1d, integrated_time
 from scipy.interpolate import interp1d
 
 from elisa import units as u
 from elisa.analytics.binary_fit import shared
+from elisa.analytics.binary_fit.chain_tools import ensemble_autocorrelation
 from elisa.analytics.binary_fit.mixins import MCMCMixin
 from elisa.analytics.models.lc import synthetic_binary
 from elisa.analytics.models.rv import central_rv_synthetic
@@ -127,11 +127,11 @@ class MCMCPlotMixin:
         :param correlations_to_plot: Names of variables whose autocorrelation
             functions should be displayed.
         :type correlations_to_plot: Sequence[str] | None
-        :param flat_chain: Optional flattened chain of all parameters. If
-            omitted, the internal ``flat_chain`` attribute is used.
+        :param flat_chain: Optional ensemble chain (steps, walkers, parameters).
+            If omitted, the internal ``chain`` is used. Flat samples cannot
+            provide temporal diagnostics. The legacy argument name is retained.
         :type flat_chain: NDArray[elisa.types.Float] | None
-        :param variable_labels: Variable names corresponding to columns in
-            ``flat_chain``. Use only with a custom chain.
+        :param variable_labels: Variable names corresponding to the parameter axis.
         :type variable_labels: Sequence[str] | None
         """
         autocorrelation(
@@ -707,30 +707,22 @@ def autocorrelation(
     :param correlations_to_plot: Names of variables whose autocorrelation
         functions should be displayed.
     :type correlations_to_plot: Sequence[str] | None
-    :param flat_chain: Optional flattened chain of all parameters. If omitted,
-        the internal ``flat_chain`` attribute is used.
+    :param flat_chain: Optional ensemble chain (steps, walkers, parameters).
+        If omitted, the internal ``chain`` is used. The legacy argument name
+        is retained; flat samples cannot provide temporal diagnostics.
     :type flat_chain: NDArray[elisa.types.Float] | None
     :param variable_labels: Variable names corresponding to columns in
         ``flat_chain``. Use only with a custom chain.
     :type variable_labels: Sequence[str] | None
     """
-    flat_chain = deepcopy(mcmc_fit_instance.flat_chain) if flat_chain is None else deepcopy(flat_chain)
+    chain = mcmc_fit_instance.chain if flat_chain is None else flat_chain
     variable_labels = mcmc_fit_instance.variable_labels if variable_labels is None else variable_labels
     correlations_to_plot = variable_labels if correlations_to_plot is None else correlations_to_plot
-
-    if flat_chain is None:
-        msg = "You can use trace plot only in case of mcmc method or for some reason the flat chain was not found."
+    autocorr_fns, autocorr_time = ensemble_autocorrelation(chain)
+    if variable_labels is None or len(variable_labels) != autocorr_time.size:
+        msg = "Chain parameter dimension does not match variable labels"
         raise ValueError(msg)
-
     labels = serialize_plot_labels(variable_labels)
-
-    n_params = len(variable_labels)
-    autocorr_fns = np.empty((flat_chain.shape[0], n_params))
-    autocorr_time = np.empty(n_params)
-
-    for idx, _lbl in enumerate(variable_labels):
-        autocorr_fns[:, idx] = function_1d(flat_chain[:, idx])
-        autocorr_time[idx] = integrated_time(flat_chain[:, idx], quiet=True)
 
     autocorr_plot_kwargs = {
         "correlations_to_plot": correlations_to_plot,

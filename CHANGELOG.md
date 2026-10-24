@@ -11,6 +11,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Added
 
+- Public `elisa.analytics.DiscardUnit` enum with `STEPS` and `ROWS` for MCMC chain
+  loading; existing string values remain supported.
+- Optional MCMC export shape and ordering metadata to restore ensemble step,
+  walker, and parameter axes while preserving the existing flat sample format.
 - Public `elisa.analytics.SamplingMethod` enum with `UNIFORM` and `ADAPTIVE`
   strategies shared by LC least-squares and MCMC fitting. Existing string values
   and manual phase lists/arrays remain supported.
@@ -34,6 +38,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Changed
 
+- Retain structured MCMC chains on LC/RV fit wrappers. Chain loading defaults to
+  discarding ensemble steps for structured exports and flat rows for legacy files;
+  `discard_unit` can select an explicit unit. Share production-chain retrieval
+  and validation between LC and RV wrappers.
 - Validate static light-curve observation mappings once per fitter setup and reuse
   them for LS, MCMC, and internal R² calculations. Revalidate on normalization or
   explicit `validate_observations()` after manual edits; standalone prediction
@@ -89,6 +97,16 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Compute MCMC autocorrelation functions and integrated times along ensemble
+  steps, averaging individual walker ACFs instead of treating flattened walkers
+  as consecutive times. Mark unreliable integrated times and parameters with
+  constant walkers as unavailable.
+- Preserve temporal ordering through structured MCMC reloads and aligned row
+  cuts. Clear temporal chains after value-dependent filtering, partial-ensemble
+  cuts, or legacy reloads; reject temporal diagnostics without trustworthy axes.
+- Validate MCMC sample matrices, labels, temporal metadata and discard arguments
+  before slicing or overwriting exported samples. Document discard units and
+  export shapes across the chain-loading and serialization APIs.
 - Reject explicitly invalid MCMC physical configurations with `-np.inf`,
   independently of previous likelihood evaluations. Propagate programming,
   input-structure, and unexpected numerical errors instead of penalizing them.

@@ -18,6 +18,7 @@ from elisa.analytics.params import bonds, parameters
 from elisa.logger import getLogger
 
 if TYPE_CHECKING:
+    from elisa.analytics.binary_fit.chain_tools import DiscardUnit
     from elisa.types import Float
 
 logger = getLogger(__name__)
@@ -219,6 +220,7 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
         *,
         discard: int = 0,
         percentiles: list | None = None,
+        discard_unit: DiscardUnit | str | None = None,
     ) -> AnalyticsTask:
         """Load MCMC chain along with auxiliary data from JSON file.
 
@@ -228,11 +230,16 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
 
         :param filename: Full name/path of the JSON file containing MCMC chain
         :type filename: str
-        :param discard: Number of first steps to discard as burn-in (default: 0)
+        :param discard: Number to discard (default: 0): ensemble steps for structured exports,
+            flat rows for legacy exports.
         :type discard: int
         :param percentiles: List of percentiles used to create error results and
                            confidence interval from MCMC chain
         :type percentiles: list | None
+        :param discard_unit: ``DiscardUnit.STEPS`` or ``DiscardUnit.ROWS``; steps require
+            temporal metadata. Legacy strings "steps" and "rows" are accepted.
+            If omitted, structured chains use steps and legacy flat files use rows.
+        :type discard_unit: DiscardUnit | str | None
         :return: Self for method chaining
         :rtype: AnalyticsTask
         :raises ValueError: If method is not MCMC
@@ -240,7 +247,7 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
         if self.method not in self.MCMC_NAMES:
             error_msg: str = "load_chain method can be used only with MCMC task."
             raise ValueError(error_msg)
-        self.fit_cls.load_chain(filename, discard, percentiles)
+        self.fit_cls.load_chain(filename, discard, percentiles, discard_unit=discard_unit)
         return self
 
     def filter_chain(self, **boundaries: tuple[Float, Float]) -> None:

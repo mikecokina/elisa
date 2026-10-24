@@ -65,7 +65,7 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
 
     def __init__(self) -> None:
         self.plot = Plot()
-        self.last_sampler = emcee.EnsembleSampler
+        self.last_sampler: emcee.EnsembleSampler | None = None
         self.last_normalization: dict[str, Any] = {}
         self.flat_chain_path = ""
         self.eval_counter = 0
@@ -341,6 +341,7 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
                 self.fitable,
                 self.normalization,
                 fit_id=fit_id,
+                chain_shape=np.asarray(sampler.get_chain()).shape,
             )
 
         return sampler

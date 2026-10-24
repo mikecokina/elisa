@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from elisa.analytics.binary_fit.chain_tools import DiscardUnit, prepare_chain_samples
 from elisa.analytics.binary_fit.mixins import MCMCMixin
 from elisa.analytics.binary_fit.shared import AbstractFit
 from elisa.analytics.params import parameters
@@ -74,6 +75,8 @@ def filter_chain(
             error_msg = f"Boundaries for {key} yielded an empty array."
             raise ValueError(error_msg)
         mcmc_fit_cls.flat_chain = mcmc_fit_cls.flat_chain[condition_mask, :]
+        # Value-dependent row selection destroys the uniform ensemble time grid.
+        mcmc_fit_cls.chain = None
 
     fitted_params = {key: mcmc_fit_cls.flat_result[key] for key in mcmc_fit_cls.variable_labels}
     update_solution(mcmc_fit_cls, fitted_params, percentiles=None)
@@ -86,21 +89,32 @@ def load_chain(
     fit_id: str,
     discard: int = 0,
     percentiles: list[float] | None = None,
+    *,
+    discard_unit: DiscardUnit | str | None = None,
 ) -> tuple[NDArray, list[str], dict[str, tuple[float, float]]]:
     """Load MCMC chain along with auxiliary data from JSON file.
 
     Loads MCMC chain and related metadata from JSON file created after MCMC run.
-    Automatically handles discarding of burn-in steps.
+    Discard defaults to complete ensemble steps when temporal metadata exist,
+    and individual rows for legacy flat files. Explicit ``discard_unit`` may be
+    ``DiscardUnit.STEPS`` (requires metadata) or ``DiscardUnit.ROWS``. Legacy
+    strings "steps" and "rows" are accepted. Partial ensemble row cuts remove
+    temporal information. Discard must leave at least one sample.
 
     :param mcmc_fit_instance: MCMC fitting class instance (e.g., LCFitMCMC, RVFitMCMC).
     :type mcmc_fit_instance: LCFitMCMC | RVFitMCMC
     :param fit_id: Chain identifier or filename containing the chain.
     :type fit_id: str
-    :param discard: Number of steps to discard from the chain as burn-in (default: 0).
+    :param discard: Number of samples to discard from the chain as burn-in (default: 0).
     :type discard: int
     :param percentiles: Percentile intervals used to generate confidence intervals,
         provided as [lower, centre, upper].
     :type percentiles: list[float] | None
+    :param discard_unit: ``DiscardUnit.STEPS`` requires temporal metadata;
+        ``DiscardUnit.ROWS`` discards flat rows and preserves temporal axes only
+        at complete ensemble boundaries. ``None`` selects steps for structured
+        chains and rows for legacy files. Strings "steps" and "rows" are accepted.
+    :type discard_unit: DiscardUnit | str | None
     :returns: Tuple containing flattened MCMC chain, labels of variables in flat_chain
         columns, and dictionary of boundaries for reconstructing real values from
         normalized flat_chain array.
@@ -108,7 +122,10 @@ def load_chain(
     """
     data = MCMCMixin.load_flat_chain(fit_id=fit_id)
 
-    mcmc_fit_instance.flat_chain = np.array(data["flat_chain"])[discard:, :]
+    flat, chain = prepare_chain_samples(data, discard, discard_unit)
+    mcmc_fit_instance.flat_chain = flat
+    mcmc_fit_instance.chain = chain
+
     mcmc_fit_instance.variable_labels = data["fitable_parameters"]
     mcmc_fit_instance.normalization = data["normalization"]
 
