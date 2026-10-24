@@ -11,6 +11,17 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Added
 
+- Public `elisa.analytics.SamplingMethod` enum with `UNIFORM` and `ADAPTIVE`
+  strategies shared by LC least-squares and MCMC fitting. Existing string values
+  and manual phase lists/arrays remain supported.
+- 13 preparation-lifecycle and residual-vector regressions covering real LC/RV
+  parameter recovery, Jacobians, robust losses, and invalid-model penalties.
+- A reproducible LC prediction overhead benchmark separating validation,
+  mapping/interpolation, and normalization from physical synthesis.
+- 41 deterministic light-curve fitting regressions using real ELISA synthesis,
+  covering LS/MCMC/R² prediction consistency, phase/JD inputs, Standard/Community
+  parameters, constraints, custom atmosphere/LD options, and independent chi²
+  and Gaussian likelihood calculations.
 - `ld.clear_ld_caches()` to clear loaded LD tables, prepared interpolators, and
   evaluated coefficient results together.
 - Independent Sutherland-Hodgman polygon/triangle intersection area kernels: a
@@ -29,6 +40,18 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Changed
 
+- Validate static light-curve observation mappings once per fitter setup and reuse
+  them for LS, MCMC, and internal R² calculations. Revalidate on normalization or
+  explicit `validate_observations()` after manual edits; standalone prediction
+  and public R² helpers continue validating their inputs.
+- Reuse the prepared LC fitter's prediction method and Observer for internal R²
+  calculations, retaining compatibility of the standalone `lc_r_squared()` API.
+- Require one Jacobian or `jac_sparsity` row per observation in LC/RV least squares,
+  ordered by dataset insertion order. Robust-loss `f_scale` now applies to
+  individual standardized residuals; finite-tolerance optimizer behavior can change.
+- Share light-curve synthesis, observation mapping, and mean normalization across
+  LS, MCMC, and R² calculations while preserving physical synthesis, parameter
+  constraints, and statistical noise models.
 - Keep settings mutable with atomic, validated updates and consistent attribute
   access and serialization.
 - Use module-based loggers and configurable logging profiles, with scoped changes
@@ -72,6 +95,26 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Pass per-observation standardized residual vectors to SciPy for LC and RV least
+  squares, so default linear loss minimizes `0.5 * chi2` instead of
+  `0.5 * chi2**2`. Apply robust losses to individual observations and use a
+  fixed-length, finite chi-squared penalty vector for invalid LC synthesis.
+- Apply per-passband observation reducers in direct MCMC synthesis, preserving
+  unsorted and repeated coordinates and differently sampled passbands. Prevent
+  singleton observations from broadcasting against an entire synthetic curve.
+- Apply explicit per-fit atmosphere models and custom limb-darkening coefficients
+  to MCMC synthesis, matching LS and R².
+- Use prepared uniform, adaptive, and manual phase support in both fitting methods
+  and their final R² calculations, including the interpolation-threshold boundary.
+  Accept manual support supplied as a NumPy array.
+- Determine light-curve interpolation from actual coordinate correspondence rather
+  than array shape, fixing equal-length support and observation grids with
+  different phases in LS, MCMC, and R².
+- Normalize synthetic curves only after mapping or interpolation onto each
+  passband's observation points, ensuring consistent LS/MCMC flux scales.
+- Validate observation, reducer, uncertainty, support, and prediction alignment
+  before evaluating light-curve costs. Propagate structural errors explicitly
+  instead of converting them into MCMC invalid-physical-state penalties.
 - Reject reuse of custom limb-darkening coefficients under an incompatible law,
   including logarithmic/square-root switches. Preserve linear/cosine compatibility
   and runtime law switching for automatically interpolated coefficients.

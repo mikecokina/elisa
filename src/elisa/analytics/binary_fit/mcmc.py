@@ -5,15 +5,22 @@ from typing import TYPE_CHECKING, Any
 
 import emcee
 import numpy as np
-from scipy import interpolate
 
 from elisa import settings
+from elisa.analytics.binary_fit import mixins
+from elisa.analytics.binary_fit.lc_prediction import LCSynthesisError, PredictionAlignmentError
+from elisa.analytics.binary_fit.sampling import SamplingMethod
+from elisa.analytics.binary_fit.shared import (
+    AbstractFit,
+    AbstractLCFit,
+    AbstractRVFit,
+    check_for_boundary_surface_potentials,
+    rv_r_squared,
+)
 from elisa.analytics.models import cost_fns
-from elisa.analytics.models import lc as lc_model
 from elisa.analytics.models import rv as rv_model
 from elisa.analytics.params import parameters
 from elisa.analytics.params.conf import NUISANCE_PARSER, PARAM_PARSER
-from elisa.analytics.tools.utils import time_layer_resolver
 from elisa.base.error import ElisaError
 from elisa.base.types import FLOAT
 from elisa.binary_system.curves.community import RadialVelocitySystem
@@ -21,17 +28,6 @@ from elisa.binary_system.system import BinarySystem
 from elisa.graphic.mcmc_graphics import Plot
 from elisa.logger import getPersistentLogger
 from elisa.observer.mp_manager import get_mp_context
-from elisa.observer.utils import normalize_light_curve
-
-from . import mixins
-from .shared import (
-    AbstractFit,
-    AbstractLCFit,
-    AbstractRVFit,
-    check_for_boundary_surface_potentials,
-    lc_r_squared,
-    rv_r_squared,
-)
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -164,6 +160,8 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
             return -np.inf
         try:
             likelihood = prior + self.likelihood(xn)
+        except PredictionAlignmentError:
+            raise
         except (ElisaError, ValueError) as e:
             if not settings.SUPPRESS_WARNINGS:
                 error_msg = f"mcmc hit invalid parameters, exception: {e!s}"
@@ -348,14 +346,13 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
         """Likelihood function for given set of model variables.
 
         Calculates the likelihood value for the current model parameters by comparing
-        synthetic and observed light curves. The best fit is 0.0, worst is -inf.
+        synthetic and observed light curves, including Gaussian normalization.
 
         :param xn: Vector of optimized free parameters (normalized to [0, 1] range).
         :type xn: NDArray[Float]
         :return: Likelihood value.
         :rtype: Float
         """
-        diff = 1.0 / self.interp_treshold
         xn_list = parameters.vector_renormalizer(xn, self.fitable.keys(), self.normalization)
         xn_renorm = np.asarray(xn_list, dtype=FLOAT)
         kwargs: dict[str, Any] = parameters.prepare_properties_set(
@@ -364,28 +361,11 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
             self.constrained,
             self.fixed,
         )
-        phases, kwargs = time_layer_resolver(self.x_data_reduced, pop=False, **kwargs)
-
-        fit_xs: NDArray[Float] = (
-            np.linspace(
-                np.min(phases) - diff,
-                np.max(phases) + diff,
-                num=self.interp_treshold + 2,
-            )
-            if np.shape(phases)[0] > self.interp_treshold
-            else phases
-        )
-        args: tuple[Any, ...] = (fit_xs, self.discretization, self.observer)
-        synthetic: dict[str, NDArray[Float]] = lc_model.synthetic_binary(*args, **kwargs)
-        synthetic, _ = normalize_light_curve(synthetic, kind="average")
-
-        if np.shape(fit_xs) != np.shape(phases):
-            synthetic = {
-                band: interpolate.interp1d(fit_xs, curve, kind="cubic")(
-                    phases[self.x_data_reducer[band]],
-                )
-                for band, curve in synthetic.items()
-            }
+        try:
+            synthetic = self.predict_light_curves(kwargs)
+        except LCSynthesisError as exc:
+            # Keep the sampler's existing treatment of physical synthesis failures.
+            raise exc.__cause__ from exc
 
         ln_f_key = f"{NUISANCE_PARSER}{PARAM_PARSER}ln_f"
         ln_f: Float = parameters.prepare_nuisance_properties_set(xn_renorm, self.fitable, self.fixed)[ln_f_key]
@@ -404,7 +384,7 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
         burn_in: int | None = None,
         percentiles: list | None = None,
         interp_treshold: int | None = None,
-        samples: str | list = "uniform",
+        samples: SamplingMethod | str | list | NDArray = SamplingMethod.UNIFORM,
         progress: bool = False,
         save: bool = True,
         fit_id: str | None = None,
@@ -448,10 +428,10 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
             interpolated using model containing equidistant points. If None, uses
             settings.MAX_CURVE_DATAPOINTS.
         :type interp_treshold: int | None
-        :param samples: Sampling method: 'uniform' (equidistant in phase), 'adaptive'
-            (equidistant on curve), or list with phases in (0, 1) interval.
-            Default is 'uniform'.
-        :type samples: str | list
+        :param samples: SamplingMethod.UNIFORM (equidistant in phase),
+            SamplingMethod.ADAPTIVE (equidistant on curve), or a manual phase
+            list/array. Legacy string values remain accepted. Defaults to UNIFORM.
+        :type samples: SamplingMethod | str | list | NDArray
         :param progress: Display the progress bar of the sampling. Default is False.
         :type progress: bool
         :param save: Whether to store the chain to file. Default is True.
@@ -505,25 +485,8 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
         )
         result_dict = self.eval_constrained_results(result_dict, self.constrained)
 
-        r_squared_args: tuple[Any, ...] = (
-            self.x_data_reduced,
-            self.y_data,
-            self.observer.passband,
-            discretization,
-            self.x_data_reducer,
-            1.0 / self.interp_treshold,
-            self.interp_treshold,
-            self.observer.system_cls,
-        )
-
-        r_dict: dict[str, Any] = {key: value["value"] for key, value in result_dict.items()}
-        r_dict = parameters.extend_json_with_atm_params(
-            r_dict,
-            atmosphere_model=self.atmosphere_model,
-            limb_darkening_coefficients=self.limb_darkening_coefficients,
-        )
-
-        r_squared_result: Float = lc_r_squared(lc_model.synthetic_binary, *r_squared_args, **r_dict)
+        r_dict = {key: value["value"] for key, value in result_dict.items()}
+        r_squared_result = self.prediction_r_squared(r_dict)
         result_dict["r_squared"] = {"value": r_squared_result, "unit": None}
 
         result_dict = check_for_boundary_surface_potentials(result_dict, self.MORPHOLOGY)

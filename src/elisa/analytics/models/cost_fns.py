@@ -95,3 +95,48 @@ def wssr(
     :rtype: Float
     """
     return sum(np.sum(((synthetic[item] - y_data[item]) / y_err[item]) ** 2) for item in synthetic)
+
+
+def standardized_residuals(
+    y_data: dict[str, NDArray[Any]],
+    y_err: dict[str, NDArray[Any]],
+    synthetic: dict[str, NDArray[Any]],
+    *,
+    validate: bool = True,
+) -> NDArray[Any]:
+    """Return a flat standardized residual vector in observation insertion order.
+
+    :param y_data: Per-dataset observed vectors; their insertion order fixes the
+        residual and Jacobian row order throughout an optimization.
+    :param y_err: Per-datum errors or the existing per-dataset scalar fallback.
+    :param synthetic: Per-dataset predictions already mapped to observation order.
+    :param validate: Check dataset and array shapes. Prepared LC fitting passes
+        False after setup validation and dynamic prediction alignment checks.
+    :return: Concatenated (observed - synthetic) / uncertainty. Its squared norm
+        is chi² and SciPy's default linear-loss cost is half that value.
+    :raises ValueError: If dataset keys or vector/error shapes would broadcast
+        different observations together. Scalar uncertainties remain supported.
+    """
+    if validate:
+        _validate_residual_shapes(y_data, y_err, synthetic)
+    return np.concatenate([(observed - synthetic[key]) / y_err[key] for key, observed in y_data.items()])
+
+
+def _validate_residual_shapes(y_data: dict, y_err: dict, synthetic: dict) -> None:
+    """Reject broadcasting mismatches in RV or standalone residual construction.
+
+    :param y_data: Observed vectors by dataset.
+    :param y_err: Matching uncertainty vectors or scalar uncertainty fallbacks.
+    :param synthetic: Predictions mapped into each observation vector's order.
+    :raises ValueError: If keys or observation/prediction/error shapes differ.
+    """
+    if set(y_data) != set(synthetic) or set(y_data) != set(y_err):
+        message = "Residual observation, prediction and uncertainty datasets differ"
+        raise ValueError(message)
+    for key, observed in y_data.items():
+        if np.ndim(observed) != 1 or np.shape(synthetic[key]) != np.shape(observed):
+            message = f"Residual prediction shape differs from observations for {key}"
+            raise ValueError(message)
+        if np.shape(y_err[key]) not in ((), np.shape(observed)):
+            message = f"Residual uncertainty shape differs from observations for {key}"
+            raise ValueError(message)

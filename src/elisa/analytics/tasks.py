@@ -290,9 +290,9 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
           equidistant points per epoch
         - **discretization** (:class:`int` | :class:`float`) - Discretization factor
           of the primary component (default: 5)
-        - **samples** (:class:`str` | :class:`list`) - 'uniform' (equidistant sampling
-          in phase), 'adaptive' (equidistant sampling on curve) or list with phases
-          in (0, 1) interval
+        - **samples** - ``elisa.analytics.SamplingMethod.UNIFORM`` (equidistant
+          sampling in phase), ``SamplingMethod.ADAPTIVE`` (equidistant sampling
+          on curve), or a manual phase list/array. Legacy string values are accepted.
 
         **kwargs options for least_squares:**
 
@@ -316,9 +316,9 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
           and confidence interval from MCMC chain (default: [16, 50, 84])
         - **save** (:class:`bool`) - Save chain to file
         - **fit_id** (:class:`str`) - Identifier or location of stored chain
-        - **samples** (:class:`str` | :class:`list`) - 'uniform' (equidistant sampling
-          in phase), 'adaptive' (equidistant sampling on curve) or list with phases
-          in (0, 1) interval
+        - **samples** - ``elisa.analytics.SamplingMethod.UNIFORM`` (equidistant
+          sampling in phase), ``SamplingMethod.ADAPTIVE`` (equidistant sampling
+          on curve), or a manual phase list/array. Legacy string values are accepted.
         """
         if isinstance(x0, dict):
             x0 = parameters.BinaryInitialParameters(**x0)

@@ -6,14 +6,14 @@ from abc import ABCMeta
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from scipy import interpolate
 from scipy.optimize import least_squares
 
 from elisa import const, settings
+from elisa.analytics.binary_fit.lc_prediction import LCSynthesisError
+from elisa.analytics.binary_fit.sampling import SamplingMethod
 from elisa.analytics.binary_fit.shared import (
     AbstractLCFit,
     AbstractRVFit,
-    lc_r_squared,
     r_squared,
     rv_r_squared,
 )
@@ -21,12 +21,10 @@ from elisa.analytics.models import cost_fns
 from elisa.analytics.models import lc as lc_model
 from elisa.analytics.models import rv as rv_model
 from elisa.analytics.params import parameters
-from elisa.analytics.tools.utils import time_layer_resolver
 from elisa.base.types import FLOAT
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
 from elisa.logger import getPersistentLogger
-from elisa.observer.utils import normalize_light_curve
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -108,22 +106,20 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
     flat_result: dict[str, Any]
 
 
-    def model_to_fit(self, xn: NDArray) -> NDArray | float:
-        """Cost function minimized during solution of inverse problem using The Least Squares.
+    def model_to_fit(self, xn: NDArray) -> NDArray:
+        """Return standardized observation residuals for SciPy least squares.
 
-        This method calculates weighted sum of squared residuals between observed and
-        synthetic light curves for the given normalized parameter vector.
+        Concatenate (observed - predicted) / uncertainty in observation-dictionary
+        insertion order. Linear loss then minimizes 0.5 * chi²; robust losses act
+        on individual standardized observations, and Jacobians have one row per
+        datum with derivatives in normalized parameter coordinates.
 
-        :param xn: Vector containing normalized values of model parameters optimized
-            during fit. Values are in range [0, 1] and normalized using stored
-            normalization parameters.
-        :type xn: NDArray
-        :return: Error weighted sum of squared residuals. Large values (MAX_USABLE_FLOAT)
-            are returned if model parameters lead to invalid binary system.
-        :rtype: NDArray | float
+        :param xn: Normalized free-parameter vector in [0, 1].
+        :return: One-dimensional residual vector of fixed observation length.
+            Invalid physical synthesis returns a finite vector whose squared norm
+            is MAX_USABLE_FLOAT, preserving that constant as the chi² penalty.
+        :raises PredictionAlignmentError: If dynamic synthesis alignment fails.
         """
-        diff = 1.0 / self.interp_treshold
-
         xn_list = parameters.vector_renormalizer(xn, self.fitable.keys(), self.normalization)
         xn = np.asarray(xn_list, dtype=FLOAT)
         kwargs: dict[str, Any] = parameters.prepare_properties_set(
@@ -132,51 +128,14 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
             self.constrained,
             self.fixed,
         )
-        phases, kwargs = time_layer_resolver(self.x_data_reduced, pop=False, **kwargs)
-
-        if self.fit_xs is None:
-            fit_xs = (
-                np.linspace(
-                    np.min(phases) - diff,
-                    np.max(phases) + diff,
-                    num=self.interp_treshold + 2,
-                )
-                if np.shape(phases)[0] > self.interp_treshold
-                else phases
-            )
-        else:
-            fit_xs = self.fit_xs
-
-        args: tuple[Any, ...] = (fit_xs, self.discretization, self.observer)
-
-        kwargs = parameters.extend_json_with_atm_params(
-            kwargs,
-            atmosphere_model=self.atmosphere_model,
-            limb_darkening_coefficients=self.limb_darkening_coefficients,
-        )
-
-        fn = lc_model.synthetic_binary
-
         try:
-            synthetic: dict[str, Any] = _log_decorator(fn)(*args, **kwargs)
-        except (ValueError, RuntimeError, TypeError) as e:
-            error_msg = f"your initial parameters lead during fitting to invalid binary system, exception: {e!s}"
-            logger.exception(error_msg)
-            return const.MAX_USABLE_FLOAT
+            synthetic = self.predict_light_curves(kwargs, synthesis=_log_decorator(lc_model.synthetic_binary))
+        except LCSynthesisError:
+            logger.exception("Invalid binary system during fitting")
+            count = sum(self.num_of_points.values())
+            return np.full(count, np.sqrt(const.MAX_USABLE_FLOAT / count))
 
-        if np.shape(fit_xs) != np.shape(phases):
-            synthetic = {
-                band: interpolate.interp1d(fit_xs, curve, kind="cubic")(
-                    phases[self.x_data_reducer[band]],
-                )
-                for band, curve in synthetic.items()
-            }
-        else:
-            synthetic = {band: val[self.x_data_reducer[band]] for band, val in synthetic.items()}
-
-        synthetic, _ = normalize_light_curve(synthetic, kind="average")
-
-        residuals = cost_fns.wssr(self.y_data, self.y_err, synthetic)
+        residuals = cost_fns.standardized_residuals(self.y_data, self.y_err, synthetic, validate=False)
 
         if logger.isEnabledFor(logging.INFO):
             logger.info("current R2: %s", r_squared(synthetic, self.y_data))
@@ -190,7 +149,7 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
         *,
         discretization: Float = 5.0,
         interp_treshold: int | None = None,
-        samples: str = "uniform",
+        samples: SamplingMethod | str | list | NDArray = SamplingMethod.UNIFORM,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Fit light curve using non-linear least squares optimization.
@@ -209,15 +168,17 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
             interpolated using equidistant points. If None, uses MAX_CURVE_DATAPOINTS
             from settings.
         :type interp_treshold: int | None
-        :param samples: Sampling method: 'uniform' (equidistant in phase), 'adaptive'
-            (equidistant on curve), or list of phases in (0, 1) interval.
-            Default is 'uniform'.
-        :type samples: str
+        :param samples: SamplingMethod.UNIFORM (equidistant in phase),
+            SamplingMethod.ADAPTIVE (equidistant on curve), or a manual phase
+            list/array. Legacy string values remain accepted. Defaults to UNIFORM.
+        :type samples: SamplingMethod | str | list | NDArray
         :param kwargs: Optional arguments for scipy.optimize.least_squares function.
             Common options: jac, method, ftol, xtol, gtol, x_scale, loss, f_scale,
             diff_step, tr_solver, tr_options, jac_sparsity, max_nfev, verbose.
-            Solver diagnostics default to verbose=0; pass verbose=2 explicitly
-            to print SciPy iteration tables.
+            Jacobians and jac_sparsity have one row per observation and one
+            column per normalized free parameter. Robust loss and f_scale apply
+            to individual standardized residuals. Solver diagnostics default to
+            verbose=0; pass verbose=2 explicitly to print SciPy iteration tables.
         :type kwargs: Any
         :return: Optimized model parameters in standard JSON format.
         :rtype: dict[str, Any]
@@ -297,26 +258,9 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
         )
         result_dict = self.eval_constrained_results(result_dict, self.constrained)
 
-        # Calculate R-squared
-        r_squared_args: tuple[Any, ...] = (
-            self.x_data_reduced,
-            self.y_data,
-            self.observer.passband,
-            discretization,
-            self.x_data_reducer,
-            1.0 / self.interp_treshold,
-            self.interp_treshold,
-            self.observer.system_cls,
-        )
-
-        r_dict: dict[str, Any] = {key: value["value"] for key, value in result_dict.items()}
-        r_dict = parameters.extend_json_with_atm_params(
-            r_dict,
-            atmosphere_model=self.atmosphere_model,
-            limb_darkening_coefficients=self.limb_darkening_coefficients,
-        )
-
-        r_squared_result: Float = lc_r_squared(lc_model.synthetic_binary, *r_squared_args, **r_dict)
+        # Use the fitted prediction path, support and existing Observer for R².
+        r_dict = {key: value["value"] for key, value in result_dict.items()}
+        r_squared_result = self.prediction_r_squared(r_dict)
         result_dict["r_squared"] = {"value": r_squared_result, "unit": None}
 
         self.flat_result = result_dict
@@ -393,20 +337,16 @@ class CentralRadialVelocity(AbstractRVFit):
         )
         return synthetic
 
-    def central_rv_model_to_fit(self, xn: NDArray) -> float:
-        """Cost function minimized during radial velocity fitting.
+    def central_rv_model_to_fit(self, xn: NDArray) -> NDArray:
+        """Return per-observation standardized RV residuals for SciPy.
 
-        Calculates weighted sum of squared residuals between observed and
-        synthetic radial velocities for the given normalized parameter vector.
-
-        :param xn: Vector of variable model parameters in normalized form.
-        :type xn: NDArray
-        :return: Error weighted sum of squared residuals.
-        :rtype: float
+        :param xn: Normalized free-parameter vector.
+        :return: Concatenated (observed - predicted) / uncertainty, in observation
+            dictionary insertion order. Its squared norm is the actual chi².
         """
         synthetic: dict[str, NDArray] = self.prepare_synthetic(xn)
         synthetic = {comp: synthetic[comp][self.x_data_reducer[comp]] for comp in synthetic}
-        return cost_fns.wssr(self.y_data, self.y_err, synthetic)
+        return cost_fns.standardized_residuals(self.y_data, self.y_err, synthetic)
 
     def fit(
         self,
@@ -429,8 +369,10 @@ class CentralRadialVelocity(AbstractRVFit):
         :param kwargs: Optional arguments for scipy.optimize.least_squares function.
             Common options: jac, method, ftol, xtol, gtol, x_scale, loss, f_scale,
             diff_step, tr_solver, tr_options, jac_sparsity, max_nfev, verbose.
-            Solver diagnostics default to verbose=0; pass verbose=2 explicitly
-            to print SciPy iteration tables.
+            Jacobians and jac_sparsity have one row per observation and one
+            column per normalized free parameter. Robust loss and f_scale apply
+            to individual standardized residuals. Solver diagnostics default to
+            verbose=0; pass verbose=2 explicitly to print SciPy iteration tables.
         :type kwargs: Any
         :return: Optimized model parameters in standard JSON format.
         :rtype: dict[str, Any]

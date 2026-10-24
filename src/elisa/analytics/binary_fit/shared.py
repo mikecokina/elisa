@@ -4,9 +4,14 @@ from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from scipy import interpolate
 
 from elisa import settings, units
+from elisa.analytics.binary_fit.lc_prediction import (
+    LCSynthesisError,
+    predict_light_curves,
+    validate_observations,
+)
+from elisa.analytics.binary_fit.sampling import SamplingMethod
 from elisa.analytics.models import lc as lc_model
 from elisa.analytics.models import rv as rv_model
 from elisa.analytics.params import parameters
@@ -376,7 +381,9 @@ class AbstractLCFit(AbstractFit):
     normalization: dict[str, tuple[Any, ...]]
     flat_result: dict[str, Any]
 
-    __slots__: list = []  # inheriting attributes from parent
+    _validated_reducers: dict[str, NDArray] | None
+
+    __slots__ = ["_validated_reducers"]
 
     def set_up(
         self,
@@ -397,15 +404,81 @@ class AbstractLCFit(AbstractFit):
 
             * ``observer_system_cls`` - System used to evaluate synthetic observations.
             * ``discretization`` - Discretization factor for the primary component.
-            * ``samples`` - Union[str, List]; 'uniform', 'adaptive' or list with phases in (0, 1).
+            * ``samples`` - SamplingMethod, a legacy string value, or a manual phase list/array.
         :type kwargs: Any
         """
         super().set_up(x0, data, passband, observer_system_cls=kwargs.get("observer_system_cls"))
         self.discretization = kwargs.pop("discretization")
         self.interp_treshold = kwargs.pop("interp_treshold")
-        fit_xs = self.generate_sample_phases(kwargs.pop("samples"))
-        self.fit_xs = fit_xs
         self.normalize_data(kind="average")
+        self.fit_xs = self.generate_sample_phases(kwargs.pop("samples"))
+
+    def validate_observations(self) -> None:
+        """Validate and prepare static observation mappings for this setup.
+
+        Called once by setup through normalize_data(). Observation coordinates,
+        shapes and reducers must remain unchanged during fitting. After manually
+        editing these internal arrays/dictionaries, call this method before any
+        evaluation, or use set_up() to replace the dataset. No global cache or
+        content fingerprint is retained. Flux/error value edits with unchanged
+        shapes do not change the mappings; normalize_data() revalidates them.
+
+        :raises PredictionAlignmentError: If observation alignment is invalid.
+        """
+        self._validated_reducers = None
+        self._validated_reducers = validate_observations(
+            self.x_data_reduced,
+            self.y_data,
+            self.x_data_reducer,
+            self.x_data,
+            self.y_err,
+        )
+        self.num_of_points = {band: len(curve) for band, curve in self.y_data.items()}
+
+    def prediction_r_squared(self, model_parameters: dict[str, Any]) -> Float:
+        """Compute R² using this fitter's prepared mappings, support and Observer.
+
+        :param model_parameters: Flat physical parameters with constraints resolved.
+        :return: Coefficient of determination for observation-point predictions.
+        :raises PredictionAlignmentError: If dynamic synthesis alignment is invalid.
+        """
+        try:
+            synthetic = self.predict_light_curves(model_parameters)
+        except LCSynthesisError as exc:
+            raise exc.__cause__ from exc
+        return r_squared(synthetic, self.y_data)
+
+    def predict_light_curves(self, model_parameters: dict[str, Any], **kwargs: Any) -> dict:
+        """Predict observation-point fluxes using this setup's validated mappings.
+
+        Static observation dimensions, keys, indices and coordinate correspondence
+        were validated by setup. This method reuses those mappings and the existing
+        Observer while retaining parameter-dependent phase, interpolation-support
+        and synthesis-output checks on every call.
+
+        :param model_parameters: Flat physical parameters with constraints resolved.
+        :param kwargs: Optional prediction arguments, such as a synthesis callable.
+        :return: Per-band mean-normalized flux arrays in observation order.
+        :raises PredictionAlignmentError: If dynamic prediction alignment is invalid.
+        :raises LCSynthesisError: If physical synthesis raises ValueError,
+            RuntimeError or TypeError, retaining the original cause.
+        """
+        return predict_light_curves(
+            self.x_data_reduced,
+            self.y_data,
+            self.x_data_reducer,
+            self.discretization,
+            self.observer,
+            self.interp_treshold,
+            model_parameters,
+            fit_xs=self.fit_xs,
+            x_data=self.x_data,
+            y_err=self.y_err,
+            _validated_reducers=self._validated_reducers,
+            atmosphere_model=self.atmosphere_model,
+            limb_darkening_coefficients=self.limb_darkening_coefficients,
+            **kwargs,
+        )
 
     @abstractmethod
     def fit(self, *args: Any, **kwargs: Any) -> Any:
@@ -427,7 +500,9 @@ class AbstractLCFit(AbstractFit):
     ) -> None:
         """Normalize input observational data using different methods.
 
-        The result is assigned back to the respective data attributes ``y_data`` and ``y_err``.
+        The result is assigned back to the respective data attributes ``y_data``
+        and ``y_err``. Static observation alignment is validated before rescaling,
+        refreshing the prepared mappings for setup or a later normalization call.
 
         :param kind: Normalization method. Options:
 
@@ -440,11 +515,12 @@ class AbstractLCFit(AbstractFit):
             in the normalization process, from (0, 1) interval.
         :type top_fraction_to_average: float
         """
+        self.validate_observations()
         y_data, y_err = normalize_light_curve(self.y_data, self.y_err, kind, top_fraction_to_average)
         self.y_data = y_data
         self.y_err = y_err
 
-    def generate_sample_phases(self, samples: str | list) -> NDArray[Float] | None:
+    def generate_sample_phases(self, samples: SamplingMethod | str | list | NDArray) -> NDArray[Float] | None:
         """Generate photometric phases for synthetic observations.
 
         Sampling photometric phases are generated according to a specified rule or array
@@ -452,12 +528,15 @@ class AbstractLCFit(AbstractFit):
 
         :param samples: Sampling method or phase array. Options:
 
-            * ``uniform`` - Phase equidistant sampling (use for initial fitting stages).
-            * ``adaptive`` - Equidistant sampling along the synthetic curve (useful for narrow eclipses).
-            * List/array - Manually provided array of photometric phases in (0, 1).
-        :type samples: str | list
+            * ``SamplingMethod.UNIFORM`` - Equidistant phase support.
+            * ``SamplingMethod.ADAPTIVE`` - Equidistant support along the initial curve.
+            * List/array - Manually provided photometric phases.
+
+        Legacy string values are converted to SamplingMethod at this boundary.
+        Below the sampling threshold, direct synthesis remains in use.
+        :type samples: SamplingMethod | str | list | NDArray
         :return: Photometric phases or None if insufficient datapoints.
-        :rtype: list | None
+        :rtype: NDArray | None
         :raises ValueError: When ``samples`` parameter is invalid.
         """
         kwargs: dict[str, Any] = parameters.prepare_properties_set(
@@ -470,19 +549,21 @@ class AbstractLCFit(AbstractFit):
         if np.shape(phases)[0] < self.interp_treshold:
             return None
 
-        if samples == "uniform":
-            diff = 1.0 / self.interp_treshold
-            return np.linspace(0.0 - diff, 1.0 + diff, num=self.interp_treshold + 2)
-        if samples == "adaptive":
-            logger.info("Generating equidistant samples along the light curve using adaptive sampling method")
-            return self.adaptive_sampling()
         if isinstance(samples, (list, np.ndarray)):
             return np.sort(samples)
-        error_msg = (
-            "Parameter `samples` has to be either string with values `uniform` or `adaptive` or "
-            "array of phases in (0, 1) interval"
-        )
-        raise ValueError(error_msg)
+        try:
+            method = SamplingMethod(samples)
+        except (ValueError, TypeError) as exc:
+            error_msg = (
+                "Parameter `samples` must be SamplingMethod.UNIFORM, SamplingMethod.ADAPTIVE, "
+                "their string values, or a manual phase list/array"
+            )
+            raise ValueError(error_msg) from exc
+        if method is SamplingMethod.UNIFORM:
+            diff = 1.0 / self.interp_treshold
+            return np.linspace(0.0 - diff, 1.0 + diff, num=self.interp_treshold + 2)
+        logger.info("Generating equidistant samples along the light curve using adaptive sampling method")
+        return self.adaptive_sampling()
 
     def adaptive_sampling(self) -> NDArray[Float]:
         """Generate sampling equidistantly along the curve.
@@ -552,36 +633,22 @@ class AbstractLCFit(AbstractFit):
             passband=data.keys(),
             discretization=discretization,
             interp_treshold=interp_treshold,
-            samples="uniform",
+            samples=SamplingMethod.UNIFORM,
             observer_system_cls=BinarySystem,
         )
 
-        r_squared_args: tuple[Any, ...] = (
-            self.x_data_reduced,
-            self.y_data,
-            self.observer.passband,
-            discretization,
-            self.x_data_reducer,
-            1.0 / self.interp_treshold,
-            self.interp_treshold,
-            self.observer.system_cls,
-        )
         flat_result = parameters.deserialize_result(model_parameters)
-
-        r_dict: dict[str, Any] = {key: value["value"] for key, value in flat_result.items()}
-        r_dict = parameters.extend_json_with_atm_params(
-            r_dict,
-            atmosphere_model=self.atmosphere_model,
-            limb_darkening_coefficients=self.limb_darkening_coefficients,
-        )
-
+        r_dict = {key: value["value"] for key, value in flat_result.items()}
         logger.info("Evaluating light curve for calculation of R^2.")
-        r_squared_result = lc_r_squared(lc_model.synthetic_binary, *r_squared_args, **r_dict)
+        r_squared_result = self.prediction_r_squared(r_dict)
         logger.info("Calculation of R^2 finished.")
         return r_squared_result
 
 
-def lc_r_squared(synthetic: Callable[..., Any], *args: Any, **kwargs: Any) -> float:
+def lc_r_squared(
+    synthetic: Callable[..., Any], *args: Any, fit_xs: Any = None,
+    x_data: Any = None, **kwargs: Any,
+) -> float:
     """Compute R^2 coefficient of determination between synthetic and observed light curves.
 
     :param synthetic: Callable method for creating synthetic LC observations
@@ -598,36 +665,25 @@ def lc_r_squared(synthetic: Callable[..., Any], *args: Any, **kwargs: Any) -> fl
         * ``interp_treshold`` - Int; threshold above which synthetic curves are interpolated.
         * ``cls`` - BinarySystem; class used for observations.
     :type args: Any
+    :param fit_xs: Prepared phase support from fitting. If omitted, use the
+        same uniform/direct support rule as fitting setup.
+    :param x_data: Optional original per-band coordinates for reducer validation.
     :param kwargs: Model parameters to compute binary system.
     :type kwargs: Any
     :return: Coefficient of determination (1.0 means perfect fit).
     :rtype: float
     """
-    x_data_reduced, y_data, passband, discretization, x_data_reducer, diff, interp_treshold, cls = args
-
-    x_data_reduced, kwargs = time_layer_resolver(x_data_reduced, pop=False, **kwargs)
-    # noinspection PyUnresolvedReferences
-    fit_xs = (
-        np.linspace(
-            np.min(x_data_reduced) - diff,
-            np.max(x_data_reduced) + diff,
-            num=interp_treshold + 2,
-        )
-        if np.shape(x_data_reduced)[0] > interp_treshold
-        else x_data_reduced
-    )
+    x_data_reduced, y_data, passband, discretization, x_data_reducer, _diff, interp_treshold, cls = args
 
     observer = Observer(passband=passband, system=None)
-    observer._system_cls = cls  # noqa: SLF001
-    synthetic_result = synthetic(fit_xs, discretization, observer, **kwargs)
-
-    if np.shape(fit_xs) != np.shape(x_data_reduced):
-        synthetic_result = {
-            fltr: interpolate.interp1d(fit_xs, curve, kind="cubic")(x_data_reduced)
-            for fltr, curve in synthetic_result.items()
-        }
-    synthetic_result = {band: synthetic_result[band][x_data_reducer[band]] for band in synthetic_result}
-    synthetic_result, _ = normalize_light_curve(synthetic_result, kind="average")
+    observer.system_cls = cls
+    try:
+        synthetic_result = predict_light_curves(
+            x_data_reduced, y_data, x_data_reducer, discretization, observer,
+            interp_treshold, kwargs, fit_xs=fit_xs, x_data=x_data, synthesis=synthetic,
+        )
+    except LCSynthesisError as exc:
+        raise exc.__cause__ from exc
 
     return r_squared(synthetic_result, y_data)
 
