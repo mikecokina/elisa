@@ -248,7 +248,7 @@ class TestUpdateSolution:
         mock_cls.result = {"param1": 0.1, "param2": 0.2}
         return mock_cls
 
-    @patch("elisa.analytics.binary_fit.io_tools.AbstractFit.eval_constrained_results")
+    @patch("elisa.analytics.binary_fit.io_tools.MCMCMixin.resolve_constrained_result")
     @patch("elisa.analytics.binary_fit.io_tools.BinaryInitialParameters")
     @patch("elisa.analytics.binary_fit.io_tools.parameters.serialize_result")
     @patch("elisa.analytics.binary_fit.io_tools.MCMCMixin.resolve_mcmc_result")
@@ -300,7 +300,7 @@ class TestUpdateSolution:
         mock_resolve.return_value = {}
 
         with patch("elisa.analytics.binary_fit.io_tools.BinaryInitialParameters"):
-            with patch("elisa.analytics.binary_fit.io_tools.AbstractFit.eval_constrained_results"):
+            with patch("elisa.analytics.binary_fit.io_tools.MCMCMixin.resolve_constrained_result"):
                 with patch("elisa.analytics.binary_fit.io_tools.parameters.serialize_result") as mock_ser:
                     mock_ser.side_effect = lambda x: x
 
@@ -688,7 +688,7 @@ class TestIntegration:
     @patch("elisa.analytics.binary_fit.io_tools.MCMCMixin.load_flat_chain")
     @patch("elisa.analytics.binary_fit.io_tools.MCMCMixin.resolve_mcmc_result")
     @patch("elisa.analytics.binary_fit.io_tools.BinaryInitialParameters")
-    @patch("elisa.analytics.binary_fit.io_tools.AbstractFit.eval_constrained_results")
+    @patch("elisa.analytics.binary_fit.io_tools.MCMCMixin.resolve_constrained_result")
     @patch("elisa.analytics.binary_fit.io_tools.parameters.serialize_result")
     def test_load_chain_and_update_solution(
         self,

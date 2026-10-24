@@ -6,7 +6,6 @@ import numpy as np
 
 from elisa.analytics.binary_fit.chain_tools import DiscardUnit, prepare_chain_samples
 from elisa.analytics.binary_fit.mixins import MCMCMixin
-from elisa.analytics.binary_fit.shared import AbstractFit
 from elisa.analytics.params import parameters
 from elisa.analytics.params.parameters import BinaryInitialParameters, ParameterMeta
 
@@ -156,8 +155,14 @@ def update_solution(
     :type percentiles: list[float] | None
     :returns: None.
     :rtype: None
-    :raises ValueError: If result is None and attempted to update solution.
+    :raises ValueError: If the result, chain or normalization state is unavailable.
     """
+    if (mcmc_fit_cls.flat_result is None
+            or mcmc_fit_cls.flat_chain is None
+            or mcmc_fit_cls.normalization is None):
+        error_msg = "Updating posterior summaries requires loaded results, chain and normalization bounds."
+        raise ValueError(error_msg)
+
     fitable = {key: ParameterMeta(**val) for key, val in fitted_params.items()}
 
     # reproducing results from chain
@@ -173,11 +178,12 @@ def update_solution(
 
         # evaluating constraints
         fit_params = parameters.serialize_result(mcmc_fit_cls.flat_result)
-        constrained = BinaryInitialParameters(**fit_params).get_constrained()
-        mcmc_fit_cls.flat_result = AbstractFit.eval_constrained_results(
-            mcmc_fit_cls.flat_result,
-            constrained,
+        initial = BinaryInitialParameters(**fit_params)
+        flat_result_update = MCMCMixin.resolve_constrained_result(
+            mcmc_fit_cls.flat_chain, fitable, mcmc_fit_cls.normalization,
+            initial.get_constrained(), initial.get_fixed(), percentiles,
         )
+        mcmc_fit_cls.flat_result.update(flat_result_update)
 
         mcmc_fit_cls.result = parameters.serialize_result(mcmc_fit_cls.flat_result)
 

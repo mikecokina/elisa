@@ -10,6 +10,7 @@ import numpy as np
 
 from elisa import settings
 from elisa.analytics.binary_fit.chain_tools import prepare_chain_samples
+from elisa.analytics.params.conf import JOINT_POSTERIOR_PERCENTILES_ESTIMATE
 from elisa.logger import getPersistentLogger
 from elisa.utc import UTC
 
@@ -73,7 +74,7 @@ class MCMCMixin:
 
         Converts the flattened MCMC chain into a result dictionary with parameter values,
         confidence intervals, and metadata. Calculates percentiles for error estimation
-        and rounds values to appropriate significant digits.
+        and retains full numerical precision; rounding belongs to display formatting.
 
         :param flat_chain: Flattened MCMC chain from EnsembleSampler.get_chain(flat=True).
         :type flat_chain: NDArray[Float]
@@ -94,16 +95,11 @@ class MCMCMixin:
         result: dict[str, dict[str, Any]] = {}
         for idx, key in enumerate(fitable):
             mcmc_result = np.percentile(flat_chain[:, idx], percentiles)
-            vals = parameters.renormalize_value(
+            vals = np.asarray(parameters.renormalize_value(
                 mcmc_result,
                 normalization[key][0],
                 normalization[key][1],
-            )
-
-            # rounding up values to significant digits
-            sigma = np.min(np.abs(np.array([vals[2] - vals[1], vals[1] - vals[0]])))
-            prec = -int(np.log10(sigma)) + 1
-            vals = np.round(vals, decimals=prec)
+            ))
 
             result[key] = {
                 "value": float(vals[1]),
@@ -117,6 +113,77 @@ class MCMCMixin:
                 "unit": fitable[key].to_dict()["unit"],
             }
 
+        return result
+
+    @staticmethod
+    def resolve_constrained_result(
+        flat_chain: NDArray[np.float64],
+        fitable: dict[str, Any],
+        normalization: dict[str, tuple[Float, Float]],
+        constrained: dict[str, Any],
+        fixed: dict[str, Any],
+        percentiles: list[float] | None = None,
+    ) -> dict[str, dict[str, Any]]:
+        """Propagate retained joint samples through constraints before taking percentiles.
+
+        A constrained parameter has no independently sampled chain column: its posterior
+        is induced by applying its expression to the joint posterior of its dependencies.
+        Evaluating the expression at their marginal medians generally gives a different
+        result from the median of the constrained posterior. For example, equally likely
+        values x=-1 and x=1 give median(x**2)=1, whereas median(x)**2=0. Propagating
+        marginal interval endpoints also loses correlations between fitted parameters.
+
+        Each retained row must therefore remain a complete joint sample. Free values
+        are converted from normalized to physical coordinates, combined with fixed
+        values, and evaluated by the existing prepare_properties_set() mechanism.
+        Percentiles are computed only after collecting the constrained values from
+        every row. This preserves correlations and nonlinear transformations without
+        changing the chain or extending the constraint engine's dependency support.
+
+        Nonfinite constraint results invalidate the summary instead of being discarded:
+        silently removing those rows would change the posterior being summarized.
+        Constant samples naturally give a zero-width interval, and results retain full
+        numerical precision. The estimate marker identifies these marginal summaries
+        during result loading, preventing replacement by an expression evaluated at
+        marginal dependency medians. This calculation belongs only to posterior
+        summarization after sampling or sample selection, never to the likelihood or
+        individual sampler steps.
+
+        :param flat_chain: Normalized posterior samples, in fitable parameter order.
+        :param fitable: Free parameter metadata in chain column order.
+        :param normalization: Physical bounds for free parameters.
+        :param constrained: Constrained InitialParameter metadata.
+        :param fixed: Fixed InitialParameter metadata or physical values.
+        :param percentiles: Lower, central and upper percentiles; defaults to [16, 50, 84].
+        :returns: Constrained marginal summaries in the existing flat result format.
+        :raises ValueError: If any constraint produces nonfinite posterior values.
+        """
+        from elisa.analytics.params import parameters  # noqa: PLC0415
+
+        if not constrained:
+            return {}
+        percentiles = [16, 50, 84] if percentiles is None else percentiles
+        labels = list(fitable)
+        physical_chain = MCMCMixin.renormalize_flat_chain(flat_chain, labels, labels, normalization)
+        samples: dict[str, list[float]] = {key: [] for key in constrained}
+        for row in physical_chain:
+            model = parameters.prepare_properties_set(row, labels, constrained, fixed)
+            for key in constrained:
+                samples[key].append(model[key])
+
+        result = {}
+        for key, values in samples.items():
+            if not np.all(np.isfinite(values)):
+                msg = f"Nonfinite posterior constraint values for {key}"
+                raise ValueError(msg)
+            lower, centre, upper = np.percentile(values, percentiles)
+            result[key] = {
+                "value": float(centre),
+                "confidence_interval": {"min": float(lower), "max": float(upper)},
+                "constraint": constrained[key].constraint,
+                "unit": constrained[key].to_dict()["unit"],
+                "estimate": JOINT_POSTERIOR_PERCENTILES_ESTIMATE,
+            }
         return result
 
     @staticmethod

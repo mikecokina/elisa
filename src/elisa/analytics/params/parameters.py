@@ -490,9 +490,9 @@ def prepare_properties_set(xn: NDArray, properties: list[str] | Iterable[str], c
     :rtype: dict
     """
     kwargs = dict(zip(properties, xn, strict=True))
-    kwargs.update(constraints_evaluator(kwargs, constrained))
     fixed_values = {key: val.value if isinstance(val, InitialParameter) else val for key, val in fixed.items()}
     kwargs.update(fixed_values)
+    kwargs.update(constraints_evaluator(kwargs, constrained))
     return kwargs
 
 
@@ -570,8 +570,10 @@ def constraints_evaluator(substitution: dict, constrained: dict) -> dict:
     allowed_methods = bonds.ALLOWED_CONSTRAINT_METHODS
     constrained = constrained.copy()
 
+    # Parentheses preserve literal signs and power precedence: (-1)**2, not -1**2.
+    substitution_values = [f"({value})" for value in substitution.values()]
     subst = {
-        key: utils.str_repalce(val, substitution.keys(), substitution.values()) for key, val in constrained.items()
+        key: utils.str_repalce(val, substitution.keys(), substitution_values) for key, val in constrained.items()
     }
     numpy_callable = {key: utils.str_repalce(val, allowed_methods, numpy_methods) for key, val in subst.items()}
 

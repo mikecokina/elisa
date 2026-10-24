@@ -97,6 +97,17 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Compute constrained MCMC medians and credible intervals from complete joint
+  posterior samples in physical coordinates, preserving correlations and nonlinear
+  transformations. Include fixed dependencies through the existing constraint evaluator.
+- Preserve samplewise constrained summaries when results are saved and reloaded;
+  recompute them from retained samples after chain loading, discard, or filtering.
+- Preserve signs and power precedence when substituting negative constraint values,
+  and reject nonfinite constrained posterior results instead of dropping samples.
+- Retain full numerical precision in MCMC parameter summaries and return zero-width
+  credible intervals for constant samples without applying `log10(0)` rounding.
+  Validate required posterior-update state with explicit exceptions, including
+  when Python runs with optimization enabled.
 - Render structured MCMC traces as individual walker trajectories against retained
   ensemble steps; label flat-only inputs as flattened samples without inferring
   temporal structure. Preserve physical units and posterior summary lines.

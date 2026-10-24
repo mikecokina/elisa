@@ -545,7 +545,15 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
                 for lbl, val in self.fixed.items()
             },
         )
-        result_dict = self.eval_constrained_results(result_dict, self.constrained)
+        result_dict.update(
+            mixins.MCMCMixin.resolve_constrained_result(
+                flat_chain,
+                self.fitable,
+                self.normalization,
+                self.constrained,
+                self.fixed,
+                percentiles,
+        ))
 
         r_dict = {key: value["value"] for key, value in result_dict.items()}
         r_squared_result = self.prediction_r_squared(r_dict)
@@ -705,7 +713,16 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
                 for lbl, val in self.fixed.items()
             },
         )
-        result_dict = self.eval_constrained_results(result_dict, self.constrained)
+        result_dict.update(
+            mixins.MCMCMixin.resolve_constrained_result(
+                flat_chain,
+                self.fitable,
+                self.normalization,
+                self.constrained,
+                self.fixed,
+                percentiles,
+            ),
+        )
 
         r_squared_args: tuple[Any, ...] = (
             self.x_data_reduced,

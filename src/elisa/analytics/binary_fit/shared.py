@@ -16,6 +16,7 @@ from elisa.analytics.dataset.base import DataSet
 from elisa.analytics.models import lc as lc_model
 from elisa.analytics.models import rv as rv_model
 from elisa.analytics.params import parameters
+from elisa.analytics.params.conf import JOINT_POSTERIOR_PERCENTILES_ESTIMATE
 from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.analytics.tools.utils import (
     lightcurves_mean_error,
@@ -972,6 +973,13 @@ def eval_constraint_in_dict(input_dict: dict[str, Any]) -> dict[str, Any]:
 
     b_parameters = BinaryInitialParameters(**input_dict)
     constraints = b_parameters.get_constrained(jsonify=False)
+
+    # A marginal constrained median need not equal the constraint at marginal free medians.
+    for key in list(constraints):
+        previous = input_dict1[key]
+        if previous.get("estimate") == JOINT_POSTERIOR_PERCENTILES_ESTIMATE:
+            result_dict[key] = previous
+            del constraints[key]
 
     constrained_values = parameters.constraints_evaluator(reduced_dict, constraints)
     result_dict.update(

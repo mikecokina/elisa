@@ -11,6 +11,9 @@ from elisa.utils import jd_from_datetime
 PARAM_PARSER = "@"
 NUISANCE_PARSER = "nuisance"
 
+# Serialized identifier for constrained marginal summaries; preserve for result compatibility.
+JOINT_POSTERIOR_PERCENTILES_ESTIMATE = "marginal percentiles of joint posterior samples"
+
 COMPOSITE_FLAT_PARAMS = [
     "spot",
     "pulsation",
