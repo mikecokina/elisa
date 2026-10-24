@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 logger = getLogger(__name__)
 
 _LD_LAWS_LINEAR: Final[set[str]] = {"linear", "cosine"}
+_LD_ERROR_SAMPLE_SIZE: Final[int] = 10
 
 
 class CustomLimbDarkeningCoefficients(dict):
@@ -289,8 +290,17 @@ def interpolate_on_ld_grid(
         uvw_values_arr = np.asarray(uvw_values)
 
         if np.any(up.isnan(uvw_values_arr)):
+            invalid_indices = np.flatnonzero(np.any(up.isnan(uvw_values_arr), axis=1))
+            sample_indices = invalid_indices[:_LD_ERROR_SAMPLE_SIZE]
+            table_paths = [str(Path(source.directory) / table.filename) for table in source.tables]
             msg = (
                 "Limb darkening interpolation produced numpy.nan/None.\n"
+                f"Passband: {band}; law: {source.law}; metallicity: {metallicity!r}.\n"
+                f"Source tables: {table_paths!r}.\n"
+                f"Failed interpolation points: {invalid_indices.size} of {len(uvw_domain)}. "
+                f"First {_LD_ERROR_SAMPLE_SIZE} failing input rows (zero-based): {sample_indices.tolist()}.\n"
+                "Requested values at these rows (t_eff [K], log_g [log10(cm/s^2)]): "
+                f"{uvw_domain[sample_indices].tolist()}.\n"
                 "Some of the surface parameters (t_eff, log_g, metallicity) are probably out of range.\n"
                 "Adjust star parameters or provide custom LD coefficients via Star.limb_darkening_coefficients."
             )
