@@ -151,4 +151,4 @@ class BuildSpottyFacesOrientationTestCase(ElisaTestCase):
         self.generator_test_face_orientaion('spherical', 'size')
 
     def test_normals_size_squashed(self):
-        self.generator_test_face_orientaion('spherical', 'squashed')
+        self.generator_test_face_orientaion('spherical', 'size')

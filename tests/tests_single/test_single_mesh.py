@@ -3,12 +3,14 @@
 from tests import set_astropy_units
 
 import numpy as np
+import pytest
 
 from numpy.testing import assert_array_equal
 
 from tests import utils as testutils
 from tests.utils import ElisaTestCase, prepare_single_system
 
+from elisa.base import error
 from elisa.single_system import model
 from elisa.utils import is_empty, find_nearest_dist_3d
 from elisa import umpy as up, units as u
@@ -123,3 +125,62 @@ class MeshUtilsTestCase(ElisaTestCase):
         obtained = np.round(np.array(obtained), 3)
         assert_array_equal(expected, obtained)
 
+
+@pytest.mark.parametrize('failed_attempt', [1, 2])
+def test_single_star_spot_root_cannot_omit_spot(monkeypatch, failed_attempt):
+    from elisa.single_system.surface import mesh as single_mesh
+    single = testutils.prepare_single_system(testutils.SINGLE_SYSTEM_PARAMS['spherical'],
+                                          spots=testutils.SPOTS_META['primary'])
+    container = testutils.prepare_single_system_container(single)
+    original = single_mesh.calculate_radius
+    calls = 0
+
+    def failed_radius(*args):
+        nonlocal calls
+        calls += 1
+        return container.star.equatorial_radius * 2 if calls == failed_attempt else original(*args)
+
+    monkeypatch.setattr(single_mesh, 'calculate_radius', failed_radius)
+    with pytest.raises(error.SpotError, match='reasonable conditions'):
+        single_mesh.mesh_spots(container)
+    assert container.star.spots
+
+
+def test_single_star_spot_surface_failure_preserves_cause(monkeypatch):
+    from elisa.single_system.surface import mesh as single_mesh
+    single = testutils.prepare_single_system(testutils.SINGLE_SYSTEM_PARAMS['spherical'],
+                                          spots=testutils.SPOTS_META['primary'])
+    container = testutils.prepare_single_system_container(single)
+    failure = error.MaxIterationError('spot surface failed')
+
+    def exhausted(*args):
+        raise failure
+
+    monkeypatch.setattr(single_mesh, 'get_surface_points_radii', exhausted)
+    with pytest.raises(error.SpotError) as caught:
+        single_mesh.mesh_spots(container)
+    assert caught.value.__cause__ is failure
+    assert container.star.spots
+
+
+@pytest.mark.parametrize('failed_attempt', [1, 2])
+def test_single_spot_invalid_radius_source_keeps_spot_type_and_cause(monkeypatch, failed_attempt):
+    from elisa.single_system import radius
+    from elisa.single_system.surface import mesh as single_mesh
+    single = testutils.prepare_single_system(testutils.SINGLE_SYSTEM_PARAMS['spherical'],
+                                          spots=testutils.SPOTS_META['primary'])
+    container = testutils.prepare_single_system_container(single)
+    original = radius.fsolve
+    calls = 0
+
+    def invalid_root(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return (np.array([-1.]), {}, 1, 'wrong root') if calls == failed_attempt else original(*args, **kwargs)
+
+    monkeypatch.setattr(radius, 'fsolve', invalid_root)
+    with pytest.raises(error.SpotError, match='surface root') as caught:
+        single_mesh.mesh_spots(container)
+    assert isinstance(caught.value.__cause__, error.ElisaFloatingPointError)
+    assert 'Invalid value of radius' in str(caught.value.__cause__)
+    assert container.star.spots

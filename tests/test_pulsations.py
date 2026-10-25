@@ -2,8 +2,11 @@
 # due to stupid astropy units/constants implementation
 import os
 import os.path as op
+from decimal import Decimal
+from fractions import Fraction
 
 import numpy as np
+import pytest
 from numpy.testing import assert_almost_equal, assert_array_equal, assert_array_less
 
 from elisa import Observer, const, settings, utils
@@ -14,6 +17,7 @@ from elisa.binary_system.system import BinarySystem
 from elisa.pulse import container_ops, pulsations
 from elisa.pulse import utils as putils
 from elisa.pulse.mode import PulsationMode
+from elisa.pulse.transform import PulsationModeProperties
 from elisa.single_system.system import SingleSystem
 from tests import set_astropy_units
 from tests import utils as testutils
@@ -1758,17 +1762,6 @@ class TestPulsationModeInitialization(ElisaTestCase):
         # 1 km/s = 1000 m/s internally
         self.assertAlmostEqual(mode.amplitude, 1000.0)
 
-    def test_frequency_initialization_with_quantity(self):
-        """Test frequency initialization with astropy Quantity."""
-        mode = PulsationMode(
-            l=2,
-            m=1,
-            amplitude=1.0 * u.m / u.s,
-            frequency=16.0 / u.d,
-        )
-
-        self.assertTrue(np.isfinite(mode.frequency))
-
     def test_frequency_initialization_with_string(self):
         """Test frequency initialization with string quantity."""
         mode = PulsationMode(
@@ -1825,20 +1818,6 @@ class TestPulsationModeInitialization(ElisaTestCase):
                 amplitude=1.0 * u.m / u.s,
                 frequency=-1.0 / u.d,
             )
-
-    def test_transform_input_is_called(self):
-        """Test that transform_input is called during initialization."""
-        # transform_input should be called to convert and validate parameters
-        mode = PulsationMode(
-            l=2,
-            m=1,
-            amplitude=1.0 * u.m / u.s,
-            frequency=1.0 / u.d,
-        )
-
-        # If transform_input worked correctly, we should have valid internal units
-        self.assertTrue(np.isfinite(mode.amplitude))
-        self.assertTrue(np.isfinite(mode.frequency))
 
     def test_radial_and_horizontal_amplitude_initialization(self):
         """Test that radial and horizontal amplitude are None after init."""
@@ -1941,3 +1920,16 @@ class TestPulsationModeInitialization(ElisaTestCase):
 
         self.assertAlmostEqual(mode.temperature_amplitude_factor, temp_factor)
 
+
+@pytest.mark.parametrize('value', [-1, -1., np.int32(-2), Decimal('-1'), Fraction(-1, 1)])
+def test_degree_transform_rejects_negative_integers(value):
+    with pytest.raises(PulsationModeError, match='must be non-negative'):
+        PulsationModeProperties.l(value)
+
+
+def test_degree_zero_and_negative_azimuthal_order_remain_valid():
+    mode = {"l": 1, "m": 1, "frequency": 16., "amplitude": 50.}
+    assert PulsationModeProperties.l(0) == 0
+    assert PulsationModeProperties.m(-1) == -1
+    assert PulsationMode(**(mode | dict(l=0, m=0))).l == 0
+    assert PulsationMode(**(mode | dict(m=-1))).m == -1

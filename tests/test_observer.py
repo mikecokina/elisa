@@ -48,10 +48,10 @@ class TestPassbandContainer(ElisaTestCase):
     def test_table_setter__table(self):
         assert_frame_equal(self._bessel_v_df, self.pb.table)
 
-    def test_default_wave_to_si_mult(self):
+    def test_default_wave_unit(self):
         self.assertEqual(self.pb.wave_unit, "angstrom")
 
-    def test_default_wave_unit(self):
+    def test_default_wave_to_si_mult(self):
         self.assertEqual(self.pb.wave_to_si_mult, 1e-10)
 
     def test_bolometric_bandwidth(self):

@@ -8,10 +8,11 @@ import numpy as np
 import pytest
 
 from elisa import settings
+from elisa.base import error
 from elisa.base.error import (
     ElisaError, ElisaFloatingPointError, ElisaMaxIterationError,
     ElisaRuntimeError, ElisaValueError, MaxIterationError, PhysicalStateError,
-    PredictionAlignmentError, SpotError,
+    PredictionAlignmentError,
 )
 from elisa.base.surface import coverage, temperature
 from elisa.binary_system import radius
@@ -141,15 +142,13 @@ def test_lagrange_solver_still_skips_isolated_failed_guesses(monkeypatch):
     assert attempts > 1
 
 
-def test_binary_spot_rejects_unusable_center(monkeypatch):
-    from elisa.binary_system.container import OrbitalPositionContainer
-    from elisa.binary_system.surface import mesh
-    from elisa.const import Position
-    from tests import utils
-    binary = utils.prepare_binary_system(utils.BINARY_SYSTEM_PARAMS['detached'],
-                                         spots_primary=utils.SPOTS_META['primary'])
-    container = OrbitalPositionContainer.from_binary_system(binary, Position(0, 1., 0., 0., 0.))
-    monkeypatch.setattr(mesh, 'fsolver', lambda *args, **kwargs: (np.nan, False))
-    with pytest.raises(SpotError, match='Center of spot'):
-        mesh.mesh_spots(container, 1.0, 'primary')
-    assert container.primary.spots
+@pytest.mark.parametrize('cls', [error.PhysicalStateError, error.MorphologyError, error.SpotError,
+                                error.PulsationModeError, error.AtmosphereError, error.LimbDarkeningError,
+                                error.LimbDarkeningSourceError, error.TemperatureError,
+                                error.GravityError, error.MetallicityError])
+def test_synthesis_hierarchy_and_pickle(cls):
+    assert issubclass(cls, error.ElisaSynthesisError)
+    assert issubclass(cls, error.ElisaError)
+    assert type(pickle.loads(pickle.dumps(cls('diagnostic')))) is cls
+    assert not issubclass(error.SpotError, error.PulsationModeError)
+    assert not issubclass(error.PulsationModeError, error.SpotError)

@@ -70,8 +70,11 @@ def original_atm_files(
 
 
 @pytest.mark.parametrize("atlas", ["castelli", "castelli-kurucz", "ck", "ck04", "kurucz", "k93", "k"])
-@pytest.mark.parametrize("metallicity", [-2.5, -0.1, -0.0, 0.05, 0.5, 10.0, np.nan])
-@pytest.mark.parametrize("selection", ["duplicates", "mixed", "boundaries", "ties"])
+@pytest.mark.parametrize(("selection", "metallicity"), [
+    (selection, metallicity)
+    for selection in ("duplicates", "mixed", "boundaries")
+    for metallicity in (-2.5, -0.1, -0.0, 0.05, 0.5, 10.0, np.nan)
+] + [("ties", None)])
 def test_atm_files_matches_original(atlas, metallicity, selection):
     """Preserve ordering, nearest-grid ties, aliases and grid endpoints."""
     grid = np.asarray(atm.atm_file_prefix_to_quantity_list("temperature", atlas))

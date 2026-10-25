@@ -4,12 +4,14 @@ import os
 
 import numpy as np
 import pandas as pd
+import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 from pandas.testing import assert_frame_equal
 
 from elisa import atm, const, settings
 from elisa import umpy as up
 from elisa.atm import AtmModel
+from elisa.base import error
 from elisa.base.types import FLOAT
 from elisa.observer.passband import PassbandContainer
 from tests import set_astropy_units
@@ -685,7 +687,17 @@ class TestAtmDataContainerEdgeCases(ElisaTestCase):
         assert_array_equal(container.model.flux, np.array([1., 2., 3.]))
 
 
+def test_missing_atmosphere_source_boundary_is_domain_error(tmp_path):
+    from elisa import atm, settings
+    previous = settings.settings_serializer()
+    try:
+        settings.configure(CK04_ATM_TABLES=str(tmp_path))
+        with pytest.raises(error.AtmosphereError, match='There is no file like'):
+            atm.get_atm_table(5000., 4., 0., 'ck04')
+    finally:
+        settings.configure(**previous)
+
+
 if __name__ == "__main__":
     import unittest
     unittest.main()
-

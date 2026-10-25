@@ -3,12 +3,15 @@
 from tests import set_astropy_units
 
 import numpy as np
+import pytest
 from numpy.testing import assert_array_equal
 
 from elisa import umpy as up, const, units as u, settings
+from elisa.base import error
 from elisa.base.container import StarContainer
 from elisa.binary_system import model
 from elisa.binary_system.container import OrbitalPositionContainer
+from elisa.binary_system.surface import mesh
 from elisa.const import Position
 from elisa.utils import is_empty, find_nearest_dist_3d
 from tests import utils as testutils
@@ -355,3 +358,24 @@ class MeshUtilsTestCase(ElisaTestCase):
 
         obtained = np.round(obtained, 3)
         assert_array_equal(expected, obtained)
+
+
+def test_entire_spot_cannot_be_omitted(monkeypatch):
+    binary = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS['detached'],
+                                             spots_primary=testutils.SPOTS_META['primary'])
+    container = testutils.prepare_orbital_position_container(binary)
+    monkeypatch.setattr(mesh, 'fsolver', lambda *args, **kwargs: (np.nan, False))
+    count = len(container.primary.spots)
+    with pytest.raises(error.SpotError, match='reasonable conditions'):
+        mesh.mesh_spots(container, 1., 'primary')
+    assert len(container.primary.spots) == count
+
+
+def test_real_overcontact_spot_neck_intersection_rejected():
+    spot = dict(longitude=30., latitude=90., angular_radius=40., temperature_factor=.9)
+    binary = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS['over-contact'], spots_primary=[spot])
+    container = testutils.prepare_orbital_position_container(binary)
+    with pytest.raises(error.SpotError, match='neck') as caught:
+        container.build_mesh(components_distance=1.)
+    assert isinstance(caught.value.__cause__, (error.MaxIterationError, error.ElisaFloatingPointError))
+    assert container.primary.spots
