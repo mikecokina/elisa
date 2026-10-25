@@ -11,6 +11,9 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Added
 
+- ELISA-specific `ElisaMaxIterationError` and `ElisaFloatingPointError` exceptions
+  in `elisa.base.error`, inheriting from `MaxIterationError` and
+  `FloatingPointError` respectively so existing handlers remain compatible.
 - Public `elisa.analytics.DiscardUnit` enum with `STEPS` and `ROWS` for MCMC chain
   loading; existing string values remain supported.
 - Optional MCMC export shape and ordering metadata to restore ensemble step,
@@ -101,6 +104,15 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Raise explicit exceptions for Kepler solver nonconvergence and nonfinite
+  eccentric anomalies instead of returning `False`, which could silently become
+  a zero anomaly in orbital calculations. Preserve the original convergence
+  exception as the cause and let unexpected exceptions propagate.
+- Restore NumPy floating-point error settings after successful and failed
+  Lagrange-point candidate checks and Cartesian-to-spherical conversions using
+  scoped `np.errstate()` contexts. Restore settings before exception logging and
+  `continue` in the Lagrange-point search, preserving numerical policies and
+  successful results.
 - Compute constrained MCMC medians and credible intervals from complete joint
   posterior samples in physical coordinates, preserving correlations and nonlinear
   transformations. Include fixed dependencies through the existing constraint evaluator.
