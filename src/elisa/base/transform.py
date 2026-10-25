@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from packaging import version
 
+from elisa.base.error import ElisaValueError
 from elisa import const, settings
 from elisa import units as u
 from elisa.base.types import FLOAT, INT
@@ -151,7 +152,7 @@ class SystemProperties(TransformProperties):
 
         if not 0 <= value <= const.PI:
             msg = f"Inclination value of {value} is out of bounds (0, pi)."
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         return float(value)
 
     @staticmethod
@@ -175,7 +176,7 @@ class SystemProperties(TransformProperties):
         """Validate additional (third) light fraction in range [0, 1]."""
         if not 0.0 <= value <= 1.0:
             msg = "Invalid value of additional light. Valid values are between 0 and 1."
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         return float(value)
 
     @staticmethod
@@ -202,7 +203,7 @@ class SystemProperties(TransformProperties):
             raise TypeError(msg)
         if value <= 0:
             msg = "Invalid value of semi_major_axis, use value > 0!"
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         return float(value)
 
     @staticmethod
@@ -226,7 +227,7 @@ class SystemProperties(TransformProperties):
             raise TypeError(msg)
         if value <= 0:
             msg = "Invalid value of system's distance, use value > 0!"
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
 
         return float(value)
 
@@ -240,7 +241,7 @@ class BodyProperties(TransformProperties):
         """
         if value <= 0:
             msg = "Invalid synchronicity, use value > 0!"
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         return float(value)
 
     @staticmethod
@@ -248,7 +249,7 @@ class BodyProperties(TransformProperties):
         """Validate and transform bolometric albedo (range 0..1)."""
         if value < 0 or value > 1:
             msg = f"Parameter albedo = {value} is out of range <0, 1>"
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         return float(value)
 
     @staticmethod
@@ -266,7 +267,7 @@ class BodyProperties(TransformProperties):
         )
         if value > const.HALF_PI:
             msg = "Invalid value of alpha parameter. Use value less than 90."
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         return float(value)
 
     @staticmethod
@@ -302,7 +303,7 @@ class StarProperties(BodyProperties):
             raise TypeError(msg)
         if value <= 0:
             msg = "Invalid value of equivalent_radius, use value > 0!"
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         return float(value)
 
     @staticmethod
@@ -325,7 +326,7 @@ class StarProperties(BodyProperties):
             raise TypeError(msg)
         if value <= 0:
             msg = "Invalid mass, use value > 0!"
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         return float(value)
 
     @staticmethod
@@ -337,7 +338,7 @@ class StarProperties(BodyProperties):
         """
         if value < 0:
             msg = "Invalid surface potential, use value > 0!"
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         return float(value)
 
     @staticmethod
@@ -379,7 +380,7 @@ class StarProperties(BodyProperties):
         """Validate gravity darkening parameter in range [0, 1]."""
         if value > 1 or value < 0:
             msg = f"Parameter gravity darkening = {value} is out of range <0, 1>"
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         return float(value)
 
     @staticmethod
@@ -415,7 +416,7 @@ class StarProperties(BodyProperties):
                             f"You provided a vector with {len(ld_coeffs)} components with shape {np.shape(ld_coeffs)}."
                         )
                         msg = part1 + part2
-                        raise ValueError(msg)
+                        raise ElisaValueError(msg)
                     retval[passband] = ld_coeffs
         else:
             msg = (
@@ -469,5 +470,5 @@ class SpotProperties(BodyProperties):
         )
         if value > const.HALF_PI:
             msg = "Invalid value of alpha parameter. Use value less than 90."
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         return float(value)

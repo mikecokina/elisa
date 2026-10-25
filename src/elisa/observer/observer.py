@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from elisa.base.error import ElisaValueError
 from elisa import settings
 from elisa import umpy as up
 from elisa import units as u
@@ -326,7 +327,7 @@ class Observer:
                     "You can either produce normalized light curve or specify `flux_unit` other "
                     "than dimensionless unscaled. Change input parameters."
                 )
-                raise ValueError(msg)
+                raise ElisaValueError(msg)
         else:
             self.flux_unit = u.Unit(flux_unit) if flux_unit is not None else self.flux_unit
 
@@ -386,7 +387,7 @@ class Observer:
                 self.magnitudes = self.fluxes
             else:
                 msg = f"Unknown value for `Observer.flux_unit`: {self.flux_unit}"
-                raise ValueError(msg)
+                raise ElisaValueError(msg)
 
         logger.info("observation finished")
         return self.phases, self.fluxes
@@ -596,10 +597,10 @@ class Observer:
         )
         if not (phases_supplied or times_supplied):
             msg = f"Missing arguments.\n{message}"
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         if phases_supplied and times_supplied:
             msg = f"You specified time series in phase and time domain at once.\n{message}"
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
 
         if times_supplied:
             if is_empty(times):

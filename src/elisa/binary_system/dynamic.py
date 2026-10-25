@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
+from elisa.base.error import ElisaValueError
 from elisa import const, settings, utils
 from elisa import umpy as up
 from elisa.base.types import BOOL, FLOAT, INT
@@ -326,7 +327,7 @@ def _resolve_geometry_update(
     """
     if resolve not in {"object", "spot"}:
         message = "Invalid option for `resolve`, use `object` or `spot`."
-        raise ValueError(message)
+        raise ElisaValueError(message)
 
     if has_spots and resolve == "object":
         return np.ones(size, dtype=BOOL)

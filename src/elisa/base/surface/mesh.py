@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from elisa.base.error import ElisaValueError
 from elisa import utils
 
 if TYPE_CHECKING:
@@ -82,7 +83,7 @@ def symmetry_point_reduction(array: NDArray, base_symmetry_points_number: int) -
         raise TypeError(msg)
     if base_symmetry_points_number < 0:
         msg = "`base_symmetry_points_number` must be non-negative"
-        raise ValueError(msg)
+        raise ElisaValueError(msg)
 
     arr = np.asarray(array)
     return arr[:base_symmetry_points_number]

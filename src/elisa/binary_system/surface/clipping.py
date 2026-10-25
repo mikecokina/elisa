@@ -16,6 +16,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 from numba import njit
 
+from elisa.base.error import ElisaFloatingPointError, ElisaValueError
+
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
@@ -30,10 +32,10 @@ def _inputs(
     triangle = np.asarray(triangle, dtype=np.float64)
     if polygon.ndim != 2 or polygon.shape[1] != 2 or triangle.shape != (3, 2):
         message = "Expected polygon (n, 2) and triangle (3, 2)"
-        raise ValueError(message)
+        raise ElisaValueError(message)
     if not np.isfinite(polygon).all() or not np.isfinite(triangle).all():
         message = "Coordinates must be finite"
-        raise ValueError(message)
+        raise ElisaValueError(message)
     return polygon, triangle
 
 
@@ -41,7 +43,7 @@ def _side(point: NDArray[Float], a: NDArray[Float], direction: NDArray[Float], o
     value = orientation * (direction[0] * (point[1] - a[1]) - direction[1] * (point[0] - a[0]))
     if not np.isfinite(value):
         message = "Half-plane determinant overflow"
-        raise FloatingPointError(message)
+        raise ElisaFloatingPointError(message)
     return value
 
 
@@ -61,7 +63,7 @@ def convex_polygon_triangle_intersection_area(  # noqa: C901 - three clipping st
     determinant = triangle[1, 0] * triangle[2, 1] - triangle[1, 1] * triangle[2, 0]
     if not np.isfinite(determinant):
         message = "Triangle determinant overflow"
-        raise FloatingPointError(message)
+        raise ElisaFloatingPointError(message)
     if determinant == 0.0 or len(vertices) < 3:
         return 0.0
     orientation = 1.0 if determinant > 0.0 else -1.0
@@ -80,7 +82,7 @@ def convex_polygon_triangle_intersection_area(  # noqa: C901 - three clipping st
                 denominator = fs - fe
                 if not np.isfinite(denominator):
                     message = "Crossing denominator overflow"
-                    raise FloatingPointError(message)
+                    raise ElisaFloatingPointError(message)
                 output.append(start + (fs / denominator) * (end - start))
             if fe >= 0.0:
                 output.append(end)
@@ -92,7 +94,7 @@ def convex_polygon_triangle_intersection_area(  # noqa: C901 - three clipping st
     area = 0.5 * abs(sum(local[i - 1, 0] * local[i, 1] - local[i - 1, 1] * local[i, 0] for i in range(1, len(local))))
     if not np.isfinite(area):
         message = "Nonfinite clipping area"
-        raise FloatingPointError(message)
+        raise ElisaFloatingPointError(message)
     return area
 
 
@@ -106,7 +108,7 @@ def _compiled_area(polygon: NDArray[Float], triangle: NDArray[Float]) -> Float: 
     det = tri[1, 0] * tri[2, 1] - tri[1, 1] * tri[2, 0]
     if not np.isfinite(det):
         message = "Triangle determinant overflow"
-        raise FloatingPointError(message)
+        raise ElisaFloatingPointError(message)
     if det == 0.0:
         return 0.0
     sign = 1.0 if det > 0.0 else -1.0
@@ -125,19 +127,19 @@ def _compiled_area(polygon: NDArray[Float], triangle: NDArray[Float]) -> Float: 
         fs = sign * (dx * (sy - ay) - dy * (sx - ax))
         if not np.isfinite(fs):
             message = "Half-plane determinant overflow"
-            raise FloatingPointError(message)
+            raise ElisaFloatingPointError(message)
         count = 0
         for j in range(n):
             ex, ey = source[j, 0], source[j, 1]
             fe = sign * (dx * (ey - ay) - dy * (ex - ax))
             if not np.isfinite(fe):
                 message = "Half-plane determinant overflow"
-                raise FloatingPointError(message)
+                raise ElisaFloatingPointError(message)
             if (fs >= 0.0) != (fe >= 0.0):
                 denominator = fs - fe
                 if not np.isfinite(denominator):
                     message = "Crossing denominator overflow"
-                    raise FloatingPointError(message)
+                    raise ElisaFloatingPointError(message)
                 t = fs / denominator
                 target[count, 0] = sx + t * (ex - sx)
                 target[count, 1] = sy + t * (ey - sy)
@@ -163,7 +165,7 @@ def optimized_intersection_area(polygon: NDArray[Float], triangle: NDArray[Float
     area = _compiled_area(polygon, triangle)
     if not np.isfinite(area):
         message = "Nonfinite clipping area"
-        raise FloatingPointError(message)
+        raise ElisaFloatingPointError(message)
     return area
 
 
@@ -186,10 +188,10 @@ def intersection_areas(
     triangles = np.asarray(triangles, dtype=np.float64)
     if polygon.ndim != 2 or polygon.shape[1] != 2 or triangles.ndim != 3 or triangles.shape[1:] != (3, 2):
         message = "Expected polygon (n, 2) and triangles (m, 3, 2)"
-        raise ValueError(message)
+        raise ElisaValueError(message)
     if not np.isfinite(polygon).all() or not np.isfinite(triangles).all():
         message = "Coordinates must be finite"
-        raise ValueError(message)
+        raise ElisaValueError(message)
     areas = (
         _compiled_areas(polygon, triangles)
         if compiled
@@ -197,5 +199,5 @@ def intersection_areas(
     )
     if not np.isfinite(areas).all():
         message = "Nonfinite clipping area"
-        raise FloatingPointError(message)
+        raise ElisaFloatingPointError(message)
     return areas

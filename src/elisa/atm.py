@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 from scipy import interpolate
 
+from elisa.base.error import ElisaValueError
 from elisa import (
     const,
     ld,
@@ -802,7 +803,7 @@ def strip_atm_container_by_bandwidth(
     inplace = kwargs.get("inplace", False)
     if atm_container.is_empty():
         msg = "Atmosphere container is empty."
-        raise ValueError(msg)
+        raise ElisaValueError(msg)
 
     # evaluate whether you use argument bandwidth or global bandwidth
     # use case when use global bandwidth is in case of bolometric `filter`, where bandwidth in observer
@@ -1886,7 +1887,7 @@ def find_atm_si_multiplicators(
     for atm_container in atm_containers:
         return atm_container.flux_to_si_mult, atm_container.wave_to_si_mult
     msg = "No valid atmospheric container has been supplied to method."
-    raise ValueError(msg)
+    raise ElisaValueError(msg)
 
 
 def find_atm_defined_wavelength(

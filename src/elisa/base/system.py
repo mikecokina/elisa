@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from elisa.base.error import ElisaValueError
 from elisa import const, utils
 from elisa import units as u
 from elisa.base.body import Body
@@ -291,7 +292,7 @@ class System(metaclass=ABCMeta):
                 message = (
                     f"Mising argument(s): {', '.join(missing_kwargs)} in {component} component Star class"
                 )
-                raise ValueError(message)
+                raise ElisaValueError(message)
 
     def kwargs_serializer(self) -> dict[str, Any]:
         """Serialize system keyword arguments for re-initialisation.

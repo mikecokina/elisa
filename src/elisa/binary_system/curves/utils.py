@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from elisa.base.error import ElisaRuntimeError
 from elisa import atm, const, settings
 from elisa.base.curves.utils import get_component_limbdarkening_cfs
 from elisa.binary_system import radius as bsradius
@@ -232,7 +233,7 @@ def update_surface_params(
         )
         if prepared is None:
             message = "Surface parameter preparation unexpectedly returned None."
-            raise RuntimeError(message)
+            raise ElisaRuntimeError(message)
         normal_radiance, ld_cfs = prepared
     else:
         for component_name in settings.BINARY_COUNTERPARTS:

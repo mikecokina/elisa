@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from elisa.base.error import ElisaValueError
+
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
@@ -29,24 +31,24 @@ def _selector_to_mask(sel: NDArray[NP_BOOL_], size: int, name: str) -> tuple[np.
     if arr.dtype == bool:
         if arr.shape != (size,):
             msg = f"Boolean `{name}` mask must have length equal to `size`"
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         mask = arr
     else:
         # treat as list of indices
         if arr.ndim != 1:
             msg = f"`{name}` indices must be one-dimensional"
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         try:
             idx = arr.astype(int)
         except (TypeError, ValueError) as err:
             msg = f"`{name}` indices could not be interpreted as integers"
-            raise ValueError(msg) from err
+            raise ElisaValueError(msg) from err
         if idx.size == 0:
             mask = np.zeros(int(size), dtype=bool)
         else:
             if np.any(idx < 0) or np.any(idx >= size):
                 msg = f"Indices in `{name}` are out of bounds for size {size}"
-                raise ValueError(msg)
+                raise ElisaValueError(msg)
             mask = np.zeros(int(size), dtype=bool)
             mask[idx] = True
 
@@ -75,7 +77,7 @@ def _assign_coverage(
     else:
         if arr.ndim != 1 or arr.shape[0] != expected_count:
             msg = f"Length of `{name}_coverage` does not match number of selected {name} elements"
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         coverage[mask] = arr
 
 
@@ -126,7 +128,7 @@ def surface_area_coverage(
         raise TypeError(msg)
     if size < 0:
         msg = "`size` must be non-negative"
-        raise ValueError(msg)
+        raise ElisaValueError(msg)
 
     coverage: NDArray[np.floating] = np.zeros(int(size), dtype=float)
 
@@ -141,7 +143,7 @@ def surface_area_coverage(
         if part_count > 0:
             if partial_coverage is None:
                 msg = "`partial_coverage` must be provided when `partial` is given"
-                raise ValueError(msg)
+                raise ElisaValueError(msg)
             _assign_coverage(coverage, part_mask, partial_coverage, part_count, "partial")
 
     return coverage

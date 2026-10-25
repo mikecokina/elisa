@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from elisa.base.error import ElisaValueError
 from elisa import const, utils
 from elisa.base.surface.faces import calculate_normals, set_all_surface_centres
 from elisa.base.types import COMPLEX
@@ -46,7 +47,7 @@ def generate_harmonics(
     """
     error_msg = "Pulsations can be calculated only on flattened container."
     if not star_container.is_flat():
-        raise ValueError(error_msg)
+        raise ElisaValueError(error_msg)
 
     # Transform surface points to spherical coordinates
     coords_kwargs = {"kind": "points", "com_x": com_x}
@@ -191,7 +192,7 @@ def complex_displacement(star: StarContainer, scale: float) -> None:
     """
     error_msg = "Pulsations can be calculated only on flattened container."
     if not star.is_flat():
-        raise ValueError(error_msg)
+        raise ElisaValueError(error_msg)
 
     for mode in star.pulsations.values():
         mode.complex_displacement = kinematics.calculate_displacement_coordinates(

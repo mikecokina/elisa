@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 import numpy as np
 from scipy.spatial import Delaunay
 
+from elisa.base.error import ElisaValueError
 from elisa import const
 from elisa import umpy as up
 from elisa import units as u
@@ -191,7 +192,7 @@ def build_faces(
 
     if is_empty(components_distance):
         msg = "Value of `components_distance` was not provided."
-        raise ValueError(msg)
+        raise ElisaValueError(msg)
 
     components = bsutils.component_to_list(component)
     for component_name in components:
@@ -357,7 +358,7 @@ def detached_system_surface(
             f"{component_instance.name} do not contain any valid surface "
             "point to triangulate"
         )
-        raise ValueError(msg)
+        raise ElisaValueError(msg)
 
     # there is a problem with triangulation of near over-contact system, delaunay is not good with pointy surfaces
     critical_pot = (
@@ -435,7 +436,7 @@ def over_contact_system_surface(
             f"{component} component, with class instance name "
             f"{component_instance.name} contain any valid point to triangulate"
         )
-        raise ValueError(msg)
+        raise ElisaValueError(msg)
 
     # calculating position of the neck
     neck_x = np.max(points[:, 0]) if component == "primary" else np.min(points[:, 0])

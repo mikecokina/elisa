@@ -9,6 +9,18 @@ from __future__ import annotations
 from jsonschema import ValidationError
 
 
+class ElisaValueError(ValueError):
+    """Value error explicitly raised by ELISA, with no proposal-rejection semantics.
+
+    This origin marker covers configuration, numerical and internal contract
+    failures. It is deliberately separate from PhysicalStateError and ElisaError.
+    """
+
+
+class ElisaRuntimeError(RuntimeError):
+    """Runtime failure explicitly raised by ELISA; not a physical-state signal."""
+
+
 class PredictionAlignmentError(ValueError):
     """Synthetic prediction keys or shapes do not align with observations.
 

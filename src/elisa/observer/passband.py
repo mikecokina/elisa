@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from scipy import interpolate
 
+from elisa.base.error import ElisaValueError
 from elisa import settings
 from elisa.observer.plot import PassbandPlot
 
@@ -197,7 +198,7 @@ class PassbandContainer:
         """
         if passband not in settings.PASSBANDS:
             msg = f"Invalid or unsupported passband function: {passband}"
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         file_path = Path(settings.PASSBAND_TABLES) / f"{passband}.csv"
         # noinspection PyArgumentList
         df = pd.read_csv(file_path)

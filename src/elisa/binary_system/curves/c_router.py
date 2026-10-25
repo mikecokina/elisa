@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from elisa.base.error import ElisaValueError
 from elisa import const, settings
 from elisa.binary_system import dynamic, surface
 from elisa.binary_system.container import OrbitalPositionContainer
@@ -64,7 +65,7 @@ def resolve_curve_method(
         )
     else:
         message = "Invalid value of argument `curve`. Only `lc` and `rv` are allowed."
-        raise ValueError(message)
+        raise ElisaValueError(message)
 
     is_circular = system.eccentricity == 0
     is_eccentric = 1 > system.eccentricity > 0

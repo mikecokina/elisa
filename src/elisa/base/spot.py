@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from elisa.base.error import ElisaValueError
 from elisa import settings, utils
 from elisa import umpy as up
 from elisa import units as u
@@ -350,7 +351,7 @@ def remove_overlaped_spots_by_spot_index(
     spots_meta_str = "\n".join([str(meta) for meta in spots_meta])
     if _raise and not utils.is_empty(spot_indices_to_remove):
         msg = f"Spots {spots_meta_str} have no pointns to continue.\nPlease, specify spots wisely."
-        raise ValueError(msg)
+        raise ElisaValueError(msg)
     for spot_index in spot_indices_to_remove:
         from_container.remove_spot(spot_index)
     return from_container

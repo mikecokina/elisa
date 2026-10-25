@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Literal, TypeAlias
 import numpy as np
 from jsonschema import ValidationError, validate
 
+from elisa.base.error import ElisaValueError
 from elisa import const, settings, units
 from elisa import umpy as up
 from elisa.base.error import YouHaveNoIdeaError
@@ -196,7 +197,7 @@ def component_to_list(
         return []
 
     message = "Invalid name of the component. Use `primary`, `secondary`, `all` or `both`."
-    raise ValueError(message)
+    raise ElisaValueError(message)
 
 
 def move_sys_onpos(

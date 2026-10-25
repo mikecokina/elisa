@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from elisa.base.error import ElisaValueError
 from elisa import const
 from elisa import umpy as up
 from elisa.base.types import FLOAT
@@ -71,7 +72,7 @@ def calculate_radius(
         precalculate_fn = model.pre_calculate_for_potential_value_secondary
     else:
         message = f"Invalid value of `component` argument {component}. Expecting `primary` or `secondary`."
-        raise ValueError(message)
+        raise ElisaValueError(message)
 
     precalc_args = (
         synchronicity,
@@ -101,7 +102,7 @@ def calculate_radius(
 
     if not (0.0 < radius < 1.0):
         message = f"Invalid value of radius {solution} was calculated."
-        raise ValueError(message)
+        raise ElisaValueError(message)
 
     return radius
 

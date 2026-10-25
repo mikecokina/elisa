@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
+from elisa.base.error import ElisaValueError
 from elisa import const, utils
 from elisa import umpy as up
 from elisa.base.surface.faces import mirror_face_values, symmetry_face_reduction
@@ -496,7 +497,7 @@ class StarContainer:
         """
         if len(self.faces) == 0 or len(self.points) == 0:
             msg = "Faces or/and points of object {self.name} have not been set yet.\nRun build method first."
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         if self.symmetry_test():
             base_areas = utils.triangle_areas(self.symmetry_faces(self.faces), self.symmetry_points())
             return self.mirror_face_values(base_areas)
@@ -623,7 +624,7 @@ class StarContainer:
         """
         if self.has_spots():
             msg = "Surface symmetry is not applicable in this case"
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         return symmetry_point_reduction(self.points, self.base_symmetry_points_number)
 
     def mirror_face_values(self, values: NDArray) -> NDArray:
@@ -634,7 +635,7 @@ class StarContainer:
         """
         if not self.symmetry_test():
             msg = "Surface symmetry is not applicable in this case."
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         return mirror_face_values(values, self.face_symmetry_vector)
 
     def symmetry_faces(self, values: NDArray) -> NDArray:
@@ -645,5 +646,5 @@ class StarContainer:
         """
         if not self.symmetry_test():
             msg = "Surface symmetry is not applicable in this case."
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         return symmetry_face_reduction(values, self.base_symmetry_faces_number)

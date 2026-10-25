@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from elisa.base.error import ElisaValueError
 from elisa import const
 from elisa import umpy as up
 from elisa.base.surface import gravity as bgravity
@@ -74,7 +75,7 @@ def calculate_potential_gradient(
         )
     else:
         msg = f"Invalid value `{component}` of argument `component`.\nUse `primary` or `secondary`."
-        raise ValueError(msg)
+        raise ElisaValueError(msg)
 
     domega_dy = -points[:, 1] * (inv_r3_sum - f2_q1)
     domega_dz = -points[:, 2] * inv_r3_sum
@@ -126,7 +127,7 @@ def calculate_polar_potential_gradient_magnitude(
         )
     else:
         msg = f"Invalid value `{component}` of argument `component`.\nUse `primary` or `secondary`."
-        raise ValueError(msg)
+        raise ElisaValueError(msg)
 
     domega_dz = -points[2] * (1.0 / r3 + mass_ratio / r_hat3)
     return np.hypot(domega_dx, domega_dz)
@@ -209,7 +210,7 @@ def build_surface_gravity(
 
     if is_empty(components_distance):
         msg = "Component distance value was not supplied or is invalid."
-        raise ValueError(msg)
+        raise ElisaValueError(msg)
 
     components = bsutils.component_to_list(component)
     mass_ratio = system.mass_ratio

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Literal, TypeAlias, cast
 import numpy as np
 from scipy import optimize
 
+from elisa.base.error import ElisaValueError
 from elisa import const, settings, utils
 from elisa import umpy as up
 from elisa import units as u
@@ -517,7 +518,7 @@ class BinarySystem(System):
                 "Please specify whether you want to build your container either at given "
                 "photometric `phase` or at given `time`."
             )
-            raise ValueError(message)
+            raise ElisaValueError(message)
 
         resolved_phase = phase if time is None else utils.jd_to_phase(time, period=self.period, t0=self.t0)
         position = self.calculate_orbital_motion(
@@ -786,7 +787,7 @@ class BinarySystem(System):
         for component, instance in self.components.items():
             if component not in ("primary", "secondary"):
                 message = f"Invalid component name: {component}"
-                raise ValueError(message)
+                raise ElisaValueError(message)
 
             critical_potential = self.critical_potential(
                 component=component,
@@ -834,7 +835,7 @@ class BinarySystem(System):
             "Iteration process to solve critical potential seems to lead nowhere "
             "(critical potential solver has failed)."
         )
-        solver_err = ValueError(solver_message)
+        solver_err = ElisaValueError(solver_message)
 
         if component == "primary":
             solution = optimize.newton(model.primary_potential_derivative_x, x0=1e-6, args=args1, tol=1e-12)
@@ -853,7 +854,7 @@ class BinarySystem(System):
             raise solver_err
 
         message = "Parameter `component` has incorrect value. Use `primary` or `secondary`."
-        raise ValueError(message)
+        raise ElisaValueError(message)
 
     def libration_potentials(self) -> list[Float]:
         """Return potentials in L3, L1, and L2 respectively.
@@ -1035,7 +1036,7 @@ class BinarySystem(System):
                     args = (synchronicity, self.mass_ratio, components_distance, 0.0, angle)
                 else:
                     message = "Invalid choice of crossection plane, use only: `xy`, `yz`, `zx`."
-                    raise ValueError(message)
+                    raise ElisaValueError(message)
 
                 scipy_solver_init_value = np.array([components_distance / 10000.0])
                 aux_args = (self.mass_ratio, *fn_map[component][1](*args))
@@ -1256,7 +1257,7 @@ class BinarySystem(System):
         if distances is None:
             if phases is None:
                 message = "Either `phases` or component `distances` have to be supplied."
-                raise ValueError(message)
+                raise ElisaValueError(message)
             data = self.orbit.orbital_motion(phases)
             distances_array = np.asarray(data[:, 0], dtype=FLOAT)
         else:
@@ -1454,7 +1455,7 @@ class BinarySystem(System):
             x = np.concatenate((x_front, x_back))
         else:
             message = f"Unsupported morphology `{self.morphology}`."
-            raise ValueError(message)
+            raise ElisaValueError(message)
 
         fn_cylindrical = getattr(model, f"potential_{component}_cylindrical_fn")
         precal_cylindrical = getattr(model, f"pre_calculate_for_potential_value_{component}_cylindrical")
@@ -1550,7 +1551,7 @@ class BinarySystem(System):
             f"Unknown RV computing method `{kwargs['method']}`.\n"
             "List of available methods: [`kinematic`, `radiometric`]."
         )
-        raise ValueError(message)
+        raise ElisaValueError(message)
 
     def _compute_circular_synchronous_rv_curve(self, **kwargs: Any) -> dict[str, NDArray[np.float64]]:
         return rv.compute_circular_synchronous_rv_curve(self, **kwargs)

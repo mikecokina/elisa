@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
+from elisa.base.error import ElisaRuntimeError, ElisaValueError
 from elisa import const, opt, settings, utils
 from elisa import umpy as up
 from elisa.base.error import MaxIterationError, SpotError
@@ -738,7 +739,7 @@ def get_surface_points(
     radius = opt.newton.newton(potential_fn, x0_arr, **radius_kwargs)
     if (radius < 0.0).any():
         msg = "Solver found at least one point in the opposite direction. Check your points."
-        raise ValueError(msg)
+        raise ElisaValueError(msg)
     return utils.spherical_to_cartesian(np.column_stack((radius, phi_arr, theta_arr)))
 
 
@@ -958,10 +959,10 @@ def rebuild_mesh_detached(
 
     if is_empty(star.points):
         msg = "This function can be used only on container with already built mesh."
-        raise RuntimeError(msg)
+        raise ElisaRuntimeError(msg)
     if star.base_symmetry_points_number == 0:
         msg = "This function can be used only on symmetrical meshes."
-        raise RuntimeError(msg)
+        raise ElisaRuntimeError(msg)
 
     potential_fn = getattr(model, f"potential_{component}_fn")
     precalc_fn = getattr(model, f"pre_calculate_for_potential_value_{component}")

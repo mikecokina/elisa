@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from elisa.base.error import ElisaValueError
 from elisa import units as u
 from elisa.base.transform import (
     WHEN_FLOAT64,
@@ -46,7 +47,7 @@ class OrbitProperties(TransformProperties):
                 "Input of variable `eccentricity` is invalid or out of "
                 "boundaries."
             )
-            raise ValueError(message)
+            raise ElisaValueError(message)
 
         return np.float64(value)
 

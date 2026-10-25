@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from elisa.base.error import ElisaValueError
 from elisa.utils import is_empty
 
 if TYPE_CHECKING:
@@ -87,7 +88,7 @@ def normalize_light_curve(
         }
     else:
         msg = f"Argument `kind` = {kind} is not one of the valid arguments {valid_arguments}"
-        raise ValueError(msg)
+        raise ElisaValueError(msg)
 
     normalized_data = {key: val / coeff[key] for key, val in y_data_arrays.items()}
 
@@ -153,7 +154,7 @@ def convert_to_magnitudes(
         reference_magnitude = zero_points["reference_magnitudes"][band]
         if reference_magnitude is None:
             msg = f"Calibration reference magnitude is not available for the filter {band}"
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
 
         flux_curve = np.asarray(curve, dtype=float)
         ret_dict[band] = reference_magnitude - 2.5 * np.log10(

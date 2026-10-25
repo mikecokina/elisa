@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from elisa.base.error import ElisaValueError
 from elisa import const as c
 from elisa import settings, units, utils
 from elisa import umpy as up
@@ -246,7 +247,7 @@ class PulsationMode:
             error_msg = (
                 f"Absolute value of azimuthal order m: {self.m} cannot be higher than degree of the mode l: {self.l}."
             )
-            raise ValueError(error_msg)
+            raise ElisaValueError(error_msg)
 
     def init_properties(self, **kwargs) -> None:
         """Initialize pulsation mode properties from input keyword arguments.

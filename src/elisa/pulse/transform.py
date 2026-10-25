@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from elisa.base.error import ElisaValueError
 from elisa import const as c
 from elisa import units as u
 from elisa.base.transform import (
@@ -90,7 +91,7 @@ class PulsationModeProperties(SystemProperties):
             raise TypeError(error_msg)
         if retval < 0:
             error_msg = "Temperature amplitude of mode has to be non-negative number."
-            raise ValueError(error_msg)
+            raise ElisaValueError(error_msg)
 
         return retval
 
@@ -125,7 +126,7 @@ class PulsationModeProperties(SystemProperties):
             raise TypeError(error_msg)
         if retval < 0:
             error_msg = "Frequency of the mode has to be non-negative number."
-            raise ValueError(error_msg)
+            raise ElisaValueError(error_msg)
 
         return retval
 
@@ -170,7 +171,7 @@ class PulsationModeProperties(SystemProperties):
             error_msg = (
                 f"Value of `mode_axis_theta`: {retval} is outside bounds (0, pi)."
             )
-            raise ValueError(error_msg)
+            raise ElisaValueError(error_msg)
 
         return retval
 

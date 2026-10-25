@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from scipy import interpolate
 
+from elisa.base.error import ElisaValueError
 from elisa import const, settings, utils
 from elisa import umpy as up
 from elisa.base.error import LimbDarkeningError
@@ -235,6 +236,7 @@ def get_ld_source_interpolator(source: LDSourceIdentity) -> interpolate.LinearND
         frame_key = (source.directory, table.filename, table.revision, source.csv_columns)
         if frame_key not in buffer.LD_CFS_TABLES:
             path = Path(source.directory) / table.filename
+            # noinspection PyArgumentList
             buffer.LD_CFS_TABLES[frame_key] = pd.read_csv(path)[list(source.csv_columns)]
         frames.append(buffer.LD_CFS_TABLES[frame_key])
     buffer.reduce_buffer(buffer.LD_CFS_TABLES)
@@ -341,10 +343,10 @@ def limb_darkening_factor(
     """
     if normal_vector is None and cos_theta is None:
         msg = "Normal vector(s) was not supplied."
-        raise ValueError(msg)
+        raise ElisaValueError(msg)
     if line_of_sight is None and cos_theta is None:
         msg = "Line of sight vector(s) was not supplied."
-        raise ValueError(msg)
+        raise ElisaValueError(msg)
     if coefficients is None:
         msg = "Limb darkening coefficients were not supplied."
         raise LimbDarkeningError(msg)
@@ -448,7 +450,7 @@ def get_bolometric_ld_coefficients(
             msg = (
                 "Please add `bolometric` limb-darkening coefficients to your custom set of limb-darkening coefficients."
             )
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         bol = np.asarray(custom_ld_coefs["bolometric"], dtype=float)
         coeffs = np.tile(bol, (t_eff.shape[0], 1))
     else:

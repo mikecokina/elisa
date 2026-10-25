@@ -4,6 +4,7 @@ from typing import Any
 
 import numpy as np
 
+from elisa.base.error import ElisaValueError
 from elisa import const, units
 from elisa.base.transform import WHEN_FLOAT64, SystemProperties, quantity_transform
 from elisa.base.types import FLOAT, INT
@@ -23,7 +24,7 @@ class BinarySystemProperties(SystemProperties):
             raise TypeError(msg)
         if value < 0 or value >= 1:
             msg = "Input of variable `eccentricity` is out of boundaries [0, 1)."
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         return float(np.float64(value))
 
     @staticmethod
@@ -107,7 +108,7 @@ class RadialVelocityObserverProperties(SystemProperties):
         """
         if not value > 0:
             msg = f"Invalid value of property `mass_ratio`. Expected > 0, given {value}."
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         return float(np.float64(value))
 
     @staticmethod
@@ -132,5 +133,5 @@ class RadialVelocityObserverProperties(SystemProperties):
             raise TypeError(msg)
         if value < 0:
             msg = "Value of `asini` cannot be negative."
-            raise ValueError(msg)
+            raise ElisaValueError(msg)
         return float(value)

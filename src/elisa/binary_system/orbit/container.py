@@ -7,6 +7,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from numpy.typing import NDArray
 
+from elisa.base.error import ElisaValueError
 from elisa import umpy as up
 from elisa.base.types import FLOAT
 from elisa.logger import getLogger
@@ -188,7 +189,7 @@ class OrbitalSupplements(Sequence[tuple[NDArray[Float], NDArray[Float]]]):
             sort_column = 1
         else:
             message = "Invalid value of `by`."
-            raise ValueError(message)
+            raise ElisaValueError(message)
 
         sort_index = np.argsort(self.body[:, sort_column])
         self._body = self.body[sort_index]

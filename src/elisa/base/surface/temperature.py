@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from elisa.base.error import ElisaRuntimeError, ElisaValueError
 from elisa import settings
 from elisa import umpy as up
 from elisa.logger import getLogger
@@ -146,14 +147,14 @@ def interpolate_bolometric_gravity_darkening(temperature: Float) -> Float:
     """
     if temperature <= 0:
         msg = "Negative or zero temperature encountered"
-        raise ValueError(msg)
+        raise ElisaValueError(msg)
 
     try:
         content = Path(settings.PATH_TO_BETA).read_text()
         data = json.loads(content)
     except Exception as err:
         msg = f"Failed to read or parse gravity-darkening table: {err}"
-        raise RuntimeError(msg) from err
+        raise ElisaRuntimeError(msg) from err
 
     interp_temps = data.get("x")
     interp_betas = data.get("y")
@@ -161,7 +162,7 @@ def interpolate_bolometric_gravity_darkening(temperature: Float) -> Float:
     # basic validation of data
     if interp_temps is None or interp_betas is None:
         msg = "Gravity-darkening table is missing required keys 'x'/'y'"
-        raise RuntimeError(msg)
+        raise ElisaRuntimeError(msg)
 
     return float(
         np.interp(

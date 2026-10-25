@@ -6,6 +6,7 @@ import matplotlib.path as mpltpath
 import numpy as np
 from scipy.spatial import ConvexHull
 
+from elisa.base.error import ElisaRuntimeError, ElisaValueError
 from elisa import const, settings, utils
 from elisa import umpy as up
 from elisa.base.surface import coverage as bcoverage
@@ -42,7 +43,7 @@ def _calculate_intersection_areas(
         return intersection_areas(hull, triangles, compiled=backend == "sutherland_hodgman")
 
     message = f"Unknown intersection backend: {backend}"
-    raise ValueError(message)
+    raise ElisaValueError(message)
 
 
 def partial_visible_faces_surface_coverage(
@@ -364,7 +365,7 @@ def compute_surface_coverage(
     if in_eclipse:
         if bb_path is None:
             msg = "Boundary path should have been defined at this point, check the code logic"
-            raise RuntimeError(msg)
+            raise ElisaRuntimeError(msg)
 
         partial_coverage = partial_visible_faces_surface_coverage(
             points=undercover_object_pts_projection,

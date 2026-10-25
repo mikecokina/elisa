@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from elisa.base.error import ElisaValueError
 from elisa import const, settings
 from elisa.logger import getLogger
 from elisa.umpy import sph_harm
@@ -187,7 +188,7 @@ def assign_amplitudes(
                     "supplied in case of radial modes or in case of modes "
                     "with radial motion."
                 )
-                raise ValueError(error_msg)
+                raise ElisaValueError(error_msg)
             mode.temperature_amplitude_factor = (
                 temp_amplitude(mode) * mode.radial_amplitude / r_equiv
             )

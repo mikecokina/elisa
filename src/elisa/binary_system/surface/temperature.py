@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, TypeAlias, cast
 import numpy as np
 from numpy.typing import NDArray
 
+from elisa.base.error import ElisaValueError
 from elisa import ld, settings, utils
 from elisa import umpy as up
 from elisa.base.surface import temperature as btemperature
@@ -266,7 +267,7 @@ def apply_reflection_effect(  # noqa: C901, PLR0912, PLR0915
                 vis_sym = vis_test_symmetry[component]
                 if vis_sym is None:
                     msg = "Symmetry visibility mask is required in symmetry branch."
-                    raise ValueError(msg)
+                    raise ElisaValueError(msg)
 
                 # calculation of reflection effect correction as
                 # 1 + (c / t_effi) * sum_j(r_j * Q_ab * t_effj^4 * D(gamma_j) * areas_j)
@@ -298,7 +299,7 @@ def apply_reflection_effect(  # noqa: C901, PLR0912, PLR0915
             vis_sym = vis_test_symmetry[component]
             if vis_sym is None:
                 msg = "Symmetry visibility mask is required in symmetry branch."
-                raise ValueError(msg)
+                raise ElisaValueError(msg)
 
             # assigning new temperatures according to last iteration as
             # teff_new = teff_old * reflection_factor^0.25
@@ -589,7 +590,7 @@ def get_symmetrical_distance_matrix(
     vis_secondary_sym = vis_test_symmetry["secondary"]
     if vis_primary_sym is None or vis_secondary_sym is None:
         msg = "Symmetry visibility masks are required in symmetry branch."
-        raise ValueError(msg)
+        raise ElisaValueError(msg)
 
     # in case of symmetries, you need to calculate only minor part of distance matrix connected with base
     # symmetry part of the both surfaces
@@ -648,7 +649,7 @@ def get_symmetrical_gammma(
     vis_secondary_sym = vis_test_symmetry["secondary"]
     if vis_primary_sym is None or vis_secondary_sym is None:
         msg = "Symmetry visibility masks are required in symmetry branch."
-        raise ValueError(msg)
+        raise ElisaValueError(msg)
 
     gamma = {
         "primary": np.empty(shape=shape, dtype=FLOAT),
@@ -859,7 +860,7 @@ def interpolate_albedo(temperature: Float) -> Float:
     """
     if temperature <= 0:
         msg = "Negative temperature of the star encountered."
-        raise ValueError(msg)
+        raise ElisaValueError(msg)
 
     interp_temps, interp_a = _load_albedo_data()
     return np.interp(np.log10(temperature), interp_temps, interp_a)
