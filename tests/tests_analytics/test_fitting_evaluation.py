@@ -158,8 +158,8 @@ def malformed_rv_curves(defect: str, size: int) -> dict[str, NDArray]:
     raw = {"primary": np.ones(size), "secondary": np.ones(size)}
     if defect == "missing":
         raw.pop("primary")
-    elif defect == "unexpected":
-        raw["tertiary"] = np.ones(size)
+    elif defect == "replacement":
+        raw["tertiary"] = raw.pop("primary")
     else:
         defective_curves = {
             "column": np.ones((size, 1)),
@@ -176,7 +176,7 @@ def malformed_rv_curves(defect: str, size: int) -> dict[str, NDArray]:
 
 
 @pytest.mark.parametrize(
-    "defect", ["missing", "unexpected", "column", "row", "scalar", "short", "oversized", "nan", "inf", "negative-inf"],
+    "defect", ["missing", "replacement", "column", "row", "scalar", "short", "oversized", "nan", "inf", "negative-inf"],
 )
 def test_rv_malformed_output_propagates_through_callbacks(
     rv_fit: least_squares.CentralRadialVelocity | mcmc.CentralRadialVelocity, defect: str
@@ -202,7 +202,7 @@ def test_rv_truncated_output_is_checked_before_reducer_indexing() -> None:
         shared.map_rv_predictions(raw, coordinates, reducers)
 
 
-@pytest.mark.parametrize("defect", ["missing", "unexpected", "column", "short", "oversized"])
+@pytest.mark.parametrize("defect", ["missing", "replacement", "column", "short", "oversized"])
 def test_rv_r_squared_rejects_malformed_output(
     rv_fit: least_squares.CentralRadialVelocity | mcmc.CentralRadialVelocity, defect: str
 ) -> None:

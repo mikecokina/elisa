@@ -824,20 +824,23 @@ def map_rv_predictions(
     x_data_reduced: NDArray,
     x_data_reducer: dict[str, NDArray],
 ) -> dict[str, NDArray]:
-    """Validate raw RV curves before mapping them into observation order.
+    """Select observed RV components and map their curves into observation order.
 
     :param synthetic: Component curves on the full synthesis coordinate grid.
+        Extra components are ignored.
     :param x_data_reduced: Coordinate grid supplied to RV synthesis.
     :param x_data_reducer: Prepared component indices into that grid.
     :returns: Curves in each component's original observation order.
-    :raises PredictionAlignmentError: If components or raw curve shapes differ,
-        or raw curves contain nonfinite values.
+    :raises PredictionAlignmentError: If a required component is missing, or an
+        observed component's raw curve has the wrong shape or nonfinite values.
     """
-    if synthetic.keys() != x_data_reducer.keys():
+    if not x_data_reducer.keys() <= synthetic.keys():
         msg = "RV synthesis and observation components differ"
         raise PredictionAlignmentError(msg)
     expected_shape = np.shape(x_data_reduced)
-    for component, curve in synthetic.items():
+    predictions = {}
+    for component, reducer in x_data_reducer.items():
+        curve = synthetic[component]
         if np.shape(curve) != expected_shape:
             msg = (
                 f"RV synthetic shape for {component} must match coordinate grid "
@@ -847,7 +850,8 @@ def map_rv_predictions(
         if not np.all(np.isfinite(curve)):
             msg = f"RV synthetic values are nonfinite for {component}"
             raise PredictionAlignmentError(msg)
-    return {component: curve[x_data_reducer[component]] for component, curve in synthetic.items()}
+        predictions[component] = curve[reducer]
+    return predictions
 
 
 def rv_r_squared(synthetic: Callable[..., Any], *args: Any, **kwargs: Any) -> float:
