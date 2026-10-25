@@ -959,9 +959,8 @@ class BinarySystem(System):
 
         for x_val in xs:
             try:
-                old_settings = np.seterr(divide="raise", invalid="raise")
-                _potential_dx(round(x_val, round_to), periastron_distance)
-                np.seterr(**old_settings)
+                with np.errstate(divide="raise", invalid="raise"):
+                    _potential_dx(round(x_val, round_to), periastron_distance)
             except Exception as exc:  # noqa: BLE001
                 logger.debug("invalid value passed to potential, exception: %s", str(exc))
                 continue
