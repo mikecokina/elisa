@@ -32,6 +32,14 @@ class MaxIterationError(ElisaError):
     """Raised when an iterative solver exceeds the maximum allowed iterations."""
 
 
+class ElisaMaxIterationError(MaxIterationError):
+    """Convergence failure explicitly identified by ELISA."""
+
+
+class ElisaFloatingPointError(FloatingPointError):
+    """Floating-point failure explicitly identified by ELISA."""
+
+
 class InitialParamsError(ElisaError):
     """Raised when provided initial parameters are invalid or inconsistent."""
 

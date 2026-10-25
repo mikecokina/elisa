@@ -7,6 +7,7 @@ import scipy.optimize as _sci_opt
 
 from elisa import const, utils
 from elisa import umpy as up
+from elisa.base.error import ElisaFloatingPointError, ElisaMaxIterationError
 from elisa.base.orbit.orbit import AbstractOrbit
 from elisa.base.types import FLOAT, INT
 from elisa.binary_system.orbit.transform import OrbitProperties
@@ -299,15 +300,15 @@ class Orbit(AbstractOrbit):
         mean_anomaly, = args
         return eccentric_anomaly - self.eccentricity * up.sin(eccentric_anomaly) - mean_anomaly
 
-    def mean_anomaly_to_eccentric_anomaly(self, mean_anomaly: Float) -> Float | bool:
+    def mean_anomaly_to_eccentric_anomaly(self, mean_anomaly: Float) -> Float:
         """Solve Kepler's equation for the eccentric anomaly.
-
-        Returns the eccentric anomaly or ``False`` on failure.
 
         :param mean_anomaly: Mean anomaly in radians.
         :type mean_anomaly: elisa.types.Float
-        :returns: Eccentric anomaly or ``False`` if solver fails.
-        :rtype: elisa.types.Float | bool
+        :returns: Eccentric anomaly.
+        :rtype: elisa.types.Float
+        :raises ElisaMaxIterationError: If the solver does not converge.
+        :raises ElisaFloatingPointError: If the solver returns a nonfinite anomaly.
         """
         try:
             solution = _sci_opt.newton(
@@ -316,18 +317,22 @@ class Orbit(AbstractOrbit):
                 args=(mean_anomaly,),
                 tol=1e-10,
             )
-            if not up.isnan(solution):
-                if solution < 0:
-                    solution += const.FULL_ARC
-                return solution
-        except Exception as err:  # noqa: BLE001
-            logger.debug(
-                "scipy.optimize.newton failed to provide solution for Orbit.mean_anomaly_to_eccentric_anomaly: %s",
-                err,
+        except RuntimeError as err:
+            msg = (
+                f"Kepler solver failed to converge for eccentricity={self.eccentricity}, "
+                f"mean_anomaly={mean_anomaly}."
             )
-            return False
-        else:
-            return False
+            raise ElisaMaxIterationError(msg) from err
+
+        if not np.isfinite(solution):
+            msg = (
+                f"Kepler solver returned a nonfinite anomaly for eccentricity={self.eccentricity}, "
+                f"mean_anomaly={mean_anomaly}."
+            )
+            raise ElisaFloatingPointError(msg)
+        if solution < 0:
+            solution += const.FULL_ARC
+        return solution
 
     def eccentric_anomaly_to_mean_anomaly(self, eccentric_anomaly: Float | NDArray) -> NDArray[np.floating] | Float:
         """Return mean anomaly from eccentric anomaly using Kepler's equation.
@@ -414,8 +419,12 @@ class Orbit(AbstractOrbit):
         true_phase = self.true_phase(phase=phase, phase_shift=self.conjunctions["primary_eclipse"]["true_phase"])
 
         mean_anomaly = self.phase_to_mean_anomaly(phase=true_phase)
-        eccentric_anomaly = np.array([self.mean_anomaly_to_eccentric_anomaly(mean_anomaly=xx)
-                                      for xx in mean_anomaly])
+        eccentric_anomaly = np.array(
+            [
+                self.mean_anomaly_to_eccentric_anomaly(mean_anomaly=xx)
+                for xx in mean_anomaly
+             ],
+        )
         true_anomaly = self.eccentric_anomaly_to_true_anomaly(eccentric_anomaly=eccentric_anomaly)
         distance = self.relative_radius(true_anomaly=true_anomaly)
         azimut_angle = self.true_anomaly_to_azimuth(true_anomaly=true_anomaly)
