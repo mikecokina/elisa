@@ -192,6 +192,7 @@ class Settings(_Const):
     DEFORMATION_TOL: float
     PULSATION_MODEL: str
     MCMC_SAVE_INTERVAL: int
+    MCMC_AUTOCORR_TOL: int
     CUDA: bool
     USE_SINGLE_LD_COEFFICIENTS: bool
     USE_INTERPOLATION_APPROXIMATION: bool
@@ -240,6 +241,7 @@ class Settings(_Const):
         "DEFORMATION_TOL",
         "PULSATION_MODEL",
         "MCMC_SAVE_INTERVAL",
+        "MCMC_AUTOCORR_TOL",
         "CUDA",
         "USE_SINGLE_LD_COEFFICIENTS",
         "USE_INTERPOLATION_APPROXIMATION",
@@ -562,6 +564,9 @@ class Settings(_Const):
             )
             candidate.MCMC_SAVE_INTERVAL = parser.getint(
                 "computational", "mcmc_save_interval", fallback=candidate.MCMC_SAVE_INTERVAL,
+            )
+            candidate.MCMC_AUTOCORR_TOL = parser.getint(
+                "computational", "mcmc_autocorr_tol", fallback=candidate.MCMC_AUTOCORR_TOL,
             )
 
             candidate.CUDA = parser.getboolean("computational", "cuda", fallback=candidate.CUDA)

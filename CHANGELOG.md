@@ -11,6 +11,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Added
 
+- Configurable MCMC autocorrelation tolerance through `MCMC_AUTOCORR_TOL` or
+  `[computational].mcmc_autocorr_tol`. The default `0` disables emcee's minimum
+  chain-length reliability threshold; positive values retain rejection of
+  insufficient-length estimates.
 - ELISA-specific `ElisaMaxIterationError` and `ElisaFloatingPointError` exceptions
   in `elisa.base.error`, inheriting from `MaxIterationError` and
   `FloatingPointError` respectively so existing handlers remain compatible.

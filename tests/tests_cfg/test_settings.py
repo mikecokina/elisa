@@ -48,6 +48,7 @@ def elisa_ini(tmp_path: Path, monkeypatch):
         "MAX_SPOT_D_LONGITUDE": 0.01745329252,
         "MAX_SOLVER_ITERS": 100,
         "MCMC_SAVE_INTERVAL": 1800,
+        "MCMC_AUTOCORR_TOL": 50,
         "MAX_CURVE_DATAPOINTS": 300,
         "MIN_POINTS_IN_ECLIPSE": 10,
         "MESH_GENERATOR": "auto",
@@ -96,6 +97,7 @@ def elisa_ini(tmp_path: Path, monkeypatch):
         max_spot_d_longitude = {expected["MAX_SPOT_D_LONGITUDE"]}
         max_solver_iters = {expected["MAX_SOLVER_ITERS"]}
         mcmc_save_interval = {expected["MCMC_SAVE_INTERVAL"]}
+        mcmc_autocorr_tol = {expected["MCMC_AUTOCORR_TOL"]}
         max_curve_datapoints = {expected["MAX_CURVE_DATAPOINTS"]}
         min_points_in_eclipse = {expected["MIN_POINTS_IN_ECLIPSE"]}
         mesh_generator = {expected["MESH_GENERATOR"]}
@@ -314,6 +316,22 @@ def test_intersection_backend_defaults_to_sutherland_hodgman(elisa_ini):
     assert s.DEFAULT_SETTINGS["INTERSECTION_BACKEND"] == "sutherland_hodgman"
 
 
+@pytest.mark.parametrize("tol", [0, 50])
+def test_mcmc_autocorr_tol_configure_and_serialize(elisa_ini, tol):
+    s = import_fresh_elisa_settings()
+    s.configure(MCMC_AUTOCORR_TOL=tol)
+    assert s.MCMC_AUTOCORR_TOL == tol
+    assert s.settings_serializer()["MCMC_AUTOCORR_TOL"] == tol
+
+
+def test_mcmc_autocorr_tol_defaults_to_zero(elisa_ini):
+    ini_path, _ = elisa_ini
+    ini_path.write_text(ini_path.read_text().replace("mcmc_autocorr_tol = 50", ""))
+    s = import_fresh_elisa_settings()
+    assert s.MCMC_AUTOCORR_TOL == 0
+    assert s.DEFAULT_SETTINGS["MCMC_AUTOCORR_TOL"] == 0
+
+
 def test_singleton_effective_values_and_independent_serialization(elisa_ini):
     s = import_fresh_elisa_settings()
     assert type(s)() is s
@@ -360,6 +378,7 @@ def test_constants_services_and_unknown_fields_are_not_writable(elisa_ini, name)
     {'RV_LAMBDA_INTERVAL': (1,)}, {'RV_LAMBDA_INTERVAL': ('1', '2')},
     {'LIMB_DARKENING_LAW': 'unsupported'}, {'INTERSECTION_BACKEND': 'unsupported'},
     {'HOME': None}, {'LOG_CONFIG': 'missing-logging-policy.json'},
+    {'MCMC_AUTOCORR_TOL': 1.5}, {'MCMC_AUTOCORR_TOL': True},
 ])
 @pytest.mark.parametrize('invalid_first', [True, False])
 def test_invalid_first_or_second_argument_never_publishes(elisa_ini, bad, invalid_first):

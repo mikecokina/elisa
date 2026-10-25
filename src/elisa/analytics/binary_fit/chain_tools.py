@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from emcee.autocorr import AutocorrError, function_1d, integrated_time
 
+from elisa import settings
+
 if TYPE_CHECKING:
     from emcee import EnsembleSampler
     from numpy.typing import NDArray
@@ -175,7 +177,12 @@ def parameter_autocorrelation(parameter: NDArray[np.float64]) -> tuple[NDArray[n
     functions = np.mean([function_1d(walker) for walker in parameter.T], axis=0)
     try:
         # A 3D input keeps emcee 3.x's step/walker/parameter interpretation explicit.
-        tau = float(integrated_time(parameter[:, :, None])[0])
+        tau = float(
+            integrated_time(
+                parameter[:, :, None],
+                tol=settings.MCMC_AUTOCORR_TOL,
+            )[0],
+        )
     except AutocorrError:
         return functions, np.nan
     return functions, tau if np.isfinite(tau) and tau > 0 else np.nan
