@@ -68,6 +68,10 @@ class LimbDarkeningError(ElisaError):
     """Raised for limb-darkening related issues (parsing / validation)."""
 
 
+class LimbDarkeningSourceError(LimbDarkeningError):
+    """Raised when a required limb-darkening source table is unavailable."""
+
+
 class MetallicityError(ElisaError):
     """Raised when metallicity-related validation fails."""
 

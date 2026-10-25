@@ -4,9 +4,9 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from elisa.base.error import ElisaValueError
 from elisa import const
 from elisa import umpy as up
+from elisa.base.error import ElisaFloatingPointError, ElisaValueError
 from elisa.base.types import FLOAT
 from elisa.binary_system import model
 from elisa.opt.fsolver import fsolve
@@ -60,8 +60,8 @@ def calculate_radius(
     :type theta: Float
     :return: Radius in the requested direction.
     :rtype: Float
-    :raises ValueError: If ``component`` is invalid or if the computed radius
-        is outside the accepted range.
+    :raises ValueError: If ``component`` is invalid.
+    :raises ElisaFloatingPointError: If the computed radius is outside the accepted range.
     """
     if component == "primary":
         potential_fn = model.potential_primary_fn
@@ -102,7 +102,7 @@ def calculate_radius(
 
     if not (0.0 < radius < 1.0):
         message = f"Invalid value of radius {solution} was calculated."
-        raise ElisaValueError(message)
+        raise ElisaFloatingPointError(message)
 
     return radius
 

@@ -19,6 +19,7 @@ from numpy.testing import assert_allclose, assert_array_equal
 from numpy.typing import NDArray
 from scipy.interpolate import interp1d
 
+from elisa.base.error import PhysicalStateError
 from elisa import const
 from elisa.analytics import SamplingMethod
 from elisa.analytics.binary_fit import least_squares, mcmc, shared
@@ -253,7 +254,7 @@ def test_missing_error_scalar_noise_model(threshold: int) -> None:
 def test_invalid_physical_synthesis_retains_penalties() -> None:
     fits = prepare_lc_fits({V: LC_PHASES})
     for fit in fits:
-        fit.fixed["system@eccentricity"].value = 1.1
+        fit.fixed["primary@surface_potential"].value = 0.1
         xn = np.asarray(p.vector_normalizer(fit.initial_vector, fit.fitable.keys(), fit.normalization))
         if isinstance(fit, least_squares.LightCurveFit):
             penalty = fit.model_to_fit(xn)
@@ -262,11 +263,9 @@ def test_invalid_physical_synthesis_retains_penalties() -> None:
             assert_allclose(np.dot(penalty, penalty), const.MAX_USABLE_FLOAT, rtol=2e-15)
         else:
             fit.norm_init_vector, fit.sigmas = xn, np.full(len(xn), np.nan)
-            with pytest.raises(ValueError):
+            with pytest.raises(PhysicalStateError):
                 fit.likelihood(xn)
-            # Mutated fixed input is not a current fitted physical proposal.
-            with pytest.raises(ValueError):
-                fit.ln_probability(xn)
+            assert fit.ln_probability(xn) == -np.inf
 
 
 def test_jd_period_epoch_changes() -> None:

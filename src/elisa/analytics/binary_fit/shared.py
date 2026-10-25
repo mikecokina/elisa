@@ -7,7 +7,6 @@ import numpy as np
 
 from elisa import settings, units
 from elisa.analytics.binary_fit.lc_prediction import (
-    LCSynthesisError,
     predict_light_curves,
     validate_observations,
 )
@@ -440,6 +439,7 @@ class AbstractRVFit(AbstractFit):
             msg = "RV datasets must be keyed by primary or secondary"
             raise ValueError(msg)
         super().set_up(x0, data, passband=None, **kwargs)
+        validate_observations(self.x_data_reduced, self.y_data, self.x_data_reducer, self.x_data, self.y_err)
 
     # noinspection PyUnusedLocal
     def coefficient_of_determination(
@@ -566,10 +566,7 @@ class AbstractLCFit(AbstractFit):
         :return: Coefficient of determination for observation-point predictions.
         :raises PredictionAlignmentError: If dynamic synthesis alignment is invalid.
         """
-        try:
-            synthetic = self.predict_light_curves(model_parameters)
-        except LCSynthesisError as exc:
-            raise exc.__cause__ from exc
+        synthetic = self.predict_light_curves(model_parameters)
         return r_squared(synthetic, self.y_data)
 
     def predict_light_curves(self, model_parameters: dict[str, Any], **kwargs: Any) -> dict:
@@ -584,8 +581,7 @@ class AbstractLCFit(AbstractFit):
         :param kwargs: Optional prediction arguments, such as a synthesis callable.
         :return: Per-band mean-normalized flux arrays in observation order.
         :raises PredictionAlignmentError: If dynamic prediction alignment is invalid.
-        :raises LCSynthesisError: If physical synthesis raises ValueError,
-            RuntimeError or TypeError, retaining the original cause.
+        Synthesis exceptions propagate unchanged.
         """
         return predict_light_curves(
             self.x_data_reduced,
@@ -808,13 +804,10 @@ def lc_r_squared(
 
     observer = Observer(passband=passband, system=None)
     observer.system_cls = cls
-    try:
-        synthetic_result = predict_light_curves(
-            x_data_reduced, y_data, x_data_reducer, discretization, observer,
-            interp_treshold, kwargs, fit_xs=fit_xs, x_data=x_data, synthesis=synthetic,
-        )
-    except LCSynthesisError as exc:
-        raise exc.__cause__ from exc
+    synthetic_result = predict_light_curves(
+        x_data_reduced, y_data, x_data_reducer, discretization, observer,
+        interp_treshold, kwargs, fit_xs=fit_xs, x_data=x_data, synthesis=synthetic,
+    )
 
     return r_squared(synthetic_result, y_data)
 

@@ -263,7 +263,7 @@ def test_robust_rv_loss_acts_on_each_standardized_observation() -> None:
 def test_lc_invalid_penalty_has_fixed_length_and_finite_linear_cost(science_settings: None) -> None:
     fit = prepare_lc_fits({V: LC_PHASES, B: [0.25]})[0]
     xn = normalized(fit)
-    fit.fixed["system@eccentricity"].value = 1.1
+    fit.fixed["primary@surface_potential"].value = 0.1
     residuals = fit.model_to_fit(xn)
     assert residuals.shape == (9,)
     assert np.all(np.isfinite(residuals))

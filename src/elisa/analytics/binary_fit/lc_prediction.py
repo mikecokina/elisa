@@ -33,15 +33,6 @@ if TYPE_CHECKING:
 _MIN_CUBIC_SUPPORT = 4
 
 
-class LCSynthesisError(Exception):
-    """Wrap a ValueError, RuntimeError or TypeError from physical synthesis.
-
-    The original exception is retained as ``__cause__``. LS applies its existing
-    synthesis penalty; MCMC and R² restore the original exception for their
-    existing handling. Alignment errors outside synthesis are not wrapped.
-    """
-
-
 def _fail(message: str) -> NoReturn:
     """Raise a structural prediction error with the supplied diagnostic.
 
@@ -52,8 +43,12 @@ def _fail(message: str) -> NoReturn:
 
 
 def _validate_band(
-    band: str, xs: NDArray, observed: Any, reducer: Any,
-    x_data: dict | None, y_err: dict | None,
+        band: str,
+        xs: NDArray,
+        observed: Any,
+        reducer: Any,
+        x_data: dict | None,
+        y_err: dict | None,
 ) -> NDArray:
     """Validate one passband's inverse coordinate map and uncertainty shape.
 
@@ -89,8 +84,11 @@ def _validate_band(
 
 
 def validate_observations(
-    xs: NDArray, y_data: dict, x_data_reducer: dict,
-    x_data: dict | None, y_err: dict | None,
+        xs: NDArray,
+        y_data: dict,
+        x_data_reducer: dict,
+        x_data: dict | None,
+        y_err: dict | None,
 ) -> dict:
     """Validate shared observation coordinates and all per-passband reducers.
 
@@ -118,7 +116,11 @@ def validate_observations(
     }
 
 
-def _synthesis_support(phases: NDArray, interp_treshold: int, fit_xs: NDArray | None) -> NDArray:
+def _synthesis_support(
+        phases: NDArray,
+        interp_treshold: int,
+        fit_xs: NDArray | None,
+) -> NDArray:
     """Select prepared support or the common direct/uniform fallback grid.
 
     Prepared uniform, adaptive or manual support is already in orbital phases
@@ -146,13 +148,21 @@ def _synthesis_support(phases: NDArray, interp_treshold: int, fit_xs: NDArray | 
 
 
 def predict_light_curves(
-    x_data_reduced: NDArray, y_data: dict, x_data_reducer: dict,
-    discretization: float, observer: Observer, interp_treshold: int,
-    model_parameters: dict, *, fit_xs: NDArray | None = None,
-    x_data: dict | None = None, y_err: dict | None = None,
-    atmosphere_model: dict | None = None, limb_darkening_coefficients: dict | None = None,
-    synthesis: Callable[..., dict] = lc.synthetic_binary,
-    _validated_reducers: dict | None = None,
+        x_data_reduced: NDArray,
+        y_data: dict,
+        x_data_reducer: dict,
+        discretization: float,
+        observer: Observer,
+        interp_treshold: int,
+        model_parameters: dict,
+        *,
+        fit_xs: NDArray | None = None,
+        x_data: dict | None = None,
+        y_err: dict | None = None,
+        atmosphere_model: dict | None = None,
+        limb_darkening_coefficients: dict | None = None,
+        synthesis: Callable[..., dict] = lc.synthetic_binary,
+        _validated_reducers: dict | None = None,
 ) -> dict[str, NDArray]:
     """Synthesize, map to each band's observations, then normalize by its mean.
 
@@ -198,9 +208,7 @@ def predict_light_curves(
         support or returned synthesis arrays do not align or contain nonfinite
         values. Callers must let this structural error escape physical-state
         penalty handlers.
-    :raises LCSynthesisError: If synthesis raises ValueError, RuntimeError or
-        TypeError; the original exception is retained as __cause__. Other
-        synthesis exceptions propagate unchanged.
+    Synthesis exceptions propagate unchanged to the caller.
     """
     xs = np.asarray(x_data_reduced)
     reducers = (
@@ -220,12 +228,7 @@ def predict_light_curves(
         kwargs, atmosphere_model=atmosphere_model,
         limb_darkening_coefficients=limb_darkening_coefficients,
     )
-    try:
-        raw = synthesis(support, discretization, observer, **kwargs)
-    except PredictionAlignmentError:
-        raise
-    except (ValueError, RuntimeError, TypeError) as exc:
-        raise LCSynthesisError(str(exc)) from exc
+    raw = synthesis(support, discretization, observer, **kwargs)
     if raw.keys() != y_data.keys():
         _fail("LC synthesis and observation passbands differ")
     predictions = {}

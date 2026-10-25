@@ -6,13 +6,12 @@ from typing import TYPE_CHECKING, Literal, TypeAlias, cast
 import numpy as np
 from scipy import optimize
 
-from elisa.base.error import ElisaValueError
 from elisa import const, settings, utils
 from elisa import umpy as up
 from elisa import units as u
 from elisa.base.container import SystemPropertiesContainer
 from elisa.base.curves import utils as rv_utils
-from elisa.base.error import MorphologyError
+from elisa.base.error import ElisaFloatingPointError, ElisaValueError, MorphologyError
 from elisa.base.star import Star
 from elisa.base.system import System
 from elisa.base.types import FLOAT
@@ -827,7 +826,8 @@ class BinarySystem(System):
         :type synchronicity: Float
         :return: Critical potential.
         :rtype: Float
-        :raises ValueError: If the solver fails or ``component`` is invalid.
+        :raises ValueError: If ``component`` is invalid.
+        :raises ElisaFloatingPointError: If the solver returns NaN.
         """
         args1 = (synchronicity, mass_ratio, components_distance)
         args2 = (*args1, 0.0, const.HALF_PI)
@@ -835,7 +835,7 @@ class BinarySystem(System):
             "Iteration process to solve critical potential seems to lead nowhere "
             "(critical potential solver has failed)."
         )
-        solver_err = ElisaValueError(solver_message)
+        solver_err = ElisaFloatingPointError(solver_message)
 
         if component == "primary":
             solution = optimize.newton(model.primary_potential_derivative_x, x0=1e-6, args=args1, tol=1e-12)

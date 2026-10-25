@@ -12,7 +12,7 @@ from numpy.testing import assert_allclose, assert_array_equal
 from numpy.typing import NDArray
 
 from elisa import settings
-from elisa.analytics.binary_fit.lc_prediction import LCSynthesisError, PredictionAlignmentError
+from elisa.analytics.binary_fit.lc_prediction import PredictionAlignmentError
 from elisa.analytics.binary_fit.mcmc import CentralRadialVelocity, DetachedLightCurveFit, MCMCFit
 from elisa.analytics.params import parameters as p
 from elisa.base.error import ElisaError, MorphologyError, PhysicalStateError
@@ -205,15 +205,13 @@ def test_real_rv_prior_preparation_constraints_and_ensemble() -> None:
     assert "system@mass_ratio" not in fit.fitable
 
 
-def test_lc_wrapped_programming_error_is_not_physical_rejection() -> None:
+def test_lc_programming_error_is_not_physical_rejection() -> None:
     fit = DetachedLightCurveFit()
     lc_setup(fit, {V: make_lc(errors=[0.1] * 3)})
     fit.prepare_priors()
     original = ValueError("bad input structure")
-    wrapped = LCSynthesisError("wrapped")
-    wrapped.__cause__ = original
     with (
-        patch.object(fit, "predict_light_curves", side_effect=wrapped),
+        patch.object(fit, "predict_light_curves", side_effect=original),
         pytest.raises(ValueError, match="bad input structure"),
     ):
         fit.ln_probability(fit.norm_init_vector)

@@ -7,7 +7,7 @@ from copy import deepcopy
 from typing import Any
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import NDArray
 
 from elisa import const
 from elisa import units as u
@@ -115,8 +115,8 @@ def lc_setup(fit: AbstractLCFit, data: dict[str, LCData]) -> None:
 
 
 def make_lc(
-    values: ArrayLike = (2.0, 4.0, 3.0),
-    errors: ArrayLike | None = None,
+    values: NDArray = (2.0, 4.0, 3.0),
+    errors: NDArray | None = None,
     *,
     y_unit: AstropyUnit = u.dimensionless_unscaled,
     reference_magnitude: float | None = None,
@@ -146,14 +146,14 @@ def lc_parameters(standard: bool = False) -> tuple[dict[str, Any], dict[str, Any
     return cfg, flat
 
 
-def synthesize_lc(xs: ArrayLike, bands: Iterable[str], physical: dict[str, Any]) -> dict[str, NDArray[np.float64]]:
+def synthesize_lc(xs: NDArray, bands: Iterable[str], physical: dict[str, Any]) -> dict[str, NDArray[np.float64]]:
     obs = Observer(passband=list(bands), system=None)
     obs.system_cls = BinarySystem
     return lc.synthetic_binary(np.asarray(xs), 10.0, obs, **physical)
 
 
 def prepare_lc_fits(
-    grids: Mapping[str, ArrayLike],
+    grids: Mapping[str, NDArray],
     threshold: int = 100,
     samples: SamplingMethod | str | list[float] | NDArray = SamplingMethod.UNIFORM,
     *,
@@ -164,7 +164,7 @@ def prepare_lc_fits(
     free_noise: bool = False,
     missing_errors: bool = False,
 ) -> tuple[least_squares.DetachedLightCurveFit, mcmc.DetachedLightCurveFit]:
-    cfg, physical = lc_parameters(standard)
+    cfg, _physical = lc_parameters(standard)
     if jd:
         cfg["system"]["primary_minimum_time"] = {"value": 2450000.0, "fixed": True}
     if free_noise:
@@ -172,7 +172,7 @@ def prepare_lc_fits(
     data = {}
     for band, xs in grids.items():
         xs = np.asarray(xs)
-        raw = synthesize_lc(xs, [band], physical)[band]
+        raw = synthesize_lc(xs, [band], _physical)[band]
         data[band] = LCData(
             x_data=2450000.0 + 3 * np.asarray(xs) if jd else np.asarray(xs),
             y_data=raw * (1 + 0.002 * np.arange(len(xs))),

@@ -68,18 +68,18 @@ def test_static_physical_range_check_retains_message():
 
 def test_radius_domain_failure_retains_message(monkeypatch):
     monkeypatch.setattr(radius, 'fsolve', lambda *a, **k: (np.array([-0.5]), {}, 1, 'unused'))
-    with pytest.raises(ValueError, match=r'Invalid value of radius \[-0.5\] was calculated\.') as caught:
+    with pytest.raises(ElisaFloatingPointError, match=r'Invalid value of radius \[-0.5\] was calculated\.') as caught:
         radius.calculate_radius(1.0, 1.0, 4.0, 'primary', 1.0, 0.0, 0.0)
-    assert type(caught.value) is ElisaValueError
+    assert type(caught.value) is ElisaFloatingPointError
 
 
 @pytest.mark.parametrize('component', ['primary', 'secondary'])
 def test_critical_potential_nan_is_explicit_elisa_failure(monkeypatch, component):
     monkeypatch.setattr('elisa.binary_system.system.optimize.newton', lambda *a, **k: np.nan)
-    with pytest.raises(ValueError, match='critical potential solver has failed') as caught:
+    with pytest.raises(ElisaFloatingPointError, match='critical potential solver has failed') as caught:
         # noinspection PyTypeChecker
         BinarySystem.critical_potential_static(component, 1.0, 1.0, 1.0)
-    assert type(caught.value) is ElisaValueError
+    assert type(caught.value) is ElisaFloatingPointError
 
 
 @pytest.mark.parametrize('error_type', [ValueError, RuntimeError, FloatingPointError])
@@ -120,3 +120,34 @@ def test_clipping_overflow_retains_floating_point_catch(kernel):
         with pytest.raises(FloatingPointError, match='Triangle determinant overflow') as caught:
             kernel(polygon, triangle)
     assert type(caught.value) is ElisaFloatingPointError
+
+
+def test_lagrange_solver_still_skips_isolated_failed_guesses(monkeypatch):
+    from elisa.binary_system import system
+    baseline = BinarySystem.lagrangian_points_static(1.0, 0.7)
+    original = system.fsolve
+    attempts = 0
+
+    def isolated_failure(*args, **kwargs):
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise RuntimeError('isolated Lagrange guess failure')
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(system, 'fsolve', isolated_failure)
+    np.testing.assert_allclose(BinarySystem.lagrangian_points_static(1.0, 0.7), baseline)
+    assert attempts > 1
+
+
+def test_binary_spot_still_omits_unusable_center(monkeypatch):
+    from elisa.binary_system.container import OrbitalPositionContainer
+    from elisa.binary_system.surface import mesh
+    from elisa.const import Position
+    from tests import utils
+    binary = utils.prepare_binary_system(utils.BINARY_SYSTEM_PARAMS['detached'],
+                                         spots_primary=utils.SPOTS_META['primary'])
+    container = OrbitalPositionContainer.from_binary_system(binary, Position(0, 1., 0., 0., 0.))
+    monkeypatch.setattr(mesh, 'fsolver', lambda *args, **kwargs: (np.nan, False))
+    mesh.mesh_spots(container, 1.0, 'primary')
+    assert not container.primary.spots

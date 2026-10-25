@@ -167,7 +167,9 @@ def test_acf_values_mapping_units_and_no_mutation() -> None:
 
 
 @pytest.mark.parametrize("constant", [False, True])
-def test_unavailable_acf_annotations(constant) -> None:
+def test_unavailable_acf_annotations(constant, monkeypatch) -> None:
+    from elisa import settings
+    monkeypatch.setattr(settings, "MCMC_AUTOCORR_TOL", 50)
     chain = np.broadcast_to(np.arange(8.0)[:, None, None], (8, 3, 2)).copy()
     if constant:
         chain[:, 1, 0] = 1

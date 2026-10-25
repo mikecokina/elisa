@@ -9,7 +9,7 @@ import numpy as np
 from scipy.optimize import least_squares
 
 from elisa import const, settings
-from elisa.analytics.binary_fit.lc_prediction import LCSynthesisError
+from elisa.analytics.binary_fit.failure_policy import SYNTHESIS_FAILURES
 from elisa.analytics.binary_fit.sampling import SamplingMethod
 from elisa.analytics.binary_fit.shared import (
     AbstractLCFit,
@@ -34,6 +34,12 @@ if TYPE_CHECKING:
     from elisa.types import Float
 
 logger = getPersistentLogger(__name__)
+
+def _warn(e: Exception) -> None:
+    """Log exception as a warning if warnings are not suppressed."""
+    if not settings.SUPPRESS_WARNINGS:
+        error_msg = f"lsqrt hit invalid parameters, exception: {e!s}"
+        logger.warning(error_msg)
 
 
 def logger_decorator(*, suppress_logger: bool = False) -> Any:
@@ -131,8 +137,10 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
         )
         try:
             synthetic = self.predict_light_curves(kwargs, synthesis=_log_decorator(lc_model.synthetic_binary))
-        except LCSynthesisError:
-            logger.exception("Invalid binary system during fitting")
+        except SYNTHESIS_FAILURES as e:
+            # Only the shared policy's types/subclasses become proposal penalties.
+            # Other exceptions escape this callback and abort least-squares fitting.
+            _warn(e)
             count = sum(self.num_of_points.values())
             return np.full(count, np.sqrt(const.MAX_USABLE_FLOAT / count))
 
@@ -346,9 +354,16 @@ class CentralRadialVelocity(AbstractRVFit):
             dictionary insertion order. Its squared norm is the actual chi².
         :raises PredictionAlignmentError: If raw RV components or shapes do not match the synthesis grid.
         """
-        synthetic: dict[str, NDArray] = self.prepare_synthetic(xn)
+        try:
+            synthetic: dict[str, NDArray] = self.prepare_synthetic(xn)
+        except SYNTHESIS_FAILURES as e:
+            # Only the shared policy's types/subclasses become proposal penalties.
+            # Other exceptions escape this callback and abort least-squares fitting.
+            _warn(e)
+            count = sum(self.num_of_points.values())
+            return np.full(count, np.sqrt(const.MAX_USABLE_FLOAT / count))
         synthetic = map_rv_predictions(synthetic, self.x_data_reduced, self.x_data_reducer)
-        return cost_fns.standardized_residuals(self.y_data, self.y_err, synthetic)
+        return cost_fns.standardized_residuals(self.y_data, self.y_err, synthetic, validate=False)
 
     def fit(
         self,

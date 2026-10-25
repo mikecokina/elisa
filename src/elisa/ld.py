@@ -9,10 +9,9 @@ import numpy as np
 import pandas as pd
 from scipy import interpolate
 
-from elisa.base.error import ElisaValueError
 from elisa import const, settings, utils
 from elisa import umpy as up
-from elisa.base.error import LimbDarkeningError
+from elisa.base.error import ElisaValueError, LimbDarkeningError, LimbDarkeningSourceError
 from elisa.buffer import buffer
 from elisa.logger import getLogger
 
@@ -201,7 +200,7 @@ def get_ld_source_identities(
             path = Path(directory) / name
             if not path.is_file():
                 msg = f"There is no file like {path}."
-                raise FileNotFoundError(msg)
+                raise LimbDarkeningSourceError(msg)
             revision = path.stat()
             tables.append(LDTableIdentity(
                 filename=name,

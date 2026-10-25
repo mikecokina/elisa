@@ -11,6 +11,9 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Added
 
+- `LimbDarkeningSourceError`, a `LimbDarkeningError` subclass raised directly
+  when a required limb-darkening source table is missing, including bolometric
+  tables used by reflection-effect synthesis.
 - Configurable MCMC autocorrelation tolerance through `MCMC_AUTOCORR_TOL` or
   `[computational].mcmc_autocorr_tol`. The default `0` disables emcee's minimum
   chain-length reliability threshold; positive values retain rejection of
@@ -45,6 +48,9 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Changed
 
+- Rename the internal least-squares fitting module from
+  `elisa.analytics.binary_fit.least_squares` to `elisa.analytics.binary_fit.lsqrt`.
+- Log expected LSQ synthesis failures as warnings, respecting `SUPPRESS_WARNINGS`.
 - Remove redundant bolometric passband construction during binary surface
   preparation by passing passband names directly to limb-darkening calculations.
   Preserve array-identical coefficients and light curves, custom/table-based
@@ -108,6 +114,16 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Apply one explicit synthesis-failure policy to LC/RV least-squares and MCMC
+  fitting. Expected physical, convergence, numerical, spot, atmosphere, and
+  limb-darkening failures reject the current proposal: LSQ returns the existing
+  fixed-length residual penalty `sqrt(MAX_USABLE_FLOAT / N)`, while MCMC returns
+  `-np.inf`. Missing ATM/LD tables follow the same policy without resource preflight.
+- Propagate unexpected programming and statistical arithmetic errors instead of
+  converting them into rejected proposals. Remove the broad `LCSynthesisError`
+  wrapper, preserve typed numerical failures through spot synthesis, and keep
+  existing local recovery, prediction checks, Gaussian likelihood, and prior
+  behavior. Validate RV observation reducers during setup.
 - Raise explicit exceptions for Kepler solver nonconvergence and nonfinite
   eccentric anomalies instead of returning `False`, which could silently become
   a zero anomaly in orbital calculations. Preserve the original convergence

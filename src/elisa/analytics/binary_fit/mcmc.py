@@ -8,7 +8,7 @@ import numpy as np
 
 from elisa import settings
 from elisa.analytics.binary_fit import mixins
-from elisa.analytics.binary_fit.lc_prediction import LCSynthesisError
+from elisa.analytics.binary_fit.failure_policy import SYNTHESIS_FAILURES
 from elisa.analytics.binary_fit.sampling import SamplingMethod
 from elisa.analytics.binary_fit.shared import (
     AbstractFit,
@@ -166,12 +166,16 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
             return -np.inf
         try:
             likelihood = self.likelihood(xn)
-        except PhysicalStateError as e:
+        except SYNTHESIS_FAILURES as e:
+            # Only the shared policy's types/subclasses reject this proposal.
+            # Other exceptions escape the sampler and abort the fit.
             if not settings.SUPPRESS_WARNINGS:
                 error_msg = f"mcmc hit invalid parameters, exception: {e!s}"
                 logger.warning(error_msg)
             return -np.inf
         if not np.isfinite(likelihood):
+            # Fatal statistical failure, not an expected synthesis rejection.
+            # Keep the native type, consistent with errors raised inside likelihood().
             msg = "Nonfinite likelihood without an explicit physical exclusion"
             raise FloatingPointError(msg)
         return prior + likelihood
@@ -250,6 +254,8 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
             if name not in positive and name != "eccentricity":
                 continue
             if not np.isfinite(value):
+                # Expose invalid numerical input/constraints; do not classify this
+                # as an ElisaFloatingPointError that the proposal handler rejects.
                 msg = f"Nonfinite physical parameter: {key}"
                 raise FloatingPointError(msg)
             if name in positive and value <= 0:
@@ -431,12 +437,7 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
             self.fixed,
         )
         self.validate_current_physical_parameters(kwargs)
-        try:
-            synthetic = self.predict_light_curves(kwargs)
-        except LCSynthesisError as exc:
-            if exc.__cause__ is None:
-                raise
-            raise exc.__cause__ from exc
+        synthetic = self.predict_light_curves(kwargs)
 
         ln_f_key = f"{NUISANCE_PARSER}{PARAM_PARSER}ln_f"
         ln_f: Float = parameters.prepare_nuisance_properties_set(xn_renorm, self.fitable, self.fixed)[ln_f_key]

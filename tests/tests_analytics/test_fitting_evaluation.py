@@ -19,7 +19,17 @@ from elisa.analytics.binary_fit import lc_prediction, least_squares, mcmc, share
 from elisa.analytics.binary_fit.shared import AbstractFit
 from elisa.analytics.models import cost_fns, rv
 from elisa.analytics.params import parameters
-from elisa.base.error import PhysicalStateError, PredictionAlignmentError
+from elisa.base.error import (
+    PhysicalStateError, PredictionAlignmentError, MorphologyError, MaxIterationError,
+    ElisaMaxIterationError, ElisaFloatingPointError, SpotError, AtmosphereError,
+    LimbDarkeningError, LimbDarkeningSourceError, TemperatureError, MetallicityError, GravityError,
+    ElisaValueError, ElisaRuntimeError, ElisaError,
+)
+
+EXPECTED_FAILURES = [PhysicalStateError, MorphologyError, MaxIterationError,
+                     ElisaMaxIterationError, ElisaFloatingPointError, SpotError,
+                     AtmosphereError, LimbDarkeningError, LimbDarkeningSourceError, TemperatureError, MetallicityError, GravityError]
+
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from tests.tests_analytics.fitting_helpers import (
     LC_PHASES,
@@ -306,21 +316,50 @@ def test_alignment_error_keeps_legacy_import_and_value_error_compatibility() -> 
     assert not issubclass(PredictionAlignmentError, PhysicalStateError)
 
 
-def test_lc_other_synthesis_value_errors_keep_existing_handling(
-    lc_fit: least_squares.DetachedLightCurveFit | mcmc.DetachedLightCurveFit,
-) -> None:
+@pytest.mark.parametrize("error_type", [ValueError, RuntimeError, TypeError, FloatingPointError,
+                                      KeyError, AttributeError, ElisaValueError, ElisaRuntimeError, ElisaError])
+def test_lc_unexpected_synthesis_errors_propagate(lc_fit, error_type):
+    error = error_type("unexpected synthesis error")
     def invalid_synthesis(*args, **kwargs):
-        raise ValueError("invalid physical synthesis")
+        raise error
+    with use_lc_synthesis(lc_fit, invalid_synthesis), pytest.raises(error_type) as caught:
+        evaluate_fit(lc_fit)
+    assert caught.value is error
 
+
+@pytest.mark.parametrize("error_type", EXPECTED_FAILURES)
+def test_lc_expected_synthesis_failures_reject_proposal(lc_fit, error_type):
+    def invalid_synthesis(*args, **kwargs):
+        raise error_type("unsuccessful synthesis")
     with use_lc_synthesis(lc_fit, invalid_synthesis):
-        if isinstance(lc_fit, mcmc.MCMCFit):
-            with pytest.raises(ValueError, match="invalid physical synthesis"):
-                lc_fit.ln_probability(normalized(lc_fit))
-        else:
-            residuals = lc_fit.model_to_fit(normalized(lc_fit))
-            assert residuals.shape == (3,)
-            assert np.all(np.isfinite(residuals))
-            assert_allclose(np.dot(residuals, residuals), const.MAX_USABLE_FLOAT, rtol=2e-15)
+        assert_rejected(lc_fit)
+
+
+@pytest.mark.parametrize("error_type", EXPECTED_FAILURES)
+def test_rv_expected_synthesis_failures_reject_proposal(rv_fit, error_type):
+    with patch.object(rv, "central_rv_synthetic", side_effect=error_type("unsuccessful synthesis")):
+        assert_rejected(rv_fit)
+
+
+@pytest.mark.parametrize("error_type", [ValueError, RuntimeError, TypeError, FloatingPointError,
+                                      KeyError, AttributeError, ElisaValueError, ElisaRuntimeError, ElisaError])
+def test_rv_unexpected_synthesis_errors_propagate(rv_fit, error_type):
+    error = error_type("unexpected synthesis error")
+    with patch.object(rv, "central_rv_synthetic", side_effect=error), pytest.raises(error_type) as caught:
+        evaluate_fit(rv_fit)
+    assert caught.value is error
+
+
+def assert_rejected(fit):
+    actual = evaluate_fit(fit)
+    if isinstance(fit, mcmc.MCMCFit):
+        assert actual == -np.inf
+    else:
+        count = sum(fit.num_of_points.values())
+        assert actual.shape == (count,)
+        assert np.all(np.isfinite(actual))
+        assert_allclose(actual, np.full(count, np.sqrt(const.MAX_USABLE_FLOAT / count)), rtol=0)
+        assert_allclose(np.dot(actual, actual), const.MAX_USABLE_FLOAT, rtol=2e-15)
 
 
 def test_lc_mcmc_still_rejects_explicit_physical_exclusions() -> None:
@@ -372,3 +411,90 @@ def test_mcmc_unrepresentable_likelihood_propagates_with_finite_predictions(kind
             fit.likelihood(xn)
         with pytest.raises(FloatingPointError, match="Gaussian log density is not representable"):
             fit.ln_probability(xn)
+
+
+@pytest.mark.parametrize("failure", ["convergence", "nan", "inf"])
+def test_real_lc_kepler_failure_reaches_fitting_policy(lc_fit, failure):
+    from elisa.binary_system.orbit.orbit import Orbit, _sci_opt
+    original = Orbit.mean_anomaly_to_eccentric_anomaly
+
+    def failed_kepler(self, mean_anomaly):
+        options = {"side_effect": RuntimeError("Failed to converge")} if failure == "convergence" else {
+            "return_value": float(failure)
+        }
+        with patch.object(_sci_opt, "newton", **options):
+            return original(self, mean_anomaly)
+
+    with patch.object(Orbit, "mean_anomaly_to_eccentric_anomaly", new=failed_kepler):
+        assert_rejected(lc_fit)
+
+
+@pytest.mark.parametrize("failure", ["convergence", "nan", "inf"])
+def test_real_rv_kepler_failure_reaches_fitting_policy(rv_fit, failure):
+    from elisa.binary_system.orbit.orbit import _sci_opt
+    options = {"side_effect": RuntimeError("Failed to converge")} if failure == "convergence" else {
+        "return_value": float(failure)
+    }
+    with patch.object(_sci_opt, "newton", **options):
+        assert_rejected(rv_fit)
+
+
+@pytest.mark.parametrize("missing_band,reflection", [(V, False), (V, True), ("bolometric", True)])
+def test_real_lc_missing_ld_tables_reject_proposal(lc_fit, tmp_path, science_settings, missing_band, reflection):
+    from pathlib import Path
+    from shutil import copyfile
+    from elisa import ld, settings
+
+    # Keep the other source available to distinguish passband synthesis from
+    # bolometric interpolation inside reflection, with reflection enabled in both.
+    for band in (V, "bolometric"):
+        if band != missing_band:
+            for name in set(ld.get_relevant_ld_tables(band, 0.0)):
+                copyfile(Path(settings.LD_TABLES) / name, tmp_path / name)
+    missing_path = tmp_path / ld.get_relevant_ld_tables(missing_band, 0.0)[0]
+    with settings.override(LD_TABLES=str(tmp_path), REFLECTION_EFFECT=reflection):
+        with pytest.raises(LimbDarkeningSourceError) as caught:
+            lc_fit.predict_light_curves(physical(lc_fit))
+        assert type(caught.value) is LimbDarkeningSourceError
+        assert str(caught.value) == f"There is no file like {missing_path}."
+        assert caught.value.__cause__ is None
+        assert_rejected(lc_fit)
+
+
+@pytest.mark.parametrize("reflection", [True, False])
+def test_unrelated_ld_file_errors_propagate_through_synthesis(lc_fit, science_settings, reflection):
+    from elisa import ld, settings
+
+    error = FileNotFoundError("unrelated file disappeared")
+    target = "get_bolometric_ld_coefficients" if reflection else "get_ld_source_identities"
+    with settings.override(REFLECTION_EFFECT=reflection), patch.object(ld, target, side_effect=error):
+        with pytest.raises(FileNotFoundError) as caught:
+            evaluate_fit(lc_fit)
+    assert caught.value is error
+
+
+@pytest.mark.parametrize("error_type", [ElisaFloatingPointError, MaxIterationError, ValueError, TypeError, RuntimeError])
+def test_binary_spot_wrapper_preserves_failure_classification(lc_fit, error_type):
+    from elisa.binary_system.container import OrbitalPositionContainer
+    from elisa.binary_system.surface import mesh
+    from elisa.const import Position
+    from tests import utils
+    binary = utils.prepare_binary_system(utils.BINARY_SYSTEM_PARAMS["detached"],
+                                         spots_primary=utils.SPOTS_META["primary"])
+    container = OrbitalPositionContainer.from_binary_system(binary, Position(0, 1., 0., 0., 0.))
+    error = error_type("surface failure")
+
+    def spot_synthesis(*args, **kwargs):
+        mesh.mesh_spots(container, 1.0, "primary")
+        raise AssertionError("spot failure should propagate")
+
+    with patch.object(mesh, "get_surface_points", side_effect=error), use_lc_synthesis(lc_fit, spot_synthesis):
+        if error_type in (ElisaFloatingPointError, MaxIterationError):
+            with pytest.raises(SpotError) as caught:
+                spot_synthesis()
+            assert caught.value.__cause__ is error
+            assert_rejected(lc_fit)
+        else:
+            with pytest.raises(error_type) as caught:
+                evaluate_fit(lc_fit)
+            assert caught.value is error

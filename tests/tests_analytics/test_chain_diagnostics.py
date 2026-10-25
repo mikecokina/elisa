@@ -53,7 +53,9 @@ def test_flattening_correlated_walkers_gives_wrong_answer(correlated: NDArray[np
 
 
 @pytest.mark.parametrize("length", [1, 2, 8, 20])
-def test_insufficient_chain_is_unavailable(length: int) -> None:
+def test_insufficient_chain_is_unavailable(length: int, monkeypatch) -> None:
+    from elisa import settings
+    monkeypatch.setattr(settings, "MCMC_AUTOCORR_TOL", 50)
     # Smooth short trajectory has far fewer than 50 autocorrelation times.
     chain = np.broadcast_to(np.arange(length)[:, None, None], (length, 4, 2))
     _, tau = chains.ensemble_autocorrelation(chain)

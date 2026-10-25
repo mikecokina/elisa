@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING, TypeAlias, cast
 import numpy as np
 from numpy.typing import NDArray
 
-from elisa.base.error import ElisaValueError
 from elisa import ld, settings, utils
 from elisa import umpy as up
+from elisa.base.error import ElisaValueError
 from elisa.base.surface import temperature as btemperature
 from elisa.base.surface.temperature import renormalize_temperatures
 from elisa.base.types import FLOAT

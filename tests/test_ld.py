@@ -18,7 +18,7 @@ from pandas.testing import assert_frame_equal
 from elisa import const, ld, utils
 from elisa import settings
 from elisa.base.curves import utils as curve_utils
-from elisa.base.error import LimbDarkeningError
+from elisa.base.error import LimbDarkeningError, LimbDarkeningSourceError
 from tests.utils import ElisaTestCase
 
 set_astropy_units()
@@ -260,7 +260,7 @@ def test_unrounded_griddata_equivalence(ld_sources, monkeypatch, law, metal, ban
 
 @pytest.mark.parametrize('defect, error', [('outside', LimbDarkeningError), ('query_nan', LimbDarkeningError),
     ('value_nan', LimbDarkeningError), ('domain_nan', ValueError), ('degenerate', QhullError),
-    ('missing_column', KeyError), ('missing_file', FileNotFoundError)])
+    ('missing_column', KeyError), ('missing_file', LimbDarkeningSourceError)])
 def test_interpolation_errors(ld_sources, defect, error):
     path = ld_sources / ld.get_ld_table_filename('bolometric', 0.)
     frame = pd.read_csv(path)
@@ -634,7 +634,7 @@ def test_factor_bitwise_and_input_ownership(law, layout, dtype):
 def test_factor_errors_preserve_inputs(law):
     mu = np.array([[0., -.2], [.3, 1.]])
     before = mu.tobytes()
-    from elisa.base.error import LimbDarkeningError
+    from elisa.base.error import LimbDarkeningError, LimbDarkeningSourceError
     if law in LAWS:
         with pytest.raises(LimbDarkeningError, match='coefficients were not supplied'):
             ld.limb_darkening_factor(cos_theta=mu, limb_darkening_law=law)
@@ -653,3 +653,32 @@ def test_factor_vector_route(law):
     result = ld.limb_darkening_factor(normal_vector=normals, line_of_sight=los,
                                     coefficients=coeff, limb_darkening_law=law)
     assert result.tobytes() == expected.tobytes()
+
+
+@pytest.mark.parametrize("band", ["bolometric", "rv_band", "Generic.Bessell.V"])
+def test_missing_source_lookup_has_domain_error_and_original_diagnostic(ld_sources, band):
+    source_band = "bolometric" if band == "rv_band" else band
+    path = ld_sources / ld.get_ld_table_filename(source_band, 0.0)
+    path.unlink()
+    with pytest.raises(LimbDarkeningSourceError) as caught:
+        ld.get_ld_source_identities(0.0, (band,))
+    assert type(caught.value) is LimbDarkeningSourceError
+    assert str(caught.value) == f"There is no file like {path}."
+
+
+def test_source_error_inherits_existing_fitting_policy():
+    from elisa.analytics.binary_fit.failure_policy import SYNTHESIS_FAILURES
+    assert issubclass(LimbDarkeningSourceError, LimbDarkeningError)
+    assert LimbDarkeningError in SYNTHESIS_FAILURES
+    assert isinstance(LimbDarkeningSourceError("missing table"), SYNTHESIS_FAILURES)
+
+
+@pytest.mark.parametrize("lookup", [ld.get_ld_table, ld.get_ld_table_by_name])
+def test_standalone_table_loaders_keep_file_not_found_errors(ld_sources, lookup):
+    name = ld.get_ld_table_filename("bolometric", 0.0)
+    (ld_sources / name).unlink()
+    with pytest.raises(FileNotFoundError):
+        if lookup is ld.get_ld_table:
+            lookup("bolometric", 0.0)
+        else:
+            lookup(name)
