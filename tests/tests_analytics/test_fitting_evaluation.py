@@ -12,7 +12,6 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 from numpy.typing import NDArray
-from scipy.optimize import least_squares as solve
 
 from elisa import const
 from elisa import units as u
@@ -58,33 +57,6 @@ def test_configured_fit_survives_multiprocessing_pickle(science_settings: None, 
     restored = pickle.loads(pickle.dumps(fit))
     assert_allclose(evaluate_fit(restored), expected, rtol=2e-14, atol=1e-8)
     assert physical(restored)["system@period"] == 3.0
-
-
-@pytest.mark.parametrize(("kind", "defect"), [
-    pytest.param("rv", "nan", id="nan-rv"),
-    pytest.param("lc", "inf", id="inf-lc"),
-    pytest.param("rv", "inf", id="inf-rv"),
-])
-def test_nonfinite_synthesis_output_is_rejected(science_settings: None, kind: str, defect: str) -> None:
-    if kind == "lc":
-        fit = prepare_lc_fits({V: LC_PHASES})[0]
-        raw = {V: np.ones(len(fit.x_data_reduced))}
-        key = V
-    else:
-        config, data = rv_problem()
-        fit = least_squares.CentralRadialVelocity()
-        fit.set_up(parameters.BinaryInitialParameters(**config), data, observer_system_cls=RadialVelocitySystem)
-        raw = {component: np.ones(len(fit.x_data_reduced)) for component in data}
-        key = "primary"
-    # Retain the existing numerical regressions for a separate finite-value policy.
-    raw[key][-1] = np.nan if defect == "nan" else np.inf
-
-    with pytest.raises(lc_prediction.PredictionAlignmentError):
-        if isinstance(fit, least_squares.LightCurveFit):
-            fit.predict_light_curves(physical(fit), synthesis=lambda *args, **kwargs: raw)
-        else:
-            with patch.object(rv, "central_rv_synthetic", return_value=raw):
-                fit.central_rv_model_to_fit(normalized(fit))
 
 
 def test_dynamic_rv_ephemeris_matches_safe_standalone_forward_model() -> None:
@@ -162,6 +134,9 @@ def use_lc_synthesis(
         pytest.param({V: np.array(1.0)}, id="scalar"),
         pytest.param({V: np.ones(2)}, id="short"),
         pytest.param({V: np.ones(4)}, id="oversized"),
+        pytest.param({V: np.array([1.0, 1.0, np.nan])}, id="nan"),
+        pytest.param({V: np.array([1.0, 1.0, np.inf])}, id="inf"),
+        pytest.param({V: np.array([1.0, 1.0, -np.inf])}, id="negative-inf"),
     ],
 )
 def test_lc_malformed_output_propagates_through_callbacks(
@@ -186,18 +161,23 @@ def malformed_rv_curves(defect: str, size: int) -> dict[str, NDArray]:
     elif defect == "unexpected":
         raw["tertiary"] = np.ones(size)
     else:
-        shapes = {
+        defective_curves = {
             "column": np.ones((size, 1)),
             "row": np.ones((1, size)),
             "scalar": np.array(1.0),
             "short": np.ones(size - 1),
             "oversized": np.ones(size + 1),
+            "nan": np.append(np.ones(size - 1), np.nan),
+            "inf": np.append(np.ones(size - 1), np.inf),
+            "negative-inf": np.append(np.ones(size - 1), -np.inf),
         }
-        raw["primary"] = shapes[defect]
+        raw["primary"] = defective_curves[defect]
     return raw
 
 
-@pytest.mark.parametrize("defect", ["missing", "unexpected", "column", "row", "scalar", "short", "oversized"])
+@pytest.mark.parametrize(
+    "defect", ["missing", "unexpected", "column", "row", "scalar", "short", "oversized", "nan", "inf", "negative-inf"],
+)
 def test_rv_malformed_output_propagates_through_callbacks(
     rv_fit: least_squares.CentralRadialVelocity | mcmc.CentralRadialVelocity, defect: str
 ) -> None:
@@ -368,14 +348,27 @@ def test_rv_mcmc_still_rejects_explicit_physical_exclusions() -> None:
         assert rv_fit.ln_probability(normalized(rv_fit)) == -np.inf
 
 
-def test_lc_nan_predictions_fail_numerically(
-    lc_fit: least_squares.DetachedLightCurveFit | mcmc.DetachedLightCurveFit,
-) -> None:
-    raw = {V: np.array([1.0, 1.0, np.nan])}
-    with use_lc_synthesis(lc_fit, lambda *args, **kwargs: raw):
-        if isinstance(lc_fit, mcmc.MCMCFit):
-            with pytest.raises(FloatingPointError, match="Nonfinite likelihood"):
-                lc_fit.ln_probability(normalized(lc_fit))
-        else:
-            with pytest.raises(ValueError, match="Residuals are not finite"):
-                solve(lc_fit.model_to_fit, normalized(lc_fit), bounds=(0, 1))
+@pytest.mark.parametrize("kind", ["lc", "rv"])
+def test_mcmc_unrepresentable_likelihood_propagates_with_finite_predictions(kind: str) -> None:
+    fit: mcmc.DetachedLightCurveFit | mcmc.CentralRadialVelocity
+    if kind == "lc":
+        fit = mcmc.DetachedLightCurveFit()
+        lc_setup(fit, {V: make_lc(errors=[0.1, 0.1, 0.1])})
+        raw = {V: np.ones(len(fit.x_data_reduced))}
+        synthesis = use_lc_synthesis(fit, lambda *args, **kwargs: raw)
+    else:
+        config, data = rv_problem()
+        fit = mcmc.CentralRadialVelocity()
+        fit.set_up(parameters.BinaryInitialParameters(**config), data, observer_system_cls=RadialVelocitySystem)
+        raw = {component: np.ones(len(fit.x_data_reduced)) for component in data}
+        synthesis = patch.object(rv, "central_rv_synthetic", return_value=raw)
+    # Finite inputs reach the real Gaussian calculation, but its total log
+    # normalization exceeds float64 range for multiple observations.
+    fit.fixed["nuisance@ln_f"].value = 1e308
+    fit.prepare_priors()
+    xn = normalized(fit)
+    with synthesis:
+        with pytest.raises(FloatingPointError, match="Gaussian log density is not representable"):
+            fit.likelihood(xn)
+        with pytest.raises(FloatingPointError, match="Gaussian log density is not representable"):
+            fit.ln_probability(xn)
