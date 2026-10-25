@@ -830,7 +830,8 @@ def map_rv_predictions(
     :param x_data_reduced: Coordinate grid supplied to RV synthesis.
     :param x_data_reducer: Prepared component indices into that grid.
     :returns: Curves in each component's original observation order.
-    :raises PredictionAlignmentError: If components or raw curve shapes differ.
+    :raises PredictionAlignmentError: If components or raw curve shapes differ,
+        or raw curves contain nonfinite values.
     """
     if synthetic.keys() != x_data_reducer.keys():
         msg = "RV synthesis and observation components differ"
@@ -842,6 +843,9 @@ def map_rv_predictions(
                 f"RV synthetic shape for {component} must match coordinate grid "
                 f"{expected_shape}, got {np.shape(curve)}"
             )
+            raise PredictionAlignmentError(msg)
+        if not np.all(np.isfinite(curve)):
+            msg = f"RV synthetic values are nonfinite for {component}"
             raise PredictionAlignmentError(msg)
     return {component: curve[x_data_reducer[component]] for component, curve in synthetic.items()}
 

@@ -195,8 +195,9 @@ def predict_light_curves(
         prepared observations require fitter.validate_observations() or set_up().
     :return: Per-band mean-normalized predictions at the observation points.
     :raises PredictionAlignmentError: If observations, reducers, interpolation
-        support or returned synthesis arrays do not align. Callers must let
-        this structural error escape physical-state penalty handlers.
+        support or returned synthesis arrays do not align or contain nonfinite
+        values. Callers must let this structural error escape physical-state
+        penalty handlers.
     :raises LCSynthesisError: If synthesis raises ValueError, RuntimeError or
         TypeError; the original exception is retained as __cause__. Other
         synthesis exceptions propagate unchanged.
@@ -232,6 +233,8 @@ def predict_light_curves(
         curve = np.asarray(raw_curve)
         if curve.shape != support.shape:
             _fail(f"LC synthetic length differs from support for {band}")
+        if not np.all(np.isfinite(curve)):
+            _fail(f"LC synthetic values are nonfinite for {band}")
         predictions[band] = (
             interp1d(support, curve, kind="cubic")(phases[reducers[band]])
             if interpolate else curve[reducers[band]]
