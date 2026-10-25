@@ -5,7 +5,7 @@ import multiprocessing
 import os
 import subprocess
 import sys
-from types import SimpleNamespace
+from types import MethodType, SimpleNamespace
 from unittest.mock import patch
 
 import numpy as np
@@ -80,27 +80,47 @@ def test_observations_and_summaries_use_fork():
 
 @pytest.mark.parametrize("workers", [1, 2])
 @requires_fork
-def test_mcmc_sampling_with_real_emcee(workers):
+def test_mcmc_sampling_with_real_emcee(workers: int) -> None:
     # Exercise production _fit/worker with a small analytic likelihood, not mocked sampling.
     fit = SimpleNamespace(
-        initial_vector=[0.37], fitable={"x": None}, normalization={"x": (0.0, 1.0)},
-        normalized_sigma=lambda vector: np.full(vector.shape, np.nan),
+        initial_vector=[3.7],
+        fitable={"x": SimpleNamespace(sigma=None)},
+        fixed={},
+        normalization={"x": (0.0, 10.0)},
+        validate_physical_parameters=MCMCFit.validate_physical_parameters,
         generate_initial_states=MCMCFit.generate_initial_states,
-        ln_probability=_probability, worker=MCMCMixin.worker,
+        ln_probability=_probability,
+        worker=MCMCMixin.worker,
     )
-    with patch.object(settings, "NUMBER_OF_MCMC_PROCESSES", workers), \
-            patch.object(settings, "REFLECTION_EFFECT_ITERATIONS", 37), \
-            patch("elisa.analytics.binary_fit.mcmc.get_mp_context", wraps=mp_manager.get_mp_context) as context:
-        sampler = MCMCFit._fit(fit, nwalkers=4, ndim=1, nsteps=3, nsteps_burn_in=1,
-                              p0=np.array([[0.2], [0.4], [0.6], [0.8]]))
+    # Use real preparation: _fit needs normalized coordinates and prior widths,
+    # not just a prepare_priors stub that leaves those attributes unset.
+    fit.normalized_sigma = MethodType(MCMCFit.normalized_sigma, fit)
+    fit.prepare_priors = MethodType(MCMCFit.prepare_priors, fit)
+    with (
+        patch.object(settings, "NUMBER_OF_MCMC_PROCESSES", workers),
+        patch.object(settings, "REFLECTION_EFFECT_ITERATIONS", 37),
+        patch("elisa.analytics.binary_fit.mcmc.get_mp_context", wraps=mp_manager.get_mp_context) as context,
+    ):
+        sampler = MCMCFit._fit(  # noqa: SLF001 - exercise the production sampling entry point
+            fit,
+            nwalkers=4,
+            ndim=1,
+            nsteps=3,
+            nsteps_burn_in=1,
+            p0=np.array([[0.2], [0.4], [0.6], [0.8]]),
+        )
     if workers > 1:
         context.assert_called_once_with()
     else:
         context.assert_not_called()
+    np.testing.assert_allclose(fit.norm_init_vector, [0.37])
+    np.testing.assert_array_equal(fit.sigmas, [np.nan])
+    assert fit.last_sampler is sampler
+    assert fit.last_normalization == fit.normalization
     assert sampler.get_chain().shape == (3, 4, 1)
     np.testing.assert_allclose(sampler.get_log_prob(), -np.sum((sampler.get_chain() - 0.37) ** 2, axis=2))
     if workers > 1:
-        assert sampler.pool._ctx.get_start_method() == "fork"
+        assert sampler.pool._ctx.get_start_method() == "fork"  # noqa: SLF001 - verify the actual pool context
     else:
         assert sampler.pool is None
 
