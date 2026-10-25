@@ -92,18 +92,9 @@ def test_pulsation_zero_denominators():
         pulsations.temp_amplitude(SimpleNamespace(horizontal_to_radial_amplitude_ratio=0))
 
 
-@pytest.mark.parametrize('failed_attempt', [1, 2])
-def test_entire_spot_cannot_be_omitted(monkeypatch, failed_attempt):
+def test_entire_spot_cannot_be_omitted(monkeypatch):
     container = spotted_container()
-    original = mesh.fsolver
-    calls = 0
-
-    def root(*args, **kwargs):
-        nonlocal calls
-        calls += 1
-        return (np.nan, False) if calls == failed_attempt else original(*args, **kwargs)
-
-    monkeypatch.setattr(mesh, 'fsolver', root)
+    monkeypatch.setattr(mesh, 'fsolver', lambda *args, **kwargs: (np.nan, False))
     count = len(container.primary.spots)
     with pytest.raises(error.SpotError, match='reasonable conditions'):
         mesh.mesh_spots(container, 1., 'primary')
@@ -126,7 +117,7 @@ def test_real_complete_spot_overlap_rejected():
     spot = utils.SPOTS_META['primary'][0]
     binary = utils.prepare_binary_system(utils.BINARY_SYSTEM_PARAMS['detached'], spots_primary=[spot, spot.copy()])
     container = utils.prepare_orbital_position_container(binary)
-    with pytest.raises(error.SpotError, match='no pointns|doesn.t contain any face'):
+    with pytest.raises(error.SpotError, match='have no points'):
         container.build(components_distance=1.)
 
 

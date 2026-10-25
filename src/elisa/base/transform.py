@@ -444,12 +444,16 @@ class SpotProperties(BodyProperties):
     @staticmethod
     def angular_radius(value: Any) -> Float:
         """Convert spot angular radius to internal units."""
-        return deg_transform(
+        value = deg_transform(
             value,
             u.DefaultSpotUnits.angular_radius,
             WHEN_FLOAT64,
             u.DefaultSpotInputUnits.angular_radius,
         )
+        if value <= 0:
+            msg = "Spot angular radius must be strictly positive."
+            raise SpotError(msg)
+        return value
 
     @staticmethod
     def temperature_factor(value: Any) -> Float:
@@ -468,6 +472,9 @@ class SpotProperties(BodyProperties):
             WHEN_FLOAT64,
             u.DefaultSpotInputUnits.discretization_factor,
         )
+        if value <= 0:
+            msg = "Spot discretization factor must be strictly positive."
+            raise SpotError(msg)
         if value > const.HALF_PI:
             msg = "Invalid value of alpha parameter. Use value less than 90."
             raise SpotError(msg)
