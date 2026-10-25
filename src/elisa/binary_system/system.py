@@ -45,7 +45,7 @@ NUM_LAGRANGE_POINTS = 5
 MAXIMAL_RADIUS_BOUNDARY = 30.0
 
 
-class BinarySystem(System):
+class BinarySystem(System[Star]):
     """Store and calculate properties of a binary system.
 
     Child class of :class:`elisa.base.system.System`.
@@ -131,7 +131,7 @@ class BinarySystem(System):
             gravity_darkening=1.0,
             discretization_factor=5,
             albedo=0.6,
-            metallicity=0.0,
+            metallicity=0.0
         )
 
         secondary = Star(
@@ -141,7 +141,7 @@ class BinarySystem(System):
             t_eff=8000 * u.K,
             gravity_darkening=1.0,
             albedo=0.6,
-            metallicity=0,
+            metallicity=0.0
         )
 
         bs = BinarySystem(
@@ -154,7 +154,7 @@ class BinarySystem(System):
             inclination=85 * u.deg,
             primary_minimum_time=2440000.00000 * u.d,
             phase_shift=0.0,
-            distance=162 * u.pc,
+            distance=162 * u.pc
         )
 
     It can also be initialized by using the
@@ -252,7 +252,7 @@ class BinarySystem(System):
 
         self.primary = primary
         self.secondary = secondary
-        self._components: dict[str, Star] = {"primary": self.primary, "secondary": self.secondary}
+        self._components = {"primary": self.primary, "secondary": self.secondary}
 
         self.orbit: Orbit | None = None
         self.period: Float = np.nan
@@ -838,16 +838,22 @@ class BinarySystem(System):
         solver_err = ElisaFloatingPointError(solver_message)
 
         if component == "primary":
-            solution = optimize.newton(model.primary_potential_derivative_x, x0=1e-6, args=args1, tol=1e-12)
-            if not up.isnan(solution):
+            solution, result = optimize.newton(
+                model.primary_potential_derivative_x, x0=1e-6, args=args1, tol=1e-12,
+                full_output=True, disp=False,
+            )
+            if result.converged and np.isfinite(solution):
                 precalc_args = model.pre_calculate_for_potential_value_primary(*args2)
                 args = (mass_ratio, *precalc_args)
                 return abs(model.potential_value_primary(solution, *args))
             raise solver_err
 
         if component == "secondary":
-            solution = optimize.newton(model.secondary_potential_derivative_x, x0=1e-6, args=args1, tol=1e-12)
-            if not up.isnan(solution):
+            solution, result = optimize.newton(
+                model.secondary_potential_derivative_x, x0=1e-6, args=args1, tol=1e-12,
+                full_output=True, disp=False,
+            )
+            if result.converged and np.isfinite(solution):
                 precalc_args = model.pre_calculate_for_potential_value_secondary(*args2)
                 args = (mass_ratio, *precalc_args)
                 return abs(model.potential_value_secondary(components_distance - solution, *args))
@@ -916,7 +922,7 @@ class BinarySystem(System):
         return self.lagrangian_points_static(self.orbit.periastron_distance, self.mass_ratio)
 
     @staticmethod
-    def lagrangian_points_static(periastron_distance: Float, mass_ratio: Float) -> list[Float]:
+    def lagrangian_points_static(periastron_distance: Float, mass_ratio: Float) -> list[Float]:  # noqa: C901
         """Return Lagrangian points for supplied system parameters.
 
         This is the static version of :meth:`lagrangian_points`.
@@ -993,6 +999,9 @@ class BinarySystem(System):
                 logger.debug("solution for x: %s lead to nowhere, exception: %s", x_val, str(exc))
                 continue
 
+        if len(lagrange) != NUM_LAGRANGE_POINTS - 2:
+            message = "Lagrange solver could not find all required collinear points."
+            raise ElisaFloatingPointError(message)
         return sorted(lagrange) if mass_ratio < 1.0 else sorted(lagrange, reverse=True)
 
     def compute_equipotential_boundary(  # noqa: C901, PLR0912

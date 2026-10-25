@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
-from elisa.base.error import ElisaValueError
 from elisa import const, utils
 from elisa import umpy as up
+from elisa.base.error import ElisaValueError
 from elisa.base.surface.faces import mirror_face_values, symmetry_face_reduction
 from elisa.base.surface.mesh import symmetry_point_reduction
 from elisa.logger import getLogger
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
     from elisa.base.star import Star
     from elisa.const import Position
-    from elisa.types import Float
+    from elisa.types import Float, VertexMap
 
 logger = getLogger(__name__)
 
@@ -471,16 +471,18 @@ class StarContainer:
         """
         del self.spots[spot_index]
 
-    def get_flatten_points_map(self) -> tuple[NDArray, list]:
+    def get_flatten_points_map(self) -> tuple[NDArray, VertexMap]:
         """Return all surface points and a vertex map describing object/spot ownership.
 
-        :returns: Tuple of (points, vertices_map).
+        :returns: Tuple of (points, vertices_map). The map is a list without
+            spots and a NumPy object array when spots are appended.
+        :rtype: tuple[numpy.typing.NDArray, elisa.types.VertexMap]
         """
         points = copy(self.points)
         for spot_instance in self.spots.values():
             points = up.concatenate([points, spot_instance.points])
 
-        vertices_map = [{"type": "object", "enum": -1}] * len(self.points)
+        vertices_map: VertexMap = [{"type": "object", "enum": -1}] * len(self.points)
         for idx, spot_instance in enumerate(self.spots.values()):
             vertices_map = up.concatenate(
                 [

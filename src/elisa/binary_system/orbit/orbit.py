@@ -310,19 +310,20 @@ class Orbit(AbstractOrbit):
         :raises ElisaMaxIterationError: If the solver does not converge.
         :raises ElisaFloatingPointError: If the solver returns a nonfinite anomaly.
         """
-        try:
-            solution = _sci_opt.newton(
-                self.mean_anomaly_fn,
-                1.0,
-                args=(mean_anomaly,),
-                tol=1e-10,
-            )
-        except RuntimeError as err:
+        solution, result = _sci_opt.newton(
+            self.mean_anomaly_fn,
+            1.0,
+            args=(mean_anomaly,),
+            tol=1e-10,
+            full_output=True,
+            disp=False,
+        )
+        if not result.converged:
             msg = (
                 f"Kepler solver failed to converge for eccentricity={self.eccentricity}, "
                 f"mean_anomaly={mean_anomaly}."
             )
-            raise ElisaMaxIterationError(msg) from err
+            raise ElisaMaxIterationError(msg)
 
         if not np.isfinite(solution):
             msg = (

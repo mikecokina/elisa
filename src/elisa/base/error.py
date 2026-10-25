@@ -40,6 +40,14 @@ class ElisaError(Exception):
     """
 
 
+class ElisaSynthesisError(ElisaError):
+    """Expected failure while constructing a physical synthetic model."""
+
+
+class PulsationModeError(ElisaSynthesisError):
+    """An invalid pulsation mode or unusable pulsation perturbation."""
+
+
 class MaxIterationError(ElisaError):
     """Raised when an iterative solver exceeds the maximum allowed iterations."""
 
@@ -56,15 +64,15 @@ class InitialParamsError(ElisaError):
     """Raised when provided initial parameters are invalid or inconsistent."""
 
 
-class AtmosphereError(ElisaError):
+class AtmosphereError(ElisaSynthesisError):
     """Raised for errors related to atmosphere model handling."""
 
 
-class TemperatureError(ElisaError):
+class TemperatureError(ElisaSynthesisError):
     """Raised when temperature-related validation or conversions fail."""
 
 
-class LimbDarkeningError(ElisaError):
+class LimbDarkeningError(ElisaSynthesisError):
     """Raised for limb-darkening related issues (parsing / validation)."""
 
 
@@ -72,15 +80,15 @@ class LimbDarkeningSourceError(LimbDarkeningError):
     """Raised when a required limb-darkening source table is unavailable."""
 
 
-class MetallicityError(ElisaError):
+class MetallicityError(ElisaSynthesisError):
     """Raised when metallicity-related validation fails."""
 
 
-class GravityError(ElisaError):
+class GravityError(ElisaSynthesisError):
     """Raised when gravity-related validation fails."""
 
 
-class PhysicalStateError(ElisaError):
+class PhysicalStateError(ElisaSynthesisError):
     """An explicitly identified inadmissible physical configuration."""
 
 
@@ -88,7 +96,7 @@ class MorphologyError(PhysicalStateError):
     """Raised when morphology computations fail or produce invalid results."""
 
 
-class SpotError(ElisaError):
+class SpotError(ElisaSynthesisError):
     """Raised for spot-related errors (definition / serialization)."""
 
 
@@ -107,7 +115,7 @@ class SolutionBubbleError(ElisaError):
     """
 
     def __init__(self, *args, solution: object | None = None, **kwargs) -> None:
-        # Preserve backwards compatible behaviour: message comes either
+        # Preserve backwards compatible behavior: message comes either
         # from args[0] or from kwargs['message'] if present.
         message = args[0] if args else kwargs.get("message")
 

@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 import numpy as np
 
-from elisa.base.error import ElisaValueError
 from elisa import const, utils
 from elisa import units as u
 from elisa.base.body import Body
+from elisa.base.error import ElisaValueError
 from elisa.base.surface.temperature import interpolate_bolometric_gravity_darkening
 from elisa.logger import getLogger
 from elisa.pulse import pulsations
@@ -19,14 +19,17 @@ if TYPE_CHECKING:
     from elisa.types import Float
 
 
+TBody = TypeVar("TBody", bound=Body)
+
 logger = getLogger(__name__)
 
 
-class System(metaclass=ABCMeta):
+class System(Generic[TBody], metaclass=ABCMeta):
     """Abstract base class representing a celestial system.
 
     Concrete system implementations (binary, single star) extend this class
-    and provide component-specific behaviour.
+    and provide component-specific behavior. The type parameter specifies
+    the body type shared by all components.
     """
 
     ID = 1
@@ -39,7 +42,7 @@ class System(metaclass=ABCMeta):
     STAR_ALL_KWARGS: tuple[str, ...] = STAR_MANDATORY_KWARGS + STAR_OPTIONAL_KWARGS
 
     def __init__(self, name: str | None = None, **kwargs: Any) -> None:
-        """Initialise the base System.
+        """Initialize the base System.
 
         :param name: Optional name of the system; a numeric ID is assigned if
             omitted.
@@ -57,7 +60,7 @@ class System(metaclass=ABCMeta):
         self.additional_light: Float = 0.0
         self.distance: Float = 10 * const.PC
 
-        self._components: dict[str, Body] | None = None
+        self._components: dict[str, TBody] = {}
 
         if utils.is_empty(name):
             self.name = str(System.ID)
@@ -76,11 +79,11 @@ class System(metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def components(self) -> dict[str, Body]:
+    def components(self) -> dict[str, TBody]:
         """Mapping of component name to component instance.
 
         :returns: Dictionary of component instances.
-        :rtype: dict[str, elisa.base.body.Body]
+        :rtype: dict[str, TBody]
         """
         ...
 
@@ -125,7 +128,7 @@ class System(metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod
-    def from_json(cls, data: dict, *, _verify: bool, _kind_of: str) -> System:
+    def from_json(cls, data: dict, *, _verify: bool, _kind_of: str) -> System[TBody]:
         """Create a system instance from a JSON-like data structure.
 
         :param data: Parsed JSON data.
@@ -135,7 +138,7 @@ class System(metaclass=ABCMeta):
         :param _kind_of: Kind of system (used by concrete implementations).
         :type _kind_of: str
         :returns: New System instance.
-        :rtype: System
+        :rtype: System[TBody]
         """
         ...
 
@@ -194,6 +197,7 @@ class System(metaclass=ABCMeta):
                 comp_dict["limb_darkening_coefficients"] = instance.limb_darkening_coefficients
 
             if instance.has_spots():
+                # noinspection PyUnresolvedReferences
                 spot_list: list[dict[str, Any]] = [
                     {
                         attr: (getattr(spot, attr) * spot_units[attr]).to(spot_input[attr]).value
@@ -228,9 +232,6 @@ class System(metaclass=ABCMeta):
         :returns: None
         :rtype: None
         """
-        if self._components is None:
-            return
-
         for component_instance in self._components.values():
             if component_instance.has_pulsations():
                 pulsations.assign_amplitudes(component_instance, normalisation_constant)

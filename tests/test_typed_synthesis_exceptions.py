@@ -2,6 +2,7 @@
 
 import multiprocessing
 import pickle
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -10,7 +11,7 @@ from elisa import settings
 from elisa.base.error import (
     ElisaError, ElisaFloatingPointError, ElisaMaxIterationError,
     ElisaRuntimeError, ElisaValueError, MaxIterationError, PhysicalStateError,
-    PredictionAlignmentError,
+    PredictionAlignmentError, SpotError,
 )
 from elisa.base.surface import coverage, temperature
 from elisa.binary_system import radius
@@ -60,9 +61,9 @@ def test_markers_do_not_broaden_existing_semantic_hierarchies():
 
 
 def test_static_physical_range_check_retains_message():
-    with pytest.raises(ValueError) as caught:
+    with pytest.raises(PhysicalStateError) as caught:
         BinarySystemProperties.eccentricity(1.0)
-    assert type(caught.value) is ElisaValueError
+    assert type(caught.value) is PhysicalStateError
     assert str(caught.value)
 
 
@@ -75,7 +76,7 @@ def test_radius_domain_failure_retains_message(monkeypatch):
 
 @pytest.mark.parametrize('component', ['primary', 'secondary'])
 def test_critical_potential_nan_is_explicit_elisa_failure(monkeypatch, component):
-    monkeypatch.setattr('elisa.binary_system.system.optimize.newton', lambda *a, **k: np.nan)
+    monkeypatch.setattr('elisa.binary_system.system.optimize.newton', lambda *a, **k: (np.nan, SimpleNamespace(converged=True)))
     with pytest.raises(ElisaFloatingPointError, match='critical potential solver has failed') as caught:
         # noinspection PyTypeChecker
         BinarySystem.critical_potential_static(component, 1.0, 1.0, 1.0)
@@ -140,7 +141,7 @@ def test_lagrange_solver_still_skips_isolated_failed_guesses(monkeypatch):
     assert attempts > 1
 
 
-def test_binary_spot_still_omits_unusable_center(monkeypatch):
+def test_binary_spot_rejects_unusable_center(monkeypatch):
     from elisa.binary_system.container import OrbitalPositionContainer
     from elisa.binary_system.surface import mesh
     from elisa.const import Position
@@ -149,5 +150,6 @@ def test_binary_spot_still_omits_unusable_center(monkeypatch):
                                          spots_primary=utils.SPOTS_META['primary'])
     container = OrbitalPositionContainer.from_binary_system(binary, Position(0, 1., 0., 0., 0.))
     monkeypatch.setattr(mesh, 'fsolver', lambda *args, **kwargs: (np.nan, False))
-    mesh.mesh_spots(container, 1.0, 'primary')
-    assert not container.primary.spots
+    with pytest.raises(SpotError, match='Center of spot'):
+        mesh.mesh_spots(container, 1.0, 'primary')
+    assert container.primary.spots

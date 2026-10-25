@@ -127,15 +127,15 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
             is MAX_USABLE_FLOAT, preserving that constant as the chi² penalty.
         :raises PredictionAlignmentError: If dynamic synthesis alignment fails.
         """
-        xn_list = parameters.vector_renormalizer(xn, self.fitable.keys(), self.normalization)
-        xn = np.asarray(xn_list, dtype=FLOAT)
-        kwargs: dict[str, Any] = parameters.prepare_properties_set(
-            xn,
-            self.fitable.keys(),
-            self.constrained,
-            self.fixed,
-        )
         try:
+            xn_list = parameters.vector_renormalizer(xn, self.fitable.keys(), self.normalization)
+            xn = np.asarray(xn_list, dtype=FLOAT)
+            kwargs: dict[str, Any] = parameters.prepare_properties_set(
+                xn,
+                self.fitable.keys(),
+                self.constrained,
+                self.fixed,
+            )
             synthetic = self.predict_light_curves(kwargs, synthesis=_log_decorator(lc_model.synthetic_binary))
         except SYNTHESIS_FAILURES as e:
             # Only the shared policy's types/subclasses become proposal penalties.
@@ -356,13 +356,13 @@ class CentralRadialVelocity(AbstractRVFit):
         """
         try:
             synthetic: dict[str, NDArray] = self.prepare_synthetic(xn)
+            synthetic = map_rv_predictions(synthetic, self.x_data_reduced, self.x_data_reducer)
         except SYNTHESIS_FAILURES as e:
             # Only the shared policy's types/subclasses become proposal penalties.
             # Other exceptions escape this callback and abort least-squares fitting.
             _warn(e)
             count = sum(self.num_of_points.values())
             return np.full(count, np.sqrt(const.MAX_USABLE_FLOAT / count))
-        synthetic = map_rv_predictions(synthetic, self.x_data_reduced, self.x_data_reducer)
         return cost_fns.standardized_residuals(self.y_data, self.y_err, synthetic, validate=False)
 
     def fit(

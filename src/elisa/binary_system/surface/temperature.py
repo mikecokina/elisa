@@ -10,7 +10,7 @@ from numpy.typing import NDArray
 
 from elisa import ld, settings, utils
 from elisa import umpy as up
-from elisa.base.error import ElisaValueError
+from elisa.base.error import ElisaValueError, TemperatureError
 from elisa.base.surface import temperature as btemperature
 from elisa.base.surface.temperature import renormalize_temperatures
 from elisa.base.types import FLOAT
@@ -860,7 +860,7 @@ def interpolate_albedo(temperature: Float) -> Float:
     """
     if temperature <= 0:
         msg = "Negative temperature of the star encountered."
-        raise ElisaValueError(msg)
+        raise TemperatureError(msg)
 
     interp_temps, interp_a = _load_albedo_data()
     return np.interp(np.log10(temperature), interp_temps, interp_a)

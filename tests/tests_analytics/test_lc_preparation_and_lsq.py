@@ -284,13 +284,14 @@ def test_residual_order_scalar_uncertainty_and_broadcasting_guard() -> None:
         cost_fns.standardized_residuals(observed, errors, {**model, "a": np.ones(3)})
 
 
-def test_rv_invalid_physical_synthesis_still_raises() -> None:
+def test_rv_invalid_physical_synthesis_returns_existing_penalty() -> None:
     cfg, data = rv_problem()
     fit = least_squares.CentralRadialVelocity()
     fit.set_up(p.BinaryInitialParameters(**cfg), data, observer_system_cls=RadialVelocitySystem)
     fit.fixed["system@eccentricity"].value = 1.1
-    with pytest.raises(ValueError):
-        fit.central_rv_model_to_fit(normalized(fit))
+    count = sum(fit.num_of_points.values())
+    assert_array_equal(fit.central_rv_model_to_fit(normalized(fit)),
+                       np.full(count, np.sqrt(const.MAX_USABLE_FLOAT / count)))
 
 
 @pytest.mark.parametrize("strategy", list(SamplingMethod))

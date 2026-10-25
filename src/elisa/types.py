@@ -26,6 +26,16 @@ ComponentSelection: TypeAlias = Literal["primary", "secondary", "all", "both"]
 AstropyQuantity: TypeAlias = Quantity
 AstropyUnit: TypeAlias = Unit
 
+class VertexMapEntry(TypedDict):
+    """Describe whether a surface vertex belongs to the star or a spot."""
+
+    type: Literal["object", "spot"]
+    enum: int
+
+
+VertexMap: TypeAlias = list[VertexMapEntry] | np.ndarray[tuple[int, ...], np.dtype[np.object_]]
+
+
 class HasMeshData(Protocol):
     points: NDArray[Float]
     faces: NDArray[np.integer]

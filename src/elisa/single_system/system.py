@@ -9,6 +9,7 @@ from scipy import optimize
 from elisa import const, units, utils
 from elisa import umpy as up
 from elisa.base.curves import utils as rv_utils
+from elisa.base.error import ElisaFloatingPointError
 from elisa.base.star import Star
 from elisa.base.system import System
 from elisa.base.types import INT
@@ -71,7 +72,7 @@ if TYPE_CHECKING:
     SingleSystemParams = SingleStandardParams | SingleRadiusParams
 
 
-class SingleSystem(System):
+class SingleSystem(System[Star]):
     r"""Represent a rotating single-star system.
 
     Child class of :class:`elisa.base.system.System`.
@@ -588,25 +589,27 @@ class SingleSystem(System):
 
         :returns: Critical surface potential.
         :rtype: elisa.types.Float
-        :raises ValueError: If the root-finding iteration does not converge to
+        :raises ElisaFloatingPointError: If the root-finding iteration does not converge to
             a valid solution.
         """
         precalc_args = self.star.mass, self.angular_velocity, c.HALF_PI
         args = (model.pre_calculate_for_potential_value(*precalc_args), 0.0)
 
         x0 = -c.G * self.star.mass / self.star.surface_potential
-        solution = optimize.newton(
+        solution, result = optimize.newton(
             model.radial_potential_derivative,
             x0,
             args=args[0],
             tol=1e-12,
+            full_output=True,
+            disp=False,
         )
-        if np.isnan(solution):
+        if not result.converged or not np.isfinite(solution):
             msg = (
                 "Iteration process to solve critical potential seems to lead nowhere "
                 "(critical potential solver has failed)."
             )
-            raise ValueError(msg)
+            raise ElisaFloatingPointError(msg)
 
         return model.potential_fn(solution, *args)
 

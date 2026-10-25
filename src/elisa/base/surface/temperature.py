@@ -7,9 +7,13 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from elisa.base.error import ElisaRuntimeError, ElisaValueError
 from elisa import settings
 from elisa import umpy as up
+from elisa.base.error import (
+    ElisaFloatingPointError,
+    ElisaRuntimeError,
+    TemperatureError,
+)
 from elisa.logger import getLogger
 
 logger = getLogger(__name__)
@@ -85,7 +89,7 @@ def calculate_polar_effective_temperature(star_container: StarContainer) -> Floa
     # avoid division by zero
     if denominator == 0:
         msg = "Division by zero encountered while computing polar effective temperature"
-        raise ZeroDivisionError(msg)
+        raise ElisaFloatingPointError(msg)
 
     # noinspection PyUnresolvedReferences
     return sc.t_eff * up.power(numerator / denominator, 0.25)
@@ -120,7 +124,7 @@ def renormalize_temperatures(star: StarContainer) -> None:
     # avoid division by zero
     if current_flux == 0:
         msg = "Current bolometric flux is zero, cannot renormalize temperatures"
-        raise ZeroDivisionError(msg)
+        raise ElisaFloatingPointError(msg)
 
     coefficient = up.power(desired_flux_value / current_flux, 0.25)
     logger.debug("surface temperature map renormalized by a factor %s", coefficient)
@@ -147,7 +151,7 @@ def interpolate_bolometric_gravity_darkening(temperature: Float) -> Float:
     """
     if temperature <= 0:
         msg = "Negative or zero temperature encountered"
-        raise ElisaValueError(msg)
+        raise TemperatureError(msg)
 
     try:
         content = Path(settings.PATH_TO_BETA).read_text()

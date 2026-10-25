@@ -12,10 +12,10 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from elisa.base.container import StarContainer
-    from elisa.types import Float, Int
+    from elisa.types import Float, Int, VertexMap
 
 
-def initialize_model_container(vertices_map: list[dict[str, int | str]]) -> tuple[dict, dict]:
+def initialize_model_container(vertices_map: VertexMap) -> tuple[dict, dict]:
     """Initialize containers used to group faces by origin (star or spots).
 
     The function inspects ``vertices_map`` to discover spot instance indices
@@ -25,7 +25,7 @@ def initialize_model_container(vertices_map: list[dict[str, int | str]]) -> tupl
 
     :param vertices_map: Sequence mapping each vertex index to its owning
         object (fields ``"enum"`` and ``"type"`` are expected).
-    :type vertices_map: list[dict[str, int | str]]
+    :type vertices_map: elisa.types.VertexMap
     :returns: Tuple containing ``model`` and ``spot_candidates``.
     :rtype: tuple[dict, dict]
     """
@@ -44,7 +44,7 @@ def split_spots_and_component_faces(
         faces: NDArray[Int],
         model: dict,
         spot_candidates: dict,
-        vmap: list[dict[str, int | str]],
+        vmap: VertexMap,
         component_com: Float,
 ) -> dict:
     """Sort faces into the ``model`` structure, separating star faces and spots.
@@ -65,7 +65,7 @@ def split_spots_and_component_faces(
     :param spot_candidates: Candidate structure for mixed faces.
     :type spot_candidates: dict
     :param vmap: Vertices map describing ownership of vertices.
-    :type vmap: list[dict[str, int | str]]
+    :type vmap: elisa.types.VertexMap
     :param component_com: X coordinate of the component centre of mass.
     :type component_com: elisa.types.Float
     :returns: The populated ``model`` mapping with arrays instead of lists.
@@ -143,7 +143,7 @@ def resolve_obvious_spots(
         faces: NDArray[Int],
         model: dict,
         spot_candidates: dict,
-        vmap: list[dict[str, int | str]],
+        vmap: VertexMap,
 ) -> tuple[dict, dict]:
     """Classify faces that clearly belong to a single object (star or spot).
 
@@ -160,7 +160,7 @@ def resolve_obvious_spots(
     :param spot_candidates: Candidate structure to collect mixed faces.
     :type spot_candidates: dict
     :param vmap: Vertices map describing ownership of vertices.
-    :type vmap: list[dict[str, int | str]]
+    :type vmap: elisa.types.VertexMap
     :returns: Tuple containing updated (model, spot_candidates).
     :rtype: tuple[dict, dict]
     """

@@ -14,28 +14,14 @@ synthesis is separate, as are MCMC prior rejections. Setup errors propagate
 before these evaluation handlers, even when their type appears in this tuple.
 """
 from elisa.base.error import (
-    AtmosphereError,
     ElisaFloatingPointError,
-    GravityError,
-    LimbDarkeningError,
+    ElisaSynthesisError,
     MaxIterationError,
-    MetallicityError,
-    PhysicalStateError,
-    SpotError,
-    TemperatureError,
 )
 
-# This is an explicit rejection policy, not a catch-all for ELISA exceptions.
-# Inheritance applies: e.g. MorphologyError and LimbDarkeningSourceError are
-# covered by PhysicalStateError and LimbDarkeningError, respectively.
+# Numerical markers retain their legacy inheritance and remain explicit here.
 SYNTHESIS_FAILURES = (
-    PhysicalStateError,
+    ElisaSynthesisError,
     MaxIterationError,
     ElisaFloatingPointError,
-    SpotError,
-    AtmosphereError,
-    LimbDarkeningError,
-    TemperatureError,
-    MetallicityError,
-    GravityError,
 )

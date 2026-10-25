@@ -4,6 +4,8 @@ from tests import set_astropy_units
 
 from unittest.mock import patch
 
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
@@ -177,21 +179,24 @@ if __name__ == "__main__":
 def test_kepler_nonfinite_result_raises(result):
     orbit = bin_orbit.Orbit.__new__(bin_orbit.Orbit)
     orbit.eccentricity = 0.8
-    with patch.object(bin_orbit._sci_opt, "newton", return_value=result):
+    with patch.object(bin_orbit._sci_opt, "newton", return_value=(result, SimpleNamespace(converged=True))):
         with pytest.raises(ElisaFloatingPointError, match="nonfinite anomaly") as caught:
             orbit.mean_anomaly_to_eccentric_anomaly(0.5)
     assert isinstance(caught.value, FloatingPointError)
 
 
-def test_kepler_nonconvergence_preserves_cause():
+def test_kepler_nonconvergence_uses_solver_status():
     orbit = bin_orbit.Orbit.__new__(bin_orbit.Orbit)
     orbit.eccentricity = 0.8
-    failure = RuntimeError("Failed to converge")
-    with patch.object(bin_orbit._sci_opt, "newton", side_effect=failure):
+    original = bin_orbit._sci_opt.newton
+
+    def exhausted(*args, **kwargs):
+        return original(*args, **kwargs, maxiter=1)
+
+    with patch.object(bin_orbit._sci_opt, "newton", side_effect=exhausted):
         with pytest.raises(ElisaMaxIterationError, match="Kepler solver") as caught:
             orbit.mean_anomaly_to_eccentric_anomaly(0.5)
     assert isinstance(caught.value, MaxIterationError)
-    assert caught.value.__cause__ is failure
 
 
 def test_kepler_programming_error_propagates():

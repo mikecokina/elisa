@@ -4,13 +4,13 @@ from copy import copy
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
 import numpy as np
-from scipy.spatial import Delaunay
+from scipy.spatial import Delaunay, QhullError
 
-from elisa.base.error import ElisaValueError
 from elisa import const
 from elisa import umpy as up
 from elisa import units as u
 from elisa.base import spot
+from elisa.base.error import ElisaFloatingPointError, ElisaValueError
 from elisa.base.surface.faces import (
     calculate_normals,
     initialize_model_container,
@@ -358,7 +358,7 @@ def detached_system_surface(
             f"{component_instance.name} do not contain any valid surface "
             "point to triangulate"
         )
-        raise ElisaValueError(msg)
+        raise ElisaFloatingPointError(msg)
 
     # there is a problem with triangulation of near over-contact system, delaunay is not good with pointy surfaces
     critical_pot = (
@@ -373,7 +373,10 @@ def detached_system_surface(
             "triangulating surface of %s component using standard method",
             component,
         )
-        triangulation = Delaunay(points)
+        try:
+            triangulation = Delaunay(points)
+        except QhullError as exc:
+            raise ElisaFloatingPointError(str(exc)) from exc
         triangles_indices = triangulation.convex_hull
     else:
         logger.debug(
@@ -396,7 +399,10 @@ def detached_system_surface(
         if component == "secondary":
             projected_points[:, 0] += components_distance
 
-        triangulation = Delaunay(projected_points)
+        try:
+            triangulation = Delaunay(projected_points)
+        except QhullError as exc:
+            raise ElisaFloatingPointError(str(exc)) from exc
         triangles_indices = triangulation.convex_hull
 
     return triangles_indices
@@ -436,7 +442,7 @@ def over_contact_system_surface(
             f"{component} component, with class instance name "
             f"{component_instance.name} contain any valid point to triangulate"
         )
-        raise ElisaValueError(msg)
+        raise ElisaFloatingPointError(msg)
 
     # calculating position of the neck
     neck_x = np.max(points[:, 0]) if component == "primary" else np.min(points[:, 0])
@@ -445,7 +451,10 @@ def over_contact_system_surface(
     projected_points[:, 0] -= 1 if component == "secondary" else 0
     projected_points = neck_x * projected_points / np.linalg.norm(projected_points, axis=1)[:, None]
 
-    triangulation = Delaunay(projected_points)
+    try:
+        triangulation = Delaunay(projected_points)
+    except QhullError as exc:
+        raise ElisaFloatingPointError(str(exc)) from exc
     triangles_indices = triangulation.convex_hull
 
     # removal of faces on top of the neck

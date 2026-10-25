@@ -669,7 +669,7 @@ def test_missing_source_lookup_has_domain_error_and_original_diagnostic(ld_sourc
 def test_source_error_inherits_existing_fitting_policy():
     from elisa.analytics.binary_fit.failure_policy import SYNTHESIS_FAILURES
     assert issubclass(LimbDarkeningSourceError, LimbDarkeningError)
-    assert LimbDarkeningError in SYNTHESIS_FAILURES
+    assert issubclass(LimbDarkeningError, SYNTHESIS_FAILURES)
     assert isinstance(LimbDarkeningSourceError("missing table"), SYNTHESIS_FAILURES)
 
 

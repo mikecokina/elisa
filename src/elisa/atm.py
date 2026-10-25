@@ -16,7 +16,6 @@ import numpy as np
 import pandas as pd
 from scipy import interpolate
 
-from elisa.base.error import ElisaValueError
 from elisa import (
     const,
     ld,
@@ -29,6 +28,7 @@ from elisa import (
 from elisa.base.error import (
     AtmosphereError,
     ElisaError,
+    ElisaValueError,
     GravityError,
     MetallicityError,
     TemperatureError,
@@ -1509,7 +1509,7 @@ def get_atm_table(
     :type atlas: str
     :returns: DataFrame with flux and wavelength columns.
     :rtype: pd.DataFrame
-    :raises FileNotFoundError: If the atmosphere table file is not found.
+    :raises AtmosphereError: If the atmosphere table file is not found.
     """
     source = settings.ATLAS_TO_BASE_DIR[atlas]
     directory = get_atm_directory(metallicity, atlas)
@@ -1518,7 +1518,7 @@ def get_atm_table(
 
     if not path.is_file():
         msg = f"There is no file like {path}"
-        raise FileNotFoundError(msg)
+        raise AtmosphereError(msg)
 
     # noinspection PyArgumentList
     return pd.read_csv(path, dtype=settings.ATM_MODEL_DATAFARME_DTYPES)

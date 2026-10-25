@@ -3,9 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-from scipy.spatial import Delaunay
+from scipy.spatial import Delaunay, QhullError
 
 from elisa.base import spot
+from elisa.base.error import ElisaFloatingPointError
 from elisa.base.surface import faces as bfaces
 from elisa.base.surface.faces import mirror_triangulation, set_all_surface_centres
 from elisa.base.types import INT
@@ -86,7 +87,10 @@ def single_surface(
     """
     if points is None:
         points = star_container.points
-    triangulation = Delaunay(points)
+    try:
+        triangulation = Delaunay(points)
+    except QhullError as exc:
+        raise ElisaFloatingPointError(str(exc)) from exc
     return triangulation.convex_hull
 
 

@@ -6,6 +6,7 @@ import pickle
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import Any
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import numpy as np
@@ -144,9 +145,6 @@ def use_lc_synthesis(
         pytest.param({V: np.array(1.0)}, id="scalar"),
         pytest.param({V: np.ones(2)}, id="short"),
         pytest.param({V: np.ones(4)}, id="oversized"),
-        pytest.param({V: np.array([1.0, 1.0, np.nan])}, id="nan"),
-        pytest.param({V: np.array([1.0, 1.0, np.inf])}, id="inf"),
-        pytest.param({V: np.array([1.0, 1.0, -np.inf])}, id="negative-inf"),
     ],
 )
 def test_lc_malformed_output_propagates_through_callbacks(
@@ -186,7 +184,7 @@ def malformed_rv_curves(defect: str, size: int) -> dict[str, NDArray]:
 
 
 @pytest.mark.parametrize(
-    "defect", ["missing", "replacement", "column", "row", "scalar", "short", "oversized", "nan", "inf", "negative-inf"],
+    "defect", ["missing", "replacement", "column", "row", "scalar", "short", "oversized"],
 )
 def test_rv_malformed_output_propagates_through_callbacks(
     rv_fit: least_squares.CentralRadialVelocity | mcmc.CentralRadialVelocity, defect: str
@@ -419,9 +417,8 @@ def test_real_lc_kepler_failure_reaches_fitting_policy(lc_fit, failure):
     original = Orbit.mean_anomaly_to_eccentric_anomaly
 
     def failed_kepler(self, mean_anomaly):
-        options = {"side_effect": RuntimeError("Failed to converge")} if failure == "convergence" else {
-            "return_value": float(failure)
-        }
+        options = {"return_value": (0.0 if failure == "convergence" else float(failure),
+                                    SimpleNamespace(converged=failure != "convergence"))}
         with patch.object(_sci_opt, "newton", **options):
             return original(self, mean_anomaly)
 
@@ -432,9 +429,8 @@ def test_real_lc_kepler_failure_reaches_fitting_policy(lc_fit, failure):
 @pytest.mark.parametrize("failure", ["convergence", "nan", "inf"])
 def test_real_rv_kepler_failure_reaches_fitting_policy(rv_fit, failure):
     from elisa.binary_system.orbit.orbit import _sci_opt
-    options = {"side_effect": RuntimeError("Failed to converge")} if failure == "convergence" else {
-        "return_value": float(failure)
-    }
+    options = {"return_value": (0.0 if failure == "convergence" else float(failure),
+                                SimpleNamespace(converged=failure != "convergence"))}
     with patch.object(_sci_opt, "newton", **options):
         assert_rejected(rv_fit)
 
@@ -498,3 +494,23 @@ def test_binary_spot_wrapper_preserves_failure_classification(lc_fit, error_type
             with pytest.raises(error_type) as caught:
                 evaluate_fit(lc_fit)
             assert caught.value is error
+
+
+@pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
+def test_lc_nonfinite_output_is_numerical_rejection(lc_fit, value):
+    raw = {V: np.array([1.0, 1.0, value])}
+    with use_lc_synthesis(lc_fit, lambda *args, **kwargs: raw):
+        if isinstance(lc_fit, mcmc.MCMCFit):
+            with pytest.raises(ElisaFloatingPointError):
+                lc_fit.likelihood(normalized(lc_fit))
+        assert_rejected(lc_fit)
+
+
+@pytest.mark.parametrize("defect", ["nan", "inf", "negative-inf"])
+def test_rv_nonfinite_output_is_numerical_rejection(rv_fit, defect):
+    raw = malformed_rv_curves(defect, len(rv_fit.x_data_reduced))
+    with patch.object(rv, "central_rv_synthetic", return_value=raw):
+        if isinstance(rv_fit, mcmc.MCMCFit):
+            with pytest.raises(ElisaFloatingPointError):
+                rv_fit.likelihood(normalized(rv_fit))
+        assert_rejected(rv_fit)

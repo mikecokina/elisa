@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from elisa import const
+from elisa.base.error import ElisaFloatingPointError
 from elisa.base.types import FLOAT
 from elisa.opt.fsolver import fsolve
 from elisa.single_system import model
@@ -49,7 +50,7 @@ def calculate_radius(mass: Float, angular_velocity: Float, surface_potential: Fl
     # assign message before raising as per project convention
     if not (0 < solution[0] < 5 * init_val):
         msg = f"Invalid value of radius {solution} was calculated."
-        raise ValueError(msg)
+        raise ElisaFloatingPointError(msg)
 
     return FLOAT(solution[0])
 

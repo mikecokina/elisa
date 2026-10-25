@@ -1281,7 +1281,7 @@ def mesh_spots(  # noqa: C901, PLR0912, PLR0915
             logger.debug("no spots to evaluate for %s component - continue", component_name)
             continue
 
-        for spot_index, spot_instance in list(component_instance.spots.items()):
+        for spot_instance in component_instance.spots.values():
             lon, lat = spot_instance.longitude, spot_instance.latitude
             alpha = min(spot_instance.angular_radius, spot_instance.discretization_factor)
             spot_radius = spot_instance.angular_radius
@@ -1303,35 +1303,12 @@ def mesh_spots(  # noqa: C901, PLR0912, PLR0915
             solution, use = fsolver(potential_fn, solver_condition, *args2, **kwargs)
 
             if not use:
-                if not settings.SUPPRESS_WARNINGS:
-                    logger.warning(
-                        "center of spot %s doesn't satisfy reasonable conditions and entire spot will be omitted",
-                        spot_instance.kwargs_serializer(),
-                    )
-                component_instance.remove_spot(spot_index=spot_index)
-                continue
+                msg = f"Center of spot {spot_instance.kwargs_serializer()} doesn't satisfy reasonable conditions."
+                raise SpotError(msg)
 
             spot_center_r = solution
             spot_center = utils.spherical_to_cartesian(np.asarray([spot_center_r, lon, lat], dtype=FLOAT))
 
-            args1 = (synchronicity, mass_ratio, components_distance, lon, lat + alpha)
-            args2 = ((system.mass_ratio, *precalc_fn(*args1)), potential)
-            kwargs = {"original_kwargs": args1}
-            solution, use = fsolver(potential_fn, solver_condition, *args2, **kwargs)
-
-            if not use:
-                if not settings.SUPPRESS_WARNINGS:
-                    logger.warning(
-                        "first inner ring of spot %s doesn't satisfy reasonable conditions "
-                        "and entire spot will be omitted",
-                        spot_instance.kwargs_serializer(),
-                    )
-                component_instance.remove_spot(spot_index=spot_index)
-                continue
-
-            x0 = up.sqrt(
-                spot_center_r**2 + solution**2 - (2.0 * spot_center_r * solution * up.cos(alpha)),
-            )
             num_radial = int(np.round(spot_radius / alpha)) + 1
             logger.debug(
                 "number of rings in spot %s is %s",
@@ -1340,7 +1317,7 @@ def mesh_spots(  # noqa: C901, PLR0912, PLR0915
             )
             thetas = np.linspace(lat, lat + spot_radius, num=num_radial, endpoint=True)
             num_azimuthal = [
-                1 if index == 0 else int(index * 2.0 * const.PI * x0 // x0) for index in range(len(thetas))
+                1 if index == 0 else int(index * 2.0 * const.PI) for index in range(len(thetas))
             ]
             deltas = [np.linspace(0.0, const.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]
 

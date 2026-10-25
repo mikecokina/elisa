@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from elisa.base.error import ElisaValueError
 from elisa import const, settings
+from elisa.base.error import PulsationModeError
 from elisa.logger import getLogger
 from elisa.umpy import sph_harm
 
@@ -132,6 +132,9 @@ def horizontal_displacement_normalization(
         np.power(np.abs(derivatives[0]), 2)
         + np.power(np.abs(derivatives[1]), 2),
     )
+    if denominator == 0:
+        error_msg = "Horizontal displacement normalization has a zero denominator."
+        raise PulsationModeError(error_msg)
     # noinspection PyUnresolvedReferences
     return np.sqrt(numerator / denominator)
 
@@ -154,13 +157,19 @@ def assign_amplitudes(
                                    this is the semi-major axis; for single stars, it
                                    should remain 1.0. Defaults to 1.0.
     :type normalization_constant: float
-    :raises ValueError: If a radial mode (l=0) or mode with only radial motion
+    :raises PulsationModeError: If a radial mode (l=0) or mode with only radial motion
                         lacks an explicit temperature_amplitude_factor.
     """
     r_equiv = star_container.equivalent_radius * normalization_constant
+    if r_equiv == 0:
+        error_msg = "Pulsation amplitudes require a nonzero equivalent radius."
+        raise PulsationModeError(error_msg)
     mult = const.G * star_container.mass / r_equiv**3
 
     for mode_index, mode in star_container.pulsations.items():
+        if mode.angular_frequency == 0:
+            error_msg = "Pulsation amplitudes require a nonzero frequency."
+            raise PulsationModeError(error_msg)
         # Calculate horizontal/radial amplitude ratio if not provided (Aerts 2010, p. 198)
         if mode.horizontal_to_radial_amplitude_ratio is None:
             amp_ratio = (
@@ -188,7 +197,7 @@ def assign_amplitudes(
                     "supplied in case of radial modes or in case of modes "
                     "with radial motion."
                 )
-                raise ElisaValueError(error_msg)
+                raise PulsationModeError(error_msg)
             mode.temperature_amplitude_factor = (
                 temp_amplitude(mode) * mode.radial_amplitude / r_equiv
             )
@@ -224,12 +233,14 @@ def temp_amplitude(mode: PulsationMode) -> float:
     :type mode: object
     :returns: Temperature perturbation amplitude factor.
     :rtype: float
-    :raises ZeroDivisionError: If horizontal_to_radial_amplitude_ratio is zero.
+    :raises PulsationModeError: If horizontal_to_radial_amplitude_ratio is zero.
     """
+    if mode.horizontal_to_radial_amplitude_ratio == 0:
+        error_msg = "Temperature perturbation requires a nonzero horizontal-to-radial amplitude ratio."
+        raise PulsationModeError(error_msg)
+
     return const.IDEAL_ADIABATIC_GRADIENT * (
         mode.horizontal_to_radial_amplitude_ratio * mode.l * (mode.l + 1)
         - 4
         - 1 / mode.horizontal_to_radial_amplitude_ratio
     )
-
-

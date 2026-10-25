@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+from math import isfinite
+from numbers import Number
 from typing import TYPE_CHECKING
 
 import numpy as np
 
 from elisa import const as c
 from elisa import units as u
-from elisa.base.error import ElisaValueError
+from elisa.base.error import PulsationModeError
 from elisa.base.transform import (
     WHEN_FLOAT64,
     SystemProperties,
@@ -35,14 +37,18 @@ class PulsationModeProperties(SystemProperties):
         :type value: int | float
         :returns: Validated angular degree as integer.
         :rtype: int
-        :raises TypeError: If value is not an integer or integer-convertible number.
+        :raises TypeError: If value has an incompatible object type.
+        :raises PulsationModeError: If the degree is negative, nonintegral or nonfinite.
         """
-        if int(value) - value == 0:
-            value = int(value)
-        if not isinstance(value, (int, INT)):
-            error_msg = "Angular degree `l` is not (numpy.)int"
+        error_msg = "Angular degree `l` is not (numpy.)int"
+        if not isinstance(value, Number) or isinstance(value, (complex, np.complexfloating)):
             raise TypeError(error_msg)
-        return value
+        if not isfinite(value) or int(value) - value != 0:
+            raise PulsationModeError(error_msg)
+        if value < 0:
+            error_msg = "Angular degree `l` must be non-negative."
+            raise PulsationModeError(error_msg)
+        return int(value)
 
     @staticmethod
     def m(value: float) -> int:
@@ -55,14 +61,15 @@ class PulsationModeProperties(SystemProperties):
         :type value: int | float
         :returns: Validated azimuthal order as integer.
         :rtype: int
-        :raises TypeError: If value is not an integer or integer-convertible number.
+        :raises TypeError: If value has an incompatible object type.
+        :raises PulsationModeError: If a numeric index is nonintegral or nonfinite.
         """
-        if int(value) - value == 0:
-            value = int(value)
-        if not isinstance(value, (int, INT)):
-            error_msg = "Angular degree `m` is not (numpy.)int"
+        error_msg = "Angular degree `m` is not (numpy.)int"
+        if not isinstance(value, Number) or isinstance(value, (complex, np.complexfloating)):
             raise TypeError(error_msg)
-        return value
+        if not isfinite(value) or int(value) - value != 0:
+            raise PulsationModeError(error_msg)
+        return int(value)
 
     @staticmethod
     def amplitude(value: float | Quantity | str) -> float:
@@ -76,7 +83,7 @@ class PulsationModeProperties(SystemProperties):
         :returns: Validated amplitude in default internal velocity unit.
         :rtype: float
         :raises TypeError: If value is not a numeric type or Quantity.
-        :raises ValueError: If amplitude is negative.
+        :raises PulsationModeError: If amplitude is negative or nonfinite.
         """
         if isinstance(value, (u.Quantity, str)):
             retval = u.Quantity(value) if isinstance(value, str) else value
@@ -89,9 +96,9 @@ class PulsationModeProperties(SystemProperties):
                 "nor astropy.unit.quantity.Quantity instance."
             )
             raise TypeError(error_msg)
-        if retval < 0:
+        if not np.isfinite(retval) or retval < 0:
             error_msg = "Temperature amplitude of mode has to be non-negative number."
-            raise ElisaValueError(error_msg)
+            raise PulsationModeError(error_msg)
 
         return retval
 
@@ -107,7 +114,7 @@ class PulsationModeProperties(SystemProperties):
         :returns: Validated frequency in default internal frequency unit.
         :rtype: float
         :raises TypeError: If value is not a numeric type or Quantity.
-        :raises ValueError: If frequency is negative.
+        :raises PulsationModeError: If frequency is negative or nonfinite.
         """
         if isinstance(value, (u.Quantity, str)):
             retval = u.Quantity(value) if isinstance(value, str) else value
@@ -124,9 +131,9 @@ class PulsationModeProperties(SystemProperties):
                 "nor astropy.unit.quantity.Quantity instance."
             )
             raise TypeError(error_msg)
-        if retval < 0:
+        if not np.isfinite(retval) or retval < 0:
             error_msg = "Frequency of the mode has to be non-negative number."
-            raise ElisaValueError(error_msg)
+            raise PulsationModeError(error_msg)
 
         return retval
 
@@ -159,7 +166,7 @@ class PulsationModeProperties(SystemProperties):
         :type value: float | int | u.Quantity | str
         :returns: Validated latitudinal angle in radians, in range [0, pi).
         :rtype: float
-        :raises ValueError: If value is outside the valid range [0, pi).
+        :raises PulsationModeError: If value is outside the valid range [0, pi).
         """
         retval = deg_transform(
             value,
@@ -171,7 +178,7 @@ class PulsationModeProperties(SystemProperties):
             error_msg = (
                 f"Value of `mode_axis_theta`: {retval} is outside bounds (0, pi)."
             )
-            raise ElisaValueError(error_msg)
+            raise PulsationModeError(error_msg)
 
         return retval
 
@@ -187,12 +194,16 @@ class PulsationModeProperties(SystemProperties):
         :returns: Validated azimuthal angle in radians.
         :rtype: float
         """
-        return deg_transform(
+        retval = deg_transform(
             value,
             u.DefaultPulsationsUnits.mode_axis_phi,
             WHEN_FLOAT64,
             u.DefaultPulsationsInputUnits.mode_axis_phi,
         )
+        if not np.isfinite(retval):
+            error_msg = "Value of `mode_axis_phi` must be finite."
+            raise PulsationModeError(error_msg)
+        return retval
 
     @staticmethod
     def temperature_perturbation_phase_shift(

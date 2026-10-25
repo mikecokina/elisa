@@ -23,7 +23,7 @@ from elisa.analytics.tools.utils import (
     radialcurves_mean_error,
     time_layer_resolver,
 )
-from elisa.base.error import PredictionAlignmentError
+from elisa.base.error import ElisaFloatingPointError, PredictionAlignmentError
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
 from elisa.logger import getPersistentLogger
@@ -842,7 +842,7 @@ def map_rv_predictions(
             raise PredictionAlignmentError(msg)
         if not np.all(np.isfinite(curve)):
             msg = f"RV synthetic values are nonfinite for {component}"
-            raise PredictionAlignmentError(msg)
+            raise ElisaFloatingPointError(msg)
         predictions[component] = curve[reducer]
     return predictions
 

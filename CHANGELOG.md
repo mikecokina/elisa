@@ -11,6 +11,14 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Added
 
+- Shared `ElisaSynthesisError` base for expected physical synthesis failures and
+  `PulsationModeError` for invalid pulsation modes and perturbation calculations.
+  Existing physical, spot, atmosphere, limb-darkening, temperature, gravity, and
+  metallicity exceptions share the synthesis base while retaining `ElisaError`
+  ancestry and legacy native numerical exception inheritance.
+- Source-level and fitting regression coverage for invalid spots and pulsations,
+  numerical failures, local root recovery, and multiprocessing propagation, plus
+  a deterministic scientific baseline capture helper.
 - `LimbDarkeningSourceError`, a `LimbDarkeningError` subclass raised directly
   when a required limb-darkening source table is missing, including bolometric
   tables used by reflection-effect synthesis.
@@ -48,6 +56,12 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Changed
 
+- Simplify azimuthal spot-ring sampling by removing the canceled `x0` scale in
+  binary and single-star meshes. Remove the binary auxiliary first-ring solve;
+  retain the single-star first-ring radius validation and downstream surface and
+  neck checks. Floating-point ring counts can differ from the former expression.
+- Improve component and surface-ownership typing with generic `System` component
+  types, `StarContainer` annotations, and shared `VertexMapEntry`/`VertexMap` types.
 - Rename the internal least-squares fitting module from
   `elisa.analytics.binary_fit.least_squares` to `elisa.analytics.binary_fit.lsqrt`.
 - Log expected LSQ synthesis failures as warnings, respecting `SUPPRESS_WARNINGS`.
@@ -114,15 +128,36 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Reject invalid pulsation degrees, orders, amplitudes, frequencies, and mode axes
+  with `PulsationModeError`. Require integral numeric indices and explicitly
+  enforce `l >= 0` in the degree transformer; preserve valid negative `m`, the
+  `abs(m) <= l` constraint, and `TypeError` for incompatible object types.
+- Report missing radial-mode temperature factors and zero denominators in
+  pulsation amplitude and normalization calculations as pulsation-domain failures.
+- Raise `SpotError` for failed spot construction, fully overlapped spots, or
+  missing retained vertices instead of silently removing declared spots.
+  Preserve numerical exception causes during spot surface construction.
+- Classify degenerate Qhull triangulation, terminal surface failures, zero
+  temperature-normalization denominators, and exhausted Lagrange searches as
+  typed numerical synthesis failures. Retain existing individual-root recovery
+  and historical bounded-radius fallbacks.
+- Raise `AtmosphereError` when a requested atmosphere source table is missing,
+  consistently with the other atmosphere readers, and use domain exceptions for
+  existing physical-parameter and nonpositive-temperature checks.
+- Classify nonfinite LC/RV predictions as numerical synthesis failures while
+  retaining fatal alignment errors for mismatched prediction keys and shapes.
 - Fix double conversion of fitted pulsation frequencies by storing values,
   bounds, and sigma in cycles/day until mode construction converts to Hz.
   Keep free, fixed, and constrained frequencies consistent, including explicit
   Astropy units, while preserving direct-model frequency conventions.
 - Apply one explicit synthesis-failure policy to LC/RV least-squares and MCMC
-  fitting. Expected physical, convergence, numerical, spot, atmosphere, and
+  fitting, using the shared synthesis base and explicit legacy numerical types.
+  Expected physical, convergence, numerical, spot, pulsation, atmosphere, and
   limb-darkening failures reject the current proposal: LSQ returns the existing
   fixed-length residual penalty `sqrt(MAX_USABLE_FLOAT / N)`, while MCMC returns
-  `-np.inf`. Missing ATM/LD tables follow the same policy without resource preflight.
+  `-np.inf`. Include proposal-dependent construction and terminal RV prediction
+  checks in the fitting exception boundary. Missing ATM/LD tables follow the same
+  policy without resource preflight.
 - Propagate unexpected programming and statistical arithmetic errors instead of
   converting them into rejected proposals. Remove the broad `LCSynthesisError`
   wrapper, preserve typed numerical failures through spot synthesis, and keep
@@ -130,8 +165,9 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
   behavior. Validate RV observation reducers during setup.
 - Raise explicit exceptions for Kepler solver nonconvergence and nonfinite
   eccentric anomalies instead of returning `False`, which could silently become
-  a zero anomaly in orbital calculations. Preserve the original convergence
-  exception as the cause and let unexpected exceptions propagate.
+  a zero anomaly in orbital calculations. Inspect SciPy convergence status
+  directly in Kepler and critical-potential solving so unexpected errors from
+  residual functions or solver invocations propagate unchanged.
 - Restore NumPy floating-point error settings after successful and failed
   Lagrange-point candidate checks and Cartesian-to-spherical conversions using
   scoped `np.errstate()` contexts. Restore settings before exception logging and

@@ -6,7 +6,7 @@ from astropy import units as u
 from elisa.analytics.models import lc, serializers
 from elisa.analytics.params import parameters
 from elisa.analytics.params.transform import PulsationModeInitialProperties
-from elisa.base.error import ElisaValueError
+from elisa.base.error import PulsationModeError
 from elisa.pulse.mode import PulsationMode
 from tests.utils import ElisaTestCase
 
@@ -134,7 +134,7 @@ class PulsationFrequencyTestCase(ElisaTestCase):
     def test_existing_frequency_validation_is_preserved(self):
         for value in (-1.0, -1 / u.d, -1 * u.Hz):
             with self.subTest(value=value):
-                with self.assertRaises(ElisaValueError):
+                with self.assertRaises(PulsationModeError):
                     PulsationModeInitialProperties.frequency(value)
         with self.assertRaises(TypeError):
             PulsationModeInitialProperties.frequency(object())

@@ -8,6 +8,7 @@ from numpy.testing import assert_almost_equal, assert_array_equal, assert_array_
 
 from elisa import Observer, const, settings, utils
 from elisa import units as u
+from elisa.base.error import PulsationModeError
 from elisa.base.star import Star
 from elisa.binary_system.system import BinarySystem
 from elisa.pulse import container_ops, pulsations
@@ -874,8 +875,8 @@ class TestPulsationModeProperties(ElisaTestCase):
         self.assertEqual(result, 3)
 
     def test_l_invalid_float(self):
-        """Test l property raises TypeError for non-integer float."""
-        with self.assertRaises(TypeError):
+        """Test l property raises PulsationModeError for non-integer float."""
+        with self.assertRaises(PulsationModeError):
             self.props.l(2.5)
 
     def test_l_invalid_string(self):
@@ -901,8 +902,8 @@ class TestPulsationModeProperties(ElisaTestCase):
         self.assertEqual(result, -1)
 
     def test_m_invalid_float(self):
-        """Test m property raises TypeError for non-integer float."""
-        with self.assertRaises(TypeError):
+        """Test m property raises PulsationModeError for non-integer float."""
+        with self.assertRaises(PulsationModeError):
             self.props.m(1.5)
 
     def test_m_invalid_string(self):
@@ -933,8 +934,8 @@ class TestPulsationModeProperties(ElisaTestCase):
         self.assertTrue(np.isfinite(result))
 
     def test_amplitude_negative_raises_error(self):
-        """Test amplitude property raises ValueError for negative values."""
-        with self.assertRaises(ValueError):
+        """Test amplitude property raises PulsationModeError for negative values."""
+        with self.assertRaises(PulsationModeError):
             self.props.amplitude(-10.0)
 
     def test_amplitude_invalid_type(self):
@@ -965,8 +966,8 @@ class TestPulsationModeProperties(ElisaTestCase):
         self.assertTrue(np.isfinite(result))
 
     def test_frequency_negative_raises_error(self):
-        """Test frequency property raises ValueError for negative values."""
-        with self.assertRaises(ValueError):
+        """Test frequency property raises PulsationModeError for negative values."""
+        with self.assertRaises(PulsationModeError):
             self.props.frequency(-1.0)
 
     def test_frequency_invalid_type(self):
@@ -1014,13 +1015,13 @@ class TestPulsationModeProperties(ElisaTestCase):
         self.assertTrue(0 <= result < const.PI)
 
     def test_mode_axis_theta_above_pi_raises_error(self):
-        """Test mode_axis_theta property raises ValueError for value >= pi."""
-        with self.assertRaises(ValueError):
+        """Test mode_axis_theta property raises PulsationModeError for value >= pi."""
+        with self.assertRaises(PulsationModeError):
             self.props.mode_axis_theta(180.0)  # 180 degrees = pi radians
 
     def test_mode_axis_theta_negative_raises_error(self):
-        """Test mode_axis_theta property raises ValueError for negative values."""
-        with self.assertRaises(ValueError):
+        """Test mode_axis_theta property raises PulsationModeError for negative values."""
+        with self.assertRaises(PulsationModeError):
             self.props.mode_axis_theta(-45.0)
 
     def test_mode_axis_phi_valid(self):
@@ -1476,16 +1477,8 @@ class TestPulsationsFunctions(ElisaTestCase):
         single = SingleSystem(star=Star(pulsations=pulse_meta, **STAR_PARAMS), **SYSTEM_PARMAS)
         mode = single.star.pulsations[0]
 
-        # For radial modes, temp_amplitude calculation may have issues
-        # due to division by zero, but we just check it doesn't crash
-        try:
-            result = pulsations.temp_amplitude(mode)
-            # If it doesn't crash, check if result is finite
-            if np.isfinite(result):
-                self.assertTrue(True)
-        except (ZeroDivisionError, ValueError):
-            # This is expected for radial modes
-            self.assertTrue(True)
+        with self.assertRaises(PulsationModeError):
+            pulsations.temp_amplitude(mode)
 
     def test_temp_amplitude_different_ratios(self):
         """Test temp_amplitude with different amplitude ratios."""
@@ -1520,9 +1513,9 @@ class TestPulsationsFunctions(ElisaTestCase):
             "start_phase": 0.0,
         }]
 
-        # Should raise ValueError during SingleSystem initialization for radial modes
+        # Should raise PulsationModeError during SingleSystem initialization for radial modes
         # without temperature_amplitude_factor
-        with self.assertRaises(ValueError):
+        with self.assertRaises(PulsationModeError):
             single = SingleSystem(star=Star(pulsations=pulse_meta, **STAR_PARAMS), **SYSTEM_PARMAS)
 
 
@@ -1676,7 +1669,7 @@ class TestPulsationModeInitialization(ElisaTestCase):
 
     def test_validate_mode_invalid_m_exceeds_l(self):
         """Test mode validation raises error when |m| > l."""
-        with self.assertRaises(ValueError):
+        with self.assertRaises(PulsationModeError):
             PulsationMode(
                 l=2,
                 m=3,
@@ -1686,7 +1679,7 @@ class TestPulsationModeInitialization(ElisaTestCase):
 
     def test_validate_mode_invalid_negative_m_exceeds_l(self):
         """Test mode validation raises error when |m| > l with negative m."""
-        with self.assertRaises(ValueError):
+        with self.assertRaises(PulsationModeError):
             PulsationMode(
                 l=2,
                 m=-4,
@@ -1815,7 +1808,7 @@ class TestPulsationModeInitialization(ElisaTestCase):
 
     def test_amplitude_negative_raises_error(self):
         """Test that negative amplitude raises error."""
-        with self.assertRaises(ValueError):
+        with self.assertRaises(PulsationModeError):
             PulsationMode(
                 l=2,
                 m=1,
@@ -1825,7 +1818,7 @@ class TestPulsationModeInitialization(ElisaTestCase):
 
     def test_frequency_negative_raises_error(self):
         """Test that negative frequency raises error."""
-        with self.assertRaises(ValueError):
+        with self.assertRaises(PulsationModeError):
             PulsationMode(
                 l=2,
                 m=1,
