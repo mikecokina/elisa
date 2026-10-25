@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from elisa.base.error import ElisaValueError
 from elisa import const as c
 from elisa import units as u
+from elisa.base.error import ElisaValueError
 from elisa.base.transform import (
     WHEN_FLOAT64,
     SystemProperties,

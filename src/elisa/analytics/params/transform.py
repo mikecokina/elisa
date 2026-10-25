@@ -148,3 +148,15 @@ class PulsationModeInitialProperties(PulsationModeProperties):
 
     mode_axis_theta = angular
     mode_axis_phi = angular
+
+    @staticmethod
+    def frequency(value: Float | Quantity | str) -> Float:
+        """Store fitting frequencies in cycles/day for model reconstruction.
+
+        Keep the mode's input validation, but retain the bare-number input unit
+        expected by the next PulsationMode construction rather than storing Hz.
+        """
+        PulsationModeProperties.frequency(value)
+        if isinstance(value, (u.Quantity, str)):
+            return u.Quantity(value).to_value(u.DefaultPulsationsInputUnits.frequency)
+        return np.float64(value)

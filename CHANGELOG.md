@@ -114,6 +114,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Fix double conversion of fitted pulsation frequencies by storing values,
+  bounds, and sigma in cycles/day until mode construction converts to Hz.
+  Keep free, fixed, and constrained frequencies consistent, including explicit
+  Astropy units, while preserving direct-model frequency conventions.
 - Apply one explicit synthesis-failure policy to LC/RV least-squares and MCMC
   fitting. Expected physical, convergence, numerical, spot, atmosphere, and
   limb-darkening failures reject the current proposal: LSQ returns the existing
