@@ -362,10 +362,11 @@ class ElisaTestCase(unittest.TestCase):
         with open(self.CONFIG_FILE, "w") as f:
             f.write(content)
 
-    def setUpClass(*args, **kwargs):
+    @classmethod
+    def setUpClass(cls):
+        previous_disable = logging.root.manager.disable
+        cls.addClassCleanup(logging.disable, previous_disable)
         logging.disable(logging.CRITICAL)
-        # logging.disable(logging.NOTSET)
-        pass
 
     def reset_test_settings(self):
         """Reload the canonical test INI over all built-in defaults."""

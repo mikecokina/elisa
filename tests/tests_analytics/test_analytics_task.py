@@ -1,7 +1,6 @@
 # keep it first
 # due to stupid astropy units/constants implementation
 from tests import set_astropy_units
-from unittest import mock
 
 import numpy as np
 
@@ -129,26 +128,25 @@ class McMcLCTestCase(AbstractFitTestCase):
 
         }
 
+        observations = self.model_generator.lc_generator()
         lc_v = LCData(
             x_data=self.phases['Generic.Bessell.V'],
-            y_data=self.flux['Generic.Bessell.V'],
+            y_data=observations['Generic.Bessell.V'],
             x_unit=u.dimensionless_unscaled,
             y_unit=u.dimensionless_unscaled
         )
 
         lc_b = LCData(
             x_data=self.phases['Generic.Bessell.B'],
-            y_data=self.flux['Generic.Bessell.B'],
+            y_data=observations['Generic.Bessell.B'],
             x_unit=u.dimensionless_unscaled,
             y_unit=u.dimensionless_unscaled
         )
 
-        self.model_generator.keep_out = True
-        with mock.patch("elisa.analytics.models.lc.synthetic_binary", self.model_generator.lc_generator):
-            lc_initial = BinaryInitialParameters(**dinit)
-            task = LCBinaryAnalyticsTask(data={'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b},
-                                         expected_morphology="detached", method='mcmc')
-            task.fit(x0=lc_initial, nsteps=10, discretization=5.0)
+        lc_initial = BinaryInitialParameters(**dinit)
+        task = LCBinaryAnalyticsTask(data={'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b},
+                                     expected_morphology="detached", method='mcmc')
+        task.fit(x0=lc_initial, nsteps=10, discretization=5.0)
 
     def test_mcmc_lc_fit_community_params_detached(self):
         # Keep sampled geometries in the interior of the test LD grid.
@@ -221,9 +219,10 @@ class McMcLCTestCase(AbstractFitTestCase):
             }
         }
 
+        observations = self.model_generator.lc_generator()
         lc_v = LCData(
             x_data=self.phases['Generic.Bessell.V'],
-            y_data=self.flux['Generic.Bessell.V'],
+            y_data=observations['Generic.Bessell.V'],
             x_unit=u.dimensionless_unscaled,
             y_unit=u.dimensionless_unscaled
 
@@ -231,17 +230,15 @@ class McMcLCTestCase(AbstractFitTestCase):
 
         lc_b = LCData(
             x_data=self.phases['Generic.Bessell.B'],
-            y_data=self.flux['Generic.Bessell.B'],
+            y_data=observations['Generic.Bessell.B'],
             x_unit=u.dimensionless_unscaled,
             y_unit=u.dimensionless_unscaled
         )
 
-        self.model_generator.keep_out = True
-        with mock.patch("elisa.analytics.models.lc.synthetic_binary", self.model_generator.lc_generator):
-            lc_initial = BinaryInitialParameters(**dinit)
-            task = LCBinaryAnalyticsTask(data={'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b},
-                                         expected_morphology="detached", method='mcmc')
-            task.fit(x0=lc_initial, nsteps=10, discretization=5.0)
+        lc_initial = BinaryInitialParameters(**dinit)
+        task = LCBinaryAnalyticsTask(data={'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b},
+                                     expected_morphology="detached", method='mcmc')
+        task.fit(x0=lc_initial, nsteps=10, discretization=5.0)
 
     def test_coefficient_of_determination(self):
         dinit = {
@@ -313,9 +310,10 @@ class McMcLCTestCase(AbstractFitTestCase):
             }
         }
 
+        observations = self.model_generator.lc_generator()
         lc_v = LCData(
             x_data=self.phases['Generic.Bessell.V'],
-            y_data=self.flux['Generic.Bessell.V'],
+            y_data=observations['Generic.Bessell.V'],
             x_unit=u.dimensionless_unscaled,
             y_unit=u.dimensionless_unscaled
 
@@ -323,17 +321,15 @@ class McMcLCTestCase(AbstractFitTestCase):
 
         lc_b = LCData(
             x_data=self.phases['Generic.Bessell.B'],
-            y_data=self.flux['Generic.Bessell.B'],
+            y_data=observations['Generic.Bessell.B'],
             x_unit=u.dimensionless_unscaled,
             y_unit=u.dimensionless_unscaled
         )
 
-        self.model_generator.keep_out = True
-        with mock.patch("elisa.analytics.models.lc.synthetic_binary", self.model_generator.lc_generator):
-            task = LCBinaryAnalyticsTask(data={'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b},
-                                         expected_morphology="detached", method='mcmc')
-            r2 = task.coefficient_of_determination(model_parameters=dinit, discretization=10,
-                                                   interpolation_treshold=100)
+        task = LCBinaryAnalyticsTask(data={'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b},
+                                     expected_morphology="detached", method='mcmc')
+        r2 = task.coefficient_of_determination(model_parameters=dinit, discretization=10,
+                                               interpolation_treshold=100)
 
         self.assertTrue(0.5 <= r2 <= 1.0)
 
@@ -778,26 +774,25 @@ class LeastSqaureLCTestCase(AbstractFitTestCase):
             }
         }
 
+        observations = self.model_generator.lc_generator()
         lc_v = LCData(
             x_data=self.phases['Generic.Bessell.V'],
-            y_data=self.flux['Generic.Bessell.V'],
+            y_data=observations['Generic.Bessell.V'],
             x_unit=u.dimensionless_unscaled,
             y_unit=u.dimensionless_unscaled
         )
 
         lc_b = LCData(
             x_data=self.phases['Generic.Bessell.B'],
-            y_data=self.flux['Generic.Bessell.B'],
+            y_data=observations['Generic.Bessell.B'],
             x_unit=u.dimensionless_unscaled,
             y_unit=u.dimensionless_unscaled
         )
 
-        self.model_generator.keep_out = True
-        with mock.patch("elisa.analytics.models.lc.synthetic_binary", self.model_generator.lc_generator):
-            lc_initial = BinaryInitialParameters(**dinit)
-            data = {'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b}
-            task = LCBinaryAnalyticsTask(data=data, method='least_squares', expected_morphology='detached')
-            result = task.fit(x0=lc_initial)
+        lc_initial = BinaryInitialParameters(**dinit)
+        data = {'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b}
+        task = LCBinaryAnalyticsTask(data=data, method='least_squares', expected_morphology='detached')
+        result = task.fit(x0=lc_initial)
 
         self.assertTrue(1.0 > result["r_squared"]['value'] > 0.9)
 
@@ -872,26 +867,25 @@ class LeastSqaureLCTestCase(AbstractFitTestCase):
             }
         }
 
+        observations = self.model_generator.lc_generator()
         lc_v = LCData(
             x_data=self.phases['Generic.Bessell.V'],
-            y_data=self.flux['Generic.Bessell.V'],
+            y_data=observations['Generic.Bessell.V'],
             x_unit=u.dimensionless_unscaled,
             y_unit=u.dimensionless_unscaled
         )
 
         lc_b = LCData(
             x_data=self.phases['Generic.Bessell.B'],
-            y_data=self.flux['Generic.Bessell.B'],
+            y_data=observations['Generic.Bessell.B'],
             x_unit=u.dimensionless_unscaled,
             y_unit=u.dimensionless_unscaled
         )
 
-        self.model_generator.keep_out = True
-        with mock.patch("elisa.analytics.models.lc.synthetic_binary", self.model_generator.lc_generator):
-            lc_initial = BinaryInitialParameters(**dinit)
-            data = {'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b}
-            task = LCBinaryAnalyticsTask(data=data, method='least_squares', expected_morphology='detached')
-            result = task.fit(x0=lc_initial)
+        lc_initial = BinaryInitialParameters(**dinit)
+        data = {'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b}
+        task = LCBinaryAnalyticsTask(data=data, method='least_squares', expected_morphology='detached')
+        result = task.fit(x0=lc_initial)
 
         self.assertTrue(1.0 > result["r_squared"]['value'] > 0.9)
 
@@ -974,15 +968,19 @@ class ModelSimulator(object):
         self.error = 0.05
         self.step = 1
         self.args = []
+        # Observational noise belongs to this test instance, never to synthesis callbacks.
+        rng = np.random.default_rng(0)
+        self._lc_observations = {
+            band: flux + rng.normal(0, self.lc_mean * self.error, len(flux))
+            for band, flux in self.flux.items()
+        }
+        self._rv_observations = {
+            component: self.rv[component] + rng.normal(0, self.rv_mean * self.error, len(self.rv[component]))
+            for component in settings.BINARY_COUNTERPARTS
+        }
 
-    def lc_generator(self, *args, **kwargs):
-        add = self.lc_mean * self.error
-        flux = {band: self.flux[band] + np.random.normal(0, add, len(self.flux[band]))
-                for band in self.flux}
-        return flux
+    def lc_generator(self):
+        return {band: flux.copy() for band, flux in self._lc_observations.items()}
 
-    def rv_generator(self, *args, **kwargs):
-        add = self.rv_mean * self.error
-        rv = {component: self.rv[component] + np.random.normal(0, add, len(self.rv[component]))
-              for component in settings.BINARY_COUNTERPARTS}
-        return rv
+    def rv_generator(self):
+        return {component: rv.copy() for component, rv in self._rv_observations.items()}

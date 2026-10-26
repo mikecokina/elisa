@@ -19,7 +19,7 @@ from tests.tests_analytics.fitting_helpers import V, lc_parameters, make_lc, nor
 def synthesis_settings():
     previous = settings.settings_serializer()
     settings.configure(ATM_ATLAS='bb', LIMB_DARKENING_LAW='linear', NUMBER_OF_PROCESSES=1,
-                       REFLECTION_EFFECT=True, MESH_GENERATOR='auto')
+                       REFLECTION_EFFECT=True, MESH_GENERATOR='auto', RV_METHOD='kinematic')
     yield
     settings.configure(**previous)
 

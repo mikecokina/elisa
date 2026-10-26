@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import textwrap
@@ -671,3 +672,39 @@ class SettingsIsolationTestCase(ElisaTestCase):
         TestCurvesUtilsCachingAndBroadcast("test_interpolated_ld_cached").run(result)
         self.assertTrue(result.wasSuccessful(), result.errors or result.failures)
         self.assertEqual(interpolate_on_ld_grid_cached.cache_info().currsize, 0)
+
+
+@pytest.mark.parametrize('previous_disable', [logging.NOTSET, 27])
+@pytest.mark.parametrize('failure', [None, 'class_setup', 'body'])
+def test_elisa_class_cleanup_restores_logging_threshold(previous_disable, failure):
+    original = logging.root.manager.disable
+    observed = []
+
+    class Probe(ElisaTestCase):
+        @classmethod
+        def setUpClass(cls):
+            super().setUpClass()
+            observed.append(logging.root.manager.disable)
+            if failure == 'class_setup':
+                raise RuntimeError('class setup failed')
+
+        def runTest(self):
+            self.assertEqual(logging.root.manager.disable, logging.CRITICAL)
+            if failure == 'body':
+                raise RuntimeError('test body failed')
+
+    class FollowingClass(unittest.TestCase):
+        def runTest(self):
+            observed.append(logging.root.manager.disable)
+            self.assertEqual(logging.root.manager.disable, previous_disable)
+
+    try:
+        logging.disable(previous_disable)
+        result = unittest.TestResult()
+        unittest.TestSuite([Probe(), FollowingClass()]).run(result)
+        assert len(result.errors) == int(failure is not None), result.errors
+        assert not result.failures, result.failures
+        assert observed == [logging.CRITICAL, previous_disable]
+        assert logging.root.manager.disable == previous_disable
+    finally:
+        logging.disable(original)
