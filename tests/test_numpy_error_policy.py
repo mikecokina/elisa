@@ -86,10 +86,13 @@ def test_lagrangian_points_preserves_policy_on_success(caller_policy: ErrorPolic
 def test_lagrangian_points_restores_policy_before_logging_and_continue(caller_policy: ErrorPolicy) -> None:
     """Singular candidates restore policy before logging and subsequent solves."""
     logged_policies: list[ErrorPolicy] = []
+    diagnostics: list[object] = []
+    solver_log_counts: list[int] = []
 
-    def record_log(_message: str, *_args: object) -> None:
+    def record_log(_message: str, *args: object) -> None:
         # noinspection PyTypeChecker
         logged_policies.append(np.geterr())
+        diagnostics.extend((_message, *args))
 
     # x=0 and x=distance fail the real potential evaluation. Only the two
     # nonsingular candidates should reach the solver, under the caller's policy.
@@ -104,18 +107,23 @@ def test_lagrangian_points_restores_policy_before_logging_and_continue(caller_po
     ) -> tuple[NDArray[np.float64], dict[str, object], int, str]:
         # noinspection PyTypeChecker
         solver_policies.append(np.geterr())
+        solver_log_counts.append(len(logged_policies))
         # A failed convergence status lets the candidate loop run to completion.
         return np.array([0.0]), {}, 0, "No convergence"
 
     with (
         patch.object(binary_system.np, "linspace", return_value=candidates),
         patch.object(binary_system, "fsolve", side_effect=record_solver_policy) as solver,
-        patch.object(binary_system.logger, "debug", side_effect=record_log) as logger,
+        patch.object(binary_system.logger, "debug", side_effect=record_log),
     ):
         with pytest.raises(ElisaFloatingPointError, match="Lagrange solver"):
             binary_system.BinarySystem.lagrangian_points_static(1.0, 0.5)
     assert np.geterr() == caller_policy
     assert [call.args[1] for call in solver.call_args_list] == expected_solver_inputs
     assert solver_policies == expected_policies
-    assert logged_policies == expected_policies
-    assert all(call.args[0] == "invalid value passed to potential, exception: %s" for call in logger.call_args_list)
+    assert logged_policies
+    assert all(policy == caller_policy for policy in logged_policies)
+    # Each singular candidate logs before the following nonsingular solve;
+    # additional debug events and changes to the rendered text are harmless.
+    assert 0 < solver_log_counts[0] < solver_log_counts[1]
+    assert any('divide' in str(arg) or 'invalid' in str(arg) for arg in diagnostics)

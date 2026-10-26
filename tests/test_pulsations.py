@@ -1788,16 +1788,19 @@ class TestPulsationModeInitialization(ElisaTestCase):
         self.assertIsInstance(mode.m, (int, np.integer))
 
     def test_mode_axis_theta_range_validation(self):
-        """Test that mode_axis_theta is validated to be in (0, pi)."""
-        # Valid case
-        mode = PulsationMode(
-            l=2,
-            m=1,
-            amplitude=1.0 * u.m / u.s,
-            frequency=1.0 / u.d,
-            mode_axis_theta=np.pi / 2,
-        )
-        self.assertTrue(0 <= mode.mode_axis_theta < const.PI)
+        """Constructor angles become internal radians in the valid range [0, pi)."""
+        expected_theta = 7 * np.pi / 20  # 63 degrees, not a symmetry-axis angle.
+        for theta in (63.0, 63.0 * u.deg, expected_theta * u.rad):
+            with self.subTest(theta=theta):
+                mode = PulsationMode(
+                    l=2,
+                    m=1,
+                    amplitude=1.0 * u.m / u.s,
+                    frequency=1.0 / u.d,
+                    mode_axis_theta=theta,
+                )
+                self.assertAlmostEqual(mode.mode_axis_theta, expected_theta)
+                self.assertTrue(0 <= mode.mode_axis_theta < const.PI)
 
     def test_amplitude_negative_raises_error(self):
         """Test that negative amplitude raises error."""

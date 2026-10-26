@@ -18,7 +18,7 @@ from pandas.testing import assert_frame_equal
 from elisa import const, ld, utils
 from elisa import settings
 from elisa.base.curves import utils as curve_utils
-from elisa.base.error import LimbDarkeningError, LimbDarkeningSourceError
+from elisa.base.error import ElisaValueError, LimbDarkeningError, LimbDarkeningSourceError
 from tests.utils import ElisaTestCase
 
 set_astropy_units()
@@ -145,32 +145,29 @@ class TestLimbDarkeningModule(ElisaTestCase):
         self.assertTrue(np.all(expected_ylog == obtained_ylog))
         self.assertTrue(np.all(expected_xlog == obtained_xlog))
 
-    def _raise_test_limb_darkening_factor(self, msg, **kwargs):
-        with self.assertRaises(Exception) as context:
+    def _raise_test_limb_darkening_factor(self, exception_type, msg, **kwargs):
+        with self.assertRaises(exception_type) as context:
             ld.limb_darkening_factor(**kwargs)
-        self.assertTrue(msg in str(context.exception))
+        self.assertIn(msg, str(context.exception))
 
     def test_limb_darkening_factor_raise(self):
         normals = np.array([[1, 1, 1], [0.5, 0.5, 0.5], [-1., -1, 1.3]])
-        sov = const.LINE_OF_SIGHT
+        normals = normals / np.linalg.norm(normals, axis=1)[:, None]
+        valid = dict(normal_vector=normals, line_of_sight=const.LINE_OF_SIGHT,
+                     coefficients=np.array([[0.1], [0.2], [0.3]]), limb_darkening_law='linear')
+        self.assertTrue(np.isfinite(ld.limb_darkening_factor(**valid)).all())
 
-        # :warning: order of tests depend on order of check in ld.limb_darkening_factor method!!!
-
-        # missing line_of_sight
-        msg = 'Line of sight vector(s) was not supplied.'
-        self._raise_test_limb_darkening_factor(msg, normal_vector=normals)
-
-        # missing normal_vector
-        msg = 'Normal vector(s) was not supplied.'
-        self._raise_test_limb_darkening_factor(msg, line_of_sight=sov)
-
-        # missing coefficients
-        msg = 'Limb darkening coefficients were not supplied.'
-        self._raise_test_limb_darkening_factor(msg, line_of_sight=sov, normal_vector=normals)
-
-        # missing limb_darkening_law
-        msg = 'Limb darkening rule was not supplied choose from'
-        self._raise_test_limb_darkening_factor(msg, line_of_sight=sov, normal_vector=normals, coefficients=3)
+        # Omit exactly one prerequisite so validation order cannot choose the error.
+        for missing, exception_type, diagnostic in (
+            ('line_of_sight', ElisaValueError, 'Line of sight'),
+            ('normal_vector', ElisaValueError, 'Normal vector'),
+            ('coefficients', LimbDarkeningError, 'coefficients'),
+            ('limb_darkening_law', LimbDarkeningError, 'rule'),
+        ):
+            with self.subTest(missing=missing):
+                kwargs = valid.copy()
+                del kwargs[missing]
+                self._raise_test_limb_darkening_factor(exception_type, diagnostic, **kwargs)
 
     def test_limb_darkening_factor_linear(self):
         ld_law = 'linear'

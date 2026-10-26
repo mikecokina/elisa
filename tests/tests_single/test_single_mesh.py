@@ -126,23 +126,30 @@ class MeshUtilsTestCase(ElisaTestCase):
         assert_array_equal(expected, obtained)
 
 
-@pytest.mark.parametrize('failed_attempt', [1, 2])
-def test_single_star_spot_root_cannot_omit_spot(monkeypatch, failed_attempt):
+@pytest.mark.parametrize('stage', ['center', 'first_ring'])
+def test_single_star_spot_root_cannot_omit_spot(monkeypatch, stage):
     from elisa.single_system.surface import mesh as single_mesh
     single = testutils.prepare_single_system(testutils.SINGLE_SYSTEM_PARAMS['spherical'],
                                           spots=testutils.SPOTS_META['primary'])
     container = testutils.prepare_single_system_container(single)
     original = single_mesh.calculate_radius
-    calls = 0
+    spot = container.star.spots[0]
+    target_theta = spot.latitude if stage == 'center' else spot.latitude + spot.discretization_factor
+    injected = False
 
-    def failed_radius(*args):
-        nonlocal calls
-        calls += 1
-        return container.star.equatorial_radius * 2 if calls == failed_attempt else original(*args)
+    def failed_radius(mass, angular_velocity, surface_potential, theta):
+        nonlocal injected
+        if theta == target_theta:
+            injected = True
+            return container.star.equatorial_radius * 2
+        return original(mass, angular_velocity, surface_potential, theta)
 
     monkeypatch.setattr(single_mesh, 'calculate_radius', failed_radius)
-    with pytest.raises(error.SpotError, match='reasonable conditions'):
+    diagnostic = 'Center of spot' if stage == 'center' else 'First ring of spot'
+    with pytest.raises(error.SpotError, match=diagnostic) as caught:
         single_mesh.mesh_spots(container)
+    assert injected
+    assert 'reasonable conditions' in str(caught.value)
     assert container.star.spots
 
 
@@ -163,24 +170,37 @@ def test_single_star_spot_surface_failure_preserves_cause(monkeypatch):
     assert container.star.spots
 
 
-@pytest.mark.parametrize('failed_attempt', [1, 2])
-def test_single_spot_invalid_radius_source_keeps_spot_type_and_cause(monkeypatch, failed_attempt):
+@pytest.mark.parametrize('stage', ['center', 'first_ring'])
+def test_single_spot_invalid_radius_source_keeps_spot_type_and_cause(monkeypatch, stage):
     from elisa.single_system import radius
     from elisa.single_system.surface import mesh as single_mesh
     single = testutils.prepare_single_system(testutils.SINGLE_SYSTEM_PARAMS['spherical'],
                                           spots=testutils.SPOTS_META['primary'])
     container = testutils.prepare_single_system_container(single)
     original = radius.fsolve
-    calls = 0
+    spot = container.star.spots[0]
+    center_theta = spot.latitude
+    first_ring_theta = spot.latitude + spot.discretization_factor
+    # The radius solver receives potential coefficients, not the angle itself.
+    center_coefficients = model.pre_calculate_for_potential_value(
+        container.star.mass, container.angular_velocity, center_theta)
+    first_ring_coefficients = model.pre_calculate_for_potential_value(
+        container.star.mass, container.angular_velocity, first_ring_theta)
+    assert not np.array_equal(center_coefficients, first_ring_coefficients)
+    target_coefficients = center_coefficients if stage == 'center' else first_ring_coefficients
+    injected = False
 
     def invalid_root(*args, **kwargs):
-        nonlocal calls
-        calls += 1
-        return (np.array([-1.]), {}, 1, 'wrong root') if calls == failed_attempt else original(*args, **kwargs)
+        nonlocal injected
+        if np.array_equal(kwargs['args'][0], target_coefficients):
+            injected = True
+            return np.array([-1.]), {}, 1, 'wrong root'
+        return original(*args, **kwargs)
 
     monkeypatch.setattr(radius, 'fsolve', invalid_root)
     with pytest.raises(error.SpotError, match='surface root') as caught:
         single_mesh.mesh_spots(container)
+    assert injected
     assert isinstance(caught.value.__cause__, error.ElisaFloatingPointError)
     assert 'Invalid value of radius' in str(caught.value.__cause__)
     assert container.star.spots

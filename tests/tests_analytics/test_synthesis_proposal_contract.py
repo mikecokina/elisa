@@ -125,13 +125,27 @@ def _worker_evaluate(fit, xn):
     return evaluate(fit, xn)
 
 
+def _worker_recovery_sequence(fit, xn, bad):
+    """Evaluate all three proposals on this single deserialized fitting instance."""
+    before = evaluate(fit, xn)
+    rejected = evaluate(fit, bad)
+    after = evaluate(fit, xn)
+    return before, rejected, after
+
+
 @pytest.mark.parametrize('method', ['lsq', 'mcmc'])
 def test_real_fitting_rejection_through_process_pool(method):
+    """A worker transports rejection and recovers on the same deserialized fit."""
     fit, xn, bad = make_fit('lc', method, 'pulsation', 'm')
-    before = evaluate(fit, xn)
+    expected = evaluate(fit, xn)
+    assert np.isfinite(expected).all()
     with multiprocessing.get_context('fork').Pool(1) as pool:
-        assert_rejected(fit, pool.apply_async(_worker_evaluate, (fit, bad)).get(timeout=30))
-        np.testing.assert_array_equal(pool.apply_async(_worker_evaluate, (fit, xn)).get(timeout=30), before)
+        before, rejected, after = pool.apply_async(
+            _worker_recovery_sequence, (fit, xn, bad)).get(timeout=30)
+    assert np.isfinite(before).all()
+    assert_rejected(fit, rejected)
+    np.testing.assert_array_equal(before, expected)
+    np.testing.assert_array_equal(after, before)
 
 
 @pytest.mark.parametrize('phenomenon,error_type', [('pulsation', PulsationModeError), ('spot', SpotError)])

@@ -18,7 +18,7 @@ from elisa.base.curves.utils import get_component_limbdarkening_cfs
 from elisa.base.curves import utils as curves_utils
 from elisa import ld
 from elisa.base.container import StarContainer
-from elisa.base.error import LimbDarkeningError
+from elisa.base.error import ElisaValueError, LimbDarkeningError
 from elisa.base.star import Star
 from elisa.base.transform import StarProperties
 from tests.utils import ElisaTestCase, prepare_single_system, SOLAR_MODEL
@@ -103,7 +103,7 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
         definition = get_default_binary_definition()
         definition["primary"].update({**definition["primary"],
                                       "limb_darkening_coefficients": {'bolometric': [0.5, ]}})
-        with self.assertRaises(Exception) as context:
+        with self.assertRaises(ElisaValueError) as context:
             BinarySystem.from_json(definition)
 
         length = len(definition['primary']['limb_darkening_coefficients']['bolometric'])
@@ -123,11 +123,13 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
 
         bs = BinarySystem.from_json(definition)
         o = Observer(passband=["TESS"], system=bs)
-        with self.assertRaises(Exception) as context:
+        with self.assertRaises(KeyError) as context:
             o.lc(phases=[0.0, ])
 
-        self.assertTrue('Please supply limb-darkening factors for [\'TESS\'] '
-                        'pasband(s) as well.' in str(context.exception))
+        self.assertIn('TESS', str(context.exception))
+        self.assertIn('limb-darkening factors', str(context.exception))
+        self.assertIsInstance(context.exception.__cause__, KeyError)
+        self.assertEqual(context.exception.__cause__.args, ('TESS',))
 
     def test_raise_missing_bolometric_passband_lds(self):
         definition = get_default_binary_definition()

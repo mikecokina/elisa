@@ -155,7 +155,7 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
             position=Position(*(0, 1.0, 0.0, 0.0, 0.0)),
             **s.properties_serializer()
         )
-        with self.assertRaises(Exception) as context:
+        with self.assertRaises(error.SpotError) as context:
             orbital_position_container.build_mesh(components_distance=1.0)
         self.assertTrue("Please, specify spots wisely" in str(context.exception))
 
