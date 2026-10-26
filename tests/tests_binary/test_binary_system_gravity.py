@@ -5,6 +5,7 @@ from tests import set_astropy_units
 import numpy as np
 
 from numpy.testing import assert_array_equal
+from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.surface import gravity
 from elisa.utils import is_empty
 from tests import utils as testutils
@@ -12,6 +13,21 @@ from tests.utils import ElisaTestCase, prepare_binary_system, polar_gravity_acce
 from elisa import umpy as up, units as u, const
 
 set_astropy_units()
+
+
+def polar_gravity_reference(gravitational_constant, own_mass, companion_mass,
+                           semi_major_axis, distance, polar_radius):
+    """Return effective polar acceleration in SI from independent physical forces."""
+    radius_m = semi_major_axis * polar_radius
+    distance_m = semi_major_axis * distance
+    companion_distance_m = np.sqrt(distance_m**2 + radius_m**2)
+
+    ax = gravitational_constant * companion_mass * (
+        distance_m / companion_distance_m**3 - 1 / distance_m**2
+    )
+    az = (-gravitational_constant * own_mass / radius_m**2
+          - gravitational_constant * companion_mass * radius_m / companion_distance_m**3)
+    return np.sqrt(ax**2 + az**2)
 
 
 class BuildSpotlessGravityTestCase(ElisaTestCase):
@@ -163,25 +179,36 @@ class GravityUtilsTestCase(ElisaTestCase):
 
     def test_calculate_polar_gravity_acceleration_eccentric(self):
         bs = self._binaries[1]
-        distance = bs.orbit.orbital_motion([0.34])[0][0]
-        orbital_position_container = testutils.prepare_orbital_position_container(bs)
+        # Check the audited phase and periastron, on opposite sides of d = 1.
+        for phase in (0.34, 0.0):
+            position = bs.calculate_orbital_motion([phase])[0]
+            orbital_position_container = OrbitalPositionContainer.from_binary_system(bs, position)
+            distance = position.distance
+            self.assertNotEqual(distance, 1.0)
 
-        expected_g_cgs_primary = polar_gravity_acceleration(bs, ["primary"], distance)
-        expected_g_cgs_secondary = polar_gravity_acceleration(bs, ["secondary"], distance)
+            for component, companion in (("primary", "secondary"), ("secondary", "primary")):
+                with self.subTest(phase=phase, component=component):
+                    star = getattr(orbital_position_container, component)
+                    companion_star = getattr(orbital_position_container, companion)
+                    expected_g_cgs = 100.0 * polar_gravity_reference(
+                        const.G, star.mass, companion_star.mass, bs.semi_major_axis,
+                        distance, star.polar_radius,
+                    )
+                    obtained_g_cgs = 100.0 * gravity.calculate_polar_gravity_acceleration(
+                        star, distance, bs.mass_ratio, component, bs.semi_major_axis,
+                        star.synchronicity, logg=False,
+                    )
+                    np.testing.assert_allclose(obtained_g_cgs, expected_g_cgs, rtol=1e-10, atol=0)
 
-        obtained_g_cgs_primary = gravity.calculate_polar_gravity_acceleration(orbital_position_container.primary,
-                                                                              distance, bs.mass_ratio,
-                                                                              "primary", bs.semi_major_axis,
-                                                                              bs.primary.synchronicity,
-                                                                              logg=False) * 100.0
-        obtained_g_cgs_secondary = gravity.calculate_polar_gravity_acceleration(orbital_position_container.secondary,
-                                                                                distance, bs.mass_ratio,
-                                                                                "secondary", bs.semi_major_axis,
-                                                                                bs.secondary.synchronicity,
-                                                                                logg=False) * 100.0
-
-        print(expected_g_cgs_primary, obtained_g_cgs_primary)
-        print(expected_g_cgs_secondary, obtained_g_cgs_secondary)
-        print(distance)
-
-        # raise Exception("Unfinished test")
+                    # Both gradient routines use primary-centered coordinates.
+                    point = np.array([[0.0 if component == "primary" else distance,
+                                       0.0, star.polar_radius]])
+                    general_gradient = gravity.calculate_potential_gradient(
+                        distance, component, point, star.synchronicity, bs.mass_ratio,
+                    )
+                    polar_gradient = gravity.calculate_polar_potential_gradient_magnitude(
+                        distance, bs.mass_ratio, star.polar_radius, component, star.synchronicity,
+                    )
+                    np.testing.assert_allclose(
+                        polar_gradient, np.linalg.norm(general_gradient[0]), rtol=1e-10, atol=0,
+                    )

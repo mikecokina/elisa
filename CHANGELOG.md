@@ -128,6 +128,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Correct the secondary polar gravity derivative for binary separations other
+  than one semi-major axis, using the actual secondary center. Repair the
+  eccentric gravity test to use consistent orbital radii and independent
+  analytical references for both stars at two non-unit separations.
 - Reject invalid pulsation degrees, orders, amplitudes, frequencies, and mode axes
   with `PulsationModeError`. Require integral numeric indices and explicitly
   enforce `l >= 0` in the degree transformer; preserve valid negative `m`, the

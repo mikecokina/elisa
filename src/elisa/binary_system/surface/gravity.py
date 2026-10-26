@@ -122,7 +122,7 @@ def calculate_polar_potential_gradient_magnitude(
         domega_dx = (
             -points[0] / r3
             + mass_ratio * (components_distance - points[0]) / r_hat3
-            - up.power(synchronicity, 2) * (mass_ratio + 1) * (1 - points[0])
+            - up.power(synchronicity, 2) * (mass_ratio + 1) * (components_distance - points[0])
             + 1.0 / cd2
         )
     else:
