@@ -202,12 +202,8 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
             sigmas.append(parameter.sigma / (upper - lower))
         return np.asarray(sigmas, dtype=FLOAT)
 
-    def prepare_priors(self) -> None:
-        """Validate free prior metadata once, before normalization or sampling.
-
-        Fixed and constrained parameters have no independent prior coordinate.
-        Preserve the existing box-truncated standardized Gaussian definition.
-        """
+    def _validate_prior_metadata(self) -> None:
+        """Check free bounds, their span and optional Gaussian widths before normalization."""
         for key, parameter in self.fitable.items():
             lower, upper = self.normalization[key]
             if not np.all(np.isfinite([lower, upper])) or lower >= upper:
@@ -223,6 +219,14 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
             if sigma is not None and (not np.isfinite(sigma) or sigma <= 0):
                 msg = f"Parameter {key} requires a finite, strictly positive Gaussian width"
                 raise ValueError(msg)
+
+    def prepare_priors(self) -> None:
+        """Validate free prior metadata once, before normalization or sampling.
+
+        Fixed and constrained parameters have no independent prior coordinate.
+        Preserve the existing box-truncated standardized Gaussian definition.
+        """
+        self._validate_prior_metadata()
 
         self.norm_init_vector = np.asarray(
             parameters.vector_normalizer(
@@ -269,6 +273,23 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         """Check current free and evaluated constrained values, excluding fixed metadata."""
         current = {key: value for key, value in model_parameters.items() if key not in self.fixed}
         self.validate_physical_parameters(current)
+
+    def _prepare_likelihood_parameters(self, xn: NDArray[Float]) -> tuple[NDArray[Float], dict[str, Any]]:
+        """Denormalize a proposal, resolve constraints and check current physical scales.
+
+        Called within the posterior's synthesis-failure boundary. Retain the
+        physical vector for later, separate nuisance-parameter extraction.
+        """
+        xn_list = parameters.vector_renormalizer(xn, self.fitable.keys(), self.normalization)
+        xn_renorm = np.asarray(xn_list, dtype=FLOAT)
+        kwargs: dict[str, Any] = parameters.prepare_properties_set(
+            xn_renorm,
+            self.fitable.keys(),
+            self.constrained,
+            self.fixed,
+        )
+        self.validate_current_physical_parameters(kwargs)
+        return xn_renorm, kwargs
 
     def _fit(
         self,
@@ -428,15 +449,7 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
         :return: Likelihood value.
         :rtype: Float
         """
-        xn_list = parameters.vector_renormalizer(xn, self.fitable.keys(), self.normalization)
-        xn_renorm = np.asarray(xn_list, dtype=FLOAT)
-        kwargs: dict[str, Any] = parameters.prepare_properties_set(
-            xn_renorm,
-            self.fitable.keys(),
-            self.constrained,
-            self.fixed,
-        )
-        self.validate_current_physical_parameters(kwargs)
+        xn_renorm, kwargs = self._prepare_likelihood_parameters(xn)
         synthetic = self.predict_light_curves(kwargs)
 
         ln_f_key = f"{NUISANCE_PARSER}{PARAM_PARSER}ln_f"
@@ -605,15 +618,7 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
         :rtype: Float
         :raises PredictionAlignmentError: If raw RV components or shapes do not match the synthesis grid.
         """
-        xn_list = parameters.vector_renormalizer(xn, self.fitable.keys(), self.normalization)
-        xn_renorm = np.asarray(xn_list, dtype=FLOAT)
-        kwargs: dict[str, Any] = parameters.prepare_properties_set(
-            xn_renorm,
-            self.fitable.keys(),
-            self.constrained,
-            self.fixed,
-        )
-        self.validate_current_physical_parameters(kwargs)
+        xn_renorm, kwargs = self._prepare_likelihood_parameters(xn)
         synthetic: dict[str, NDArray[Float]] = rv_model.central_rv_synthetic(
             self.x_data_reduced,
             self.observer,

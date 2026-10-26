@@ -35,11 +35,13 @@ if TYPE_CHECKING:
 
 logger = getPersistentLogger(__name__)
 
-def _warn(e: Exception) -> None:
-    """Log exception as a warning if warnings are not suppressed."""
+def _synthesis_penalty_residuals(e: Exception, num_of_points: dict[str, int]) -> NDArray:
+    """Log an expected synthesis failure and return the fixed-length chi² penalty."""
     if not settings.SUPPRESS_WARNINGS:
         error_msg = f"lsqrt hit invalid parameters, exception: {e!s}"
         logger.warning(error_msg)
+    count = sum(num_of_points.values())
+    return np.full(count, np.sqrt(const.MAX_USABLE_FLOAT / count))
 
 
 def logger_decorator(*, suppress_logger: bool = False) -> Any:
@@ -140,9 +142,7 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
         except SYNTHESIS_FAILURES as e:
             # Only the shared policy's types/subclasses become proposal penalties.
             # Other exceptions escape this callback and abort least-squares fitting.
-            _warn(e)
-            count = sum(self.num_of_points.values())
-            return np.full(count, np.sqrt(const.MAX_USABLE_FLOAT / count))
+            return _synthesis_penalty_residuals(e, self.num_of_points)
 
         residuals = cost_fns.standardized_residuals(self.y_data, self.y_err, synthetic, validate=False)
 
@@ -360,9 +360,7 @@ class CentralRadialVelocity(AbstractRVFit):
         except SYNTHESIS_FAILURES as e:
             # Only the shared policy's types/subclasses become proposal penalties.
             # Other exceptions escape this callback and abort least-squares fitting.
-            _warn(e)
-            count = sum(self.num_of_points.values())
-            return np.full(count, np.sqrt(const.MAX_USABLE_FLOAT / count))
+            return _synthesis_penalty_residuals(e, self.num_of_points)
         return cost_fns.standardized_residuals(self.y_data, self.y_err, synthetic, validate=False)
 
     def fit(
