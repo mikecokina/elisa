@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import gc
 from copy import copy
 from typing import TYPE_CHECKING
 
@@ -308,7 +307,6 @@ def remap_surface_elements(
         remap_list = np.empty(points_length, dtype=INT)
         remap_list[indices] = up.arange(np.shape(indices)[0])
         on_container.spots[spot_index].faces = remap_list[mapper["spots"][spot_index]]
-    gc.collect()
     return on_container
 
 
@@ -365,5 +363,4 @@ def remove_overlaped_spots_by_vertex_map(
         if spot_index not in spots_instance_indices:
             msg = f"Spot with index {spot_index} doesn't contain any face on component {from_container.name}."
             raise SpotError(msg)
-    gc.collect()
     return from_container

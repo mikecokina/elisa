@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import gc
 from copy import copy
 from typing import TYPE_CHECKING
 
@@ -134,7 +133,6 @@ def resolve_spot_candidates(
         else:
             model["spots"][spot_idx_to_assign].append(np.array(faces[simplex_ix]))
 
-    gc.collect()
     return model
 
 
@@ -178,7 +176,6 @@ def resolve_obvious_spots(
             spot_candidates["com"].append(np.average(face_points, axis=0))
             spot_candidates["ix"].append(ix)
 
-    gc.collect()
     return model, spot_candidates
 
 
