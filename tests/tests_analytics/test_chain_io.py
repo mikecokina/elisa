@@ -12,7 +12,6 @@ import pytest
 from numpy.testing import assert_array_equal
 from numpy.typing import NDArray
 
-from elisa.analytics import DiscardUnit
 from elisa.analytics.binary_fit import chain_tools as chains
 from elisa.analytics.binary_fit import io_tools, plot
 from elisa.analytics.binary_fit.lc_fit import LCFitMCMC
@@ -21,6 +20,7 @@ from elisa.analytics.binary_fit.rv_fit import RVFitMCMC
 from elisa.analytics.params.parameters import BinaryInitialParameters, InitialParameter
 from elisa.analytics.params.transform import StarInitialProperties
 from elisa.analytics.tasks import RVBinaryAnalyticsTask
+from elisa.conf.enums import DiscardUnit
 from tests.tests_analytics.fitting_helpers import lc_parameters, rv_problem
 
 LABELS = ["primary@t_eff", "secondary@t_eff"]
@@ -148,9 +148,15 @@ def test_invalid_labels(labels) -> None:
 
 def save_chain(tmp_path: Path, structured: bool = True) -> tuple[NDArray[np.float64], str]:
     original = np.arange(40.0).reshape(5, 4, 2) / 40
+    # noinspection PyTypeChecker
     fitable = {
         label: InitialParameter(
-            StarInitialProperties, param="t_eff", value=6000.0, fixed=False, min=1000.0, max=10000.0
+            StarInitialProperties,
+            param="t_eff",
+            value=6000.0,
+            fixed=False,
+            min=1000.0,
+            max=10000.0
         )
         for label in LABELS
     }

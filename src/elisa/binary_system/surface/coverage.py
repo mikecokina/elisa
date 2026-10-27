@@ -6,12 +6,13 @@ import matplotlib.path as mpltpath
 import numpy as np
 from scipy.spatial import ConvexHull
 
-from elisa.base.error import ElisaRuntimeError, ElisaValueError
 from elisa import const, settings, utils
 from elisa import umpy as up
+from elisa.base.error import ElisaRuntimeError, ElisaValueError
 from elisa.base.surface import coverage as bcoverage
 from elisa.base.types import BOOL, FLOAT, INT
 from elisa.binary_system import utils as bsutils
+from elisa.conf.enums import IntersectionBackend
 from elisa.logger import getLogger
 
 if TYPE_CHECKING:
@@ -30,17 +31,17 @@ def _calculate_intersection_areas(
 ) -> NDArray[Float]:
     """Calculate hull/triangle intersection areas with the configured backend."""
     backend = settings.INTERSECTION_BACKEND
-    if backend == "pypex":
+    if backend == IntersectionBackend.PYPEX:
         pypex_hull = bsutils.hull_to_pypex_poly(hull)
         pypex_faces = bsutils.faces_to_pypex_poly(triangles)
         intersections = bsutils.pypex_poly_hull_intersection(pypex_faces, pypex_hull)
         # The area adapter maps missing intersections to zero.
         return np.array(bsutils.pypex_poly_surface_area(intersections), dtype=FLOAT)
 
-    if backend in {"reference", "sutherland_hodgman"}:
+    if backend in {IntersectionBackend.REFERENCE, IntersectionBackend.SUTHERLAND_HODGMAN}:
         from elisa.binary_system.surface.clipping import intersection_areas  # noqa: PLC0415 - optional backend
 
-        return intersection_areas(hull, triangles, compiled=backend == "sutherland_hodgman")
+        return intersection_areas(hull, triangles, compiled=backend == IntersectionBackend.SUTHERLAND_HODGMAN)
 
     message = f"Unknown intersection backend: {backend}"
     raise ElisaValueError(message)
