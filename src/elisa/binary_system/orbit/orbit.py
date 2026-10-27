@@ -5,12 +5,13 @@ from typing import TYPE_CHECKING, Any, ClassVar
 import numpy as np
 import scipy.optimize as _sci_opt
 
-from elisa import const, utils
+from elisa import const, settings, utils
 from elisa import umpy as up
 from elisa.base.error import ElisaFloatingPointError, ElisaMaxIterationError
 from elisa.base.orbit.orbit import AbstractOrbit
 from elisa.base.types import FLOAT, INT
 from elisa.binary_system.orbit.transform import OrbitProperties
+from elisa.conf.enums import MeanAnomalySolver
 from elisa.logger import getLogger
 
 logger = getLogger(__name__)
@@ -289,13 +290,13 @@ class Orbit(AbstractOrbit):
         """
         return mean_anomaly / const.FULL_ARC
 
-    def mean_anomaly_fn(self, eccentric_anomaly: Float, *args: Any) -> Float:
-        """Kepler's equation residual used by solvers.
+    def mean_anomaly_fn(self, eccentric_anomaly: Float | NDArray, *args: Float | NDArray) -> Float | NDArray:
+        """Kepler's equation residual used by scalar and vectorized solvers.
 
-        :param eccentric_anomaly: Eccentric anomaly value for the residual.
-        :param args: Additional arguments (mean_anomaly,).
-        :returns: Residual of Kepler's equation.
-        :rtype: elisa.types.Float
+        :param eccentric_anomaly: Eccentric anomaly value(s) for the residual.
+        :param args: Additional arguments (mean_anomaly,), scalar or array.
+        :returns: Residual of Kepler's equation, scalar or array.
+        :rtype: elisa.types.Float | numpy.ndarray
         """
         mean_anomaly, = args
         return eccentric_anomaly - self.eccentricity * up.sin(eccentric_anomaly) - mean_anomaly
@@ -334,6 +335,68 @@ class Orbit(AbstractOrbit):
         if solution < 0:
             solution += const.FULL_ARC
         return solution
+
+    def _solve_eccentric_anomalies(self, mean_anomaly: NDArray) -> NDArray:
+        """Solve eccentric anomalies using the configured solver for supported inputs."""
+        if (
+            settings.MEAN_ANOMALY_SOLVER == MeanAnomalySolver.VECTORIZED
+            and isinstance(mean_anomaly, np.ndarray) and mean_anomaly.ndim == 1 and mean_anomaly.size > 1
+            and mean_anomaly.dtype == np.float64
+        ):
+            return self._mean_anomalies_to_eccentric_anomalies(mean_anomaly)
+        return np.array(
+            [self.mean_anomaly_to_eccentric_anomaly(mean_anomaly=xx) for xx in mean_anomaly],
+        )
+
+    def _mean_anomalies_to_eccentric_anomalies(self, mean_anomaly: NDArray) -> NDArray:
+        """Solve a float64 batch with scalar secant updates and independent convergence."""
+
+        def scalar_solutions() -> NDArray:
+            return np.array([
+                self.mean_anomaly_to_eccentric_anomaly(value)
+                for value in mean_anomaly
+            ])
+
+        # Defer numerical diagnostics to ordered scalar replay, avoiding duplicate
+        # warnings from a speculative batch attempt. Replay runs after restoration.
+        try:
+            with np.errstate(divide="raise", invalid="raise", over="raise"):
+                # Match scipy.optimize.newton's scalar guesses and 50-iteration limit.
+                indices = np.arange(mean_anomaly.size)
+                p0 = np.ones(mean_anomaly.size)
+                p1 = p0 * (1 + 1e-4) + 1e-4
+                q0 = self.mean_anomaly_fn(p0, mean_anomaly)
+                q1 = self.mean_anomaly_fn(p1, mean_anomaly)
+                swap = np.abs(q1) < np.abs(q0)
+                p0, p1 = np.where(swap, p1, p0), np.where(swap, p0, p1)
+                q0, q1 = np.where(swap, q1, q0), np.where(swap, q0, q1)
+                roots = np.empty(mean_anomaly.size)
+
+                for _ in range(50):
+                    # Replay in original order to retain the scalar failure and diagnostics.
+                    if np.any(q1 == q0):
+                        break
+                    greater = np.abs(q1) > np.abs(q0)
+                    step = np.empty_like(p0)
+                    ratio = q0[greater] / q1[greater]
+                    step[greater] = (-ratio * p1[greater] + p0[greater]) / (1 - ratio)
+                    ratio = q1[~greater] / q0[~greater]
+                    step[~greater] = (-ratio * p0[~greater] + p1[~greater]) / (1 - ratio)
+                    done = np.isclose(step, p1, rtol=0.0, atol=1e-10)
+                    roots[indices[done]] = step[done]
+                    keep = ~done
+                    if not np.any(keep):
+                        if not np.all(np.isfinite(roots)):
+                            break
+                        roots[roots < 0] += const.FULL_ARC
+                        return roots
+                    indices = indices[keep]
+                    p0, q0 = p1[keep], q1[keep]
+                    p1 = step[keep]
+                    q1 = self.mean_anomaly_fn(p1, mean_anomaly[indices])
+        except FloatingPointError:
+            pass
+        return scalar_solutions()
 
     def eccentric_anomaly_to_mean_anomaly(self, eccentric_anomaly: Float | NDArray) -> NDArray[np.floating] | Float:
         """Return mean anomaly from eccentric anomaly using Kepler's equation.
@@ -420,12 +483,7 @@ class Orbit(AbstractOrbit):
         true_phase = self.true_phase(phase=phase, phase_shift=self.conjunctions["primary_eclipse"]["true_phase"])
 
         mean_anomaly = self.phase_to_mean_anomaly(phase=true_phase)
-        eccentric_anomaly = np.array(
-            [
-                self.mean_anomaly_to_eccentric_anomaly(mean_anomaly=xx)
-                for xx in mean_anomaly
-             ],
-        )
+        eccentric_anomaly = self._solve_eccentric_anomalies(mean_anomaly)
         true_anomaly = self.eccentric_anomaly_to_true_anomaly(eccentric_anomaly=eccentric_anomaly)
         distance = self.relative_radius(true_anomaly=true_anomaly)
         azimut_angle = self.true_anomaly_to_azimuth(true_anomaly=true_anomaly)

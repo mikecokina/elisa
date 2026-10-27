@@ -527,6 +527,9 @@ class Settings(_Const):
             candidate.PULSATION_MODEL = parser.get("physics", "pulsation_model", fallback=candidate.PULSATION_MODEL)
         # **************************************************************************************************************
         if parser.has_section("computational"):
+            candidate.MEAN_ANOMALY_SOLVER = parser.get(
+                "computational", "mean_anomaly_solver", fallback=candidate.MEAN_ANOMALY_SOLVER,
+            )
             backend = parser.get("computational", "intersection_backend", fallback=candidate.INTERSECTION_BACKEND)
             candidate.INTERSECTION_BACKEND = backend
             candidate.MAX_DISCRETIZATION_FACTOR = parser.getfloat(

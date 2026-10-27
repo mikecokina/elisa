@@ -6,32 +6,41 @@ import pickle
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import Any
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import numpy as np
 import pytest
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_array_equal
 from numpy.typing import NDArray
 
-from elisa import const
+from elisa import const, settings
 from elisa import units as u
 from elisa.analytics.binary_fit import lc_prediction, least_squares, mcmc, shared
 from elisa.analytics.binary_fit.shared import AbstractFit
 from elisa.analytics.models import cost_fns, rv
 from elisa.analytics.params import parameters
 from elisa.base.error import (
-    PhysicalStateError, PredictionAlignmentError, MorphologyError, MaxIterationError,
-    ElisaMaxIterationError, ElisaFloatingPointError, SpotError, AtmosphereError,
-    LimbDarkeningError, LimbDarkeningSourceError, TemperatureError, MetallicityError, GravityError,
-    ElisaValueError, ElisaRuntimeError, ElisaError,
+    AtmosphereError,
+    ElisaError,
+    ElisaFloatingPointError,
+    ElisaMaxIterationError,
+    ElisaRuntimeError,
+    ElisaValueError,
+    GravityError,
+    LimbDarkeningError,
+    LimbDarkeningSourceError,
+    MaxIterationError,
+    MetallicityError,
+    MorphologyError,
+    PhysicalStateError,
+    PredictionAlignmentError,
+    SpotError,
+    TemperatureError,
 )
-
-EXPECTED_FAILURES = [PhysicalStateError, MorphologyError, MaxIterationError,
-                     ElisaMaxIterationError, ElisaFloatingPointError, SpotError,
-                     AtmosphereError, LimbDarkeningError, LimbDarkeningSourceError, TemperatureError, MetallicityError, GravityError]
-
 from elisa.binary_system.curves.community import RadialVelocitySystem
+from elisa.binary_system.orbit.orbit import Orbit
+from elisa.conf.enums import MeanAnomalySolver
+from elisa.types import Float
 from tests.tests_analytics.fitting_helpers import (
     LC_PHASES,
     V,
@@ -42,6 +51,21 @@ from tests.tests_analytics.fitting_helpers import (
     prepare_lc_fits,
     rv_problem,
 )
+
+EXPECTED_FAILURES = [
+    PhysicalStateError,
+    MorphologyError,
+    MaxIterationError,
+    ElisaMaxIterationError,
+    ElisaFloatingPointError,
+    SpotError,
+    AtmosphereError,
+    LimbDarkeningError,
+    LimbDarkeningSourceError,
+    TemperatureError,
+    MetallicityError,
+    GravityError,
+]
 
 
 def evaluate_fit(fit: AbstractFit) -> float | NDArray[np.float64]:
@@ -411,34 +435,136 @@ def test_mcmc_unrepresentable_likelihood_propagates_with_finite_predictions(kind
             fit.ln_probability(xn)
 
 
-@pytest.mark.parametrize("failure", ["convergence", "nan", "inf"])
-def test_real_lc_kepler_failure_reaches_fitting_policy(lc_fit, failure):
-    from elisa.binary_system.orbit.orbit import Orbit, _sci_opt
-    original = Orbit.mean_anomaly_to_eccentric_anomaly
+def assert_solver_modes_produce_same_fit(fit: AbstractFit) -> None:
+    """Compare real residuals or posteriors, including the MCMC likelihood."""
+    vectorized_likelihood: Float | None = None
+    with settings.override(MEAN_ANOMALY_SOLVER=MeanAnomalySolver.VECTORIZED):
+        vectorized_output = evaluate_fit(fit)
+        if isinstance(fit, mcmc.MCMCFit):
+            vectorized_likelihood = fit.likelihood(normalized(fit))
 
-    def failed_kepler(self, mean_anomaly):
-        options = {"return_value": (0.0 if failure == "convergence" else float(failure),
-                                    SimpleNamespace(converged=failure != "convergence"))}
-        with patch.object(_sci_opt, "newton", **options):
-            return original(self, mean_anomaly)
+    assert np.all(np.isfinite(vectorized_output))
+    if not isinstance(fit, mcmc.MCMCFit):
+        assert np.dot(vectorized_output, vectorized_output) < const.MAX_USABLE_FLOAT
 
-    with patch.object(Orbit, "mean_anomaly_to_eccentric_anomaly", new=failed_kepler):
-        assert_rejected(lc_fit)
+    with settings.override(MEAN_ANOMALY_SOLVER=MeanAnomalySolver.SCALAR):
+        scalar_output = evaluate_fit(fit)
+        if isinstance(fit, mcmc.MCMCFit):
+            scalar_likelihood = fit.likelihood(normalized(fit))
+            assert vectorized_likelihood is not None
+            assert_allclose(vectorized_likelihood, scalar_likelihood, rtol=2e-14, atol=1e-8)
+
+    assert_allclose(vectorized_output, scalar_output, rtol=2e-14, atol=1e-8)
 
 
-@pytest.mark.parametrize("failure", ["convergence", "nan", "inf"])
-def test_real_rv_kepler_failure_reaches_fitting_policy(rv_fit, failure):
-    from elisa.binary_system.orbit.orbit import _sci_opt
-    options = {"return_value": (0.0 if failure == "convergence" else float(failure),
-                                SimpleNamespace(converged=failure != "convergence"))}
-    with patch.object(_sci_opt, "newton", **options):
-        assert_rejected(rv_fit)
+def test_real_lc_fitting_outputs_match_between_solver_settings(
+    lc_fit: least_squares.DetachedLightCurveFit | mcmc.DetachedLightCurveFit,
+) -> None:
+    assert_solver_modes_produce_same_fit(lc_fit)
+
+
+def test_real_rv_fitting_outputs_match_between_solver_settings(
+    rv_fit: least_squares.CentralRadialVelocity | mcmc.CentralRadialVelocity,
+) -> None:
+    assert_solver_modes_produce_same_fit(rv_fit)
+
+
+@pytest.fixture(params=list(MeanAnomalySolver))
+def kepler_solver(request: pytest.FixtureRequest) -> Iterator[None]:
+    with settings.override(MEAN_ANOMALY_SOLVER=request.param):
+        yield
+
+
+def orbital_failure(failure_kind: str) -> ElisaMaxIterationError | ElisaFloatingPointError:
+    """Create the numerical failure injected at the orbital synthesis boundary."""
+    if failure_kind == "convergence":
+        return ElisaMaxIterationError("Kepler solver failed to converge")
+    return ElisaFloatingPointError(f"Kepler solver returned a nonfinite anomaly: {failure_kind}")
+
+
+def assert_orbital_failure_rejects_and_recovers(
+    fit: AbstractFit,
+    injected_error: ElisaMaxIterationError | ElisaFloatingPointError,
+) -> None:
+    """Exercise real synthesis, fitting rejection and recovery after a failure."""
+    valid_output = evaluate_fit(fit)
+    assert np.all(np.isfinite(valid_output))
+
+    with patch.object(Orbit, "orbital_motion", side_effect=injected_error):
+        # Direct prediction exposes the error; only the fitting policy rejects it.
+        with pytest.raises(type(injected_error)) as raised_error:
+            if isinstance(fit, mcmc.MCMCFit):
+                fit.likelihood(normalized(fit))
+            elif isinstance(fit, least_squares.LightCurveFit):
+                fit.predict_light_curves(physical(fit))
+            else:
+                assert isinstance(fit, least_squares.CentralRadialVelocity)
+                fit.prepare_synthetic(normalized(fit))
+
+        assert raised_error.value is injected_error
+        assert raised_error.value.__cause__ is None
+        assert_rejected(fit)
+
+    assert_array_equal(evaluate_fit(fit), valid_output)
+
+
+@pytest.mark.parametrize("failure_kind", ["convergence", "nan", "inf"])
+def test_real_lc_kepler_failure_reaches_fitting_policy(
+    lc_fit: least_squares.DetachedLightCurveFit | mcmc.DetachedLightCurveFit,
+    failure_kind: str,
+    kepler_solver: None,
+) -> None:
+    assert_orbital_failure_rejects_and_recovers(lc_fit, orbital_failure(failure_kind))
+
+
+@pytest.mark.parametrize("failure_kind", ["convergence", "nan", "inf"])
+def test_real_rv_kepler_failure_reaches_fitting_policy(
+    rv_fit: least_squares.CentralRadialVelocity | mcmc.CentralRadialVelocity,
+    failure_kind: str,
+    kepler_solver: None,
+) -> None:
+    assert_orbital_failure_rejects_and_recovers(rv_fit, orbital_failure(failure_kind))
+
+
+def assert_orbital_programming_error_propagates_and_recovers(fit: AbstractFit, error_type: type[Exception]) -> None:
+    """Unexpected errors retain their cause and do not poison later proposals."""
+    valid_output = evaluate_fit(fit)
+    injected_error = error_type("broken orbital calculation")
+    original_cause = ValueError("invalid internal operand")
+    injected_error.__cause__ = original_cause
+
+    with patch.object(Orbit, "orbital_motion", side_effect=injected_error):
+        with pytest.raises(error_type) as raised_error:
+            evaluate_fit(fit)
+
+    assert raised_error.value is injected_error
+    assert raised_error.value.__cause__ is original_cause
+    assert_array_equal(evaluate_fit(fit), valid_output)
+
+
+@pytest.mark.parametrize("error_type", [TypeError, RuntimeError])
+def test_real_lc_orbital_programming_error_propagates_and_recovers(
+    lc_fit: least_squares.DetachedLightCurveFit | mcmc.DetachedLightCurveFit,
+    error_type: type[Exception],
+    kepler_solver: None,
+) -> None:
+    assert_orbital_programming_error_propagates_and_recovers(lc_fit, error_type)
+
+
+@pytest.mark.parametrize("error_type", [TypeError, RuntimeError])
+def test_real_rv_orbital_programming_error_propagates_and_recovers(
+    rv_fit: least_squares.CentralRadialVelocity | mcmc.CentralRadialVelocity,
+    error_type: type[Exception],
+    kepler_solver: None,
+) -> None:
+    assert_orbital_programming_error_propagates_and_recovers(rv_fit, error_type)
 
 
 @pytest.mark.parametrize("missing_band,reflection", [(V, False), (V, True), ("bolometric", True)])
 def test_real_lc_missing_ld_tables_reject_proposal(lc_fit, tmp_path, science_settings, missing_band, reflection):
     from pathlib import Path
     from shutil import copyfile
+
     from elisa import ld, settings
 
     # Keep the other source available to distinguish passband synthesis from

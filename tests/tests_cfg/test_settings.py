@@ -4,14 +4,18 @@ import sys
 import textwrap
 import unittest
 from pathlib import Path
+from typing import TypeAlias
 from unittest.mock import patch
 
 import pytest
 
 from elisa import settings
 from elisa.base.curves.utils import interpolate_on_ld_grid_cached
+from elisa.conf.enums import IntersectionBackend, MeanAnomalySolver
 from tests import import_fresh_elisa_settings
 from tests.utils import ElisaTestCase
+
+IniFixture: TypeAlias = tuple[Path, dict[str, object]]
 
 
 @pytest.fixture
@@ -287,11 +291,20 @@ def test_missing_tables_warn(elisa_ini):
 
 
 @pytest.mark.parametrize("backend", ["pypex", "reference", "sutherland_hodgman"])
-def test_intersection_backend_configure_and_serialize(elisa_ini, backend):
-    s = import_fresh_elisa_settings()
-    s.configure(INTERSECTION_BACKEND=backend)
-    assert s.INTERSECTION_BACKEND == backend
-    assert s.settings_serializer()["INTERSECTION_BACKEND"] == backend
+def test_intersection_backend_configure_and_serialize(elisa_ini: IniFixture, backend: str) -> None:
+    ini_path, _ = elisa_ini
+    configuration = ini_path.read_text().replace(
+        "intersection_backend = sutherland_hodgman",
+        f"intersection_backend = {backend}",
+    )
+    ini_path.write_text(configuration)
+    loaded_settings = import_fresh_elisa_settings()
+    assert loaded_settings.INTERSECTION_BACKEND == backend
+
+    loaded_settings.configure(INTERSECTION_BACKEND=backend)
+
+    assert loaded_settings.INTERSECTION_BACKEND == backend
+    assert loaded_settings.settings_serializer()["INTERSECTION_BACKEND"] == backend
 
 
 def test_intersection_backend_rejects_invalid_configure(elisa_ini):
@@ -499,9 +512,10 @@ def test_config_file_selector_and_pathlike_values(elisa_ini, tmp_path):
 
 def test_fresh_scientific_objects_follow_mutable_defaults(elisa_ini):
     s = import_fresh_elisa_settings()
-    from elisa.base.star import Star
-    from elisa.base.curves.utils import _get_rv_passband
     import numpy as np
+
+    from elisa.base.curves.utils import _get_rv_passband
+    from elisa.base.star import Star
 
     s.configure(DEFAULT_DISCRETIZATION_FACTOR=5, RV_LAMBDA_INTERVAL=(5000, 5500))
     first = Star(mass=1., t_eff=6000.)
@@ -708,3 +722,91 @@ def test_elisa_class_cleanup_restores_logging_threshold(previous_disable, failur
         assert logging.root.manager.disable == previous_disable
     finally:
         logging.disable(original)
+
+
+def test_mean_anomaly_solver_defaults_for_existing_ini(elisa_ini: IniFixture) -> None:
+    loaded_settings = import_fresh_elisa_settings()
+
+    assert loaded_settings.MEAN_ANOMALY_SOLVER == "vectorized"
+    assert loaded_settings.DEFAULT_SETTINGS["MEAN_ANOMALY_SOLVER"] == "vectorized"
+    assert loaded_settings.settings_serializer()["MEAN_ANOMALY_SOLVER"] == "vectorized"
+
+
+@pytest.mark.parametrize("solver", ["scalar", "vectorized"])
+def test_mean_anomaly_solver_ini_and_updates(elisa_ini: IniFixture, solver: str) -> None:
+    ini_path, _ = elisa_ini
+    ini_path.write_text(f"[computational]\nMEAN_ANOMALY_SOLVER = {solver}\n")
+    loaded_settings = import_fresh_elisa_settings()
+    assert loaded_settings.MEAN_ANOMALY_SOLVER == solver
+
+    replacement_solver = "scalar" if solver == "vectorized" else "vectorized"
+    with loaded_settings.override(MEAN_ANOMALY_SOLVER=replacement_solver):
+        assert loaded_settings.settings_serializer()["MEAN_ANOMALY_SOLVER"] == replacement_solver
+    assert loaded_settings.MEAN_ANOMALY_SOLVER == solver
+
+    loaded_settings.MEAN_ANOMALY_SOLVER = replacement_solver
+    assert loaded_settings.settings_serializer()["MEAN_ANOMALY_SOLVER"] == replacement_solver
+
+
+def test_mean_anomaly_solver_invalid_ini_is_atomic(elisa_ini: IniFixture) -> None:
+    ini_path, _ = elisa_ini
+    loaded_settings = import_fresh_elisa_settings()
+    original_settings = loaded_settings.settings_serializer()
+    invalid_configuration = textwrap.dedent("""
+        [physics]
+        reflection_effect_iterations = 19
+
+        [computational]
+        mean_anomaly_solver = invalid
+    """)
+    ini_path.write_text(invalid_configuration)
+
+    with pytest.raises(ValueError, match="MEAN_ANOMALY_SOLVER"):
+        loaded_settings.read_and_update_config(conf_path=str(ini_path))
+    assert loaded_settings.settings_serializer() == original_settings
+
+    with pytest.raises(ValueError, match="MEAN_ANOMALY_SOLVER"):
+        import_fresh_elisa_settings()
+
+
+@pytest.mark.parametrize(
+    "invalid_solver",
+    [
+        pytest.param("invalid", id="unsupported-name"),
+        pytest.param("Vectorized", id="wrong-case"),
+        pytest.param("", id="empty-name"),
+        pytest.param(None, id="none"),
+        pytest.param(1, id="integer"),
+    ],
+)
+def test_mean_anomaly_solver_invalid_update_is_atomic(elisa_ini: IniFixture, invalid_solver: object) -> None:
+    loaded_settings = import_fresh_elisa_settings()
+    original_settings = loaded_settings.settings_serializer()
+
+    with pytest.raises(ValueError, match="MEAN_ANOMALY_SOLVER"):
+        loaded_settings.configure(REFLECTION_EFFECT_ITERATIONS=19, MEAN_ANOMALY_SOLVER=invalid_solver)
+
+    assert loaded_settings.settings_serializer() == original_settings
+
+
+@pytest.mark.parametrize("solver", list(MeanAnomalySolver))
+def test_mean_anomaly_solver_accepts_enum_members(elisa_ini: IniFixture, solver: MeanAnomalySolver) -> None:
+    loaded_settings = import_fresh_elisa_settings()
+
+    with loaded_settings.override(MEAN_ANOMALY_SOLVER=solver):
+        assert loaded_settings.MEAN_ANOMALY_SOLVER == solver.value
+        assert loaded_settings.settings_serializer()["MEAN_ANOMALY_SOLVER"] == solver.value
+        assert str(solver) == solver.value
+
+
+@pytest.mark.parametrize("backend", list(IntersectionBackend))
+def test_intersection_backend_accepts_enum_members(elisa_ini: IniFixture, backend: IntersectionBackend) -> None:
+    loaded_settings = import_fresh_elisa_settings()
+    original_settings = loaded_settings.settings_serializer()
+
+    with loaded_settings.override(INTERSECTION_BACKEND=backend):
+        assert loaded_settings.INTERSECTION_BACKEND == backend.value
+        assert loaded_settings.settings_serializer()["INTERSECTION_BACKEND"] == backend.value
+        assert str(backend) == backend.value
+
+    assert loaded_settings.settings_serializer() == original_settings

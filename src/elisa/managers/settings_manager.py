@@ -34,6 +34,7 @@ class DefaultSettings:
     RV_LAMBDA_INTERVAL: tuple = (5500, 5600)
 
     # computational
+    MEAN_ANOMALY_SOLVER: str = "vectorized"
     INTERSECTION_BACKEND: str = "sutherland_hodgman"
     MAX_DISCRETIZATION_FACTOR: int = 8
     MIN_DISCRETIZATION_FACTOR: int = 3

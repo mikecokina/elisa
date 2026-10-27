@@ -19,13 +19,14 @@ from scipy.optimize import least_squares as solve
 
 from elisa import const
 from elisa import units as u
-from elisa.analytics import LCData, SamplingMethod
+from elisa.analytics import LCData
 from elisa.analytics.binary_fit import lc_prediction, least_squares, mcmc, shared
 from elisa.analytics.binary_fit.shared import lc_r_squared
 from elisa.analytics.models import cost_fns, lc
 from elisa.analytics.params import parameters as p
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
+from elisa.conf.enums import SamplingMethod
 from tests.tests_analytics.fitting_helpers import (
     LC_PHASES,
     B,

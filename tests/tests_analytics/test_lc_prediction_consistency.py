@@ -19,16 +19,16 @@ from numpy.testing import assert_allclose, assert_array_equal
 from numpy.typing import NDArray
 from scipy.interpolate import interp1d
 
-from elisa.base.error import PhysicalStateError
 from elisa import const
-from elisa.analytics import SamplingMethod
 from elisa.analytics.binary_fit import least_squares, mcmc, shared
 from elisa.analytics.binary_fit.lc_prediction import PredictionAlignmentError
 from elisa.analytics.binary_fit.shared import AbstractLCFit, lc_r_squared
 from elisa.analytics.models import lc
 from elisa.analytics.params import parameters as p
 from elisa.analytics.tools.utils import time_layer_resolver
+from elisa.base.error import PhysicalStateError
 from elisa.binary_system.system import BinarySystem
+from elisa.conf.enums import SamplingMethod
 from tests.tests_analytics.fitting_helpers import (
     EQUAL_LENGTH_PHASES,
     LC_PHASES,

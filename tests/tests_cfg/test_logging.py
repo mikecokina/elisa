@@ -13,7 +13,7 @@ import pytest
 
 from elisa import settings
 from elisa.conf import logconfig
-from elisa.conf.logconfig import LoggingProfile
+from elisa.conf.enums import LoggingProfile
 
 
 def load_ui_module(name):

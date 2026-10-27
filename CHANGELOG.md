@@ -11,6 +11,9 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Added
 
+- Configurable Kepler solver through `MEAN_ANOMALY_SOLVER` or
+  `[computational].mean_anomaly_solver`: `vectorized` (default) or the original
+  SciPy `scalar` secant solver.
 - Shared `ElisaSynthesisError` base for expected physical synthesis failures and
   `PulsationModeError` for invalid pulsation modes and perturbation calculations.
   Existing physical, spot, atmosphere, limb-darkening, temperature, gravity, and
@@ -56,6 +59,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Changed
 
+- Vectorize Kepler solving for float64 orbital phase arrays to reduce overhead
+  in RV synthesis and fitting, retaining independent root convergence, existing
+  tolerances, and phase ordering. Replay scalar solves in input order when batch
+  calculations fail.
 - Cache repeated collinear Lagrange-point calculations in a bounded 128-entry
   LRU using exact distance and mass-ratio inputs, preserving solver behavior
   and independent returned lists. Measured fixed-q LC fitting callbacks improved

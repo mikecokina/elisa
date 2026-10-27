@@ -11,13 +11,14 @@ from numpy.typing import NDArray
 
 from elisa import const
 from elisa import units as u
-from elisa.analytics import LCData, RVData, SamplingMethod
+from elisa.analytics import LCData, RVData
 from elisa.analytics.binary_fit import least_squares, mcmc
 from elisa.analytics.binary_fit.shared import AbstractFit, AbstractLCFit
 from elisa.analytics.models import lc, rv
 from elisa.analytics.params import parameters as p
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
+from elisa.conf.enums import SamplingMethod
 from elisa.observer.observer import Observer
 from elisa.types import AstropyUnit
 
