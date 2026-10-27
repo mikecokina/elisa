@@ -137,6 +137,7 @@ def test_lagrange_solver_still_skips_isolated_failed_guesses(monkeypatch):
             raise RuntimeError('isolated Lagrange guess failure')
         return original(*args, **kwargs)
 
+    BinarySystem._lagrangian_points_static.cache_clear()
     monkeypatch.setattr(system, 'fsolve', isolated_failure)
     np.testing.assert_allclose(BinarySystem.lagrangian_points_static(1.0, 0.7), baseline)
     assert attempts > 1

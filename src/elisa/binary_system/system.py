@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from functools import lru_cache
 from typing import TYPE_CHECKING, Literal, TypeAlias, cast
 
 import numpy as np
@@ -922,7 +923,7 @@ class BinarySystem(System[Star]):
         return self.lagrangian_points_static(self.orbit.periastron_distance, self.mass_ratio)
 
     @staticmethod
-    def lagrangian_points_static(periastron_distance: Float, mass_ratio: Float) -> list[Float]:  # noqa: C901
+    def lagrangian_points_static(periastron_distance: Float, mass_ratio: Float) -> list[Float]:
         """Return Lagrangian points for supplied system parameters.
 
         This is the static version of :meth:`lagrangian_points`.
@@ -934,6 +935,23 @@ class BinarySystem(System[Star]):
         :return: X values of libration points ``[L3, L1, L2]`` respectively.
         :rtype: list[Float]
         """
+
+        calculate = BinarySystem._lagrangian_points_static
+        # Exceptional inputs and caller-selected error policies retain the original
+        # arithmetic/error path, even when a normal-policy result is already cached.
+        if np.geterr() != {"divide": "warn", "over": "warn", "under": "ignore", "invalid": "warn"} or not all(
+            isinstance(value, (float, int, np.floating, np.integer))
+            and (isinstance(value, int) or np.isfinite(value))
+            and value > 0
+            for value in (periastron_distance, mass_ratio)
+        ):
+            calculate = calculate.__wrapped__
+        return list(calculate(periastron_distance, mass_ratio))
+
+    @staticmethod
+    @lru_cache(maxsize=128, typed=True)
+    def _lagrangian_points_static(periastron_distance: Float, mass_ratio: Float) -> tuple[Float, ...]:  # noqa: C901
+        """Cache immutable collinear roots; clear this cache before solver patching."""
 
         def _potential_dx(x: Float, distance: Float) -> Float:
             """Evaluate derivative of the general potential along the x-axis.
@@ -1002,7 +1020,7 @@ class BinarySystem(System[Star]):
         if len(lagrange) != NUM_LAGRANGE_POINTS - 2:
             message = "Lagrange solver could not find all required collinear points."
             raise ElisaFloatingPointError(message)
-        return sorted(lagrange) if mass_ratio < 1.0 else sorted(lagrange, reverse=True)
+        return tuple(sorted(lagrange) if mass_ratio < 1.0 else sorted(lagrange, reverse=True))
 
     def compute_equipotential_boundary(  # noqa: C901, PLR0912
         self,

@@ -85,6 +85,7 @@ def test_lagrangian_points_preserves_policy_on_success(caller_policy: ErrorPolic
 
 def test_lagrangian_points_restores_policy_before_logging_and_continue(caller_policy: ErrorPolicy) -> None:
     """Singular candidates restore policy before logging and subsequent solves."""
+    binary_system.BinarySystem._lagrangian_points_static.cache_clear()
     logged_policies: list[ErrorPolicy] = []
     diagnostics: list[object] = []
     solver_log_counts: list[int] = []

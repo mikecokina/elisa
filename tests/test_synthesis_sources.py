@@ -116,6 +116,7 @@ def test_surface_boundary_skips_isolated_bad_roots(monkeypatch):
 
 
 def test_lagrange_terminal_failure_after_all_attempts(monkeypatch):
+    system.BinarySystem._lagrangian_points_static.cache_clear()
     calls = 0
 
     def no_root(*args, **kwargs):

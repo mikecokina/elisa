@@ -56,6 +56,11 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Changed
 
+- Cache repeated collinear Lagrange-point calculations in a bounded 128-entry
+  LRU using exact distance and mass-ratio inputs, preserving solver behavior
+  and independent returned lists. Measured fixed-q LC fitting callbacks improved
+  from approximately 33.3 ms to 26.9 ms; distinct free-q proposals had no cache
+  hits or meaningful speedup.
 - Simplify azimuthal spot-ring sampling by removing the canceled `x0` scale in
   binary and single-star meshes. Remove the binary auxiliary first-ring solve;
   retain the single-star first-ring radius validation and downstream surface and
