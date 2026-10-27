@@ -94,6 +94,7 @@ def test_mcmc_sampling_with_real_emcee(workers: int) -> None:
     )
     # Use real preparation: _fit needs normalized coordinates and prior widths,
     # not just a prepare_priors stub that leaves those attributes unset.
+    fit._validate_prior_metadata = MethodType(MCMCFit._validate_prior_metadata, fit)
     fit.normalized_sigma = MethodType(MCMCFit.normalized_sigma, fit)
     fit.prepare_priors = MethodType(MCMCFit.prepare_priors, fit)
     with (
