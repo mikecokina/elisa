@@ -1,5 +1,7 @@
 # keep it first
 # due to stupid astropy units/constants implementation
+import pytest
+
 from tests import set_astropy_units
 
 import os.path as op
@@ -79,8 +81,8 @@ class IndempotenceTestCase(ElisaTestCase):
         self.single = testutils.prepare_single_system(testutils.SINGLE_SYSTEM_PARAMS['spherical'],
                                                       testutils.SPOTS_META["primary"])
         self.base_path = op.dirname(op.abspath(__file__))
-        settings.configure(LD_TABLES=op.join(self.base_path, "data", "light_curves", "limbdarkening"))
 
+    @pytest.mark.requires_ld
     def test_star_container_is_indempotent(self):
         system = OrbitalPositionContainer.from_binary_system(self.s, Position(0, 1.0, 0.0, 0.0, 0.0))
         system.build(components_distance=1.0)
@@ -90,8 +92,8 @@ class IndempotenceTestCase(ElisaTestCase):
         flatt_2 = star.flat_it()
         self.assertTrue(len(flatt_1.points) == len(flatt_2.points))
 
+    @pytest.mark.requires_ld
     def test_orbital_position_container_is_indempotent(self):
-        settings.configure(LD_TABLES=op.join(self.base_path, "data", "light_curves", "limbdarkening"))
 
         system = OrbitalPositionContainer.from_binary_system(self.s, Position(0, 1.0, 0.0, 0.0, 0.0))
         system.build(components_distance=1.0)

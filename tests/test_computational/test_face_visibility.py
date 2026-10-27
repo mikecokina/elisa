@@ -3,6 +3,7 @@
 from tests import set_astropy_units
 
 import os.path as op
+import pytest
 import numpy as np
 
 from elisa import (
@@ -55,6 +56,7 @@ PARAMS = {
 }
 
 
+@pytest.mark.requires_ld
 class VisibilityTestCase(ElisaTestCase):
     """
     testing whether right number of triangles and total surface area is visible to the observer
@@ -62,11 +64,7 @@ class VisibilityTestCase(ElisaTestCase):
 
     def setUp(self):
         super(VisibilityTestCase, self).setUp()
-        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
-        settings.configure(**{
-            "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
-            "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
-        })
+        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves")
 
     def eval_coverage(self, phase, in_eclipse=True):
         bs = BinarySystem.from_json(PARAMS)

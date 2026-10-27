@@ -107,9 +107,19 @@ def events(app):
 
 
 @pytest.mark.parametrize(
-    "kind,method,approach",
+    ("kind", "method", "approach"),
     [
-        (kind, method, approach)
+        pytest.param(
+            kind,
+            method,
+            approach,
+            marks=[
+                pytest.mark.requires_ld(passbands=("Generic.Bessell.U", "bolometric")),
+                pytest.mark.requires_atmosphere(atlas="ck04"),
+            ]
+            if kind == "LC"
+            else [],
+        )
         for kind in ("LC", "RV")
         for method in ("least_squares", "mcmc")
         for approach in ("Community", "Standard")

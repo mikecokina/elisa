@@ -105,6 +105,7 @@ def test_real_rv_curves_match_scalar_orbit_and_velocity_formula(
 
 
 @pytest.mark.parametrize("eccentricity", [0.0, 0.3], ids=["circular", "eccentric"])
+@pytest.mark.requires_ld(passbands=("Generic.Bessell.V", "bolometric"), laws=("linear",))
 def test_real_lc_and_binary_positions_match_scalar_orbit(eccentricity: float) -> None:
     _, model_parameters = lc_parameters()
     model_parameters.update(

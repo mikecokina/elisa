@@ -3,6 +3,7 @@
 from tests import set_astropy_units
 
 import numpy as np
+import pytest
 
 from elisa import units as u
 from elisa.analytics import LCData, LCBinaryAnalyticsTask, RVData, RVBinaryAnalyticsTask
@@ -50,6 +51,11 @@ class AbstractFitTestCase(ElisaTestCase):
                                            0.80924345])}
 
 
+@pytest.mark.requires_ld(
+    passbands=("Generic.Bessell.V", "Generic.Bessell.B", "bolometric"),
+    laws=("cosine",),
+)
+@pytest.mark.requires_atmosphere
 class McMcLCTestCase(AbstractFitTestCase):
     """
     Requre just methods to pass.
@@ -701,6 +707,11 @@ class LeastSqaureRVTestCase(RVTestCase):
         self.assertTrue(1.0 > result["r_squared"]['value'] > 0.95)
 
 
+@pytest.mark.requires_ld(
+    passbands=("Generic.Bessell.V", "Generic.Bessell.B", "bolometric"),
+    laws=("cosine",),
+)
+@pytest.mark.requires_atmosphere
 class LeastSqaureLCTestCase(AbstractFitTestCase):
     def test_least_squares_lc_fit_std_params(self):
         dinit = {

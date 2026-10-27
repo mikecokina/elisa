@@ -168,14 +168,13 @@ def test_ck04_spectra_and_absolute_radiance_match_unrounded_pipeline(monkeypatch
 
 
 @pytest.mark.parametrize("normalize", [False, True])
+@pytest.mark.requires_ld(passbands=("bolometric", "Generic.Bessell.V"))
+@pytest.mark.requires_atmosphere(atlas="ck04")
 def test_ck04_raw_and_normalized_eccentric_curves(normalize, monkeypatch):
     """Compare both versions through an eccentric, eclipsing CK04 binary."""
     from elisa import Observer
     from tests.utils import BINARY_SYSTEM_PARAMS, prepare_binary_system
 
-    directory = Path(__file__).parents[1] / "data" / "light_curves"
-    monkeypatch.setattr(settings, "CK04_ATM_TABLES", directory / "atmosphere")
-    monkeypatch.setattr(settings, "LD_TABLES", str(directory / "limbdarkening"))
     monkeypatch.setattr(atm.buffer, "ATMOSPHERE_TABLES", {})
     binary = prepare_binary_system(BINARY_SYSTEM_PARAMS["detached.ecc"])
     binary.primary.atmosphere = "ck04"

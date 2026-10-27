@@ -6,8 +6,6 @@ Compare the two captures with numpy.testing.assert_array_equal for every key.
 """
 
 from copy import deepcopy
-from pathlib import Path
-import os
 import sys
 
 import numpy as np
@@ -21,10 +19,7 @@ from tests import utils
 
 
 def capture(destination):
-    support = Path(os.environ.get('ELISA_SCIENCE_SUPPORT', Path.home() / '.elisa'))
-    settings.configure(LD_TABLES=str(support / 'limbdarkening' / 'ld'),
-                       CK04_ATM_TABLES=str(support / 'atmosphere' / 'ck04'),
-                       LIMB_DARKENING_LAW='linear', NUMBER_OF_PROCESSES=1,
+    settings.configure(LIMB_DARKENING_LAW='linear', NUMBER_OF_PROCESSES=1,
                        USE_SINGLE_LD_COEFFICIENTS=False, REFLECTION_EFFECT=True,
                        REFLECTION_EFFECT_ITERATIONS=2, MESH_GENERATOR='auto', SUPPRESS_WARNINGS=True)
     output = {}

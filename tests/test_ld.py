@@ -255,7 +255,7 @@ def test_unrounded_griddata_equivalence(ld_sources, monkeypatch, law, metal, ban
     assert alias['rv_band'].shape == (len(queries), values.shape[1])
 
 
-@pytest.mark.parametrize('defect, error', [('outside', LimbDarkeningError), ('query_nan', LimbDarkeningError),
+@pytest.mark.parametrize(('defect', 'error'), [('outside', LimbDarkeningError), ('query_nan', LimbDarkeningError),
     ('value_nan', LimbDarkeningError), ('domain_nan', ValueError), ('degenerate', QhullError),
     ('missing_column', KeyError), ('missing_file', LimbDarkeningSourceError)])
 def test_interpolation_errors(ld_sources, defect, error):
@@ -409,12 +409,9 @@ def test_empty_and_nan_payload_keys(ld_sources):
         ld.interpolate_on_ld_grid(np.array([5500.]), np.array([1.5]), 99., ['bolometric'])
 
 
+@pytest.mark.requires_ld(passbands=("Generic.Bessell.U", "bolometric"), laws=("cosine",))
 def test_circular_complete_curve_lru(monkeypatch):
     from elisa.binary_system.curves import c_managed
-    table_dir = Path.home() / '.elisa/limbdarkening/ld'
-    if not (table_dir / 'lin.Generic.Bessell.U.p00.csv').is_file():
-        pytest.skip('Configured Van Hamme assets are required for the audit baseline')
-    monkeypatch.setattr(settings, 'LD_TABLES', str(table_dir))
     monkeypatch.setattr(settings, 'LIMB_DARKENING_LAW', 'cosine')
     monkeypatch.setattr(settings, 'NUMBER_OF_PROCESSES', 1)
     monkeypatch.setattr(settings, 'USE_SINGLE_LD_COEFFICIENTS', False)
@@ -447,16 +444,12 @@ def test_circular_complete_curve_lru(monkeypatch):
         ld.clear_ld_caches()
 
 
-@pytest.mark.parametrize('law', ['linear', 'cosine', 'logarithmic', 'square_root'])
-@pytest.mark.parametrize('metal', [-5., 0., .05, 1.])
-@pytest.mark.parametrize('band', ['Generic.Bessell.U', 'bolometric', 'Generic.Bessell.V'])
+@pytest.mark.parametrize("law", ["linear", "cosine", "logarithmic", "square_root"])
+@pytest.mark.parametrize("metal", [-5.0, 0.0, 0.05, 1.0])
+@pytest.mark.parametrize("band", ["Generic.Bessell.U", "bolometric", "Generic.Bessell.V"])
+@pytest.mark.requires_ld(source="van_hamme")
 def test_installed_asset_hull_parity(monkeypatch, law, metal, band):
     from scipy.spatial import ConvexHull
-    directory = Path.home() / '.elisa/limbdarkening/ld'
-    names = ld.get_relevant_ld_tables(band, metal, law)
-    if not all((directory / name).is_file() for name in names):
-        pytest.skip('Installed Van Hamme asset not available')
-    monkeypatch.setattr(settings, 'LD_TABLES', str(directory))
     monkeypatch.setattr(settings, 'LIMB_DARKENING_LAW', law)
     points, values = legacy_source(band, metal)
     hull = points[ConvexHull(points).vertices]
@@ -493,15 +486,14 @@ def audit_observer(eccentricity=0., bands=('Generic.Bessell.U',)):
     return Observer(passband=list(bands), system=binary)
 
 
-@pytest.mark.parametrize('eccentricity,bands', [(0., ['Generic.Bessell.U']),
-    (.2, ['Generic.Bessell.U']), (0., ['Generic.Bessell.U', 'Generic.Bessell.V'])])
+@pytest.mark.parametrize(
+    ("eccentricity", "bands"),
+    [(0.0, ["Generic.Bessell.U"]), (0.2, ["Generic.Bessell.U"]), (0.0, ["Generic.Bessell.U", "Generic.Bessell.V"])],
+)
+@pytest.mark.requires_ld(passbands=("bolometric",), laws=("cosine",))
 def test_complete_scientific_unrounded_parity(monkeypatch, eccentricity, bands):
     from astropy import units as u
     from elisa.binary_system.curves import utils as binary_curve_utils
-    directory = Path.home() / '.elisa/limbdarkening/ld'
-    if not (directory / 'lin.Generic.Bessell.U.p00.csv').is_file():
-        pytest.skip('Configured Van Hamme assets required')
-    monkeypatch.setattr(settings, 'LD_TABLES', str(directory))
     monkeypatch.setattr(settings, 'LIMB_DARKENING_LAW', 'cosine')
     monkeypatch.setattr(settings, 'NUMBER_OF_PROCESSES', 1)
     monkeypatch.setattr(settings, 'USE_SINGLE_LD_COEFFICIENTS', False)

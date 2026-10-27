@@ -3,6 +3,7 @@
 from tests import set_astropy_units
 
 import os.path as op
+import pytest
 import numpy as np
 
 from unittest import skip
@@ -349,11 +350,8 @@ class SupportMethodsTestCase(ElisaTestCase):
         # is imutable???
         self.assertTrue(np.all(up.arange(0, 1.2, 0.2) == phase))
 
+    @pytest.mark.requires_ld
     def test_visible_indices_when_darkside_filter_apply(self):
-        settings.configure(**{
-            "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
-            "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
-        })
 
         bs = prepare_binary_system(BINARY_SYSTEM_PARAMS['detached-physical'])
         from_this = dict(binary_system=bs, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
@@ -364,15 +362,16 @@ class SupportMethodsTestCase(ElisaTestCase):
         self.assertTrue((not is_empty(system.primary.indices)) and (not is_empty(system.secondary.indices)))
 
 
+@pytest.mark.requires_ld(passbands=("bolometric", "Generic.Bessell.V"))
+@pytest.mark.requires_atmosphere
 class ComputeLightCurvesTestCase(ElisaTestCase):
     def setUp(self):
         super(ComputeLightCurvesTestCase, self).setUp()
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves")
-        settings.configure(**{
-            "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
-            "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
-        })
 
+    @pytest.mark.requires_ld(
+        passbands=("Generic.Bessell.V", "bolometric"), laws=("linear", "logarithmic", "square_root")
+    )
     def test_light_curve_pass_on_all_ld_law(self):
         """
         no assert here, it just has to pass without error
@@ -464,15 +463,13 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         self.do_comparison(bs, "detached.ecc.spotty.async.generic.bessel.v.json", TOL, -0.2, 1.2, 0.1)
 
 
+@pytest.mark.requires_ld(passbands=("bolometric", "Generic.Bessell.V"))
+@pytest.mark.requires_atmosphere
 class CompareSingleVsMultiprocess(ElisaTestCase):
     def setUp(self):
         super(CompareSingleVsMultiprocess, self).setUp()
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves")
 
-        settings.configure(**{
-            "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
-            "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
-        })
         self.write_default_support(ld_tables=settings.LD_TABLES, atm_tables=settings.CK04_ATM_TABLES)
 
     def tearDown(self):
@@ -561,14 +558,12 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         self.do_comparison(bs)
 
 
+@pytest.mark.requires_ld(passbands=("bolometric", "Generic.Bessell.V"))
+@pytest.mark.requires_atmosphere
 class CompareApproxVsExact(ElisaTestCase):
     def setUp(self):
         super(CompareApproxVsExact, self).setUp()
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves")
-        settings.configure(**{
-            "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
-            "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
-        })
 
     @skip
     def test_approximation_one(self):

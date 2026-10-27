@@ -248,6 +248,7 @@ def test_actual_rv_evaluations_do_not_validate_inputs_again(cls, supplied: bool)
 
 
 @pytest.mark.parametrize("supplied", [False, True])
+@pytest.mark.requires_ld(passbands=(V, "bolometric"), laws=("linear",))
 def test_real_lc_evaluations_with_optional_errors(science_settings: None, supplied: bool) -> None:
     fits = prepare_lc_fits({V: LC_PHASES}, missing_errors=not supplied)
     assert_allclose(fits[0].y_data[V], fits[1].y_data[V])

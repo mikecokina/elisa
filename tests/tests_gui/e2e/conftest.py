@@ -1,4 +1,4 @@
-"""Opt-in browser tests, independently isolated from tests/__init__.py config."""
+"""Opt-in browser tests using the selected installed scientific resources."""
 import json
 import os
 from pathlib import Path
@@ -10,6 +10,10 @@ import time
 import urllib.request
 
 import pytest
+
+from elisa import settings
+
+INSTALLED_CONFIG = str(Path(settings.CONFIG_FILE).resolve())
 
 ROOT = Path(__file__).resolve().parents[3]
 ARTIFACTS = ROOT / 'artifacts/gui-fitting-e2e'
@@ -28,23 +32,10 @@ def application():
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='elisa-browser-e2e-') as directory:
         work = Path(directory)
-        config = work / 'elisa.ini'
-        # Only read existing assets; the user's configuration is never loaded or written.
-        assets = Path(os.environ.get('ELISA_E2E_ASSETS', str(Path.home()/'.elisa')))
-        config.write_text(f'''[general]
-home = {work}
-[support]
-ld_tables = {assets}/limbdarkening/ld
-castelli_kurucz_04_atm_tables = {assets}/atmosphere/ck04
-kurucz_93_atm_tables = {assets}/atmosphere/k93
-[computational]
-number_of_processes = 1
-number_of_mcmc_processes = 1
-''')
         with socket.socket() as sock:
             sock.bind(('127.0.0.1', 0))
             port = sock.getsockname()[1]
-        env = {**os.environ, 'ELISA_CONFIG': str(config), 'E2E_WORK': str(work),
+        env = {**os.environ, 'ELISA_CONFIG': INSTALLED_CONFIG, 'E2E_WORK': str(work),
                'MPLBACKEND': 'Agg', 'GRADIO_ANALYTICS_ENABLED': 'False',
                'TMPDIR': str(work), 'PYTHONUNBUFFERED': '1',
                'OPENBLAS_NUM_THREADS': '1', 'OMP_NUM_THREADS': '1'}

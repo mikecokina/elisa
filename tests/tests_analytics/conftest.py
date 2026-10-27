@@ -1,10 +1,8 @@
-"""Scientific table configuration shared by the real synthesis tests."""
+"""Numerical synthesis controls; installed data requirements use pytest markers."""
 
 from __future__ import annotations
 
-import os
-from collections.abc import Iterator
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -13,18 +11,14 @@ from elisa.analytics.binary_fit.lc_fit import LCFitMCMC
 from elisa.analytics.binary_fit.rv_fit import RVFitMCMC
 from elisa.buffer import buffer
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
 
 @pytest.fixture
 def science_settings() -> Iterator[None]:
-    support = Path(os.environ.get("ELISA_SCIENCE_SUPPORT", Path.home() / ".elisa"))
-    ld_tables = support / "limbdarkening" / "ld"
-    atmosphere = support / "atmosphere" / "ck04"
-    if not (ld_tables / "lin.Generic.Bessell.V.p00.csv").is_file() or not (atmosphere / "ckp00").is_dir():
-        pytest.skip("Real ELISA LD/CK04 tables required; set ELISA_SCIENCE_SUPPORT")
     previous = settings.settings_serializer()
     settings.configure(
-        LD_TABLES=str(ld_tables),
-        CK04_ATM_TABLES=str(atmosphere),
         ATM_ATLAS="bb",
         LIMB_DARKENING_LAW="linear",
         USE_SINGLE_LD_COEFFICIENTS=True,

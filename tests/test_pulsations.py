@@ -165,7 +165,6 @@ class TestPulsationModule(ElisaTestCase):
         super().setUp()
         self.base_path = os.path.dirname(os.path.abspath(__file__))
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
-        settings.configure(LD_TABLES=op.join(self.lc_base_path, "limbdarkening"), CK04_ATM_TABLES=op.join(self.lc_base_path, "atmosphere"))
 
     def prepare_system(self, pulse_meta):
         star = Star(pulsations=pulse_meta, **STAR_PARAMS)
@@ -316,6 +315,8 @@ class TestPulsationModule(ElisaTestCase):
         assert vel is not None
         assert not np.isnan(vel).any(), "Velocity perturbation contains NaNs"
 
+    @pytest.mark.requires_ld(passbands=("Generic.Bessell.V", "bolometric"))
+    @pytest.mark.requires_atmosphere
     def test_single_pulsating_lc(self):
         freq = 15
         pulse_meta = [{
@@ -348,6 +349,8 @@ class TestPulsationModule(ElisaTestCase):
         # plt.plot(expected_phases, expected_flux)
         # plt.show()
 
+    @pytest.mark.requires_ld
+    @pytest.mark.requires_atmosphere
     def test_single_pulsating_rv(self):
         freq = 15
         pulse_meta = [{
@@ -378,6 +381,7 @@ class TestPulsationModule(ElisaTestCase):
         # plt.plot(expected_rv-obtained_rv)
         # plt.show()
 
+    @pytest.mark.requires_ld
     def test_kinematics_binary(self):
         amplitude = 1.0
         freq = 1
@@ -432,6 +436,8 @@ class TestPulsationModule(ElisaTestCase):
         assert_array_less(ts, overshoot * t_ampl)
         assert_array_less(t_ampl, ts.max())
 
+    @pytest.mark.requires_ld(passbands=("bolometric", "Generic.Bessell.V"))
+    @pytest.mark.requires_atmosphere
     def test_binary_pulsating_lc(self):
         freq = 15
         pulse_meta = [{
@@ -466,6 +472,8 @@ class TestPulsationModule(ElisaTestCase):
         # plt.plot(expected_phases, expected_flux)
         # plt.show()
 
+    @pytest.mark.requires_ld
+    @pytest.mark.requires_atmosphere
     def test_binary_pulsating_rv(self):
         freq = 15
         pulse_meta = [{
@@ -503,7 +511,6 @@ class TestPulseUtils(ElisaTestCase):
         super().setUp()
         self.base_path = os.path.dirname(os.path.abspath(__file__))
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
-        settings.configure(LD_TABLES=op.join(self.lc_base_path, "limbdarkening"), CK04_ATM_TABLES=op.join(self.lc_base_path, "atmosphere"))
 
     def test_phase_correction_with_synchronicity(self):
         """Test phase_correction with valid synchronicity values."""
@@ -824,6 +831,7 @@ class TestPulseUtils(ElisaTestCase):
         self.assertTrue(np.isfinite(phi))
         self.assertTrue(np.isfinite(theta))
 
+    @pytest.mark.requires_ld
     def test_generate_tilt_coordinates_tidally_locked(self):
         """Test generate_tilt_coordinates with tidally-locked modes."""
         pulse_meta = [{
@@ -1125,7 +1133,6 @@ class TestPulsationsFunctions(ElisaTestCase):
         super().setUp()
         self.base_path = os.path.dirname(os.path.abspath(__file__))
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
-        settings.configure(LD_TABLES=op.join(self.lc_base_path, "limbdarkening"), CK04_ATM_TABLES=op.join(self.lc_base_path, "atmosphere"))
 
     def test_spherical_harmonics_basic(self):
         """Test spherical_harmonics calculates harmonics correctly."""

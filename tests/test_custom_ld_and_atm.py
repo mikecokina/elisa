@@ -1,9 +1,9 @@
 import os.path as op
 import pickle
 from copy import copy, deepcopy
-from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 import numpy as np
 from numpy.testing import assert_array_equal
 
@@ -110,12 +110,11 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
         self.assertTrue(f"You provided a vector with {length}" in str(context.exception))
 
     def test_raise_missing_passband_lds(self):
+        # Isolated LD fixture for reflection before the specific custom-coefficient assertion.
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
         settings.configure(**{
             "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
-            "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
         })
-        self.write_default_support(ld_tables=settings.LD_TABLES, atm_tables=settings.CK04_ATM_TABLES)
 
         definition = get_default_binary_definition()
         definition["primary"].update({**definition["primary"],
@@ -151,12 +150,11 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
 
     # noinspection PyMethodMayBeStatic
     def test_custom_ld_coeff_distribution(self):
+        # Isolated LD fixture for reflection before the specific custom-coefficient assertion.
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
         settings.configure(**{
             "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
-            "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
         })
-        self.write_default_support(ld_tables=settings.LD_TABLES, atm_tables=settings.CK04_ATM_TABLES)
 
         expected_ldc = [0.5, 0.4]
         passband = 'bolometric'
@@ -213,8 +211,14 @@ class TestCurvesUtilsCachingAndBroadcast(ElisaTestCase):
         settings.USE_SINGLE_LD_COEFFICIENTS = False
         try:
             # Patch the underlying interpolation to a synthetic deterministic value
-            with patch.object(curves_utils.ld, "interpolate_on_ld_grid",
-                              return_value={"bolometric": np.array([[0.1, 0.2]])}) as mock_interp:
+            with (
+                patch.object(curves_utils.ld, "get_ld_source_identities", return_value=()),
+                patch.object(
+                    curves_utils.ld,
+                    "interpolate_on_ld_grid",
+                    return_value={"bolometric": np.array([[0.1, 0.2]])},
+                ) as mock_interp,
+            ):
                 # First call should invoke the interpolation
                 # noinspection PyTypeChecker
                 _ = curves_utils.get_component_limbdarkening_cfs(comp, passbands=["bolometric"], symmetry_test=False)
@@ -361,8 +365,8 @@ class CustomLDLawSafetyTestCase(ElisaTestCase):
             settings.configure(LIMB_DARKENING_LAW=original)
             self.assert_curves_equal(first, observer.lc(phases=SINGLE_PHASE))
 
+    @pytest.mark.requires_ld(laws=("logarithmic", "square_root"))
     def test_automatic_interpolation_switches_laws_on_same_model(self):
-        settings.configure(LD_TABLES=str(Path(__file__).parent / "data/light_curves/limbdarkening"))
         model = self.binary("logarithmic", custom=False)
         observer = Observer(system=model, passband=["bolometric"])
         curves = []

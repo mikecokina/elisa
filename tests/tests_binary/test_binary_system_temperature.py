@@ -17,12 +17,12 @@ from tests.utils import ElisaTestCase
 set_astropy_units()
 
 
+@pytest.mark.requires_ld(passbands=("bolometric",), laws=("linear",))
 class BuildSpotFreeTemperatureTestCase(ElisaTestCase):
     def generator_test_temperatures(self, key, allowed_range=None):
 
         settings.configure(**{
             "LIMB_DARKENING_LAW": "linear",
-            "LD_TABLES": op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves", "limbdarkening")
         })
 
         s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS[key])
@@ -63,12 +63,12 @@ class BuildSpotFreeTemperatureTestCase(ElisaTestCase):
         self.generator_test_temperatures('semi-detached', [[3760, 5335], [3840, 5450]])
 
 
+@pytest.mark.requires_ld(passbands=("bolometric",), laws=("linear",))
 class BuildSpottyTemperatureTestCase(ElisaTestCase):
     def setUp(self):
         super(BuildSpottyTemperatureTestCase, self).setUp()
         settings.configure(**{
             "LIMB_DARKENING_LAW": "linear",
-            "LD_TABLES": op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves", "limbdarkening")
         })
     
     def generator_test_temperatures(self, key):
@@ -104,7 +104,6 @@ class GravityDarkeningAlbedoTestCase(ElisaTestCase):
         super(GravityDarkeningAlbedoTestCase, self).setUp()
         settings.configure(**{
             "LIMB_DARKENING_LAW": "linear",
-            "LD_TABLES": op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves", "limbdarkening")
         })
         self._base_model = {
               "system": {

@@ -1,7 +1,6 @@
 """Scientific regression tests: actual binary synthesis, deterministic data.
 
-Requires the real ELISA linear LD and CK04 support tables. By default these
-are read from ~/.elisa; ELISA_SCIENCE_SUPPORT can select another installation.
+Requires configured ELISA linear LD tables, and CK04 for explicit atlas cases.
 Synthesis, interpolation, parameters, reducers and costs use real calculations.
 Forwarding wrappers record the inputs and outputs used by each fitter.
 """
@@ -40,7 +39,12 @@ from tests.tests_analytics.fitting_helpers import (
     synthesize_lc,
 )
 
-pytestmark = pytest.mark.usefixtures("science_settings")
+REQUIRES_B_LD = pytest.mark.requires_ld(passbands=(B,), laws=("linear",))
+
+pytestmark = [
+    pytest.mark.usefixtures("science_settings"),
+    pytest.mark.requires_ld(passbands=(V, "bolometric"), laws=("linear",)),
+]
 
 
 def capture_prediction(callback: Callable, *args, **kwargs) -> tuple[Any, dict[str, Any]]:
@@ -181,10 +185,24 @@ def assert_consistent_predictions(
         pytest.param({V: LC_PHASES}, id="sorted"),
         pytest.param({V: [0.25, 0.0, 0.5, 0.12]}, id="unsorted"),
         pytest.param({V: [0.0, 0.1, 0.1, 0.5]}, id="repeated"),
-        pytest.param({V: LC_PHASES, B: SECONDARY_PHASES}, id="different"),
-        pytest.param({V: [0.0, 0.1, 0.25, 0.5], B: [0.0, 0.12, 0.3, 0.5]}, id="different_equal_lengths"),
-        pytest.param({V: LC_PHASES, B: [0.25]}, id="singleton"),
-        pytest.param({V: [0.5, 0.0, 0.1, 0.1], B: [0.3, 0.1, 0.0]}, id="unsorted_repeated_multiband"),
+        pytest.param(
+            {V: LC_PHASES, B: SECONDARY_PHASES},
+            marks=REQUIRES_B_LD,
+            id="different",
+        ),
+        pytest.param(
+            {V: [0.0, 0.1, 0.25, 0.5], B: [0.0, 0.12, 0.3, 0.5]},
+            marks=REQUIRES_B_LD,
+            id="different_equal_lengths",
+        ),
+        pytest.param(
+            {V: LC_PHASES, B: [0.25]}, marks=REQUIRES_B_LD, id="singleton"
+        ),
+        pytest.param(
+            {V: [0.5, 0.0, 0.1, 0.1], B: [0.3, 0.1, 0.0]},
+            marks=REQUIRES_B_LD,
+            id="unsorted_repeated_multiband",
+        ),
     ],
 )
 def test_direct_observation_mapping(grids) -> None:
@@ -209,13 +227,20 @@ def test_prepared_support(threshold: int, samples) -> None:
 
 
 @pytest.mark.parametrize(("jd", "threshold"), [(False, 100), (False, 4), (True, 100), (True, 4)])
+@REQUIRES_B_LD
 def test_multiband_phase_and_jd(jd: bool, threshold: int) -> None:
     assert_consistent_predictions(prepare_lc_fits({V: [0.6, 0.0, 0.1, 0.1, 0.5], B: [0.25]}, threshold, jd=jd))
 
 
 @pytest.mark.parametrize(
-    ("threshold", "atmosphere", "custom_ld"), [(100, False, True), (100, True, False), (4, True, True)]
+    ("threshold", "atmosphere", "custom_ld"),
+    [
+        (100, False, True),
+        pytest.param(100, True, False, marks=pytest.mark.requires_atmosphere(atlas="ck04")),
+        pytest.param(4, True, True, marks=pytest.mark.requires_atmosphere(atlas="ck04")),
+    ],
 )
+@REQUIRES_B_LD
 def test_explicit_atmosphere_and_ld(threshold: int, atmosphere, custom_ld: bool) -> None:
     grids = {V: LC_PHASES, B: SECONDARY_PHASES}
     fits = prepare_lc_fits(
@@ -234,6 +259,7 @@ def test_explicit_atmosphere_and_ld(threshold: int, atmosphere, custom_ld: bool)
 
 
 @pytest.mark.parametrize(("standard", "jd"), [(False, False), (True, False), (False, True), (True, True)])
+@REQUIRES_B_LD
 def test_standard_community_constraints_and_free_noise(standard: bool, jd: bool) -> None:
     assert_consistent_predictions(
         prepare_lc_fits({V: LC_PHASES, B: SECONDARY_PHASES}, 4, jd=jd, standard=standard, free_noise=True),
@@ -242,6 +268,7 @@ def test_standard_community_constraints_and_free_noise(standard: bool, jd: bool)
 
 
 @pytest.mark.parametrize("threshold", [100, 4])
+@REQUIRES_B_LD
 def test_missing_error_scalar_noise_model(threshold: int) -> None:
     fits = prepare_lc_fits({V: LC_PHASES, B: [0.25]}, threshold, missing_errors=True)
     for fit in fits:
@@ -268,6 +295,7 @@ def test_invalid_physical_synthesis_retains_penalties() -> None:
             assert fit.ln_probability(xn) == -np.inf
 
 
+@REQUIRES_B_LD
 def test_jd_period_epoch_changes() -> None:
     fits = prepare_lc_fits({V: [1.6, 1.0, 1.1, 1.1, 1.5], B: [1.25]}, 4, jd=True)
     for fit in fits:
@@ -280,6 +308,7 @@ def test_default_threshold_equal_length() -> None:
     assert_consistent_predictions(prepare_lc_fits({V: np.linspace(0.0, 0.99, 302)}, 300))
 
 
+@REQUIRES_B_LD
 def test_dense_support_approximation() -> None:
     fits = prepare_lc_fits(
         {V: np.linspace(0.0, 0.99, 41), B: SECONDARY_PHASES}, 4, np.linspace(-0.01, 1.01, 302).tolist()
@@ -293,6 +322,7 @@ def test_dense_support_approximation() -> None:
 @pytest.mark.parametrize(
     "defect", ["coordinates", "reducer_length", "reducer_bounds", "reducer_type", "uncertainty_length"]
 )
+@REQUIRES_B_LD
 def test_invalid_observation_mapping_requires_revalidation(defect) -> None:
     for fit in prepare_lc_fits({V: LC_PHASES, B: [0.25]}):
         if defect == "coordinates":
@@ -318,6 +348,7 @@ def test_invalid_observation_mapping_requires_revalidation(defect) -> None:
     ],
     ids=["duplicate", "too_short", "uncovered"],
 )
+@REQUIRES_B_LD
 def test_invalid_support_escapes_physical_penalty_handlers(support) -> None:
     for fit in prepare_lc_fits({V: LC_PHASES, B: [0.25]}):
         fit.fit_xs = support
@@ -331,6 +362,7 @@ def test_invalid_support_escapes_physical_penalty_handlers(support) -> None:
             callback(normalized_values)
 
 
+@REQUIRES_B_LD
 def test_missing_passband_escapes_physical_penalty_handlers() -> None:
     for fit in prepare_lc_fits({V: LC_PHASES, B: [0.25]}):
         fit.observer.passband.pop(B)

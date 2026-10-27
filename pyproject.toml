@@ -155,3 +155,8 @@ ignore = [
     "D203", # Incorrect blank lines before class docstring
     "CPY001", # Missing copyright notice
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# Pytest assertions are intentional in the scientific data regression tests.
+"tests/test_scientific_requirements.py" = ["S101"]
+"tests/test_bolometric_preparation.py" = ["S101"]

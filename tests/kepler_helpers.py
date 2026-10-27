@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import NDArray
 
 from elisa.binary_system.orbit.orbit import Orbit
 
 
-def scalar_orbital_motion(orbit: Orbit, phase: ArrayLike) -> NDArray:
+def scalar_orbital_motion(orbit: Orbit, phase: NDArray) -> NDArray:
     """Assemble unrounded positions with the public scalar Kepler solver.
 
     Calling the scalar solver directly retains its single 2pi correction and

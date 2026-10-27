@@ -24,13 +24,20 @@ from elisa.single_system.surface import mesh as single_mesh
 @pytest.fixture(autouse=True)
 def isolate_caches(monkeypatch):
     # Local fixture only: no configuration-scope invalidation or runner changes.
-    caches = (curves._get_rv_passband, binary_mesh._load_correction_factors,
-              temperature._load_albedo_data, single_mesh._load_correction_factors)
+    # noinspection PyProtectedMember
+    caches = (
+        curves._get_rv_passband,
+        binary_mesh._load_correction_factors,
+        temperature._load_albedo_data,
+        single_mesh._load_correction_factors,
+    )
     for cache in caches:
+        # noinspection PyUnresolvedReferences
         cache.cache_clear()
     monkeypatch.setattr(type(atm.buffer), "ATMOSPHERE_TABLES", {})
     yield
     for cache in caches:
+        # noinspection PyUnresolvedReferences
         cache.cache_clear()
 
 

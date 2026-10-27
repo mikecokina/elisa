@@ -86,6 +86,7 @@ def capture_fit(callback: Callable, *args, **kwargs) -> tuple[dict[str, Any], Op
     return report, results[0]
 
 
+@pytest.mark.requires_ld(passbands=(V, B, "bolometric"), laws=("linear",))
 def test_static_validation_once_per_setup_and_reused_by_evaluations(science_settings: None) -> None:
     with validation_calls() as calls:
         fits = prepare_lc_fits({V: LC_PHASES, B: [0.25]})
@@ -123,6 +124,7 @@ def test_static_validation_once_per_setup_and_reused_by_evaluations(science_sett
         assert len(calls) == 3
 
 
+@pytest.mark.requires_ld(passbands=(V, B, "bolometric"), laws=("linear",))
 def test_second_setup_replaces_and_validates_data(science_settings: None) -> None:
     fits = prepare_lc_fits({V: LC_PHASES})
     cfg, data = lc_problem()
@@ -159,6 +161,7 @@ def test_second_setup_replaces_and_validates_data(science_settings: None) -> Non
         assert len(calls) == 2  # Malformed errors fail before reducer validation.
 
 
+@pytest.mark.requires_ld(passbands=(V, "bolometric"), laws=("linear",))
 def test_normalization_and_explicit_manual_revalidation(science_settings: None) -> None:
     fit = prepare_lc_fits({V: LC_PHASES})[0]
     with validation_calls() as calls:
@@ -178,6 +181,7 @@ def test_normalization_and_explicit_manual_revalidation(science_settings: None) 
 
 
 @pytest.mark.parametrize("defect", ["short", "column", "passband"])
+@pytest.mark.requires_ld(passbands=(V, "bolometric"), laws=("linear",))
 def test_dynamic_malformed_real_synthesis_output_is_rejected(science_settings: None, defect) -> None:
     fit = prepare_lc_fits({V: LC_PHASES})[0]
 
@@ -193,6 +197,7 @@ def test_dynamic_malformed_real_synthesis_output_is_rejected(science_settings: N
     assert not calls
 
 
+@pytest.mark.requires_ld(passbands=(V, B, "bolometric"), laws=("linear",))
 def test_lc_parameter_recovery_result_and_residual_jacobian(science_settings: None) -> None:
     cfg, data = lc_problem()
     fit = least_squares.DetachedLightCurveFit()
@@ -261,6 +266,7 @@ def test_robust_rv_loss_acts_on_each_standardized_observation() -> None:
     assert abs(records["soft_l1"] - 12000.0) < 10.0
 
 
+@pytest.mark.requires_ld(passbands=(V, B, "bolometric"), laws=("linear",))
 def test_lc_invalid_penalty_has_fixed_length_and_finite_linear_cost(science_settings: None) -> None:
     fit = prepare_lc_fits({V: LC_PHASES, B: [0.25]})[0]
     xn = normalized(fit)
@@ -296,6 +302,7 @@ def test_rv_invalid_physical_synthesis_returns_existing_penalty() -> None:
 
 
 @pytest.mark.parametrize("strategy", list(SamplingMethod))
+@pytest.mark.requires_ld(passbands=(V, "bolometric"), laws=("linear",))
 def test_sampling_enum_matches_legacy_strings_for_both_fitters(science_settings: None, strategy) -> None:
     enum_fits = prepare_lc_fits({V: LC_PHASES}, 4, samples=strategy)
     legacy_fits = prepare_lc_fits({V: LC_PHASES}, 4, samples=strategy.value)
@@ -306,6 +313,7 @@ def test_sampling_enum_matches_legacy_strings_for_both_fitters(science_settings:
         assert_array_equal(enum_prediction[V], legacy_prediction[V])
 
 
+@pytest.mark.requires_ld(passbands=(V, "bolometric"), laws=("linear",))
 def test_sampling_enum_defaults_serialization_and_invalid_strategy(science_settings: None) -> None:
     assert inspect.signature(least_squares.LightCurveFit.fit).parameters["samples"].default is SamplingMethod.UNIFORM
     assert inspect.signature(mcmc.LightCurveFit.fit).parameters["samples"].default is SamplingMethod.UNIFORM

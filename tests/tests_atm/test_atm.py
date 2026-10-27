@@ -73,10 +73,6 @@ class TestAtmDataContainer(ElisaTestCase):
 
 
 class TestAtmModuleGeneral(ElisaTestCase):
-    def setUp(self):
-        super().setUp()
-        settings.configure(CK04_ATM_TABLES=os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data", "ck04"))
-
     def test_arange_atm_to_same_wavelength(self):
         c1 = atm.AtmDataContainer(AtmModel(flux=np.array([1, 2, 3, 4, 5]), wavelength=np.array([1, 2, 3, 4, 5])), 10, 10, 10)
 
@@ -191,6 +187,8 @@ class TestAtmModuleGeneral(ElisaTestCase):
         assert_array_equal(obtained, expected)
 
     def test_get_list_of_all_atm_tables(self):
+        # Fixed directory inventory fixture; independent of an installed atlas.
+        settings.configure(CK04_ATM_TABLES=os.path.join(os.path.dirname(__file__), "../data/ck04"))
         obtained = sorted([os.path.basename(f) for f in atm.get_list_of_all_atm_tables("ck04")])
         expected = sorted(["ckp00_10000_g40.csv", "ckp00_10250_g40.csv", "ckp00_25000_g45.csv", "ckp00_26000_g45.csv",
                            "ckp00_4500_g50.csv", "ckp00_5250_g30.csv", "ckp00_5500_g30.csv",
@@ -198,6 +196,8 @@ class TestAtmModuleGeneral(ElisaTestCase):
         assert_array_equal(expected, obtained)
 
     def test_get_atm_table(self):
+        # Exact parser reference fixture.
+        settings.configure(CK04_ATM_TABLES=os.path.join(os.path.dirname(__file__), "../data/ck04"))
         expected = pd.read_csv(os.path.join(os.path.dirname(
             os.path.abspath(__file__)), "../data", "ck04", "ckp00", "ckp00_10250_g40.csv"))
         obtained = atm.get_atm_table(10250, 4.0, 0, "ck")
@@ -296,10 +296,6 @@ class TestAtmModuleGeneral(ElisaTestCase):
 
 
 class TestNaiveInterpolation(ElisaTestCase):
-    def setUp(self):
-        super().setUp()
-        settings.configure(CK04_ATM_TABLES=os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data", "ck04"))
-
     def test_atm_files(self):
         g = np.array([1.5, 2, 2])
         t = np.array([4999, 11300, 11500])
@@ -441,12 +437,6 @@ set_astropy_units()
 
 class TestAtmEdgeCases(ElisaTestCase):
     """Test edge cases and boundary conditions for atm module optimizations."""
-
-    def setUp(self):
-        super().setUp()
-        settings.configure(CK04_ATM_TABLES=os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "../data", "ck04",
-        ))
 
     def test_arange_atm_already_aligned(self):
         """Test that already aligned wavelengths are handled correctly."""

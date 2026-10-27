@@ -78,7 +78,9 @@ def evaluate_fit(fit: AbstractFit) -> float | NDArray[np.float64]:
     return fit.central_rv_model_to_fit(normalized(fit))
 
 
-@pytest.mark.parametrize("kind", ["lc", "rv"])
+@pytest.mark.parametrize(
+    "kind", [pytest.param("lc", marks=pytest.mark.requires_ld(passbands=(V, "bolometric"), laws=("linear",))), "rv"]
+)
 @pytest.mark.parametrize("method", ["lsq", "mcmc"])
 def test_configured_fit_survives_multiprocessing_pickle(science_settings: None, kind: str, method: str) -> None:
     if kind == "lc":
@@ -457,6 +459,8 @@ def assert_solver_modes_produce_same_fit(fit: AbstractFit) -> None:
     assert_allclose(vectorized_output, scalar_output, rtol=2e-14, atol=1e-8)
 
 
+@pytest.mark.requires_ld(passbands=(V, "bolometric"))
+@pytest.mark.requires_atmosphere
 def test_real_lc_fitting_outputs_match_between_solver_settings(
     lc_fit: least_squares.DetachedLightCurveFit | mcmc.DetachedLightCurveFit,
 ) -> None:
@@ -509,6 +513,8 @@ def assert_orbital_failure_rejects_and_recovers(
 
 
 @pytest.mark.parametrize("failure_kind", ["convergence", "nan", "inf"])
+@pytest.mark.requires_ld(passbands=(V, "bolometric"))
+@pytest.mark.requires_atmosphere
 def test_real_lc_kepler_failure_reaches_fitting_policy(
     lc_fit: least_squares.DetachedLightCurveFit | mcmc.DetachedLightCurveFit,
     failure_kind: str,
@@ -543,6 +549,8 @@ def assert_orbital_programming_error_propagates_and_recovers(fit: AbstractFit, e
 
 
 @pytest.mark.parametrize("error_type", [TypeError, RuntimeError])
+@pytest.mark.requires_ld(passbands=(V, "bolometric"))
+@pytest.mark.requires_atmosphere
 def test_real_lc_orbital_programming_error_propagates_and_recovers(
     lc_fit: least_squares.DetachedLightCurveFit | mcmc.DetachedLightCurveFit,
     error_type: type[Exception],
@@ -567,12 +575,12 @@ def test_real_lc_missing_ld_tables_reject_proposal(lc_fit, tmp_path, science_set
 
     from elisa import ld, settings
 
-    # Keep the other source available to distinguish passband synthesis from
+    # Isolated fixture: keep the other source available to distinguish passband synthesis from
     # bolometric interpolation inside reflection, with reflection enabled in both.
     for band in (V, "bolometric"):
         if band != missing_band:
             for name in set(ld.get_relevant_ld_tables(band, 0.0)):
-                copyfile(Path(settings.LD_TABLES) / name, tmp_path / name)
+                copyfile(Path(__file__).parents[1] / "data/light_curves/limbdarkening" / name, tmp_path / name)
     missing_path = tmp_path / ld.get_relevant_ld_tables(missing_band, 0.0)[0]
     with settings.override(LD_TABLES=str(tmp_path), REFLECTION_EFFECT=reflection):
         with pytest.raises(LimbDarkeningSourceError) as caught:

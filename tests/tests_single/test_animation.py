@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from elisa.single_system.graphic.animation import Animation
 from tests import utils as testutils
 from tests.utils import ElisaTestCase, prepare_single_system
@@ -13,6 +15,8 @@ class AnimationTestCase(ElisaTestCase):
     executed but the runtime stays fast and deterministic.
     """
 
+    @pytest.mark.requires_ld(passbands=("bolometric",), laws=("cosine",))
+    @pytest.mark.requires_atmosphere
     def test_rotational_motion_runs_minimal(self):
         """Run a minimal (single-frame) animation and ensure it completes.
 
