@@ -161,19 +161,6 @@ class SettingsManager:
         _create_configuration_path_input(ld_tables)
         config.set(section_support, "ld_tables", ld_tables)
 
-        # atlas
-        atlas_prompt = (
-            f"Choose default atmosphere model to use \n"
-            f"\t type ck04 for castelli-kurucz 2004\n"
-            f"\t type k93 for kurucz 1993\n"
-            f"[ default  {DefaultSettings.ATM_ATLAS} ]: "
-        )
-        atm_atlas = input(atlas_prompt) or DefaultSettings.ATM_ATLAS
-        if atm_atlas not in ["ck04", "k93"]:
-            msg = "Invalid input for atmosphere atlas. Type option ck04 or k93."
-            raise ValueError(msg)
-        config.set(section_support, "atlas", atm_atlas)
-
         # castelli_kurucz_04_atm_tables
         ck04_prompt = (
             f"Absolute path to store castelli-kurucz 2004 atmosphere models (will be downloaded)\n"

@@ -659,18 +659,6 @@ class Settings(_Const):
                     stacklevel=2,
                 )
 
-            if parser.get("support", "atlas", fallback=None):
-                with warnings.catch_warnings():
-                    if not candidate.SUPPRESS_WARNINGS:
-                        warnings.simplefilter("always", DeprecationWarning)
-                        warnings.warn(
-                            "Variable `atlas` in configuration section `support` is not "
-                            "longer supported and will be removed in future version.\n"
-                            "Use atmosphere definition as initial parameter for given celestial object",
-                            DeprecationWarning,
-                            stacklevel=2,
-                        )
-            candidate.ATM_ATLAS = parser.get("support", "atlas", fallback=candidate.ATM_ATLAS)
             candidate.PASSBAND_TABLES = parser.get("support", "passband_tables", fallback=candidate.PASSBAND_TABLES)
 
             if not Path(candidate.PASSBAND_TABLES).is_dir() and not candidate.SUPPRESS_WARNINGS:

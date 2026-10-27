@@ -3,6 +3,7 @@ import os
 import sys
 import textwrap
 import unittest
+import warnings
 from pathlib import Path
 from typing import TypeAlias
 from unittest.mock import patch
@@ -68,7 +69,6 @@ def elisa_ini(tmp_path: Path, monkeypatch):
         "LD_TABLES": (tmp_path / "ld_tables").as_posix(),
         "CASTELLI_KURUCZ_04_ATM_TABLES": (tmp_path / "ck04_atm").as_posix(),
         "KURUCZ_93_ATM_TABLES": (tmp_path / "k93_atm").as_posix(),
-        "ATLAS": "ck04",
         "MAGNITUDE_SYSTEM": "vega",
     }
 
@@ -117,7 +117,6 @@ def elisa_ini(tmp_path: Path, monkeypatch):
         ld_tables = {expected["LD_TABLES"]}
         castelli_kurucz_04_atm_tables = {expected["CASTELLI_KURUCZ_04_ATM_TABLES"]}
         kurucz_93_atm_tables = {expected["KURUCZ_93_ATM_TABLES"]}
-        atlas = {expected["ATLAS"]}
         magnitude_system = {expected["MAGNITUDE_SYSTEM"]}
     """).strip() + "\n"
 
@@ -164,7 +163,6 @@ IGNORE_ATTRS = {
     "LOG_CONFIG",
     "CASTELLI_KURUCZ_04_ATM_TABLES",
     "KURUCZ_93_ATM_TABLES",
-    "ATLAS",
 }
 
 
@@ -810,3 +808,20 @@ def test_intersection_backend_accepts_enum_members(elisa_ini: IniFixture, backen
         assert str(backend) == backend.value
 
     assert loaded_settings.settings_serializer() == original_settings
+
+
+@pytest.mark.parametrize("legacy_atlas", ["k93", "bb"])
+def test_legacy_ini_atlas_is_ignored_without_deprecation(elisa_ini: IniFixture, legacy_atlas: str) -> None:
+    ini_path, expected = elisa_ini
+    for setting_name in ("PASSBAND_TABLES", "LD_TABLES", "CASTELLI_KURUCZ_04_ATM_TABLES", "KURUCZ_93_ATM_TABLES"):
+        Path(str(expected[setting_name])).mkdir(parents=True, exist_ok=True)
+
+    configuration = ini_path.read_text().replace("suppress_warnings = True", "suppress_warnings = False")
+    configuration = configuration.replace("[support]", f"[support]\natlas = {legacy_atlas}")
+    ini_path.write_text(configuration)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        loaded_settings = import_fresh_elisa_settings()
+
+    assert loaded_settings.ATM_ATLAS == loaded_settings.DEFAULT_SETTINGS["ATM_ATLAS"]

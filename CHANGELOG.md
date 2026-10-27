@@ -59,6 +59,9 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Changed
 
+- Remove the deprecated `[support].atlas` INI option and atmosphere-selection
+  prompt from initial configuration. Select stellar atmospheres through
+  `atmosphere` or the per-component `atmosphere_model` fitting mapping.
 - Vectorize Kepler solving for float64 orbital phase arrays to reduce overhead
   in RV synthesis and fitting, retaining independent root convergence, existing
   tolerances, and phase ordering. Replay scalar solves in input order when batch

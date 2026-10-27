@@ -190,8 +190,8 @@ Minimal configuration
 From version **0.6**, ELISa provides a feature to make configuration easier for first time running users. We implemented
 `Settings Manager` and `Download Manager`. When any ELISa script is first time executed and there is missing configuration
 file a wizzard will walk you through basic configuration (default configuration will be stored in path `~/.elisa/config.ini` file).
-It asks you to supply a directories to store atmospheres and limb darkening files and default atmosphere atlas. It also gives
-you a chance to automatically download given files without any futher needs to do it manually.
+It asks you to supply directories for atmosphere and limb darkening files. It also gives you a chance to
+automatically download these files without needing to do it manually.
 
 Manual configuration
 ~~~~~~~~~~~~~~~~~~~~
@@ -218,14 +218,16 @@ Custom tables location
 Atmosphere models and LD coefficients can be stored on your machine in the directory of your choosing as well. Let's say you want to use ``Castelli-Kurucz 2004``
 models stored in the directory ``/home/user/castelli_kurucz/ck04`` and limb darkening models in the directory
 ``/home/user/ld/``. You have to create a configuration ``ini`` file where
-the model and directories will be specified. Now assume that name of our configuration file is ``elisa_config.ini`` located
+the table directories will be specified. Now assume that name of our configuration file is ``elisa_config.ini`` located
 in path ``/home/user/.elisa/``. Then the content of your configuration file should at least look like the following
 example::
 
     [support]
     ld_tables = /home/user/ld
     castelli_kurucz_04_atm_tables = /home/user/castelli_kurucz/ck04
-    atlas = ck04
+
+Select each stellar atmosphere through its ``atmosphere`` argument, for example ``atmosphere="ck04"``.
+For fitting, use an ``atmosphere_model`` mapping such as ``{"primary": "ck04", "secondary": "bb"}``.
 
 Full content of configuration file with description might be found here:
 Elisa-Configuration-File_
