@@ -11,7 +11,7 @@ import contextlib
 from threading import RLock
 from typing import TYPE_CHECKING, Any
 
-from elisa.conf.logconfig import LoggingProfile
+from elisa.conf.enums import LoggingProfile
 from elisa.conf.settings import Settings
 
 if TYPE_CHECKING:

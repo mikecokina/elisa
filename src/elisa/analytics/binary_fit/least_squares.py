@@ -10,7 +10,6 @@ from scipy.optimize import least_squares
 
 from elisa import const, settings
 from elisa.analytics.binary_fit.failure_policy import SYNTHESIS_FAILURES
-from elisa.analytics.binary_fit.sampling import SamplingMethod
 from elisa.analytics.binary_fit.shared import (
     AbstractLCFit,
     AbstractRVFit,
@@ -25,6 +24,7 @@ from elisa.analytics.params import parameters
 from elisa.base.types import FLOAT
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
+from elisa.conf.enums import SamplingMethod
 from elisa.logger import getPersistentLogger
 
 if TYPE_CHECKING:

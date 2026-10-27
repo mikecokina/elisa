@@ -10,7 +10,6 @@ from elisa.analytics.binary_fit.lc_prediction import (
     predict_light_curves,
     validate_observations,
 )
-from elisa.analytics.binary_fit.sampling import SamplingMethod
 from elisa.analytics.dataset.base import DataSet
 from elisa.analytics.models import cost_fns
 from elisa.analytics.models import lc as lc_model
@@ -26,6 +25,7 @@ from elisa.analytics.tools.utils import (
 from elisa.base.error import ElisaFloatingPointError, PredictionAlignmentError
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
+from elisa.conf.enums import SamplingMethod
 from elisa.logger import getPersistentLogger
 from elisa.observer.observer import Observer
 from elisa.observer.utils import normalize_light_curve

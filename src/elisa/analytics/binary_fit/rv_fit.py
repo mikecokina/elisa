@@ -23,8 +23,8 @@ if TYPE_CHECKING:
     import numpy as np
     from numpy.typing import NDArray
 
-    from elisa.analytics.binary_fit.chain_tools import DiscardUnit
     from elisa.analytics.params.parameters import BinaryInitialParameters
+    from elisa.conf.enums import DiscardUnit
 
 logger = getLogger(__name__)
 

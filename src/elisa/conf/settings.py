@@ -11,7 +11,8 @@ from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 
-from elisa.conf.logconfig import LoggingProfile, configure_logging
+from elisa.conf.enums import IntersectionBackend, LoggingProfile, MeanAnomalySolver
+from elisa.conf.logconfig import configure_logging
 from elisa.conf.parsers import parse_tuple_interval
 from elisa.managers.settings_manager import DefaultSettings, SettingsManager
 from elisa.schema_registry import registry
@@ -175,6 +176,7 @@ class Settings(_Const):
     NUMBER_OF_THREADS: int
     NUMBER_OF_PROCESSES: int
     INTERSECTION_BACKEND: str
+    MEAN_ANOMALY_SOLVER: str
     NUMBER_OF_MCMC_PROCESSES: int
     MAX_NU_SEPARATION: float
     MAX_D_FLUX: float
@@ -224,6 +226,7 @@ class Settings(_Const):
         "NUMBER_OF_THREADS",
         "NUMBER_OF_PROCESSES",
         "INTERSECTION_BACKEND",
+        "MEAN_ANOMALY_SOLVER",
         "NUMBER_OF_MCMC_PROCESSES",
         "MAX_NU_SEPARATION",
         "MAX_D_FLUX",
@@ -439,8 +442,13 @@ class Settings(_Const):
                 f"Available limb darkening laws are: {_Const.AVAILABLE_LD_LAWS}"
             )
             raise ValueError(msg)
-        if values["INTERSECTION_BACKEND"] not in ("pypex", "reference", "sutherland_hodgman"):
-            msg = "INTERSECTION_BACKEND must be one of: pypex, reference, sutherland_hodgman"
+        backends = tuple(backend.value for backend in IntersectionBackend)
+        if values["INTERSECTION_BACKEND"] not in backends:
+            msg = f"INTERSECTION_BACKEND must be one of: {', '.join(backends)}"
+            raise ValueError(msg)
+        solvers = tuple(solver.value for solver in MeanAnomalySolver)
+        if values["MEAN_ANOMALY_SOLVER"] not in solvers:
+            msg = f"MEAN_ANOMALY_SOLVER must be one of: {', '.join(solvers)}"
             raise ValueError(msg)
         if values["NUMBER_OF_THREADS"] <= 0:
             msg = "Invalid value for `number_of_threads`, allowed >= 1"

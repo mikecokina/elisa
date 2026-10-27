@@ -5,17 +5,10 @@ import json
 import logging
 import logging.config
 import sys
-from enum import Enum
 from pathlib import Path
 from typing import Any, TextIO
 
-
-class LoggingProfile(str, Enum):
-    """Built-in logging policy selectors; custom paths remain plain strings."""
-
-    DEFAULT = "default"
-    FIT = "fit"
-
+from elisa.conf.enums import LoggingProfile
 
 _console_handler: logging.StreamHandler | None = None
 

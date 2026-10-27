@@ -9,7 +9,6 @@ import numpy as np
 from elisa import settings
 from elisa.analytics.binary_fit import mixins
 from elisa.analytics.binary_fit.failure_policy import SYNTHESIS_FAILURES
-from elisa.analytics.binary_fit.sampling import SamplingMethod
 from elisa.analytics.binary_fit.shared import (
     AbstractFit,
     AbstractLCFit,
@@ -26,6 +25,7 @@ from elisa.base.error import PhysicalStateError
 from elisa.base.types import FLOAT
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
+from elisa.conf.enums import SamplingMethod
 from elisa.graphic.mcmc_graphics import Plot
 from elisa.logger import getPersistentLogger
 from elisa.observer.mp_manager import get_mp_context

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from elisa.analytics.binary_fit.chain_tools import DiscardUnit, prepare_chain_samples
+from elisa.analytics.binary_fit.chain_tools import prepare_chain_samples
 from elisa.analytics.binary_fit.mixins import MCMCMixin
 from elisa.analytics.params import parameters
 from elisa.analytics.params.parameters import BinaryInitialParameters, ParameterMeta
@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
     from elisa.analytics.binary_fit.lc_fit import LCFitMCMC
     from elisa.analytics.binary_fit.rv_fit import RVFitMCMC
+    from elisa.conf.enums import DiscardUnit
 
 # Constants for boundary and error handling
 BOUNDARY_LENGTH = 2

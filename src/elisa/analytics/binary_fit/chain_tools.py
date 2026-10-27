@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from emcee.autocorr import AutocorrError, function_1d, integrated_time
 
 from elisa import settings
+from elisa.conf.enums import DiscardUnit
 
 if TYPE_CHECKING:
     from emcee import EnsembleSampler
@@ -17,21 +17,6 @@ if TYPE_CHECKING:
 FLAT_NDIM = 2
 ENSEMBLE_NDIM = 3
 CHAIN_ORDER = "step,walker,parameter"
-
-
-class DiscardUnit(str, Enum):
-    """Select complete ensemble steps or individual flat rows for chain discard.
-
-    String values remain compatible with existing chain-loading calls. Omitting
-    the unit selects steps for structured chains and rows for legacy flat files.
-    """
-
-    STEPS = "steps"
-    ROWS = "rows"
-
-    def __str__(self) -> str:
-        """Return the serialized discard unit for configuration and logging."""
-        return self.value
 
 
 def get_production_chain(sampler: EnsembleSampler | None) -> NDArray[np.float64]:

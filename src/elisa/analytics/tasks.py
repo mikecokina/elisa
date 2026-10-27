@@ -18,7 +18,7 @@ from elisa.analytics.params import bonds, parameters
 from elisa.logger import getLogger
 
 if TYPE_CHECKING:
-    from elisa.analytics.binary_fit.chain_tools import DiscardUnit
+    from elisa.conf.enums import DiscardUnit
     from elisa.types import Float
 
 logger = getLogger(__name__)
@@ -297,7 +297,7 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
           equidistant points per epoch
         - **discretization** (:class:`int` | :class:`float`) - Discretization factor
           of the primary component (default: 5)
-        - **samples** - ``elisa.analytics.SamplingMethod.UNIFORM`` (equidistant
+        - **samples** - ``elisa.conf.enums.SamplingMethod.UNIFORM`` (equidistant
           sampling in phase), ``SamplingMethod.ADAPTIVE`` (equidistant sampling
           on curve), or a manual phase list/array. Legacy string values are accepted.
 
@@ -323,7 +323,7 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
           and confidence interval from MCMC chain (default: [16, 50, 84])
         - **save** (:class:`bool`) - Save chain to file
         - **fit_id** (:class:`str`) - Identifier or location of stored chain
-        - **samples** - ``elisa.analytics.SamplingMethod.UNIFORM`` (equidistant
+        - **samples** - ``elisa.conf.enums.SamplingMethod.UNIFORM`` (equidistant
           sampling in phase), ``SamplingMethod.ADAPTIVE`` (equidistant sampling
           on curve), or a manual phase list/array. Legacy string values are accepted.
         """
