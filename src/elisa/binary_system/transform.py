@@ -22,6 +22,9 @@ class BinarySystemProperties(SystemProperties):
         if not isinstance(value, (int, INT, float, FLOAT)):
             msg = "Input of variable `eccentricity` is not (numpy.)int or (numpy.)float."
             raise TypeError(msg)
+        if not np.isfinite(value):
+            msg = "Nonfinite eccentricity."
+            raise FloatingPointError(msg)
         if value < 0 or value >= 1:
             msg = "Input of variable `eccentricity` is out of boundaries [0, 1)."
             raise PhysicalStateError(msg)
@@ -51,6 +54,9 @@ class BinarySystemProperties(SystemProperties):
                 "nor astropy.unit.quantity.Quantity instance."
             )
             raise TypeError(msg)
+        if not np.isfinite(value):
+            msg = "Nonfinite argument_of_periastron."
+            raise FloatingPointError(msg)
         if not 0 <= value <= const.FULL_ARC:
             value %= const.FULL_ARC
         return float(value)
@@ -65,7 +71,11 @@ class BinarySystemProperties(SystemProperties):
         :param value: Phase shift value.
         :returns: Phase shift as float.
         """
-        return float(np.float64(value))
+        value = float(np.float64(value))
+        if not np.isfinite(value):
+            msg = "Nonfinite phase_shift."
+            raise FloatingPointError(msg)
+        return value
 
     @staticmethod
     def primary_minimum_time(value: Any) -> float:
@@ -74,12 +84,16 @@ class BinarySystemProperties(SystemProperties):
         :param value: Numeric value or astropy Quantity.
         :returns: Time of primary minimum as float.
         """
-        return quantity_transform(
+        value = quantity_transform(
             value,
             units.DefaultBinarySystemUnits.system.primary_minimum_time,
             WHEN_FLOAT64,
             units.DefaultBinarySystemInputUnits.system.primary_minimum_time,
         )
+        if not np.isfinite(value):
+            msg = "Nonfinite primary_minimum_time."
+            raise FloatingPointError(msg)
+        return value
 
     @classmethod
     def t0(cls, value: Any) -> float:
@@ -106,6 +120,9 @@ class RadialVelocityObserverProperties(SystemProperties):
         :param value: Mass ratio value (must be > 0).
         :returns: Mass ratio as float.
         """
+        if not np.isfinite(value):
+            msg = "Nonfinite mass_ratio."
+            raise FloatingPointError(msg)
         if not value > 0:
             msg = f"Invalid value of property `mass_ratio`. Expected > 0, given {value}."
             raise PhysicalStateError(msg)
@@ -131,6 +148,9 @@ class RadialVelocityObserverProperties(SystemProperties):
                 "nor astropy.unit.quantity.Quantity instance."
             )
             raise TypeError(msg)
+        if not np.isfinite(value):
+            msg = "Nonfinite asini."
+            raise FloatingPointError(msg)
         if value < 0:
             msg = "Value of `asini` cannot be negative."
             raise PhysicalStateError(msg)

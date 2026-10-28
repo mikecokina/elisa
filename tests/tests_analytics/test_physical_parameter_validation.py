@@ -92,8 +92,9 @@ def assert_evaluation(fit: AbstractFit, vector: NDArray[np.float64], *, valid: b
 @pytest.mark.parametrize("period", [-3.0, 0.0, np.nan, np.inf, -np.inf])
 def test_invalid_fixed_period_aborts_before_optimizer(fitting_problem, period: float) -> None:
     fit, config, data = fitting_problem
-    config["system"]["period"] = {"value": period, "fixed": True}
     initial = p.BinaryInitialParameters(**config)
+    # Bypass property conversion to retain coverage of the fitting setup guard.
+    initial.period.value = period
     error_type = PhysicalStateError if np.isfinite(period) else FloatingPointError
     solver = (
         patch.object(fit, "_fit") if isinstance(fit, mcmc.MCMCFit)
@@ -106,8 +107,13 @@ def test_invalid_fixed_period_aborts_before_optimizer(fitting_problem, period: f
 
 def test_free_period_candidates_reject_and_recover(fitting_problem, synthesis_spy) -> None:
     fit, config, data = fitting_problem
-    config["system"]["period"] = {"value": 3.0, "fixed": False, "min": -4.0, "max": 4.0}
+    config["system"]["period"] = {"value": 3.0, "fixed": False, "min": 1.0, "max": 4.0}
     prepare_fit(fit, config, data)
+    # Invalid bounds are rejected by Properties; widen only this internal map
+    # to exercise the callbacks' independent physical validation boundary.
+    fit.normalization["system@period"] = (-4.0, 4.0)
+    if isinstance(fit, mcmc.MCMCFit):
+        fit.prepare_priors()
     vector = normalized(fit)
     index = list(fit.fitable).index("system@period")
     synthesis = synthesis_spy[1 if isinstance(fit, AbstractLCFit) else 0]

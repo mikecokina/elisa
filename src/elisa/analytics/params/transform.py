@@ -8,6 +8,7 @@ import numpy as np
 
 import elisa.units as u
 from elisa.analytics.params import conf
+from elisa.base.error import PhysicalStateError
 from elisa.base.transform import (
     WHEN_FLOAT64,
     SpotProperties,
@@ -59,7 +60,8 @@ class BinaryInitialProperties(TransformProperties):
         :returns: Transformed semi-major axis value in solar radii.
         :rtype: float
         :raises TypeError: If input is not a numeric type or astropy Quantity.
-        :raises ValueError: If value is negative.
+        :raises PhysicalStateError: If value is not strictly positive.
+        :raises FloatingPointError: If the converted value is nonfinite.
         """
         if isinstance(value, u.Quantity):
             value = np.float64(value.to(u.solRad))
@@ -71,9 +73,12 @@ class BinaryInitialProperties(TransformProperties):
                 "nor astropy.unit.quantity.Quantity instance."
             )
             raise TypeError(error_msg)
-        if value < 0:
-            error_msg = "Value of `semi_major_axis` cannot be negative."
-            raise ValueError(error_msg)
+        if not np.isfinite(value):
+            error_msg = "Nonfinite semi_major_axis."
+            raise FloatingPointError(error_msg)
+        if value <= 0:
+            error_msg = "Invalid value of semi_major_axis, use value > 0!"
+            raise PhysicalStateError(error_msg)
         return value
 
     @staticmethod
@@ -85,7 +90,8 @@ class BinaryInitialProperties(TransformProperties):
         :returns: Transformed mass value in default mass unit.
         :rtype: float
         :raises TypeError: If input is not a numeric type or astropy Quantity.
-        :raises ValueError: If value is not positive.
+        :raises PhysicalStateError: If value is not positive.
+        :raises FloatingPointError: If the converted value is nonfinite.
         """
         if isinstance(value, u.Quantity):
             value = np.float64(value.to(conf.DEFAULT_FLOAT_MASS_UNIT))
@@ -97,9 +103,12 @@ class BinaryInitialProperties(TransformProperties):
                 "nor astropy.unit.quantity.Quantity instance."
             )
             raise TypeError(error_msg)
+        if not np.isfinite(value):
+            error_msg = "Nonfinite mass."
+            raise FloatingPointError(error_msg)
         if value <= 0:
             error_msg = "Invalid mass, use value > 0!"
-            raise ValueError(error_msg)
+            raise PhysicalStateError(error_msg)
         return value
 
     # ...existing code...

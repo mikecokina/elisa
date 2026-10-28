@@ -1094,7 +1094,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                                 for param in ['t_eff', 'surface_potential']
                                 for component in settings.BINARY_COUNTERPARTS]
 
-        mock_value = {"value": 0.25, "min": 0.00, "max": 0.99}
+        mock_value = {"value": 0.25, "min": 0.01, "max": 0.99}
         mock_data = {p: mock_value for p in mandatory_fit_params if p not in [param]}
         mock_data = parameters.serialize_result(mock_data)
 
@@ -1118,7 +1118,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                                 for param in ['t_eff', 'gravity_darkening', 'albedo']
                                 for component in settings.BINARY_COUNTERPARTS]
 
-        mock_value = {"value": 0.25, "min": 0.00, "max": 0.99}
+        mock_value = {"value": 0.25, "min": 0.01, "max": 0.99}
         mock_data = {p: mock_value for p in mandatory_fit_params}
         mock_data.update(potentials)
         mock_data = parameters.serialize_result(mock_data)

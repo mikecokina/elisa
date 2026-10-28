@@ -134,7 +134,8 @@ class SystemProperties(TransformProperties):
         :returns: Inclination in radians.
         :rtype: float
         :raises TypeError: If the input type is unsupported.
-        :raises ValueError: If the value is outside the valid range [0, pi].
+        :raises PhysicalStateError: If the value is outside the valid range [0, pi].
+        :raises FloatingPointError: If the converted value is nonfinite.
         """
         if isinstance(value, (u.Quantity, str)):
             value = u.Quantity(value) if isinstance(value, str) else value
@@ -150,6 +151,9 @@ class SystemProperties(TransformProperties):
             )
             raise TypeError(msg)
 
+        if not np.isfinite(value):
+            msg = "Nonfinite inclination."
+            raise FloatingPointError(msg)
         if not 0 <= value <= const.PI:
             msg = f"Inclination value of {value} is out of bounds (0, pi)."
             raise PhysicalStateError(msg)
@@ -160,8 +164,18 @@ class SystemProperties(TransformProperties):
         """Transform and validate orbital period.
 
         If unit is omitted, the default period input unit is assumed.
+
+        :raises PhysicalStateError: If the converted period is not strictly positive.
+        :raises FloatingPointError: If the converted period is nonfinite.
         """
-        return quantity_transform(value, DefaultSystemUnits.period, WHEN_FLOAT64, u.DefaultSystemInputUnits.period)
+        value = quantity_transform(value, DefaultSystemUnits.period, WHEN_FLOAT64, u.DefaultSystemInputUnits.period)
+        if not np.isfinite(value):
+            msg = "Nonfinite orbital period."
+            raise FloatingPointError(msg)
+        if value <= 0:
+            msg = "Invalid orbital period, use value > 0!"
+            raise PhysicalStateError(msg)
+        return value
 
     @staticmethod
     def gamma(value: Any) -> Float:
@@ -169,11 +183,18 @@ class SystemProperties(TransformProperties):
 
         Accepts numeric values or :class:`astropy.units.Quantity` instances.
         """
-        return quantity_transform(value, u.DefaultSystemUnits.gamma, WHEN_FLOAT64, u.DefaultSystemInputUnits.gamma)
+        value = quantity_transform(value, u.DefaultSystemUnits.gamma, WHEN_FLOAT64, u.DefaultSystemInputUnits.gamma)
+        if not np.isfinite(value):
+            msg = "Nonfinite systemic velocity (gamma)."
+            raise FloatingPointError(msg)
+        return value
 
     @staticmethod
     def additional_light(value: Any) -> Float:
         """Validate additional (third) light fraction in range [0, 1]."""
+        if not np.isfinite(value):
+            msg = "Nonfinite additional light."
+            raise FloatingPointError(msg)
         if not 0.0 <= value <= 1.0:
             msg = "Invalid value of additional light. Valid values are between 0 and 1."
             raise PhysicalStateError(msg)
@@ -201,6 +222,9 @@ class SystemProperties(TransformProperties):
                 "astropy.unit.quantity.Quantity instance (or its string representation)."
             )
             raise TypeError(msg)
+        if not np.isfinite(value):
+            msg = "Nonfinite semi_major_axis."
+            raise FloatingPointError(msg)
         if value <= 0:
             msg = "Invalid value of semi_major_axis, use value > 0!"
             raise PhysicalStateError(msg)
@@ -225,6 +249,9 @@ class SystemProperties(TransformProperties):
                 "astropy.unit.quantity.Quantity instance (or its string representation)."
             )
             raise TypeError(msg)
+        if not np.isfinite(value):
+            msg = "Nonfinite system distance."
+            raise FloatingPointError(msg)
         if value <= 0:
             msg = "Invalid value of system's distance, use value > 0!"
             raise PhysicalStateError(msg)
@@ -239,6 +266,9 @@ class BodyProperties(TransformProperties):
 
         Expects a positive numeric value.
         """
+        if not np.isfinite(value):
+            msg = "Nonfinite synchronicity."
+            raise FloatingPointError(msg)
         if value <= 0:
             msg = "Invalid synchronicity, use value > 0!"
             raise PhysicalStateError(msg)
@@ -247,6 +277,9 @@ class BodyProperties(TransformProperties):
     @staticmethod
     def albedo(value: Any) -> Float:
         """Validate and transform bolometric albedo (range 0..1)."""
+        if not np.isfinite(value):
+            msg = "Nonfinite albedo."
+            raise FloatingPointError(msg)
         if value < 0 or value > 1:
             msg = f"Parameter albedo = {value} is out of range <0, 1>"
             raise PhysicalStateError(msg)
@@ -265,20 +298,28 @@ class BodyProperties(TransformProperties):
             WHEN_FLOAT64,
             u.DefaultStarInputUnits.discretization_factor,
         )
-        if value > const.HALF_PI:
-            msg = "Invalid value of alpha parameter. Use value less than 90."
-            raise ElisaValueError(msg)
+        if not np.isfinite(value):
+            msg = "Nonfinite discretization factor."
+            raise FloatingPointError(msg)
+        if value < 0 or value > const.HALF_PI:
+            msg = "Invalid value of alpha parameter. Use value between 0 and 90 degrees."
+            raise PhysicalStateError(msg)
         return float(value)
 
     @staticmethod
     def t_eff(value: Any) -> Float:
-        """Convert effective temperature to internal units.
+        """Convert and validate a strictly positive effective temperature.
 
         If no unit is provided, Kelvin is assumed.
         """
-        return float(
-            quantity_transform(value, u.DefaultStarUnits.t_eff, WHEN_FLOAT64, u.DefaultStarInputUnits.t_eff),
-        )
+        value = quantity_transform(value, u.DefaultStarUnits.t_eff, WHEN_FLOAT64, u.DefaultStarInputUnits.t_eff)
+        if not np.isfinite(value):
+            msg = "Nonfinite effective temperature."
+            raise FloatingPointError(msg)
+        if value <= 0:
+            msg = "Invalid effective temperature, use value > 0!"
+            raise PhysicalStateError(msg)
+        return value
 
 
 class StarProperties(BodyProperties):
@@ -301,6 +342,9 @@ class StarProperties(BodyProperties):
                 "astropy.unit.quantity.Quantity instance (or its string representation)."
             )
             raise TypeError(msg)
+        if not np.isfinite(value):
+            msg = "Nonfinite equivalent_radius."
+            raise FloatingPointError(msg)
         if value <= 0:
             msg = "Invalid value of equivalent_radius, use value > 0!"
             raise PhysicalStateError(msg)
@@ -324,6 +368,9 @@ class StarProperties(BodyProperties):
                 "astropy.unit.quantity.Quantity instance (or its string representation)."
             )
             raise TypeError(msg)
+        if not np.isfinite(value):
+            msg = "Nonfinite mass."
+            raise FloatingPointError(msg)
         if value <= 0:
             msg = "Invalid mass, use value > 0!"
             raise PhysicalStateError(msg)
@@ -331,13 +378,16 @@ class StarProperties(BodyProperties):
 
     @staticmethod
     def surface_potential(value: Any) -> Float:
-        """Return the surface potential of the star (validated positive).
+        """Return the surface potential of the star (validated non-negative).
 
         :param value: Numeric surface potential.
         :returns: Surface potential as float.
         """
+        if not np.isfinite(value):
+            msg = "Nonfinite surface potential."
+            raise FloatingPointError(msg)
         if value < 0:
-            msg = "Invalid surface potential, use value > 0!"
+            msg = "Invalid surface potential, use value >= 0!"
             raise PhysicalStateError(msg)
         return float(value)
 
@@ -351,6 +401,9 @@ class StarProperties(BodyProperties):
         if not isinstance(value, WHEN_FLOAT64):
             msg = "Input of variable `metallicity` is not (np.)int or (np.)float instance."
             raise TypeError(msg)
+        if not np.isfinite(value):
+            msg = "Nonfinite metallicity."
+            raise FloatingPointError(msg)
         return float(value)
 
     @staticmethod
@@ -373,11 +426,17 @@ class StarProperties(BodyProperties):
                 "astropy.unit.quantity.Quantity instance (or its string representation)."
             )
             raise TypeError(msg)
+        if not np.isfinite(value):
+            msg = "Nonfinite polar_log_g."
+            raise FloatingPointError(msg)
         return float(value)
 
     @staticmethod
     def gravity_darkening(value: Any) -> Float:
         """Validate gravity darkening parameter in range [0, 1]."""
+        if not np.isfinite(value):
+            msg = "Nonfinite gravity darkening."
+            raise FloatingPointError(msg)
         if value > 1 or value < 0:
             msg = f"Parameter gravity darkening = {value} is out of range <0, 1>"
             raise PhysicalStateError(msg)

@@ -4,10 +4,12 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from elisa import const
 from elisa import units as u
 from elisa.base.error import PhysicalStateError
 from elisa.base.transform import (
     WHEN_FLOAT64,
+    SystemProperties,
     TransformProperties,
     quantity_transform,
 )
@@ -32,8 +34,9 @@ class OrbitProperties(TransformProperties):
         :return: Validated eccentricity converted to ``Float``.
         :rtype: Float
         :raises TypeError: If ``value`` is not a supported numeric scalar.
-        :raises ValueError: If ``value`` is outside the allowed interval
+        :raises PhysicalStateError: If ``value`` is outside the allowed interval
             ``[0, 1)``.
+        :raises FloatingPointError: If ``value`` is nonfinite.
         """
         if not isinstance(value, (int, INT, float, FLOAT)):
             message = (
@@ -42,6 +45,9 @@ class OrbitProperties(TransformProperties):
             )
             raise TypeError(message)
 
+        if not np.isfinite(value):
+            message = "Nonfinite eccentricity."
+            raise FloatingPointError(message)
         if value < 0 or value >= 1:
             message = (
                 "Input of variable `eccentricity` is invalid or out of "
@@ -63,11 +69,7 @@ class OrbitProperties(TransformProperties):
         :return: Period converted to the internal ``Float`` form.
         :rtype: Float
         """
-        return quantity_transform(
-            value,
-            u.DefaultBinarySystemUnits.system.period,
-            WHEN_FLOAT64,
-        )
+        return SystemProperties.period(value)
 
     @staticmethod
     def argument_of_periastron(value: Float) -> Float:
@@ -81,11 +83,15 @@ class OrbitProperties(TransformProperties):
             ``Float`` form.
         :rtype: Float
         """
-        return quantity_transform(
+        value = quantity_transform(
             value,
             u.DefaultBinarySystemUnits.system.argument_of_periastron,
             WHEN_FLOAT64,
         )
+        if not np.isfinite(value):
+            message = "Nonfinite argument_of_periastron."
+            raise FloatingPointError(message)
+        return value
 
     @staticmethod
     def inclination(value: Float) -> Float:
@@ -99,8 +105,15 @@ class OrbitProperties(TransformProperties):
         :return: Inclination converted to internal ``Float`` form.
         :rtype: Float
         """
-        return quantity_transform(
+        value = quantity_transform(
             value,
             u.DefaultBinarySystemUnits.system.inclination,
             WHEN_FLOAT64,
         )
+        if not np.isfinite(value):
+            message = "Nonfinite inclination."
+            raise FloatingPointError(message)
+        if not 0 <= value <= const.PI:
+            message = f"Inclination value of {value} is out of bounds (0, pi)."
+            raise PhysicalStateError(message)
+        return value
