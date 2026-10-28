@@ -7,6 +7,9 @@ from typing import Any
 from elisa import const, units
 from elisa.analytics.params.parameters import deflate_phenomena
 
+DEFAULT_GAMMA: float = 0.0
+DEFAULT_SYNCHRONICITY: float = 1.0
+
 # Optional system-level keys extracted when present.
 _OPTIONAL_SYSTEM_KEYS: tuple[str, ...] = (
     "inclination",
@@ -43,7 +46,7 @@ def serialize_system_kwargs(**kwargs: Any) -> dict[str, Any]:
     """
     result: dict[str, Any] = {
         "argument_of_periastron": kwargs.get("system@argument_of_periastron", const.HALF_PI * units.rad),
-        "gamma": kwargs.get("system@gamma", 0.0),
+        "gamma": kwargs.get("system@gamma", DEFAULT_GAMMA),
         "period": kwargs["system@period"],
         "eccentricity": kwargs.get("system@eccentricity", 0.0),
         "primary_minimum_time": 0.0,
@@ -97,7 +100,7 @@ def _serialize_star_kwargs(component: str, **kwargs: Any) -> dict[str, Any]:
 
     result: dict[str, Any] = {
         "surface_potential": kwargs[f"{prefix}surface_potential"],
-        "synchronicity": kwargs.get(f"{prefix}synchronicity", 1.0),
+        "synchronicity": kwargs.get(f"{prefix}synchronicity", DEFAULT_SYNCHRONICITY),
         "t_eff": kwargs[f"{prefix}t_eff"],
         "spots": spots,
         "pulsations": pulsations,

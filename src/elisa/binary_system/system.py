@@ -461,6 +461,8 @@ class BinarySystem(System[Star]):
         :return: Binary system created from fit results.
         :rtype: BinarySystem
         """
+        from elisa.analytics.models.serializers import DEFAULT_GAMMA, DEFAULT_SYNCHRONICITY  # noqa: PLC0415
+
         # Filter out None extra parameters upfront to avoid redundant checks in inner loop
         filtered_extras = {
             k: v
@@ -488,6 +490,10 @@ class BinarySystem(System[Star]):
             for extra_param, extra_dict in filtered_extras.items():
                 if key in extra_dict:
                     data[key][extra_param] = extra_dict[key]
+
+        data.get("system", {}).setdefault("gamma", DEFAULT_GAMMA)
+        for component in ("primary", "secondary"):
+            data.get(component, {}).setdefault("synchronicity", DEFAULT_SYNCHRONICITY)
 
         return cls.from_json(data=data)
 

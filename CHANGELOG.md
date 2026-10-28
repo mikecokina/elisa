@@ -143,6 +143,11 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Restore missing LC synthesis defaults in `BinarySystem.from_fit_results()`
+  so standard and community LSQ/MCMC results reconstruct with `gamma = 0.0`
+  and component `synchronicity = 1.0` when omitted. Share default values with
+  synthesis preparation, preserve explicit values and canonical fitting units,
+  and retain JSON schema validation for mandatory physical parameters.
 - Fix single-system orbit `rotation_period` transformation so numeric inputs
   use days and Astropy quantities convert to days. Apply existing positive,
   finite period validation and initialize the `period` alias from the
