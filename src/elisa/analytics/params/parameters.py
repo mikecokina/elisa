@@ -35,6 +35,7 @@ from elisa.analytics.params.transform import (
 )
 from elisa.base.error import InitialParamsError
 from elisa.binary_system.utils import calculate_sma_estimate
+from elisa.json_encoder import ElisaJSONEncoder
 from elisa.logger import getLogger
 from elisa.utils import is_empty
 
@@ -786,6 +787,7 @@ class InitialParameter:
                 "sigma": self.sigma,
                 "unit": str(self.unit) if self.unit is not None else None,
             },
+            cls=ElisaJSONEncoder,
             indent=4,
         )
 

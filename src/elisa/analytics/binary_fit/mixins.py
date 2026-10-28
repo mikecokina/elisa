@@ -11,6 +11,7 @@ import numpy as np
 from elisa import settings
 from elisa.analytics.binary_fit.chain_tools import prepare_chain_samples
 from elisa.analytics.params.conf import JOINT_POSTERIOR_PERCENTILES_ESTIMATE
+from elisa.json_encoder import ElisaJSONEncoder
 from elisa.logger import getPersistentLogger
 from elisa.utc import UTC
 
@@ -252,7 +253,7 @@ class MCMCMixin:
         prepare_chain_samples(data)
 
         with fpath.open("w") as f:
-            f.write(json.dumps(data, indent=4))
+            f.write(json.dumps(data, cls=ElisaJSONEncoder, indent=4))
 
         logger.info("MCMC chain, variable's fitable and normalization constants were stored in: %s", fpath)
         return str(fpath)

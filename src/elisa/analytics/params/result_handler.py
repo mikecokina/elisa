@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from elisa.analytics.binary_fit.shared import eval_constraint_in_dict
 from elisa.analytics.params import parameters
+from elisa.json_encoder import ElisaJSONEncoder
 
 if TYPE_CHECKING:
     from typing import Any
@@ -61,7 +62,7 @@ class FitResultHandler:
 
         path_obj = Path(path) if isinstance(path, str) else path
         path_obj.write_text(
-            json.dumps(self.result, separators=(",", ": "), indent=4),
+            json.dumps(self.result, cls=ElisaJSONEncoder, separators=(",", ": "), indent=4),
             encoding="utf-8",
         )
 

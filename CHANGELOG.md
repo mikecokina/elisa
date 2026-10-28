@@ -11,6 +11,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Added
 
+- Shared `ElisaJSONEncoder` for result saves, MCMC chain exports, and
+  parameter JSON representations, supporting Astropy units, NumPy scalars
+  and arrays, and ISO 8601 dates and datetimes. Unsupported objects, including
+  Astropy quantities, continue to raise `TypeError`.
 - Configurable Kepler solver through `MEAN_ANOMALY_SOLVER` or
   `[computational].mean_anomaly_solver`: `vectorized` (default) or the original
   SciPy `scalar` secant solver.
@@ -143,6 +147,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Fix constrained LSQ result save/load/save failures caused by Astropy unit
+  objects introduced during constraint reevaluation. Preserve separate
+  numerical values and unit strings, fitting unit conventions, and existing
+  constrained MCMC posterior summaries.
 - Restore missing LC synthesis defaults in `BinarySystem.from_fit_results()`
   so standard and community LSQ/MCMC results reconstruct with `gamma = 0.0`
   and component `synchronicity = 1.0` when omitted. Share default values with
