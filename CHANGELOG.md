@@ -147,6 +147,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Preserve the original `r_squared` value and unit when loading LSQ and MCMC
+  fitting results and reevaluating constraints. Keep the diagnostic separate
+  from physical parameter processing, without recalculating R² or adding it
+  to results where it was absent.
 - Fix constrained LSQ result save/load/save failures caused by Astropy unit
   objects introduced during constraint reevaluation. Preserve separate
   numerical values and unit strings, fitting unit conventions, and existing

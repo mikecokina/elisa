@@ -1059,4 +1059,7 @@ def eval_constraint_in_dict(input_dict: dict[str, Any]) -> dict[str, Any]:
         },
     )
 
-    return parameters.serialize_result(result_dict)
+    result = parameters.serialize_result(result_dict)
+    if "r_squared" in input_dict:
+        result["r_squared"] = input_dict["r_squared"]
+    return result

@@ -90,6 +90,22 @@ def test_constrained_lsq_repeated_serialization(tmp_path: Path, lsq_result) -> N
         assert isinstance(unit, UnitBase)
 
 
+@pytest.mark.parametrize("r_squared", [None, 0.9293699059562626, 0.0, -0.25])
+def test_result_loading_preserves_r_squared(tmp_path: Path, lsq_result, r_squared: float | None) -> None:
+    fit, constrained = lsq_result
+    if r_squared is not None:
+        fit.result["r_squared"] = {"value": r_squared, "unit": None}
+    expected = deepcopy(fit.result)
+    path = tmp_path / "r_squared.json"
+    for _ in range(2):
+        fit.save_result(path)
+        assert json.loads(path.read_text()) == expected
+        fit.load_result(path)
+        assert json.loads(json.dumps(fit.result, cls=ElisaJSONEncoder)) == expected
+        assert isinstance(fit.flat_result[constrained]["unit"], UnitBase)
+        assert ("r_squared" in fit.result) is (r_squared is not None)
+
+
 @pytest.mark.parametrize("name", DEFAULT_FLOAT_UNITS)
 def test_unit_objects_match_existing_parameter_metadata(name: str) -> None:
     parameter = InitialParameter(BinaryInitialProperties, param=name, constraint="1")
@@ -129,7 +145,10 @@ def test_chain_serialization_preserves_format_with_numpy_metadata(tmp_path: Path
     assert json.loads(Path(path).read_text()) == expected
 
 
-def test_mcmc_constrained_summary_survives_json_roundtrips(tmp_path: Path, mcmc_result) -> None:
+@pytest.mark.parametrize("include_r_squared", [False, True])
+def test_mcmc_constrained_summary_survives_json_roundtrips(
+    tmp_path: Path, mcmc_result, include_r_squared: bool,
+) -> None:
     initial = BinaryInitialParameters(system={
         "gamma": {"value": 0.0, "fixed": False, "min": -4.0, "max": 4.0},
         "mass_ratio": {"constraint": "system@gamma**2"},
@@ -141,14 +160,19 @@ def test_mcmc_constrained_summary_survives_json_roundtrips(tmp_path: Path, mcmc_
     flat.update(MCMCMixin.resolve_constrained_result(
         chain, initial.get_fitable(), normalization, initial.get_constrained(), initial.get_fixed(),
     ))
+    if include_r_squared:
+        flat["r_squared"] = {"value": 0.9876543210123456, "unit": None}
     expected = deepcopy(flat["system@mass_ratio"])
     assert expected["value"] == np.median(samples**2)
     assert expected["value"] != np.median(samples)**2
     assert expected["estimate"] == JOINT_POSTERIOR_PERCENTILES_ESTIMATE
     mcmc_result.set_result(parameters.serialize_result(flat))
+    expected_result = parameters.serialize_result(flat)
     path = tmp_path / "posterior.json"
     for _ in range(3):
         mcmc_result.save_result(path)
+        assert json.loads(path.read_text()) == expected_result
         assert json.loads(path.read_text())["system"]["mass_ratio"] == expected
         mcmc_result.load_result(path)
         assert mcmc_result.flat_result["system@mass_ratio"] == expected
+        assert mcmc_result.result == expected_result
