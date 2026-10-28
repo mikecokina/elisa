@@ -143,6 +143,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Fix single-system orbit `rotation_period` transformation so numeric inputs
+  use days and Astropy quantities convert to days. Apply existing positive,
+  finite period validation and initialize the `period` alias from the
+  normalized `rotation_period` instead of an unused NaN placeholder.
 - Correct the secondary polar gravity derivative for binary separations other
   than one semi-major axis, using the actual secondary center. Repair the
   eccentric gravity test to use consistent orbital radii and independent
