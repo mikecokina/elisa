@@ -8,7 +8,6 @@ from tests import utils
 from elisa import settings
 from elisa.binary_system import system
 from elisa.observer import observer
-from importlib import reload
 from elisa.analytics.tools.bvi import pogsons_formula
 import pytest
 
@@ -62,8 +61,6 @@ class SunTestCase(utils.ElisaTestCase):
 
 #         for ld in ['logarithmic', 'square_root']:
         settings.configure(REFLECTION_EFFECT=False)
-        reload(observer)
-        reload(system)
 
         res = []
 

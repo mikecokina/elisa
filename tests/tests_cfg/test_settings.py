@@ -1,5 +1,6 @@
 import logging
 import os
+import subprocess
 import sys
 import textwrap
 import unittest
@@ -13,14 +14,13 @@ import pytest
 from elisa import settings
 from elisa.base.curves.utils import interpolate_on_ld_grid_cached
 from elisa.conf.enums import IntersectionBackend, MeanAnomalySolver
-from tests import import_fresh_elisa_settings
 from tests.utils import ElisaTestCase
 
 IniFixture: TypeAlias = tuple[Path, dict[str, object]]
 
 
 @pytest.fixture
-def elisa_ini(tmp_path: Path, monkeypatch):
+def elisa_ini(tmp_path: Path):
     home = tmp_path / "elisa_home"
     home.mkdir(parents=True, exist_ok=True)
 
@@ -123,40 +123,24 @@ def elisa_ini(tmp_path: Path, monkeypatch):
     ini_path = tmp_path / "elisa_conf.ini"
     ini_path.write_text(ini_text, encoding="utf-8")
 
-    monkeypatch.setenv("ELISA_CONFIG", str(ini_path))
-
-    # Fresh imports replace the entire ELISA module graph. Restore the original
-    # objects afterward: already-collected tests retain references to them,
-    # including Settings singletons and cached functions imported at module scope.
-    original_modules = {
-        name: module for name, module in sys.modules.items()
-        if name == "elisa" or name.startswith("elisa.")
-    }
-    try:
-        sys.modules.pop("elisa", None)
-        sys.modules.pop("elisa.settings", None)
+    with settings.override():
         yield ini_path, expected
-    finally:
-        for name in list(sys.modules):
-            if name == "elisa" or name.startswith("elisa."):
-                sys.modules.pop(name, None)
-        sys.modules.update(original_modules)
 
 
 def test_elisa_config_ini_types_do_not_raise(elisa_ini):
-    ini_path, expected = elisa_ini
-
-    try:
-        settings_instance = import_fresh_elisa_settings()
-    except Exception as e:
-        raise AssertionError(
-            "Importing `from elisa import settings` raised with an INI typed per docs.\n\n"
-            f"INI used: {ini_path}\n"
-            f"Exception: {type(e).__name__}: {e}",
-        ) from e
-
-    # sanity: got an instance with some expected attr
-    assert hasattr(settings_instance, "HOME")
+    ini_path, _ = elisa_ini
+    result = subprocess.run(
+        [sys.executable, "-c", "from elisa import settings\nassert hasattr(settings, 'HOME')\n"],
+        env={**os.environ, "ELISA_CONFIG": str(ini_path)},
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    assert result.returncode == 0, (
+        "Importing `from elisa import settings` raised with an INI typed per docs.\n\n"
+        f"INI used: {ini_path}\n{result.stdout}\n{result.stderr}"
+    )
 
 
 IGNORE_ATTRS = {
@@ -168,7 +152,8 @@ IGNORE_ATTRS = {
 
 def test_elisa_settings_values_match_ini(elisa_ini):
     ini_path, expected = elisa_ini
-    s = import_fresh_elisa_settings()
+    settings.read_and_update_config(conf_path=str(ini_path))
+    s = settings
 
     mismatches = []
     for attr, exp in expected.items():
@@ -219,7 +204,7 @@ def test_elisa_settings_values_match_ini(elisa_ini):
 
 
 def test_invalid_limb_darkening_raises(elisa_ini):
-    """Invalid limb-darkening law in INI should raise ValueError on import.
+    """Invalid limb-darkening law in INI should raise ValueError when loaded.
 
     :param elisa_ini: base INI fixture
     :type elisa_ini: tuple[pathlib.Path, dict]
@@ -232,7 +217,7 @@ def test_invalid_limb_darkening_raises(elisa_ini):
     ini_path.write_text(text, encoding="utf-8")
 
     with pytest.raises(ValueError, match="not valid name of limb darkening law"):
-        import_fresh_elisa_settings()
+        settings.read_and_update_config(conf_path=str(ini_path))
 
 
 def test_malformed_rv_lambda_interval_raises(elisa_ini):
@@ -249,7 +234,7 @@ def test_malformed_rv_lambda_interval_raises(elisa_ini):
     ini_path.write_text(text, encoding="utf-8")
 
     with pytest.raises(ValueError, match="invalid format"):
-        import_fresh_elisa_settings()
+        settings.read_and_update_config(conf_path=str(ini_path))
 
 
 def test_number_of_processes_clamped_and_warns(elisa_ini, monkeypatch):
@@ -267,7 +252,8 @@ def test_number_of_processes_clamped_and_warns(elisa_ini, monkeypatch):
     monkeypatch.setattr(os, "cpu_count", lambda: 4)
 
     with pytest.warns(UserWarning):
-        s = import_fresh_elisa_settings()
+        settings.read_and_update_config(conf_path=str(ini_path))
+        s = settings
 
     assert isinstance(s.NUMBER_OF_PROCESSES, int)
     assert s.NUMBER_OF_PROCESSES == 4
@@ -277,7 +263,7 @@ def test_missing_tables_warn(elisa_ini):
     """Missing tables paths should emit UserWarning when warnings are not suppressed.
 
     The fixture points to temp directories that do not exist; enable warnings in the INI
-    and ensure a UserWarning is raised during settings import.
+    and ensure a UserWarning is raised when loading settings.
     """
     ini_path, _ = elisa_ini
     text = ini_path.read_text(encoding="utf-8")
@@ -285,7 +271,7 @@ def test_missing_tables_warn(elisa_ini):
     ini_path.write_text(text, encoding="utf-8")
 
     with pytest.warns(UserWarning):
-        import_fresh_elisa_settings()
+        settings.read_and_update_config(conf_path=str(ini_path))
 
 
 @pytest.mark.parametrize("backend", ["pypex", "reference", "sutherland_hodgman"])
@@ -296,7 +282,8 @@ def test_intersection_backend_configure_and_serialize(elisa_ini: IniFixture, bac
         f"intersection_backend = {backend}",
     )
     ini_path.write_text(configuration)
-    loaded_settings = import_fresh_elisa_settings()
+    settings.read_and_update_config(conf_path=str(ini_path))
+    loaded_settings = settings
     assert loaded_settings.INTERSECTION_BACKEND == backend
 
     loaded_settings.configure(INTERSECTION_BACKEND=backend)
@@ -306,7 +293,7 @@ def test_intersection_backend_configure_and_serialize(elisa_ini: IniFixture, bac
 
 
 def test_intersection_backend_rejects_invalid_configure(elisa_ini):
-    s = import_fresh_elisa_settings()
+    s = settings
     before = s.INTERSECTION_BACKEND
     with pytest.raises(ValueError, match="INTERSECTION_BACKEND"):
         s.configure(INTERSECTION_BACKEND="invalid")
@@ -317,20 +304,22 @@ def test_intersection_backend_rejects_invalid_ini(elisa_ini):
     ini_path, _ = elisa_ini
     ini_path.write_text(ini_path.read_text().replace("intersection_backend = sutherland_hodgman", "intersection_backend = invalid"))
     with pytest.raises(ValueError, match="INTERSECTION_BACKEND"):
-        import_fresh_elisa_settings()
+        settings.read_and_update_config(conf_path=str(ini_path))
 
 
 def test_intersection_backend_defaults_to_sutherland_hodgman(elisa_ini):
     ini_path, _ = elisa_ini
     ini_path.write_text(ini_path.read_text().replace("intersection_backend = sutherland_hodgman", ""))
-    s = import_fresh_elisa_settings()
+    settings.configure(INTERSECTION_BACKEND=settings.DEFAULT_SETTINGS["INTERSECTION_BACKEND"])
+    settings.read_and_update_config(conf_path=str(ini_path))
+    s = settings
     assert s.INTERSECTION_BACKEND == "sutherland_hodgman"
     assert s.DEFAULT_SETTINGS["INTERSECTION_BACKEND"] == "sutherland_hodgman"
 
 
 @pytest.mark.parametrize("tol", [0, 50])
 def test_mcmc_autocorr_tol_configure_and_serialize(elisa_ini, tol):
-    s = import_fresh_elisa_settings()
+    s = settings
     s.configure(MCMC_AUTOCORR_TOL=tol)
     assert s.MCMC_AUTOCORR_TOL == tol
     assert s.settings_serializer()["MCMC_AUTOCORR_TOL"] == tol
@@ -339,13 +328,15 @@ def test_mcmc_autocorr_tol_configure_and_serialize(elisa_ini, tol):
 def test_mcmc_autocorr_tol_defaults_to_zero(elisa_ini):
     ini_path, _ = elisa_ini
     ini_path.write_text(ini_path.read_text().replace("mcmc_autocorr_tol = 50", ""))
-    s = import_fresh_elisa_settings()
+    settings.configure(MCMC_AUTOCORR_TOL=settings.DEFAULT_SETTINGS["MCMC_AUTOCORR_TOL"])
+    settings.read_and_update_config(conf_path=str(ini_path))
+    s = settings
     assert s.MCMC_AUTOCORR_TOL == 0
     assert s.DEFAULT_SETTINGS["MCMC_AUTOCORR_TOL"] == 0
 
 
 def test_singleton_effective_values_and_independent_serialization(elisa_ini):
-    s = import_fresh_elisa_settings()
+    s = settings
     assert type(s)() is s
     snapshot = s.settings_serializer()
     assert all(getattr(s, name) == value for name, value in snapshot.items())
@@ -359,7 +350,7 @@ def test_singleton_effective_values_and_independent_serialization(elisa_ini):
 
 
 def test_direct_assignment_updates_the_single_store(elisa_ini):
-    s = import_fresh_elisa_settings()
+    s = settings
     s.REFLECTION_EFFECT_ITERATIONS = 7
     assert s.REFLECTION_EFFECT_ITERATIONS == s.settings_serializer()['REFLECTION_EFFECT_ITERATIONS'] == 7
     before = s.__dict__
@@ -375,7 +366,7 @@ def test_direct_assignment_updates_the_single_store(elisa_ini):
     'DEFAULT_SETTINGS', 'PATH_TO_SINGLE_CORRECTIONS', 'PASSBANDS', 'configure', '_instance', 'UNKNOWN',
 ])
 def test_constants_services_and_unknown_fields_are_not_writable(elisa_ini, name):
-    s = import_fresh_elisa_settings()
+    s = settings
     before = s.__dict__
     with pytest.raises(AttributeError):
         setattr(s, name, None)
@@ -394,7 +385,7 @@ def test_constants_services_and_unknown_fields_are_not_writable(elisa_ini, name)
 ])
 @pytest.mark.parametrize('invalid_first', [True, False])
 def test_invalid_first_or_second_argument_never_publishes(elisa_ini, bad, invalid_first):
-    s = import_fresh_elisa_settings()
+    s = settings
     good = {'REFLECTION_EFFECT_ITERATIONS': 19}
     changes = {**bad, **good} if invalid_first else {**good, **bad}
     before = s.__dict__
@@ -406,7 +397,7 @@ def test_invalid_first_or_second_argument_never_publishes(elisa_ini, bad, invali
 
 
 def test_multifield_transaction_publishes_values_and_derived_map_together(elisa_ini, monkeypatch):
-    s = import_fresh_elisa_settings()
+    s = settings
     before = s.__dict__
     import importlib
     module = importlib.import_module('elisa.conf.settings')
@@ -417,9 +408,10 @@ def test_multifield_transaction_publishes_values_and_derived_map_together(elisa_
         observed.append(profile)
         assert s.__dict__ is before
 
-    monkeypatch.setattr(module, 'configure_logging', apply_logging)
-    s.configure(REFLECTION_EFFECT_ITERATIONS=11, CK04_ATM_TABLES='new-ck',
-                K93_ATM_TABLES='new-k', LOG_CONFIG='fit')
+    with monkeypatch.context() as logging_patch:
+        logging_patch.setattr(module, 'configure_logging', apply_logging)
+        s.configure(REFLECTION_EFFECT_ITERATIONS=11, CK04_ATM_TABLES='new-ck',
+                    K93_ATM_TABLES='new-k', LOG_CONFIG='fit')
     assert observed == ['fit']
     assert s.REFLECTION_EFFECT_ITERATIONS == 11
     assert s.ATLAS_TO_BASE_DIR['ck04'] == s.CK04_ATM_TABLES == 'new-ck'
@@ -432,7 +424,7 @@ def test_multifield_transaction_publishes_values_and_derived_map_together(elisa_
 
 @pytest.mark.parametrize('law', ['linear', 'cosine', 'logarithmic', 'square_root'])
 def test_scientific_modes_and_sentinels_remain_mutable(elisa_ini, law):
-    s = import_fresh_elisa_settings()
+    s = settings
     for mesh in ('auto', 'trapezoidal', 'improved_trapezoidal'):
         for rv in ('kinematic', 'radiometric'):
             s.configure(LIMB_DARKENING_LAW=law, MESH_GENERATOR=mesh, RV_METHOD=rv,
@@ -452,7 +444,8 @@ def test_scientific_modes_and_sentinels_remain_mutable(elisa_ini, law):
 
 def test_ini_failure_does_not_change_effective_state_or_logging(elisa_ini):
     ini, _ = elisa_ini
-    s = import_fresh_elisa_settings()
+    settings.read_and_update_config(conf_path=str(ini))
+    s = settings
     before = s.__dict__
     ini.write_text('[general]\nlog_config=fit\n[physics]\nreflection_effect_iterations=29\n'
                    '[computational]\nnumber_of_threads=0\n')
@@ -464,7 +457,8 @@ def test_ini_failure_does_not_change_effective_state_or_logging(elisa_ini):
 
 def test_each_ini_read_uses_only_its_own_options(elisa_ini, tmp_path):
     ini, _ = elisa_ini
-    s = import_fresh_elisa_settings()
+    settings.read_and_update_config(conf_path=str(ini))
+    s = settings
     ini.write_text('[physics]\nreflection_effect_iterations=17\n')
     s.read_and_update_config(conf_path=str(ini))
     s.configure(REFLECTION_EFFECT_ITERATIONS=3)
@@ -475,7 +469,7 @@ def test_each_ini_read_uses_only_its_own_options(elisa_ini, tmp_path):
 
 
 def test_home_preparation_failure_retains_all_values(elisa_ini, tmp_path):
-    s = import_fresh_elisa_settings()
+    s = settings
     blocked = tmp_path / 'file'
     blocked.write_text('not a directory')
     before = s.__dict__
@@ -485,7 +479,7 @@ def test_home_preparation_failure_retains_all_values(elisa_ini, tmp_path):
 
 
 def test_logging_application_failure_retains_all_settings(elisa_ini, tmp_path):
-    s = import_fresh_elisa_settings()
+    s = settings
     bad = tmp_path / 'invalid.json'
     bad.write_text('{"version": 999}')
     before = s.__dict__
@@ -497,7 +491,7 @@ def test_logging_application_failure_retains_all_settings(elisa_ini, tmp_path):
 
 
 def test_config_file_selector_and_pathlike_values(elisa_ini, tmp_path):
-    s = import_fresh_elisa_settings()
+    s = settings
     selected = tmp_path / 'selected.ini'
     selected.write_text('[physics]\nreflection_effect_iterations=23\n')
     s.CONFIG_FILE = selected
@@ -509,7 +503,7 @@ def test_config_file_selector_and_pathlike_values(elisa_ini, tmp_path):
 
 
 def test_fresh_scientific_objects_follow_mutable_defaults(elisa_ini):
-    s = import_fresh_elisa_settings()
+    s = settings
     import numpy as np
 
     from elisa.base.curves.utils import _get_rv_passband
@@ -529,7 +523,8 @@ def test_fresh_scientific_objects_follow_mutable_defaults(elisa_ini):
 
 def test_ini_preserves_numerical_sentinels_and_overflow_interval(elisa_ini):
     ini, _ = elisa_ini
-    s = import_fresh_elisa_settings()
+    settings.read_and_update_config(conf_path=str(ini))
+    s = settings
     ini.write_text('[physics]\nrv_lambda_interval=(1e309, 1e309)\nreflection_effect_iterations=0\n'
                    '[computational]\nnumber_of_processes=-1\nnumber_of_mcmc_processes=0\n'
                    'max_d_flux=0.0\nmax_nu_separation=-1.0\nmin_discretization_factor=1.5\n')
@@ -548,7 +543,7 @@ def test_ini_preserves_numerical_sentinels_and_overflow_interval(elisa_ini):
 
 
 def test_direct_log_assignment_uses_existing_logging_apis(elisa_ini):
-    s = import_fresh_elisa_settings()
+    s = settings
     try:
         s.LOG_CONFIG = 'fit'
         assert s.LOG_CONFIG == s.settings_serializer()['LOG_CONFIG'] == 'fit'
@@ -723,7 +718,10 @@ def test_elisa_class_cleanup_restores_logging_threshold(previous_disable, failur
 
 
 def test_mean_anomaly_solver_defaults_for_existing_ini(elisa_ini: IniFixture) -> None:
-    loaded_settings = import_fresh_elisa_settings()
+    ini_path, _ = elisa_ini
+    settings.configure(MEAN_ANOMALY_SOLVER=settings.DEFAULT_SETTINGS["MEAN_ANOMALY_SOLVER"])
+    settings.read_and_update_config(conf_path=str(ini_path))
+    loaded_settings = settings
 
     assert loaded_settings.MEAN_ANOMALY_SOLVER == "vectorized"
     assert loaded_settings.DEFAULT_SETTINGS["MEAN_ANOMALY_SOLVER"] == "vectorized"
@@ -734,7 +732,8 @@ def test_mean_anomaly_solver_defaults_for_existing_ini(elisa_ini: IniFixture) ->
 def test_mean_anomaly_solver_ini_and_updates(elisa_ini: IniFixture, solver: str) -> None:
     ini_path, _ = elisa_ini
     ini_path.write_text(f"[computational]\nMEAN_ANOMALY_SOLVER = {solver}\n")
-    loaded_settings = import_fresh_elisa_settings()
+    settings.read_and_update_config(conf_path=str(ini_path))
+    loaded_settings = settings
     assert loaded_settings.MEAN_ANOMALY_SOLVER == solver
 
     replacement_solver = "scalar" if solver == "vectorized" else "vectorized"
@@ -748,7 +747,8 @@ def test_mean_anomaly_solver_ini_and_updates(elisa_ini: IniFixture, solver: str)
 
 def test_mean_anomaly_solver_invalid_ini_is_atomic(elisa_ini: IniFixture) -> None:
     ini_path, _ = elisa_ini
-    loaded_settings = import_fresh_elisa_settings()
+    settings.read_and_update_config(conf_path=str(ini_path))
+    loaded_settings = settings
     original_settings = loaded_settings.settings_serializer()
     invalid_configuration = textwrap.dedent("""
         [physics]
@@ -763,8 +763,21 @@ def test_mean_anomaly_solver_invalid_ini_is_atomic(elisa_ini: IniFixture) -> Non
         loaded_settings.read_and_update_config(conf_path=str(ini_path))
     assert loaded_settings.settings_serializer() == original_settings
 
-    with pytest.raises(ValueError, match="MEAN_ANOMALY_SOLVER"):
-        import_fresh_elisa_settings()
+    code = textwrap.dedent("""
+        import pytest
+
+        with pytest.raises(ValueError, match="MEAN_ANOMALY_SOLVER"):
+            from elisa import settings
+    """)
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        env={**os.environ, "ELISA_CONFIG": str(ini_path)},
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    assert result.returncode == 0, f"{result.stdout}\n{result.stderr}"
 
 
 @pytest.mark.parametrize(
@@ -778,7 +791,7 @@ def test_mean_anomaly_solver_invalid_ini_is_atomic(elisa_ini: IniFixture) -> Non
     ],
 )
 def test_mean_anomaly_solver_invalid_update_is_atomic(elisa_ini: IniFixture, invalid_solver: object) -> None:
-    loaded_settings = import_fresh_elisa_settings()
+    loaded_settings = settings
     original_settings = loaded_settings.settings_serializer()
 
     with pytest.raises(ValueError, match="MEAN_ANOMALY_SOLVER"):
@@ -789,7 +802,7 @@ def test_mean_anomaly_solver_invalid_update_is_atomic(elisa_ini: IniFixture, inv
 
 @pytest.mark.parametrize("solver", list(MeanAnomalySolver))
 def test_mean_anomaly_solver_accepts_enum_members(elisa_ini: IniFixture, solver: MeanAnomalySolver) -> None:
-    loaded_settings = import_fresh_elisa_settings()
+    loaded_settings = settings
 
     with loaded_settings.override(MEAN_ANOMALY_SOLVER=solver):
         assert loaded_settings.MEAN_ANOMALY_SOLVER == solver.value
@@ -799,7 +812,7 @@ def test_mean_anomaly_solver_accepts_enum_members(elisa_ini: IniFixture, solver:
 
 @pytest.mark.parametrize("backend", list(IntersectionBackend))
 def test_intersection_backend_accepts_enum_members(elisa_ini: IniFixture, backend: IntersectionBackend) -> None:
-    loaded_settings = import_fresh_elisa_settings()
+    loaded_settings = settings
     original_settings = loaded_settings.settings_serializer()
 
     with loaded_settings.override(INTERSECTION_BACKEND=backend):
@@ -820,8 +833,11 @@ def test_legacy_ini_atlas_is_ignored_without_deprecation(elisa_ini: IniFixture, 
     configuration = configuration.replace("[support]", f"[support]\natlas = {legacy_atlas}")
     ini_path.write_text(configuration)
 
+    settings.configure(ATM_ATLAS=settings.DEFAULT_SETTINGS["ATM_ATLAS"])
+
     with warnings.catch_warnings():
         warnings.simplefilter("error", DeprecationWarning)
-        loaded_settings = import_fresh_elisa_settings()
+        settings.read_and_update_config(conf_path=str(ini_path))
+        loaded_settings = settings
 
     assert loaded_settings.ATM_ATLAS == loaded_settings.DEFAULT_SETTINGS["ATM_ATLAS"]

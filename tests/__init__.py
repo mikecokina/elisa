@@ -1,7 +1,6 @@
 import os
 import sys
 import tempfile
-from pathlib import Path
 
 
 def set_astropy_units():
@@ -45,27 +44,4 @@ with open(CONFIG_FILE, "w") as f:
 set_astropy_units()
 
 
-
-def import_fresh_elisa_settings():
-    # Ensure project root (and src/) is on sys.path so `import elisa` works when running tests
-    project_root = Path(__file__).resolve().parent.parent
-    src_path = project_root / "src"
-    if str(src_path) not in sys.path:
-        sys.path.insert(0, str(src_path))
-    if str(project_root) not in sys.path:
-        sys.path.insert(0, str(project_root))
-
-    # Remove ALL elisa-related modules, not just elisa + elisa.settings
-    for name in list(sys.modules.keys()):
-        if name == "elisa" or name.startswith("elisa."):
-            sys.modules.pop(name, None)
-
-    # Now import fresh and return the Settings instance
-    from elisa import settings as settings_instance
-    return settings_instance
-
-
-__all__ = (
-    "set_astropy_units",
-    "import_fresh_elisa_settings",
-)
+__all__ = ("set_astropy_units",)
