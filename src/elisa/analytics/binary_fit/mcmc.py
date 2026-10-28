@@ -21,7 +21,6 @@ from elisa.analytics.models import cost_fns
 from elisa.analytics.models import rv as rv_model
 from elisa.analytics.params import parameters
 from elisa.analytics.params.conf import NUISANCE_PARSER, PARAM_PARSER
-from elisa.base.error import PhysicalStateError
 from elisa.base.types import FLOAT
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
@@ -246,33 +245,6 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         if not np.all(np.isfinite(gaussian_widths) & (gaussian_widths > 0)):
             msg = "Gaussian widths must remain finite and positive in normalized coordinates"
             raise ValueError(msg)
-
-        self.validate_physical_parameters({key: parameter.value for key, parameter in self.fixed.items()})
-
-    @staticmethod
-    def validate_physical_parameters(model_parameters: dict[str, Any]) -> None:
-        """Reject explicit invalid physical scales; expose nonfinite numerical failures."""
-        positive = {"period", "mass_ratio", "semi_major_axis", "asini", "mass", "t_eff"}
-        for key, value in model_parameters.items():
-            name = key.rsplit(PARAM_PARSER, 1)[-1]
-            if name not in positive and name != "eccentricity":
-                continue
-            if not np.isfinite(value):
-                # Expose invalid numerical input/constraints; do not classify this
-                # as an ElisaFloatingPointError that the proposal handler rejects.
-                msg = f"Nonfinite physical parameter: {key}"
-                raise FloatingPointError(msg)
-            if name in positive and value <= 0:
-                msg = f"Physical parameter {key} must be strictly positive"
-                raise PhysicalStateError(msg)
-            if name == "eccentricity" and not 0 <= value < 1:
-                msg = "Physical eccentricity must satisfy 0 <= e < 1"
-                raise PhysicalStateError(msg)
-
-    def validate_current_physical_parameters(self, model_parameters: dict[str, Any]) -> None:
-        """Check current free and evaluated constrained values, excluding fixed metadata."""
-        current = {key: value for key, value in model_parameters.items() if key not in self.fixed}
-        self.validate_physical_parameters(current)
 
     def _prepare_likelihood_parameters(self, xn: NDArray[Float]) -> tuple[NDArray[Float], dict[str, Any]]:
         """Denormalize a proposal, resolve constraints and check current physical scales.

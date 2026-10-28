@@ -138,6 +138,7 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
                 self.constrained,
                 self.fixed,
             )
+            self.validate_current_physical_parameters(kwargs)
             synthetic = self.predict_light_curves(kwargs, synthesis=_log_decorator(lc_model.synthetic_binary))
         except SYNTHESIS_FAILURES as e:
             # Only the shared policy's types/subclasses become proposal penalties.
@@ -338,6 +339,7 @@ class CentralRadialVelocity(AbstractRVFit):
             self.constrained,
             self.fixed,
         )
+        self.validate_current_physical_parameters(kwargs)
         fn = rv_model.central_rv_synthetic
         synthetic: dict[str, NDArray] = _log_decorator(fn)(
             self.x_data_reduced,

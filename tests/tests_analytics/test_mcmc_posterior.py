@@ -285,9 +285,9 @@ def test_current_constraints_are_physical_checks_and_fixed_scales_checked_once()
     fit.prepare_priors()
     fit.constrained["system@mass_ratio"].constraint = "-system@asini"
     assert fit.ln_probability(fit.norm_init_vector) == -np.inf
-    fit.fixed["system@period"].value = 0.0
+    cfg["system"]["period"]["value"] = 0.0
     with pytest.raises(PhysicalStateError, match="period"):
-        fit.prepare_priors()
+        fit.set_up(p.BinaryInitialParameters(**cfg), data, observer_system_cls=RadialVelocitySystem)
 
 
 def test_real_fit_prepares_once_and_starts_emcee_with_finite_states() -> None:

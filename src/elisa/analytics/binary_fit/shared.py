@@ -15,14 +15,14 @@ from elisa.analytics.models import cost_fns
 from elisa.analytics.models import lc as lc_model
 from elisa.analytics.models import rv as rv_model
 from elisa.analytics.params import parameters
-from elisa.analytics.params.conf import JOINT_POSTERIOR_PERCENTILES_ESTIMATE
+from elisa.analytics.params.conf import JOINT_POSTERIOR_PERCENTILES_ESTIMATE, PARAM_PARSER
 from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.analytics.tools.utils import (
     lightcurves_mean_error,
     radialcurves_mean_error,
     time_layer_resolver,
 )
-from elisa.base.error import ElisaFloatingPointError, PredictionAlignmentError
+from elisa.base.error import ElisaFloatingPointError, PhysicalStateError, PredictionAlignmentError
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
 from elisa.conf.enums import SamplingMethod
@@ -239,6 +239,7 @@ class AbstractFit(metaclass=ABCMeta):
         self.limb_darkening_coefficients = getattr(self, "limb_darkening_coefficients", None)
         self._check_data_param_consistency(x0, data)
         self.fixed = x0.get_fixed(jsonify=False)
+        self.validate_physical_parameters({key: parameter.value for key, parameter in self.fixed.items()})
         self.constrained = x0.get_constrained(jsonify=False)
         self.fitable = x0.get_fitable(jsonify=False)
         self.normalization = x0.get_normalization_map()
@@ -264,6 +265,31 @@ class AbstractFit(metaclass=ABCMeta):
         self.flat_result = {}
 
         self._validate_atmosphere_parameters()
+
+    @staticmethod
+    def validate_physical_parameters(model_parameters: dict[str, Any]) -> None:
+        """Reject explicit invalid physical scales; expose nonfinite numerical failures."""
+        positive = {"period", "mass_ratio", "semi_major_axis", "asini", "mass", "t_eff"}
+        for key, value in model_parameters.items():
+            name = key.rsplit(PARAM_PARSER, 1)[-1]
+            if name not in positive and name != "eccentricity":
+                continue
+            if not np.isfinite(value):
+                # Expose invalid numerical input/constraints; do not classify this
+                # as an ElisaFloatingPointError that the proposal handler rejects.
+                msg = f"Nonfinite physical parameter: {key}"
+                raise FloatingPointError(msg)
+            if name in positive and value <= 0:
+                msg = f"Physical parameter {key} must be strictly positive"
+                raise PhysicalStateError(msg)
+            if name == "eccentricity" and not 0 <= value < 1:
+                msg = "Physical eccentricity must satisfy 0 <= e < 1"
+                raise PhysicalStateError(msg)
+
+    def validate_current_physical_parameters(self, model_parameters: dict[str, Any]) -> None:
+        """Check current free and evaluated constrained values, excluding fixed metadata."""
+        current = {key: value for key, value in model_parameters.items() if key not in self.fixed}
+        self.validate_physical_parameters(current)
 
     def _prepare_observation_errors(self, data: Mapping[str, DataSet]) -> dict[str, NDArray[np.float64]]:
         """Validate observations and prepare supplied or estimated errors once.
