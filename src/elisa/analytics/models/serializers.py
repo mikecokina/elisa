@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from elisa import const
+from elisa import const, units
 from elisa.analytics.params.parameters import deflate_phenomena
 
 # Optional system-level keys extracted when present.
@@ -42,7 +42,7 @@ def serialize_system_kwargs(**kwargs: Any) -> dict[str, Any]:
     :rtype: dict[str, Any]
     """
     result: dict[str, Any] = {
-        "argument_of_periastron": kwargs.get("system@argument_of_periastron", const.HALF_PI),
+        "argument_of_periastron": kwargs.get("system@argument_of_periastron", const.HALF_PI * units.rad),
         "gamma": kwargs.get("system@gamma", 0.0),
         "period": kwargs["system@period"],
         "eccentricity": kwargs.get("system@eccentricity", 0.0),
