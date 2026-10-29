@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from elisa.analytics.models import serializers
 from elisa.analytics.tools.utils import time_layer_resolver
-from elisa.base.error import InitialParamsError
+from elisa.base.error import ElisaParametersError
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
 from elisa.binary_system.utils import resolve_json_kind
@@ -64,7 +64,7 @@ def central_rv_synthetic(
     :type kwargs: dict[str, Any]
     :returns: Radial velocities for each component (primary and secondary).
     :rtype: dict[str, NDArray[Float]]
-    :raises InitialParamsError: If initial parameters lead to an unknown model type.
+    :raises ElisaParametersError: If initial parameters lead to an unknown model type.
     """
     # Set default values for parameters not provided
     kwargs.update(
@@ -103,7 +103,7 @@ def central_rv_synthetic(
         )
     else:
         error_msg = "Initial parameters led to unknown model."
-        raise InitialParamsError(error_msg)
+        raise ElisaParametersError(error_msg)
 
     # Set observer system and retrieve RV
     observer._system = observable  # noqa: SLF001

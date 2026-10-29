@@ -21,7 +21,7 @@ from elisa.analytics.binary_fit.rv_fit import RVFitMCMC
 from elisa.analytics.params import parameters
 from elisa.analytics.params.parameters import BinaryInitialParameters, InitialParameter
 from elisa.analytics.params.transform import BinaryInitialProperties
-from elisa.base.error import ElisaMonteCarloError, InitialParamsError
+from elisa.base.error import ElisaMonteCarloError, ElisaInitialParametersError
 from tests.tests_analytics.fitting_helpers import BINARY_PARAMETERS, V, make_lc, rv_problem
 
 GAMMA = "system@gamma"
@@ -117,7 +117,7 @@ def test_joint_correlations_and_multiple_constraints() -> None:
 def test_constraint_to_constraint_references_are_rejected() -> None:
     # Preserve this existing limitation rather than adding a new dependency engine.
     constraints = {MASS_RATIO: f"{GAMMA}**2", ASINI: f"{MASS_RATIO}+1"}
-    with pytest.raises(InitialParamsError, match="non-variable parameter"):
+    with pytest.raises(ElisaInitialParametersError, match="non-variable parameter"):
         parameters.prepare_properties_set(np.array([-1.0]), [GAMMA], constraints, {})
 
 
@@ -234,7 +234,7 @@ def test_update_rejects_missing_state(missing) -> None:
     fit.flat_chain = NORMALIZED_CHAIN
     fit.normalization = NORMALIZATION
     setattr(fit, missing, None)
-    with pytest.raises(ValueError, match="requires loaded results, chain and normalization"):
+    with pytest.raises(ElisaMonteCarloError, match="requires loaded results, chain and normalization"):
         io_tools._update_solution(fit, {}, None)
 
 

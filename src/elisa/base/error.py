@@ -98,10 +98,6 @@ class ElisaFloatingPointError(FloatingPointError):
     """Floating-point failure explicitly identified by ELISA."""
 
 
-class InitialParamsError(ElisaError):
-    """Raised when provided initial parameters are invalid or inconsistent."""
-
-
 class AtmosphereError(ElisaSynthesisError):
     """Raised for errors related to atmosphere model handling."""
 

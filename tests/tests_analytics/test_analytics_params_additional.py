@@ -5,7 +5,7 @@ import numpy as np
 
 from elisa import units as u
 from elisa.analytics.params import parameters
-from elisa.base.error import InitialParamsError
+from elisa.base.error import ElisaInitialParametersError
 from tests import set_astropy_units
 from tests.utils import ElisaTestCase
 
@@ -238,7 +238,7 @@ class SpotInitialParametersTestCase(ElisaTestCase):
             "temperature_factor": {"value": 0.95, "fixed": True},
         }
 
-        with self.assertRaises(InitialParamsError):
+        with self.assertRaises(ElisaInitialParametersError):
             parameters.SpotInitialParameters(**invalid_spot_params)
 
 
@@ -496,7 +496,7 @@ class UtilityFunctionsTestCase(ElisaTestCase):
         }
         allowed_params = ["system@inclination", "system@period"]
 
-        with self.assertRaises(InitialParamsError):
+        with self.assertRaises(ElisaInitialParametersError):
             parameters.check_for_invalid_constraint(constrained, allowed_params)
 
     def test_constraints_evaluator_simple(self):
