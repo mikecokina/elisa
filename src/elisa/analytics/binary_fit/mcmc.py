@@ -8,7 +8,7 @@ import numpy as np
 
 from elisa import settings
 from elisa.analytics.binary_fit import mixins
-from elisa.analytics.binary_fit.failure_policy import SYNTHESIS_FAILURES
+from elisa.analytics.binary_fit.failure_policy import record_candidate_failure
 from elisa.analytics.binary_fit.shared import (
     AbstractFit,
     AbstractLCFit,
@@ -161,24 +161,18 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         :return: Log probability (likelihood).
         :rtype: Float
         """
-        prior = self.ln_prior(xn, self.norm_init_vector, self.sigmas)
-        if prior == -np.inf:
-            return -np.inf
         try:
+            prior = self.ln_prior(xn, self.norm_init_vector, self.sigmas)
+            if not np.isfinite(prior):
+                return -np.inf
             likelihood = self.likelihood(xn)
-        except SYNTHESIS_FAILURES as e:
-            # Only the shared policy's types/subclasses reject this proposal.
-            # Other exceptions escape the sampler and abort the fit.
-            if not settings.SUPPRESS_WARNINGS:
-                error_msg = f"mcmc hit invalid parameters, exception: {e!s}"
-                logger.warning(error_msg)
+            if not np.isfinite(likelihood):
+                return -np.inf
+            posterior = prior + likelihood
+            return posterior if np.isfinite(posterior) else -np.inf
+        except Exception as exc:
+            record_candidate_failure(self, xn, exc)
             return -np.inf
-        if not np.isfinite(likelihood):
-            # Fatal statistical failure, not an expected synthesis rejection.
-            # Keep the native type, consistent with errors raised inside likelihood().
-            msg = "Nonfinite likelihood without an explicit physical exclusion"
-            raise FloatingPointError(msg)
-        return prior + likelihood
 
     def normalized_sigma(self, vector: NDArray[Float]) -> NDArray[Float]:
         """Assign normalized standard deviation for each variable parameter to attribute sigma.

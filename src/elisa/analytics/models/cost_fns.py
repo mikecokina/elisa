@@ -115,8 +115,7 @@ def prepared_likelihood(prepared: PreparedObservations, synthetic: dict[str, NDA
     except FloatingPointError:
         total = _extended_likelihood(prepared, synthetic, log_scale)
     if not np.isfinite(total):
-        # This statistical failure must abort fitting. ElisaFloatingPointError
-        # would instead be caught as an expected synthesis rejection by MCMC.
+        # Direct callers receive the numerical error; MCMC rejects this candidate.
         msg = "Nonfinite likelihood: Gaussian log density is not representable as a finite float"
         raise FloatingPointError(msg)
     return total

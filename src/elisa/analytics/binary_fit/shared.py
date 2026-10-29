@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from elisa import settings, units
+from elisa import atm, settings, units
 from elisa.analytics.binary_fit.lc_prediction import (
     predict_light_curves,
     validate_observations,
@@ -22,7 +22,8 @@ from elisa.analytics.tools.utils import (
     radialcurves_mean_error,
     time_layer_resolver,
 )
-from elisa.base.error import ElisaFloatingPointError, PhysicalStateError, PredictionAlignmentError
+from elisa.base.error import ElisaFloatingPointError, ElisaValidationError, PredictionAlignmentError
+from elisa.base.transform import StarProperties
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
 from elisa.binary_system.transform import RadialVelocityObserverProperties
@@ -197,6 +198,7 @@ class AbstractFit(metaclass=ABCMeta):
     _prepared_observations: cost_fns.PreparedObservations | None
 
     __slots__ = [
+        "_candidate_failure_diagnostics",
         "_prepared_observations",
         "atmosphere_model",
         "constrained",
@@ -239,6 +241,7 @@ class AbstractFit(metaclass=ABCMeta):
         :param kwargs: Class dependent content (see inheritor classes).
         :type kwargs: Any
         """
+        x0.constraint_validator()
         self.atmosphere_model = getattr(self, "atmosphere_model", None)
         self.limb_darkening_coefficients = getattr(self, "limb_darkening_coefficients", None)
         self._check_data_param_consistency(x0, data)
@@ -272,7 +275,7 @@ class AbstractFit(metaclass=ABCMeta):
 
     @staticmethod
     def validate_physical_parameters(model_parameters: dict[str, Any]) -> None:
-        """Reject explicit invalid physical scales; expose nonfinite numerical failures."""
+        """Reject invalid physical scales before parameterization conversion."""
         positive = {"period", "mass_ratio", "semi_major_axis", "mass", "t_eff"}
         for key, value in model_parameters.items():
             name = key.rsplit(PARAM_PARSER, 1)[-1]
@@ -282,16 +285,14 @@ class AbstractFit(metaclass=ABCMeta):
             if name not in positive and name != "eccentricity":
                 continue
             if not np.isfinite(value):
-                # Expose invalid numerical input/constraints; do not classify this
-                # as an ElisaFloatingPointError that the proposal handler rejects.
                 msg = f"Nonfinite physical parameter: {key}"
-                raise FloatingPointError(msg)
+                raise ElisaValidationError(msg)
             if name in positive and value <= 0:
                 msg = f"Physical parameter {key} must be strictly positive"
-                raise PhysicalStateError(msg)
+                raise ElisaValidationError(msg)
             if name == "eccentricity" and not 0 <= value < 1:
                 msg = "Physical eccentricity must satisfy 0 <= e < 1"
-                raise PhysicalStateError(msg)
+                raise ElisaValidationError(msg)
 
     def validate_current_physical_parameters(self, model_parameters: dict[str, Any]) -> None:
         """Check current free and evaluated constrained values, excluding fixed metadata."""
@@ -342,6 +343,15 @@ class AbstractFit(metaclass=ABCMeta):
                 "{component (primary or secondary): {passband: ld_coeffs (float, list), }, }"
             )
             raise TypeError(error_msg)
+
+        for component, atlas in (self.atmosphere_model or {}).items():
+            if component not in settings.BINARY_COUNTERPARTS:
+                raise ValueError(f"Unknown atmosphere component: {component}")
+            atm.validated_atlas(atlas)
+        for component, coefficients in (self.limb_darkening_coefficients or {}).items():
+            if component not in settings.BINARY_COUNTERPARTS:
+                raise ValueError(f"Unknown limb-darkening component: {component}")
+            StarProperties.limb_darkening_coefficients(coefficients)
 
     @staticmethod
     def _check_data_param_consistency(x0: BinaryInitialParameters, data: dict[str, Any]) -> None:
@@ -470,6 +480,10 @@ class AbstractRVFit(AbstractFit):
               evaluate synthetic observations.
         :type kwargs: Any
         """
+        x0.validate_rv_parameterization()
+        if kwargs.get("observer_system_cls") is RadialVelocitySystem and settings.RV_METHOD != "kinematic":
+            msg = "Community RV fitting supports only the kinematic RV method."
+            raise ValueError(msg)
         if not set(data).issubset(settings.BINARY_COUNTERPARTS):
             msg = "RV datasets must be keyed by primary or secondary"
             raise ValueError(msg)
@@ -566,6 +580,7 @@ class AbstractLCFit(AbstractFit):
             * ``samples`` - SamplingMethod, a legacy string value, or a manual phase list/array.
         :type kwargs: Any
         """
+        x0.validate_lc_parameters(getattr(self, "MORPHOLOGY", "detached"))
         super().set_up(x0, data, passband, observer_system_cls=kwargs.get("observer_system_cls"))
         self.discretization = kwargs.pop("discretization")
         self.interp_treshold = kwargs.pop("interp_treshold")

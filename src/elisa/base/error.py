@@ -6,6 +6,8 @@ rest of the codebase.
 """
 from __future__ import annotations
 
+from typing import NoReturn
+
 from jsonschema import ValidationError
 
 
@@ -24,8 +26,8 @@ class ElisaRuntimeError(RuntimeError):
 class PredictionAlignmentError(ValueError):
     """Synthetic prediction keys or shapes do not align with observations.
 
-    Structural integration errors must propagate through fitting rather than
-    becoming physical-state rejections or least-squares penalties.
+    Direct prediction calls expose these errors. Fitting callbacks reject the
+    candidate and record bounded diagnostics for integration failures.
     """
 
 
@@ -80,6 +82,10 @@ class ElisaMonteCarloError(ElisaError):
 
 class ElisaSynthesisError(ElisaError):
     """Expected failure while constructing a physical synthetic model."""
+
+
+class ElisaValidationError(ElisaSynthesisError):
+    """Invalid parameter value detected during ELISA parameter validation."""
 
 
 class PulsationModeError(ElisaSynthesisError):
@@ -152,7 +158,18 @@ class SolutionBubbleError(ElisaError):
         super().__init__(message)
 
 
-def raise_value_error(message: str, exc: Exception | None = None) -> None:
+def _raise_error(
+    error_type: type[Exception],
+    message: str,
+    exc: Exception | None = None,
+) -> NoReturn:
+    """Raise an exception, preserving implicit context unless a cause is supplied."""
+    if exc is not None:
+        raise error_type(message) from exc
+    raise error_type(message)
+
+
+def raise_value_error(message: str, exc: Exception | None = None) -> NoReturn:
     """Raise a ValueError with a given message.
 
     This function is a convenience wrapper to raise a ValueError with a
@@ -165,12 +182,10 @@ def raise_value_error(message: str, exc: Exception | None = None) -> None:
     :type exc: Exception | None
     :raises ValueError: Always raises a ValueError with the provided message.
     """
-    if exc is not None:
-        raise ValueError(message) from exc
-    raise ValueError(message)
+    _raise_error(ValueError, message, exc)
 
 
-def raise_attribute_error(message: str, exc: Exception | None = None) -> None:
+def raise_attribute_error(message: str, exc: Exception | None = None) -> NoReturn:
     """Raise an AttributeError with a given message.
 
     This function is a convenience wrapper to raise an AttributeError with a
@@ -183,12 +198,10 @@ def raise_attribute_error(message: str, exc: Exception | None = None) -> None:
     :type exc: Exception | None
     :raises AttributeError: Always raises an AttributeError with the provided message.
     """
-    if exc is not None:
-        raise AttributeError(message) from exc
-    raise AttributeError(message)
+    _raise_error(AttributeError, message, exc)
 
 
-def raise_elisa_graphics_error(message: str, exc: Exception | None = None) -> None:
+def raise_elisa_graphics_error(message: str, exc: Exception | None = None) -> NoReturn:
     """Raise an ElisaGraphicsError with a given message.
 
     This function is a convenience wrapper to raise an ElisaGraphicsError with a
@@ -201,12 +214,10 @@ def raise_elisa_graphics_error(message: str, exc: Exception | None = None) -> No
     :type exc: Exception | None
     :raises ElisaGraphicsError: Always raises an ElisaGraphicsError with the provided message.
     """
-    if exc is not None:
-        raise ElisaGraphicsError(message) from exc
-    raise ElisaGraphicsError(message)
+    _raise_error(ElisaGraphicsError, message, exc)
 
 
-def raise_elisa_monte_carlo_error(message: str, exc: Exception | None = None) -> None:
+def raise_elisa_monte_carlo_error(message: str, exc: Exception | None = None) -> NoReturn:
     """Raise an ElisaMonteCarloError with a given message.
 
     This function is a convenience wrapper to raise an ElisaMonteCarloError with a
@@ -219,12 +230,10 @@ def raise_elisa_monte_carlo_error(message: str, exc: Exception | None = None) ->
     :type exc: Exception | None
     :raises ElisaMonteCarloError: Always raises an ElisaMonteCarloError with the provided message.
     """
-    if exc is not None:
-        raise ElisaMonteCarloError(message) from exc
-    raise ElisaMonteCarloError(message)
+    _raise_error(ElisaMonteCarloError, message, exc)
 
 
-def raise_elisa_invalid_kwargs_error(message: str, exc: Exception | None = None) -> None:
+def raise_elisa_invalid_kwargs_error(message: str, exc: Exception | None = None) -> NoReturn:
     """Raise an ElisaInvalidKwargsError with a given message.
 
     This function is a convenience wrapper to raise an ElisaInvalidKwargsError with a
@@ -237,12 +246,10 @@ def raise_elisa_invalid_kwargs_error(message: str, exc: Exception | None = None)
     :type exc: Exception | None
     :raises ElisaInvalidKwargsError: Always raises an ElisaInvalidKwargsError with the provided message.
     """
-    if exc is not None:
-        raise ElisaInvalidKwargsError(message) from exc
-    raise ElisaInvalidKwargsError(message)
+    _raise_error(ElisaInvalidKwargsError, message, exc)
 
 
-def raise_elisa_missing_kwargs_error(message: str, exc: Exception | None = None) -> None:
+def raise_elisa_missing_kwargs_error(message: str, exc: Exception | None = None) -> NoReturn:
     """Raise an ElisaMissingKwargsError with a given message.
 
     This function is a convenience wrapper to raise an ElisaMissingKwargsError with a
@@ -255,12 +262,10 @@ def raise_elisa_missing_kwargs_error(message: str, exc: Exception | None = None)
     :type exc: Exception | None
     :raises ElisaMissingKwargsError: Always raises an ElisaMissingKwargsError with the provided message.
     """
-    if exc is not None:
-        raise ElisaMissingKwargsError(message) from exc
-    raise ElisaMissingKwargsError(message)
+    _raise_error(ElisaMissingKwargsError, message, exc)
 
 
-def raise_elisa_analytics_task_error(message: str, exc: Exception | None = None) -> None:
+def raise_elisa_analytics_task_error(message: str, exc: Exception | None = None) -> NoReturn:
     """Raise an ElisaAnalyticsTaskError with a given message.
 
     This function is a convenience wrapper to raise an ElisaAnalyticsTaskError with a
@@ -273,12 +278,10 @@ def raise_elisa_analytics_task_error(message: str, exc: Exception | None = None)
     :type exc: Exception | None
     :raises ElisaAnalyticsTaskError: Always raises an ElisaAnalyticsTaskError with the provided message.
     """
-    if exc is not None:
-        raise ElisaAnalyticsTaskError(message) from exc
-    raise ElisaAnalyticsTaskError(message)
+    _raise_error(ElisaAnalyticsTaskError, message, exc)
 
 
-def raise_elisa_analytics_data_error(message: str, exc: Exception | None = None) -> None:
+def raise_elisa_analytics_data_error(message: str, exc: Exception | None = None) -> NoReturn:
     """Raise an ElisaAnalyticsDataError with a given message.
 
     This function is a convenience wrapper to raise an ElisaAnalyticsDataError with a
@@ -291,12 +294,10 @@ def raise_elisa_analytics_data_error(message: str, exc: Exception | None = None)
     :type exc: Exception | None
     :raises ElisaAnalyticsDataError: Always raises an ElisaAnalyticsDataError with the provided message.
     """
-    if exc is not None:
-        raise ElisaAnalyticsDataError(message) from exc
-    raise ElisaAnalyticsDataError(message)
+    _raise_error(ElisaAnalyticsDataError, message, exc)
 
 
-def raise_elisa_initial_parameters_error(message: str, exc: Exception | None = None) -> None:
+def raise_elisa_initial_parameters_error(message: str, exc: Exception | None = None) -> NoReturn:
     """Raise an ElisaInitialParametersError with a given message.
 
     This function is a convenience wrapper to raise an ElisaInitialParametersError with a
@@ -309,12 +310,10 @@ def raise_elisa_initial_parameters_error(message: str, exc: Exception | None = N
     :type exc: Exception | None
     :raises ElisaInitialParametersError: Always raises an ElisaInitialParametersError with the provided message.
     """
-    if exc is not None:
-        raise ElisaInitialParametersError(message) from exc
-    raise ElisaInitialParametersError(message)
+    _raise_error(ElisaInitialParametersError, message, exc)
 
 
-def raise_elisa_parameters_error(message: str, exc: Exception | None = None) -> None:
+def raise_elisa_parameters_error(message: str, exc: Exception | None = None) -> NoReturn:
     """Raise an ElisaParametersError with a given message.
 
     This function is a convenience wrapper to raise an ElisaParametersError with a
@@ -327,6 +326,20 @@ def raise_elisa_parameters_error(message: str, exc: Exception | None = None) -> 
     :type exc: Exception | None
     :raises ElisaParametersError: Always raises an ElisaParametersError with the provided message.
     """
-    if exc is not None:
-        raise ElisaParametersError(message) from exc
-    raise ElisaParametersError(message)
+    _raise_error(ElisaParametersError, message, exc)
+
+
+def raise_elisa_atmosphere_error(message: str, exc: Exception | None = None) -> NoReturn:
+    """Raise an AtmosphereError with a given message.
+
+    This function is a convenience wrapper to raise an AtmosphereError with a
+    specific message. It can be used to standardize error handling across
+    the codebase.
+
+    :param message: The error message to include in the AtmosphereError.
+    :type message: str
+    :param exc: The original exception that caused this error, if any.
+    :type exc: Exception | None
+    :raises AtmosphereError: Always raises an AtmosphereError with the provided message.
+    """
+    _raise_error(AtmosphereError, message, exc)

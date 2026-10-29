@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
+
 from elisa import units as u
+from elisa.base.error import ElisaValidationError
 from elisa.base.transform import (
     WHEN_FLOAT64,
     SystemProperties,
@@ -28,12 +31,19 @@ class SingleSystemProperties(SystemProperties):
         :return: Transformed rotation period in the default internal unit.
         :rtype: Float
         """
-        return quantity_transform(
+        value = quantity_transform(
             value,
             u.DefaultSingleSystemUnits.system.rotation_period,
             WHEN_FLOAT64,
             u.DefaultSingleSystemInputUnits.system.rotation_period,
         )
+
+        if not np.isfinite(value) or value <= 0:
+            msg = "Invalid rotation period, use value > 0!"
+            raise ElisaValidationError(msg)
+        if not np.isfinite(value):
+            raise ElisaValidationError("Nonfinite rotation_period.")
+        return value
 
     @staticmethod
     def reference_time(value: Any) -> Float:
@@ -47,9 +57,7 @@ class SingleSystemProperties(SystemProperties):
         :return: Transformed reference time in the default internal unit.
         :rtype: Float
         """
-        return quantity_transform(
-            value,
-            u.DefaultSingleSystemUnits.system.reference_time,
-            WHEN_FLOAT64,
-            u.DefaultSingleSystemInputUnits.system.reference_time,
-        )
+        value = quantity_transform(value, u.DefaultSingleSystemUnits.system.reference_time, WHEN_FLOAT64, u.DefaultSingleSystemInputUnits.system.reference_time)
+        if not np.isfinite(value):
+            raise ElisaValidationError("Nonfinite reference_time.")
+        return value

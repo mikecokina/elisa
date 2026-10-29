@@ -184,12 +184,12 @@ def get_component_limbdarkening_cfs(
                     cols = arr.shape[0]
                     ld_cfs[passband] = np.broadcast_to(arr.reshape(1, cols), (faces, cols))
                 else:
-                    # fallback to tile for non-1D inputs to preserve existing behaviour
+                    # fallback to tile for non-1D inputs to preserve existing behavior
                     ld_cfs[passband] = np.tile(arr, desired_repeats)
         except KeyError as err:
             ld_passband = component_instance.limb_darkening_coefficients.keys()
             missing_passbands = list(set(passbands) - set(ld_passband))
-            msg = f"Please supply limb-darkening factors for {missing_passbands} pasband(s) as well."
+            msg = f"Please supply also limb-darkening factors for {missing_passbands} passband(s)."
             raise KeyError(msg) from err
     else:
         temperatures, log_g = generate_teff_logg_for_ld_cfs(component_instance, symmetry_test=symmetry_test)
