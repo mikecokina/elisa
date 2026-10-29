@@ -147,6 +147,17 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Validate community binary mass ratios before deriving component masses and
+  periods before JD/phase conversion. Reject finite invalid inputs with
+  `PhysicalStateError` and nonfinite inputs with native `FloatingPointError`,
+  preserving valid conversion formulas and time-unit conventions.
+- Reject incomplete or conflicting standard/community RV fitting parameters
+  before model preparation can discard explicitly supplied component masses.
+  Preserve optional orbital and nuisance parameters and account for fixed,
+  free, and constrained inputs.
+- Accept `asini = 0` consistently in RV fitting by reusing model validation;
+  preserve constant systemic velocities for a zero projected axis and retain
+  rejection of negative or nonfinite values without changing default bounds.
 - Restore `Star.init()`, `BinarySystem.init()`, and `SingleSystem.init()`
   after direct parameter changes, preserving current attributes and calculated
   defaults. Omit original, unspecified optional NaN sentinels during reconstruction

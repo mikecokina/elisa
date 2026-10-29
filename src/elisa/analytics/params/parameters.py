@@ -1302,7 +1302,7 @@ class BinaryInitialParameters(InitialParameters):
         """Validate parameters for radial velocity curve fitting.
 
         Ensures all mandatory RV parameters are present and valid.
-        Checks consistency of time and period parameters.
+        Checks consistency of time, period and RV parameterization.
 
         :raises ValidationError: If required parameters are missing or inconsistent.
         """
@@ -1329,6 +1329,21 @@ class BinaryInitialParameters(InitialParameters):
                 raise ValidationError(msg)
         elif not has_period:
             msg = "Input requires at least period."
+            raise ValidationError(msg)
+
+        mass_parameters = {"primary@mass", "secondary@mass"}
+        community_parameters = {"system@mass_ratio", "system@asini"}
+        supplied = self.data.keys()
+        if mass_parameters & supplied and community_parameters & supplied:
+            msg = "RV parameters must use either component masses or mass_ratio and asini, not both."
+            raise ValidationError(msg)
+        required = (
+            mass_parameters | {"system@inclination"}
+            if mass_parameters & supplied else community_parameters
+        )
+        missing = required - supplied
+        if missing:
+            msg = f"Incomplete RV parameterization; missing: {', '.join(sorted(missing))}."
             raise ValidationError(msg)
 
     def _get_kind_of(self, kind_of: str, *, jsonify: bool = False) -> dict:

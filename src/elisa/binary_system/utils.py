@@ -13,6 +13,7 @@ from elisa.base.error import YouHaveNoIdeaError
 from elisa.base.transform import SystemProperties
 from elisa.binary_system import model
 from elisa.binary_system.radius import calculate_side_radius
+from elisa.binary_system.transform import RadialVelocityObserverProperties
 from elisa.pypex.poly2d.polygon import Polygon
 from elisa.types import ComponentName, Float
 from elisa.units import DefaultBinarySystemUnits
@@ -509,7 +510,7 @@ def transform_json_community_to_std(data: JSONDict) -> JSONDict:
         message = "Expected `secondary` section to be a dictionary."
         raise TypeError(message)
 
-    q = system_section.pop("mass_ratio")
+    q = RadialVelocityObserverProperties.mass_ratio(system_section.pop("mass_ratio"))
     a = SystemProperties.semi_major_axis(system_section.pop("semi_major_axis"))
     period_value = copy(system_section["period"])
     period = (SystemProperties.period(period_value) * DefaultBinarySystemUnits.system.period).to(units.TIME_UNIT).value

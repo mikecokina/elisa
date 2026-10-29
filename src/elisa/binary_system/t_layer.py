@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from elisa.base import error
+from elisa.base.transform import SystemProperties
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -19,11 +20,11 @@ def validate_period(period: Float) -> None:
     :type period: Float
     :return: ``None``.
     :rtype: None
-    :raises error.ValidationError: If ``period`` is not greater than zero.
+    :raises error.PhysicalStateError: If ``period`` is not greater than zero.
+    :raises FloatingPointError: If ``period`` is nonfinite.
     """
-    if period <= 0:
-        message = "Period has to be > 0."
-        raise error.ValidationError(message)
+    # Validate only: the arithmetic below keeps the caller's time units.
+    SystemProperties.period(period)
 
 
 def validate_primary_minimum_time(t0: Float) -> None:
@@ -85,7 +86,9 @@ def jd_to_phase(
     :type centre: Float
     :return: Converted phase value or phase array.
     :rtype: Float | NDArray[numpy.float64]
-    :raises error.ValidationError: If ``period`` or ``t0`` is invalid.
+    :raises error.PhysicalStateError: If ``period`` is not greater than zero.
+    :raises FloatingPointError: If ``period`` is nonfinite.
+    :raises error.ValidationError: If ``t0`` is invalid.
     """
     validate_period(period)
     validate_primary_minimum_time(t0)
@@ -117,7 +120,9 @@ def phase_to_jd(
     :type phases: Float | NDarray
     :return: Converted Julian Date value or array.
     :rtype: Float | NDArray[numpy.float64]
-    :raises error.ValidationError: If ``period`` or ``t0`` is invalid.
+    :raises error.PhysicalStateError: If ``period`` is not greater than zero.
+    :raises FloatingPointError: If ``period`` is nonfinite.
+    :raises error.ValidationError: If ``t0`` is invalid.
     """
     validate_period(period)
     validate_primary_minimum_time(t0)

@@ -168,7 +168,7 @@ def test_unexpected_constraint_arithmetic_propagates(fitting_problem, synthesis_
 
 
 @pytest.mark.parametrize("key", [
-    "system@period", "system@mass_ratio", "system@semi_major_axis", "system@asini",
+    "system@period", "system@mass_ratio", "system@semi_major_axis",
     "primary@mass", "secondary@mass", "primary@t_eff", "secondary@t_eff",
 ])
 def test_shared_positive_scale_boundaries(key: str) -> None:

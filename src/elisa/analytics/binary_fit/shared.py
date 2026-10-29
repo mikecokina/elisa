@@ -25,6 +25,7 @@ from elisa.analytics.tools.utils import (
 from elisa.base.error import ElisaFloatingPointError, PhysicalStateError, PredictionAlignmentError
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
+from elisa.binary_system.transform import RadialVelocityObserverProperties
 from elisa.conf.enums import SamplingMethod
 from elisa.logger import getPersistentLogger
 from elisa.observer.observer import Observer
@@ -269,9 +270,12 @@ class AbstractFit(metaclass=ABCMeta):
     @staticmethod
     def validate_physical_parameters(model_parameters: dict[str, Any]) -> None:
         """Reject explicit invalid physical scales; expose nonfinite numerical failures."""
-        positive = {"period", "mass_ratio", "semi_major_axis", "asini", "mass", "t_eff"}
+        positive = {"period", "mass_ratio", "semi_major_axis", "mass", "t_eff"}
         for key, value in model_parameters.items():
             name = key.rsplit(PARAM_PARSER, 1)[-1]
+            if name == "asini":
+                RadialVelocityObserverProperties.asini(value)
+                continue
             if name not in positive and name != "eccentricity":
                 continue
             if not np.isfinite(value):
