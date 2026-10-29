@@ -306,7 +306,10 @@ class CustomLDLawSafetyTestCase(ElisaTestCase):
         copies = [star.limb_darkening_coefficients.copy(), copy(star.limb_darkening_coefficients),
                   deepcopy(star.limb_darkening_coefficients),
                   pickle.loads(pickle.dumps(star.limb_darkening_coefficients))]
-        kwargs = star.kwargs_serializer()
+        kwargs = star.reinitialization_kwargs()
+        self.assertNotIn("polar_log_g", kwargs)
+        reconstructed = Star(**kwargs)
+        self.assertEqual(reconstructed.limb_darkening_coefficients.law, "logarithmic")
         definition = model.to_json()
         settings.configure(LIMB_DARKENING_LAW="square_root")
         for coefficients in copies:
