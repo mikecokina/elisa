@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import NoReturn
 
-from jsonschema import ValidationError
-
 
 class ElisaValueError(ValueError):
     """Value error explicitly raised by ELISA, with no proposal-rejection semantics.
@@ -29,10 +27,6 @@ class PredictionAlignmentError(ValueError):
     Direct prediction calls expose these errors. Fitting callbacks reject the
     candidate and record bounded diagnostics for integration failures.
     """
-
-
-class YouHaveNoIdeaError(ValidationError):
-    """Raised when a JSON schema validation fails in an unexpected way."""
 
 
 class ElisaError(Exception):

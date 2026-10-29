@@ -8,7 +8,7 @@ from jsonschema import ValidationError, validate
 
 from elisa import const, settings, units
 from elisa import umpy as up
-from elisa.base.error import ElisaValueError, YouHaveNoIdeaError
+from elisa.base.error import ElisaValueError, raise_elisa_parameters_error
 from elisa.base.transform import SystemProperties
 from elisa.binary_system import model
 from elisa.binary_system.radius import calculate_side_radius
@@ -299,9 +299,9 @@ def validate_binary_json(data: JSONDict) -> bool:
     :type data: JSONDict
     :return: ``True`` if validation succeeds.
     :rtype: bool
-    :raises ValidationError: If the payload does not match a valid binary
-        system schema or mixes parameterization styles.
-    :raises YouHaveNoIdeaError: If both schemas validate simultaneously.
+    :raises ElisaParametersError: If the payload does not match a valid binary
+        system schema, mixes parameterization styles or matches both schemas.
+        Schema rejection details are preserved in ``__cause__``.
     """
     schema_std = settings.SCHEMA_REGISTRY.get_schema("binary_system_std")
     schema_community = settings.SCHEMA_REGISTRY.get_schema(
@@ -310,6 +310,7 @@ def validate_binary_json(data: JSONDict) -> bool:
 
     std_valid = False
     community_valid = False
+    schema_error: ValidationError | None = None
 
     try:
         validate(instance=data, schema=schema_std)
@@ -320,21 +321,27 @@ def validate_binary_json(data: JSONDict) -> bool:
     try:
         validate(instance=data, schema=schema_community)
         community_valid = True
-    except ValidationError:
-        pass
+    except ValidationError as exc:
+        schema_error = exc
+
+    if not community_valid and not std_valid:
+        message = "BinarySystem cannot be created from supplied JSON schema."
+        raise_elisa_parameters_error(message, schema_error)
 
     system_section = data.get("system", {})
     primary_section = data.get("primary", {})
     secondary_section = data.get("secondary", {})
 
-    is_mixed = "mass_ratio" in system_section or "semi_major_axis" in system_section
-    if isinstance(system_section, dict) and is_mixed and std_valid:
+    is_mixed = isinstance(system_section, dict) and (
+        "mass_ratio" in system_section or "semi_major_axis" in system_section
+    )
+    if is_mixed and std_valid:
         message = (
             "You probably tried to input your parameters in `standard` format "
             "but your parameters include `mass_ratio` or `semi_major_axis` "
             "(use either (M1, M2) or (q, a))."
         )
-        raise ValidationError(message)
+        raise_elisa_parameters_error(message)
 
     if (
         isinstance(primary_section, dict)
@@ -347,19 +354,15 @@ def validate_binary_json(data: JSONDict) -> bool:
             "but your parameters include masses of the components "
             "(use either (M1, M2) or (q, a))."
         )
-        raise ValidationError(message)
-
-    if not community_valid and not std_valid:
-        message = "BinarySystem cannot be created from supplied JSON schema."
-        raise ValidationError(message)
+        raise_elisa_parameters_error(message)
 
     if community_valid and std_valid:
         message = (
-            "Make sure that the list of fitted parameters contains only "
+            "Make sure that the list of model parameters contains only "
             "`standard` or `community` combinations of parameters "
             "(either (M1, M2) or (q, a))."
         )
-        raise YouHaveNoIdeaError(message)
+        raise_elisa_parameters_error(message)
 
     return True
 

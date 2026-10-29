@@ -339,10 +339,10 @@ class SingleSystem(System[Star]):
         # Convert TypedDict to plain mapping for downstream functions that
         # expect a standard dict[str, Any]. Keep a local mutable copy because
         # some transforms return plain dicts.
-        raw_data: dict[str, Any] = dict(deepcopy(data))
-
+        data_copy = deepcopy(data)
         if _verify:
-            sys_utils.validate_single_json(raw_data)
+            sys_utils.validate_single_json(data_copy)
+        raw_data: dict[str, Any] = dict(data_copy)
 
         kind_of = _kind_of or sys_utils.resolve_json_kind(raw_data)
         if kind_of == "radius":

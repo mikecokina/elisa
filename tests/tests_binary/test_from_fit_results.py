@@ -8,10 +8,10 @@ from typing import Any
 import numpy as np
 import pytest
 from astropy import units as u
-from jsonschema import ValidationError
 from numpy.testing import assert_allclose
 
 from elisa import BinarySystem, const
+from elisa.base.error import ElisaParametersError
 from elisa.analytics.models import lc
 from elisa.analytics.params import parameters
 from elisa.analytics.params.conf import DEFAULT_FLOAT_UNITS, JOINT_POSTERIOR_PERCENTILES_ESTIMATE
@@ -125,7 +125,7 @@ def test_reconstruction_matches_synthesis(
 def test_missing_mandatory_parameters_are_rejected(kind: str, component: str, parameter: str) -> None:
     result = fit_results(kind, "lsq")
     del result[component][parameter]
-    with pytest.raises(ValidationError):
+    with pytest.raises(ElisaParametersError):
         BinarySystem.from_fit_results(result)
 
 
@@ -137,7 +137,7 @@ def test_missing_mandatory_parameters_are_rejected(kind: str, component: str, pa
 def test_missing_physical_scale_is_rejected(kind: str, component: str, parameter: str) -> None:
     result = fit_results(kind, "lsq")
     del result[component][parameter]
-    with pytest.raises(ValidationError):
+    with pytest.raises(ElisaParametersError):
         BinarySystem.from_fit_results(result)
 
 
@@ -145,7 +145,7 @@ def test_missing_physical_scale_is_rejected(kind: str, component: str, parameter
 def test_missing_component_is_rejected(component: str) -> None:
     result = fit_results("standard", "lsq")
     del result[component]
-    with pytest.raises(ValidationError):
+    with pytest.raises(ElisaParametersError):
         BinarySystem.from_fit_results(result)
 
 
@@ -156,7 +156,7 @@ def test_missing_component_is_rejected(component: str) -> None:
 def test_explicit_none_is_not_replaced(component: str, parameter: str) -> None:
     result = fit_results("standard", "lsq")
     result[component][parameter] = {"value": None, "fixed": True}
-    with pytest.raises(ValidationError):
+    with pytest.raises(ElisaParametersError):
         BinarySystem.from_fit_results(result)
 
 
@@ -164,5 +164,5 @@ def test_from_json_still_requires_explicit_model_inputs() -> None:
     result = fit_results("standard", "lsq")
     data = {component: {key: metadata["value"] for key, metadata in content.items()}
             for component, content in result.items() if component != "r_squared"}
-    with pytest.raises(ValidationError):
+    with pytest.raises(ElisaParametersError):
         BinarySystem.from_json(data)

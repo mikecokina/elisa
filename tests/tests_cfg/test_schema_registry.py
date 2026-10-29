@@ -2,6 +2,7 @@
 # due to stupid astropy units/constants implementation
 from tests import set_astropy_units
 
+from elisa.base.error import ElisaParametersError
 from elisa.binary_system.utils import validate_binary_json
 from elisa.single_system.utils import validate_single_json
 from tests import utils
@@ -399,7 +400,7 @@ class StdSingleSystemmSchemaRegistryTestCase(utils.ElisaTestCase):
                 "polar_log_g": 2.43775
             }
         }
-        with self.assertRaises(Exception) as context:
+        with self.assertRaises(ElisaParametersError) as context:
             self.assertTrue(validate_single_json(props))
         self.assertTrue('`polar_log_g` or `polar_radius`' in str(context.exception))
 

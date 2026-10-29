@@ -7,7 +7,7 @@ import numpy as np
 from jsonschema import ValidationError, validate
 
 from elisa import const, settings, units, utils
-from elisa.base.error import YouHaveNoIdeaError
+from elisa.base.error import raise_elisa_parameters_error
 from elisa.base.transform import StarProperties, SystemProperties
 
 if TYPE_CHECKING:
@@ -83,22 +83,24 @@ def validate_single_json(data: dict[str, Any]) -> bool:
 
     The function validates ``data`` against two registry schemas
     (``single_system_std`` and ``single_system_radius``). It returns
-    ``True`` when the payload matches at least one schema and raises
-    :class:`elisa.base.error.YouHaveNoIdeaError` on failure or when both
+    ``True`` when the payload matches exactly one schema and raises
+    :class:`elisa.base.error.ElisaParametersError` on failure or when both
     schemas match (ambiguous input).
 
     :param data: Parsed JSON object as dictionary.
     :type data: dict[str, Any]
     :returns: ``True`` if validation succeeds.
     :rtype: bool
-    :raises elisa.base.error.YouHaveNoIdeaError: If the input does not
-        match any known schema or matches both schemas.
+    :raises elisa.base.error.ElisaParametersError: If the input does not
+        match any known schema or matches both schemas. Schema rejection
+        details are preserved in ``__cause__``.
     """
     schema_std = settings.SCHEMA_REGISTRY.get_schema("single_system_std")
     schema_radius = settings.SCHEMA_REGISTRY.get_schema("single_system_radius")
 
     std_valid = False
     radius_valid = False
+    schema_error: ValidationError | None = None
 
     try:
         validate(instance=data, schema=schema_std)
@@ -109,19 +111,19 @@ def validate_single_json(data: dict[str, Any]) -> bool:
     try:
         validate(instance=data, schema=schema_radius)
         radius_valid = True
-    except ValidationError:
-        pass
+    except ValidationError as exc:
+        schema_error = exc
 
     if not std_valid and not radius_valid:
         msg = "Make sure that list of parameters is consistent with the used schema."
-        raise YouHaveNoIdeaError(msg)
+        raise_elisa_parameters_error(msg, schema_error)
 
     if radius_valid and std_valid:
         msg = (
-            "Make sure that list of fitted parameters contain only `standard` or `radius` "
+            "Make sure that list of model parameters contain only `standard` or `radius` "
             "combination of parameter (containing either `polar_log_g` or `polar_radius`)."
         )
-        raise YouHaveNoIdeaError(msg)
+        raise_elisa_parameters_error(msg)
 
     return True
 

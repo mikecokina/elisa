@@ -8,7 +8,10 @@ import numpy as np
 
 from elisa import settings
 from elisa.analytics.binary_fit import mixins
-from elisa.analytics.binary_fit.failure_policy import record_candidate_failure
+from elisa.analytics.binary_fit.failure_policy import (
+    CandidateFailureDiagnostics,
+    record_candidate_failure,
+)
 from elisa.analytics.binary_fit.shared import (
     AbstractFit,
     AbstractLCFit,
@@ -65,6 +68,7 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
     norm_init_vector: NDArray[Float]
 
     def __init__(self) -> None:
+        self._candidate_failure_diagnostics = CandidateFailureDiagnostics()
         self.plot = Plot()
         self.last_sampler: emcee.EnsembleSampler | None = None
         self.last_normalization: dict[str, Any] = {}
@@ -74,6 +78,7 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
 
     def set_up(self, *args: Any, **kwargs: Any) -> None:
         """Prepare Gaussian statistics after RV setup or LC normalization."""
+        self._candidate_failure_diagnostics = CandidateFailureDiagnostics()
         super().set_up(*args, **kwargs)
         self._prepared_observations = cost_fns.prepare_observations(self.y_data, self.y_err)
 
@@ -153,25 +158,34 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
     def ln_probability(self, xn: NDArray[Float]) -> Float:
         """Calculate resulting probability distribution made of likelihood and prior distribution.
 
-        Combines the prior and likelihood to compute the log probability for the given
-        parameter state.
+        Combines the prior and likelihood for the candidate. Ordinary evaluation
+        exceptions and nonfinite results are recorded and reject it with -inf.
+        A uniform-prior exclusion (-inf) is a normal rejection without diagnostics.
+        Setup and process-control exceptions remain outside this rejection policy.
 
         :param xn: Current state of the sampler (normalized values of variable parameters in range [0, 1]).
         :type xn: NDArray[Float]
         :return: Log probability (likelihood).
         :rtype: Float
         """
+        stage = "prior"
         try:
             prior = self.ln_prior(xn, self.norm_init_vector, self.sigmas)
-            if not np.isfinite(prior):
+            if prior == -np.inf:
                 return -np.inf
+            if not np.isfinite(prior):
+                raise FloatingPointError(f"Nonfinite prior: {prior}")
+            stage = "likelihood"
             likelihood = self.likelihood(xn)
             if not np.isfinite(likelihood):
-                return -np.inf
+                raise FloatingPointError(f"Nonfinite likelihood: {likelihood}")
+            stage = "posterior"
             posterior = prior + likelihood
-            return posterior if np.isfinite(posterior) else -np.inf
+            if not np.isfinite(posterior):
+                raise FloatingPointError(f"Nonfinite posterior: {posterior}")
+            return posterior
         except Exception as exc:
-            record_candidate_failure(self, xn, exc)
+            record_candidate_failure(self, xn, exc, stage=stage)
             return -np.inf
 
     def normalized_sigma(self, vector: NDArray[Float]) -> NDArray[Float]:
