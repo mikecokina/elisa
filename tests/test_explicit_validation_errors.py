@@ -6,7 +6,7 @@ from astropy.units import UnitConversionError
 from elisa import units as u
 from elisa.analytics.dataset.base import LCData
 from elisa.analytics.dataset.transform import RVDataProperties
-from elisa.analytics.params.parameters import BinaryInitialParameters
+from elisa.analytics.params.parameters import BinaryInitialParameters, StarInitialParameters
 from elisa.analytics.params.transform import (
     BinaryInitialProperties, PulsationModeInitialProperties, SpotInitialProperties,
     StarInitialProperties, _initial_parameter,
@@ -21,7 +21,10 @@ from elisa.base.error import (
     ElisaParametersValidationError,
 )
 from elisa.base.transform import StarProperties
+from elisa.base.spot import Spot
+from elisa.base.star import Star
 from elisa.binary_system.transform import BinarySystemProperties
+from elisa.pulse.mode import PulsationMode
 
 
 @pytest.mark.parametrize("error_type", [
@@ -111,3 +114,59 @@ def test_valid_conversions_are_unchanged():
 ])
 def test_aliases_keep_static_method_behavior(properties, name, value):
     assert getattr(properties(), name)(value) == getattr(properties, name)(value)
+
+
+@pytest.mark.parametrize("nested", [False, True])
+@pytest.mark.parametrize("phenomenon,values,message", [
+    ("pulsations", dict(l=1, m=2, amplitude=1.0, frequency=1.0), "azimuthal order"),
+    ("pulsations", dict(l=1, m=-2, amplitude=1.0, frequency=1.0), "azimuthal order"),
+    ("spots", dict(longitude=0, latitude=60, angular_radius=0, temperature_factor=0.9), "angular radius"),
+    ("spots", dict(longitude=0, latitude=60, angular_radius=20, temperature_factor="invalid"), "temperature_factor"),
+    ("spots", dict(longitude=0, latitude=60, angular_radius=20, temperature_factor=0.9,
+                   discretization_factor=0), "discretization factor"),
+])
+def test_phenomenon_validation_uses_model_error_through_star_construction(nested, phenomenon, values, message):
+    with pytest.raises(ElisaParametersValidationError, match=message):
+        if nested:
+            Star(mass=1.0, t_eff=6000, **{phenomenon: [values]})
+        else:
+            constructor = PulsationMode if phenomenon == "pulsations" else Spot
+            constructor(**values)
+
+
+@pytest.mark.parametrize("phenomenon,properties,parameter,value", [
+    ("pulsations", PulsationModeInitialProperties, "l", -1),
+    ("pulsations", PulsationModeInitialProperties, "m", 1.5),
+    ("pulsations", PulsationModeInitialProperties, "amplitude", -1.0),
+    ("pulsations", PulsationModeInitialProperties, "start_phase", object()),
+    ("spots", SpotInitialProperties, "temperature_factor", "invalid"),
+])
+def test_initial_phenomenon_validation_preserves_cause_through_star_parameters(
+    phenomenon, properties, parameter, value,
+):
+    with pytest.raises(ElisaInitialParametersValidationError) as direct:
+        getattr(properties, parameter)(value)
+    assert type(direct.value.__cause__) is ElisaParametersValidationError
+
+    definition = {"label": "feature", parameter: {"value": value, "fixed": True}}
+    with pytest.raises(ElisaInitialParametersValidationError) as nested:
+        StarInitialParameters(**{phenomenon: [definition]})
+    assert type(nested.value.__cause__) is ElisaParametersValidationError
+    assert str(nested.value) == str(direct.value)
+
+
+def test_valid_spots_and_pulsations_keep_their_values_in_both_layers():
+    spot = dict(longitude=0.0, latitude=60.0, angular_radius=20.0, temperature_factor=0.9)
+    mode = dict(l=1, m=-1, amplitude=1.0, frequency=1.0, start_phase=0.0)
+    star = Star(mass=1.0, t_eff=6000, spots=[spot], pulsations=[mode])
+    initial = StarInitialParameters(**{
+        phenomenon: [{"label": "feature", **{
+            name: {"value": value, "fixed": True} for name, value in values.items()
+        }}]
+        for phenomenon, values in (("spots", spot), ("pulsations", mode))
+    })
+
+    assert star.spots[0].temperature_factor == initial.spots[0].temperature_factor.value == 0.9
+    assert star.pulsations[0].m == initial.pulsations[0].m.value == -1
+    assert star.pulsations[0].frequency == pytest.approx(1.0 / 86400)
+    assert initial.pulsations[0].frequency.value == 1.0

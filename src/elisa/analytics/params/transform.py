@@ -150,6 +150,7 @@ class SpotInitialProperties(SpotProperties):
     latitude = staticmethod(angular)
     longitude = staticmethod(angular)
     angular_radius = staticmethod(angular)
+    temperature_factor = _initial_parameter(SpotProperties.temperature_factor)
 
 
 class NuisanceInitialProperties(TransformProperties):
@@ -170,6 +171,10 @@ class NuisanceInitialProperties(TransformProperties):
 class PulsationModeInitialProperties(PulsationModeProperties):
     """Handler for unit conversion of pulsation mode parameters."""
 
+    l = _initial_parameter(PulsationModeProperties.l)  # noqa: E741
+    m = _initial_parameter(PulsationModeProperties.m)
+    amplitude = _initial_parameter(PulsationModeProperties.amplitude)
+    start_phase = _initial_parameter(PulsationModeProperties.start_phase)
     mode_axis_theta = staticmethod(angular)
     mode_axis_phi = staticmethod(angular)
 

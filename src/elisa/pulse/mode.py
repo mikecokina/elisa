@@ -9,7 +9,7 @@ import numpy as np
 from elisa import const as c
 from elisa import settings, units, utils
 from elisa import umpy as up
-from elisa.base.error import PulsationModeError
+from elisa.base.error import ElisaParametersValidationError
 from elisa.logger import getLogger
 from elisa.pulse.transform import PulsationModeProperties
 
@@ -102,9 +102,11 @@ class PulsationMode:
 
         Raises
         ------
-        ValueError
-            If mandatory parameters are missing or invalid values provided.
-        TypeError
+        ElisaParametersValidationError
+            If parameter validation fails or ``|m| > l``.
+        ElisaMissingKwargsError
+            If mandatory parameters are missing.
+        ElisaInvalidKwargsError
             If invalid keyword arguments are supplied.
 
         Examples
@@ -254,7 +256,7 @@ class PulsationMode:
 
         Raises
         ------
-        PulsationModeError
+        ElisaParametersValidationError
             If ``|m| > l``, which is physically invalid for spherical harmonics.
 
         """
@@ -262,7 +264,7 @@ class PulsationMode:
             error_msg = (
                 f"Absolute value of azimuthal order m: {self.m} cannot be higher than degree of the mode l: {self.l}."
             )
-            raise PulsationModeError(error_msg)
+            raise ElisaParametersValidationError(error_msg)
 
     def init_properties(self, **kwargs) -> None:
         """Initialize pulsation mode properties from input keyword arguments.
