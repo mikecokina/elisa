@@ -20,7 +20,7 @@ from numpy.testing import assert_allclose, assert_array_equal
 
 from elisa import units as u
 from elisa.analytics.binary_fit import chain_tools, io_tools, plot
-from elisa.base.error import ElisaGraphicsError
+from elisa.base.error import ElisaGraphicsError, ElisaMonteCarloError
 from elisa.analytics.binary_fit.mixins import MCMCMixin
 from elisa.analytics.binary_fit.rv_fit import RVFitMCMC
 from elisa.analytics.params.parameters import InitialParameter
@@ -138,7 +138,7 @@ def test_flat_fallback_and_acf_structured_requirement() -> None:
     fit.chain = None
     plot.traces(fit)
     assert plt.gca().get_xlabel() == "Flattened sample index"
-    with pytest.raises(ValueError, match="Temporal autocorrelation"):
+    with pytest.raises(ElisaMonteCarloError, match="Temporal autocorrelation"):
         plot.autocorrelation(fit)
 
 
@@ -256,7 +256,7 @@ def test_existing_saved_fixture_stays_flat_and_unmodified() -> None:
     lower, upper = fit.normalization[label]
     assert_allclose(np.asarray(plt.gca().collections[0].get_offsets())[:, 1], lower + flat[:, -1] * (upper - lower))
     assert_array_equal(flat, before)
-    with pytest.raises(ValueError, match="Temporal autocorrelation"):
+    with pytest.raises(ElisaMonteCarloError, match="Temporal autocorrelation"):
         plot.autocorrelation(fit)
 
 

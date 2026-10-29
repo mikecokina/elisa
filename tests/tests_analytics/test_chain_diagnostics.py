@@ -10,7 +10,7 @@ import pytest
 from numpy.testing import assert_allclose
 from numpy.typing import NDArray
 
-from elisa.base.error import ElisaGraphicsError
+from elisa.base.error import ElisaGraphicsError, ElisaMonteCarloError
 from elisa.analytics.binary_fit import chain_tools as chains
 from elisa.analytics.binary_fit import plot
 from elisa.analytics.binary_fit.rv_fit import RVFitMCMC
@@ -49,7 +49,7 @@ def test_flattening_correlated_walkers_gives_wrong_answer(correlated: NDArray[np
     _, temporal = chains.ensemble_autocorrelation(correlated)
     incorrect = emcee.autocorr.integrated_time(correlated.reshape(-1, 2), has_walkers=False)
     assert np.all(temporal > 10 * incorrect)
-    with pytest.raises(ValueError, match="steps, walkers, parameters"):
+    with pytest.raises(ElisaMonteCarloError, match="steps, walkers, parameters"):
         chains.ensemble_autocorrelation(correlated.reshape(-1, 2))
 
 
@@ -81,7 +81,7 @@ def test_fully_constant_chain_has_no_runtime_warnings() -> None:
 
 @pytest.mark.parametrize("value", [None, [], np.ones((8, 2)), np.full((8, 2, 1), np.nan)])
 def test_unavailable_temporal_structure(value) -> None:
-    with pytest.raises(ValueError, match="Temporal autocorrelation"):
+    with pytest.raises(ElisaMonteCarloError, match="Temporal autocorrelation"):
         chains.ensemble_autocorrelation(value)
 
 

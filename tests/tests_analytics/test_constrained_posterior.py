@@ -21,7 +21,7 @@ from elisa.analytics.binary_fit.rv_fit import RVFitMCMC
 from elisa.analytics.params import parameters
 from elisa.analytics.params.parameters import BinaryInitialParameters, InitialParameter
 from elisa.analytics.params.transform import BinaryInitialProperties
-from elisa.base.error import InitialParamsError
+from elisa.base.error import ElisaMonteCarloError, InitialParamsError
 from tests.tests_analytics.fitting_helpers import BINARY_PARAMETERS, V, make_lc, rv_problem
 
 GAMMA = "system@gamma"
@@ -140,7 +140,7 @@ def test_negative_power_substitution_and_constant_samples() -> None:
 def test_nonfinite_constraints_reject_instead_of_dropping_samples(expression) -> None:
     with (
         np.errstate(over="ignore", invalid="ignore", divide="ignore"),
-        pytest.raises(ValueError, match="Nonfinite posterior constraint"),
+        pytest.raises(ElisaMonteCarloError, match="Nonfinite posterior constraint"),
     ):
         summarize_constraint(NORMALIZED_CHAIN, expression)
 

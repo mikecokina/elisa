@@ -20,6 +20,7 @@ from elisa.analytics.binary_fit.rv_fit import RVFitMCMC
 from elisa.analytics.params.parameters import BinaryInitialParameters, InitialParameter
 from elisa.analytics.params.transform import StarInitialProperties
 from elisa.analytics.tasks import RVBinaryAnalyticsTask
+from elisa.base.error import ElisaMonteCarloError
 from elisa.conf.enums import DiscardUnit
 from tests.tests_analytics.fitting_helpers import lc_parameters, rv_problem
 
@@ -68,7 +69,7 @@ def test_legacy_row_discard_without_guessing_walkers() -> None:
         flat, chain = chains.prepare_chain_samples(data, 3, unit)
         assert chain is None
         assert_array_equal(flat, np.asarray(data["flat_chain"])[3:])
-    with pytest.raises(ValueError, match="requires temporal chain metadata"):
+    with pytest.raises(ElisaMonteCarloError, match="requires temporal chain metadata"):
         chains.prepare_chain_samples(data, 0, DiscardUnit.STEPS)
 
 
@@ -85,15 +86,15 @@ def test_explicit_row_discard_preserves_only_complete_ensembles(discard: int, re
 @pytest.mark.parametrize(
     ("discard", "unit", "exception"),
     [
-        (-1, None, ValueError),
-        (True, None, TypeError),
-        (1.5, None, TypeError),
-        (np.bool_(True), None, TypeError),
-        (0, "walkers", ValueError),
-        (5, None, ValueError),
-        (6, "steps", ValueError),
-        (20, "rows", ValueError),
-        (100, "rows", ValueError),
+        (-1, None, ElisaMonteCarloError),
+        (True, None, ElisaMonteCarloError),
+        (1.5, None, ElisaMonteCarloError),
+        (np.bool_(True), None, ElisaMonteCarloError),
+        (0, "walkers", ElisaMonteCarloError),
+        (5, None, ElisaMonteCarloError),
+        (6, "steps", ElisaMonteCarloError),
+        (20, "rows", ElisaMonteCarloError),
+        (100, "rows", ElisaMonteCarloError),
     ],
 )
 def test_invalid_or_excessive_discard(discard: int, unit, exception) -> None:
@@ -118,7 +119,7 @@ def test_invalid_or_excessive_discard(discard: int, unit, exception) -> None:
 def test_invalid_temporal_metadata(metadata) -> None:
     data = chain_payload()
     data.update(metadata)
-    with pytest.raises(ValueError, match="temporal chain metadata"):
+    with pytest.raises(ElisaMonteCarloError, match="temporal chain metadata"):
         chains.prepare_chain_samples(data)
 
 
@@ -126,7 +127,7 @@ def test_invalid_temporal_metadata(metadata) -> None:
 def test_partial_metadata_is_rejected(missing) -> None:
     data = chain_payload()
     data.pop(missing)
-    with pytest.raises(ValueError, match="temporal chain metadata"):
+    with pytest.raises(ElisaMonteCarloError, match="temporal chain metadata"):
         chains.prepare_chain_samples(data)
 
 
@@ -134,7 +135,7 @@ def test_partial_metadata_is_rejected(missing) -> None:
 def test_invalid_sample_matrix(samples) -> None:
     data = chain_payload()
     data["flat_chain"] = samples
-    with pytest.raises(ValueError, match="finite nonempty matrix"):
+    with pytest.raises(ElisaMonteCarloError, match="finite nonempty matrix"):
         chains.prepare_chain_samples(data)
 
 
@@ -142,7 +143,7 @@ def test_invalid_sample_matrix(samples) -> None:
 def test_invalid_labels(labels) -> None:
     data = chain_payload()
     data["fitable_parameters"] = labels
-    with pytest.raises(ValueError, match="labels"):
+    with pytest.raises(ElisaMonteCarloError, match="labels"):
         chains.prepare_chain_samples(data)
 
 
@@ -186,7 +187,7 @@ def test_json_roundtrip_keeps_flat_public_format_and_order(tmp_path: Path, struc
 def test_invalid_export_does_not_overwrite_saved_file(tmp_path: Path) -> None:
     _, path = save_chain(tmp_path)
     before = Path(path).read_bytes()
-    with pytest.raises(ValueError, match="metadata"):
+    with pytest.raises(ElisaMonteCarloError, match="metadata"):
         MCMCMixin.save_flat_chain(
             np.zeros((20, 2)),
             dict.fromkeys(
@@ -253,7 +254,7 @@ def test_filtering_invalidates_temporal_diagnostics() -> None:
     expected = original.reshape(-1, 2)
     assert_array_equal(flat, expected[(expected[:, 0] > 0.2) & (expected[:, 0] < 0.8)])
     assert fit.chain is None
-    with pytest.raises(ValueError, match="Temporal autocorrelation"):
+    with pytest.raises(ElisaMonteCarloError, match="Temporal autocorrelation"):
         plot.autocorrelation(fit)
 
 
@@ -265,7 +266,7 @@ def test_invalid_load_does_not_mutate_fit_state() -> None:
     flat_before = fit.flat_chain
     with (
         patch.object(MCMCMixin, "load_flat_chain", return_value=chain_payload()),
-        pytest.raises(ValueError, match="no samples"),
+        pytest.raises(ElisaMonteCarloError, match="no samples"),
     ):
         io_tools.load_chain(fit, "unused", discard=5)
     assert fit.chain is original

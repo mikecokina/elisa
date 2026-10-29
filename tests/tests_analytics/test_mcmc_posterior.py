@@ -15,7 +15,7 @@ from elisa import settings
 from elisa.analytics.binary_fit.lc_prediction import PredictionAlignmentError
 from elisa.analytics.binary_fit.mcmc import CentralRadialVelocity, DetachedLightCurveFit, MCMCFit
 from elisa.analytics.params import parameters as p
-from elisa.base.error import ElisaError, MorphologyError, PhysicalStateError
+from elisa.base.error import ElisaError, ElisaMonteCarloError, MorphologyError, PhysicalStateError
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
 from tests.tests_analytics.fitting_helpers import BINARY_PARAMETERS, V, lc_setup, make_lc, rv_problem
@@ -138,7 +138,7 @@ def test_supplied_initialization_does_not_evaluate_posterior() -> None:
 def test_supplied_initial_states_rejected_without_mutation(states) -> None:
     before = states.copy()
     states.flags.writeable = False
-    with pytest.raises(ValueError, match="initial|walker"):
+    with pytest.raises(ElisaMonteCarloError, match="initial|walker"):
         make_quadratic_posterior().generate_initial_states(states, 2, 1)
     assert_array_equal(states, before)
 
@@ -157,7 +157,7 @@ def test_valid_supplied_states_are_copied_without_changes() -> None:
 def test_invalid_prior_bounds(bounds) -> None:
     fit = make_quadratic_posterior()
     fit.normalization["system@gamma"] = bounds
-    with pytest.raises(ValueError, match="bounds|span"):
+    with pytest.raises(ElisaMonteCarloError, match="bounds|span"):
         fit.prepare_priors()
 
 
@@ -165,7 +165,7 @@ def test_invalid_prior_bounds(bounds) -> None:
 def test_invalid_gaussian_widths(sigma) -> None:
     fit = make_quadratic_posterior()
     fit.fitable["system@gamma"].sigma = sigma
-    with pytest.raises(ValueError, match="Gaussian width"):
+    with pytest.raises(ElisaMonteCarloError, match="Gaussian width"):
         fit.prepare_priors()
 
 
@@ -266,7 +266,7 @@ def test_gaussian_width_must_be_representable_after_normalization(sigma, bounds)
     fit.fitable["system@gamma"].sigma = sigma
     fit.normalization["system@gamma"] = bounds
     fit.initial_vector = [bounds[1] / 2]
-    with pytest.raises(ValueError, match="normalized coordinates"):
+    with pytest.raises(ElisaMonteCarloError, match="normalized coordinates"):
         fit.prepare_priors()
 
 
@@ -274,7 +274,7 @@ def test_gaussian_width_must_be_representable_after_normalization(sigma, bounds)
 def test_nonfinite_initial_prior_center_rejected(value) -> None:
     fit = make_quadratic_posterior()
     fit.initial_vector = [value]
-    with pytest.raises(ValueError, match="finite normalized"):
+    with pytest.raises(ElisaMonteCarloError, match="finite normalized"):
         fit.prepare_priors()
 
 
