@@ -233,3 +233,61 @@ def test_unexpected_reader_runtime_error_is_not_reclassified(tmp_path):
         with pytest.raises(RuntimeError) as caught:
             dutils.read_data_file(str(tmp_path / "observations.dat"), (0, 1, 2))
     assert caught.value is failure
+
+
+@pytest.mark.parametrize("ratio", [
+    0, -0.5, 2, float("nan"), float("inf"), -float("inf"),
+    "bad", "0.5", [0.5], np.array([0.5, 1.0]), np.array(0.5),
+    {}, object(), 0.5 + 0j, True, False, np.bool_(True),
+    np.float32("nan"), 10 ** 1000,
+])
+def test_invalid_downselection_ratio_uses_data_validation_error(tmp_path, dataset_case, ratio):
+    dataset, kwargs = dataset_case
+    path = tmp_path / "observations.dat"
+    path.write_text("0 1 .1\n.5 2 .2\n")
+    with pytest.raises(ElisaAnalyticsDataValidationError, match="`downselect_ratio`") as caught:
+        dataset.load_from_file(str(path), x_unit=kwargs["x_unit"], y_unit=kwargs["y_unit"],
+                               downselect_ratio=ratio)
+    assert "(0, 1]" in str(caught.value)
+
+
+@pytest.mark.parametrize("ratio,indices", [
+    (None, [0, 1, 2, 3, 4, 5]),
+    (1, [0, 1, 2, 3, 4, 5]),
+    (0.75, [0, 1, 2, 3, 4, 5]),
+    (0.5, [0, 2, 4]),
+    (0.3, [0, 3]),
+    (0.1, [0]),
+    (float.fromhex("0x0.0000000000001p-1022"), [0]),
+    (np.float32(0.5), [0, 2, 4]),
+    (np.float64(0.5), [0, 2, 4]),
+    (np.int64(1), [0, 1, 2, 3, 4, 5]),
+])
+@pytest.mark.parametrize("with_errors", [False, True])
+def test_downselection_preserves_stride_columns_and_optional_errors(
+    tmp_path, dataset_case, ratio, indices, with_errors,
+):
+    dataset, kwargs = dataset_case
+    path = tmp_path / "observations.dat"
+    table = np.column_stack((np.arange(6) / 10, np.arange(6) + 1, np.full(6, 0.1)))
+    np.savetxt(path, table)
+    columns = (0, 1, 2) if with_errors else (0, 1)
+    data = dataset.load_from_file(str(path), data_columns=columns,
+                                  x_unit=kwargs["x_unit"], y_unit=kwargs["y_unit"],
+                                  downselect_ratio=ratio)
+    np.testing.assert_array_equal(data.x_data, table[indices, 0])
+    np.testing.assert_array_equal(data.y_data, table[indices, 1])
+    if with_errors:
+        np.testing.assert_array_equal(data.y_err, table[indices, 2])
+    else:
+        assert data.y_err is None
+
+
+def test_original_observations_are_validated_before_downselection(tmp_path, dataset_case):
+    dataset, kwargs = dataset_case
+    path = tmp_path / "observations.dat"
+    # The invalid uncertainty would be omitted by stride two.
+    path.write_text("0 1 .1\n.1 2 0\n.2 3 .1\n")
+    with pytest.raises(ElisaAnalyticsDataValidationError, match="strictly positive"):
+        dataset.load_from_file(str(path), x_unit=kwargs["x_unit"], y_unit=kwargs["y_unit"],
+                               downselect_ratio=0.5)

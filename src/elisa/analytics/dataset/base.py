@@ -15,7 +15,6 @@ from elisa.analytics.dataset import utils as dutils
 from elisa.analytics.dataset.graphic import plot
 from elisa.analytics.dataset.transform import LCDataProperties, RVDataProperties
 from elisa.base.error import ElisaAnalyticsDataValidationError
-from elisa.base.types import INT
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -206,29 +205,24 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
         :type data_columns: tuple[int, ...] | None
         :param delimiter: Regex pattern defining column separator.
         :type delimiter: str
-        :param downselect_ratio: Optional selection ratio in range (0, 1) to uniformly
-            subsample the data. If provided, returns approximately 1/downselect_ratio
-            of the original data points.
+        :param downselect_ratio: Optional selection ratio in range (0, 1] to uniformly
+            subsample the data using a stride of int(1/downselect_ratio).
+            None or 1 preserves all points.
         :type downselect_ratio: float | None
         :param kwargs: Additional keyword arguments passed to the constructor
             (e.g., reference_magnitude for LCData).
         :type kwargs: Any
         :returns: DataSet instance with loaded data.
         :rtype: DataSet
+        :raises ElisaAnalyticsDataValidationError: If observations or downselect_ratio are invalid.
+        :raises OSError: If the file cannot be opened.
         """
         data_columns = (0, 1, 2) if data_columns is None else data_columns
         data = dutils.read_data_file(filename, data_columns, delimiter=delimiter)
         observation_columns = dict(zip(("x_data", "y_data", "y_err"), data.T, strict=False))
         cls.check_data_validity(**observation_columns)
 
-        if downselect_ratio is not None:
-            idxs = np.arange(
-                0,
-                data.shape[0],
-                step=int(1.0 / downselect_ratio),
-                dtype=INT,
-            )
-            data = data[idxs]
+        data = dutils.downselect_data(data, downselect_ratio)
 
         try:
             errs = data[:, 2]

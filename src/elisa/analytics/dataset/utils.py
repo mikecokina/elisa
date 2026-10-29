@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from numbers import Real
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -222,6 +223,30 @@ def _numeric_observation_values(
         msg = f"Observation file `{filename}` contains nonfinite values in columns {data_columns!r}"
         raise ElisaAnalyticsDataValidationError(msg)
     return values
+
+
+def downselect_data(data: NDArray[Float], downselect_ratio: float | None) -> NDArray[Float]:
+    """Uniformly subsample a validated nonempty observation table.
+
+    :param data: Validated observation rows.
+    :param downselect_ratio: Finite real selection ratio in (0, 1], or None to keep all rows.
+    :returns: Rows selected with the existing int(1/downselect_ratio) stride.
+    :raises ElisaAnalyticsDataValidationError: If the ratio has an invalid type or range.
+    """
+    if downselect_ratio is None:
+        return data
+    if (
+        isinstance(downselect_ratio, (bool, np.bool_))
+        or not isinstance(downselect_ratio, Real)
+        or not 0 < downselect_ratio <= 1
+    ):
+        msg = "`downselect_ratio` must be a finite real number in (0, 1]"
+        raise ElisaAnalyticsDataValidationError(msg)
+    # A stride at least as large as the table selects only the first row.
+    # Handle it before taking the reciprocal, which could overflow for tiny ratios.
+    if downselect_ratio <= 1.0 / len(data):
+        return data[:1]
+    return data[::int(1.0 / downselect_ratio)]
 
 
 def central_moving_average(
