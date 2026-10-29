@@ -147,6 +147,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Reject incomplete or mixed standard/community LC fitting parameters with
+  `ValidationError` before model preparation can overwrite supplied component
+  masses. Require either both masses or `mass_ratio` and `semi_major_axis`,
+  accounting for fixed, free, and constrained inputs in LSQ and MCMC fitting.
 - Validate community binary mass ratios before deriving component masses and
   periods before JD/phase conversion. Reject finite invalid inputs with
   `PhysicalStateError` and nonfinite inputs with native `FloatingPointError`,

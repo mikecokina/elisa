@@ -1241,6 +1241,7 @@ class BinaryInitialParameters(InitialParameters):
         """Validate parameters for light curve fitting.
 
         Ensures all mandatory light curve parameters are present and valid.
+        Requires a complete standard or community physical parameterization.
         Checks consistency constraints for over-contact morphology systems.
 
         :param morphology: System morphology ('over-contact' or 'detached').
@@ -1276,6 +1277,18 @@ class BinaryInitialParameters(InitialParameters):
         all_fit_params = mandatory_fit_params + optional_fit_params
         utils.check_missing_kwargs(mandatory_fit_params, self.data, instance_of=self.__class__)
         check_initial_param_validity(self.data, all_fit_params, mandatory_fit_params)
+
+        mass_parameters = {"primary@mass", "secondary@mass"}
+        community_parameters = {"system@mass_ratio", "system@semi_major_axis"}
+        supplied = self.data.keys()
+        if mass_parameters & supplied and community_parameters & supplied:
+            msg = "LC parameters must use either component masses or mass_ratio and semi_major_axis, not both."
+            raise ValidationError(msg)
+        required = mass_parameters if mass_parameters & supplied else community_parameters
+        missing = required - supplied
+        if missing:
+            msg = f"Incomplete LC parameterization; missing: {', '.join(sorted(missing))}."
+            raise ValidationError(msg)
 
         is_oc = self.is_overcontact(morphology)
         are_same = self.data["primary@surface_potential"].value == self.data["secondary@surface_potential"].value

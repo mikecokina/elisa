@@ -8,6 +8,7 @@ from unittest.mock import Mock
 
 import numpy as np
 import pytest
+from jsonschema import ValidationError
 from numpy.testing import assert_array_equal
 from numpy.typing import NDArray
 
@@ -309,17 +310,10 @@ def test_nonfinite_constrained_asini_propagates_a_native_numerical_error(
     assert type(caught.value) is FloatingPointError
 
 
-def test_lc_fitting_guard_rejects_a_constrained_mass_that_conversion_would_overwrite(
+def test_lc_input_validation_rejects_a_constrained_mass_that_conversion_would_overwrite(
     lc_fit: AbstractLCFit, lc_inputs: tuple[dict[str, Any], dict[str, LCData]],
 ) -> None:
     config, data = lc_inputs
     config["primary"]["mass"] = {"constraint": "-1"}
-    prepare_lc_fit(lc_fit, config, data)
-    model_parameters = physical(lc_fit)
-
-    # This source value is overwritten by community conversion before Star validation.
-    binary = lc.prepare_binary(**model_parameters)
-
-    assert model_parameters["primary@mass"] == -1
-    assert binary.primary.mass > 0
-    assert_physical_rejection(lc_fit)
+    with pytest.raises(ValidationError, match="LC parameters must use either"):
+        prepare_lc_fit(lc_fit, config, data)

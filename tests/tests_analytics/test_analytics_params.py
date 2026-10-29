@@ -1121,6 +1121,10 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
         mock_value = {"value": 0.25, "min": 0.01, "max": 0.99}
         mock_data = {p: mock_value for p in mandatory_fit_params}
         mock_data.update(potentials)
+        mock_data.update({
+            "system@mass_ratio": {"value": 0.7, "fixed": True},
+            "system@semi_major_axis": {"value": 10.0, "fixed": True},
+        })
         mock_data = parameters.serialize_result(mock_data)
 
         with self.assertRaises(Exception) as context:
