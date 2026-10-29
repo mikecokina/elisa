@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from reprlib import repr as bounded_repr
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+from astropy.units import FunctionUnitBase, UnitBase
 
 from elisa import units as u
 from elisa import utils
@@ -25,53 +27,78 @@ if TYPE_CHECKING:
 def array_transform(
     value: Any,
     when_array: tuple[type, ...],
+    *,
+    parameter: str = "data",
 ) -> NDArray[Any] | None:
     """Convert array-like values to numpy array with float64 dtype.
 
     Transforms input values that are array-like (list, tuple, numpy array)
-    into a numpy array with float64 data type. Returns None for empty or None inputs.
+    into a numpy array with float64 data type, including empty arrays.
+    Empty non-array inputs and None return None.
 
     :param value: Array-like value to convert (list, tuple, or numpy array).
     :type value: Any
     :param when_array: Tuple of types considered as array-like.
     :type when_array: tuple[type, ...]
-    :returns: Converted numpy array with float64 dtype, or None if input is empty.
+    :param parameter: Dataset field name used in validation errors.
+    :returns: Converted numpy array with float64 dtype, or None for empty non-array input.
     :rtype: NDArray[Any] | None
-    :raises ElisaAnalyticsDataError: If value is not None/empty and not array-like.
+    :raises ElisaAnalyticsDataError: If the type is invalid or numeric conversion fails.
     """
     if isinstance(value, when_array):
-        return np.array(value, dtype=FLOAT)
+        try:
+            return np.array(value, dtype=FLOAT)
+        except (TypeError, ValueError, ArithmeticError) as exc:
+            message = f"Cannot convert `{parameter}` to a numeric array: {bounded_repr(value)}"
+            raise_elisa_analytics_data_error(message, exc)
     if not utils.is_empty(value):
-        error_msg = "Input of variable is not array-like."
-        raise_elisa_analytics_data_error(error_msg)
+        message = f"Input `{parameter}` is not array-like: {bounded_repr(value)}"
+        raise_elisa_analytics_data_error(message)
     return None
 
 
 def unit_check(
     value: Any,
     base_units: tuple[Any, ...],
+    *,
+    parameter: str = "unit",
 ) -> Any:
     """Validate that a unit is equivalent to one of the base units.
 
     Checks if the supplied unit is equivalent to any of the base units.
     None or empty string units are converted to dimensionless_unscaled.
 
-    :param value: Unit to validate (can be None or astropy Unit).
+    :param value: Unit object, unit string or None.
     :type value: Any
     :param base_units: Tuple of base units to check equivalence against.
     :type base_units: tuple[Any, ...]
-    :returns: The validated unit (same as input or dimensionless if None).
+    :param parameter: Dataset field name used in validation errors.
+    :returns: The validated unit, or dimensionless for None or an empty string.
     :rtype: Any
-    :raises ElisaAnalyticsDataError: If unit is not equivalent to any base unit.
+    :raises ElisaAnalyticsDataError: If the unit type, parsing or compatibility is invalid.
     """
-    if value is None or value.to_string() == "":
+    if value is None:
         value = u.dimensionless_unscaled
+    elif not isinstance(value, (UnitBase, FunctionUnitBase, str)):
+        message = f"Input `{parameter}` must be a unit or unit string: {bounded_repr(value)}"
+        raise_elisa_analytics_data_error(message)
 
-    if not value.is_equivalent(base_units):
-        error_msg = f"Input {value} is not NoneType or `astropy.Unit` not convertible into desired base units."
-        raise_elisa_analytics_data_error(error_msg)
+    try:
+        unit = u.Unit(value)
+    except (TypeError, ValueError, ArithmeticError) as exc:
+        message = f"Cannot parse `{parameter}`: {bounded_repr(value)}"
+        raise_elisa_analytics_data_error(message, exc)
 
-    return value
+    try:
+        compatible = unit.is_equivalent(base_units)
+    except (TypeError, ValueError, ArithmeticError) as exc:
+        message = f"Cannot check compatibility of `{parameter}` unit `{unit}`."
+        raise_elisa_analytics_data_error(message, exc)
+    if not compatible:
+        message = f"Unit `{unit}` for `{parameter}` is not convertible to any of {base_units}."
+        raise_elisa_analytics_data_error(message)
+
+    return unit
 
 
 class DatasetProperties(TransformProperties):
@@ -90,7 +117,7 @@ class DatasetProperties(TransformProperties):
         :returns: x_data as numpy array or None if empty.
         :rtype: NDArray[Float] | None
         """
-        return array_transform(value, WHEN_ARRAY)
+        return array_transform(value, WHEN_ARRAY, parameter="x_data")
 
     @staticmethod
     def y_data(value: Any) -> NDArray[Float] | None:
@@ -101,7 +128,7 @@ class DatasetProperties(TransformProperties):
         :returns: y_data as numpy array or None if empty.
         :rtype: NDArray[Float] | None
         """
-        return array_transform(value, WHEN_ARRAY)
+        return array_transform(value, WHEN_ARRAY, parameter="y_data")
 
     @staticmethod
     def y_err(value: Any) -> NDArray[Float] | None:
@@ -112,7 +139,7 @@ class DatasetProperties(TransformProperties):
         :returns: y_err as numpy array or None if empty.
         :rtype: NDArray[Float] | None
         """
-        return array_transform(value, WHEN_ARRAY)
+        return array_transform(value, WHEN_ARRAY, parameter="y_err")
 
 
 class RVDataProperties(DatasetProperties):
@@ -131,7 +158,7 @@ class RVDataProperties(DatasetProperties):
         :returns: Validated time unit.
         :rtype: Any
         """
-        return unit_check(value, (u.dimensionless_unscaled, u.TIME_UNIT))
+        return unit_check(value, (u.dimensionless_unscaled, u.TIME_UNIT), parameter="x_unit")
 
     @staticmethod
     def y_unit(value: Any) -> Any:
@@ -142,7 +169,7 @@ class RVDataProperties(DatasetProperties):
         :returns: Validated velocity unit.
         :rtype: Any
         """
-        return unit_check(value, (u.VELOCITY_UNIT,))
+        return unit_check(value, (u.VELOCITY_UNIT,), parameter="y_unit")
 
 
 class LCDataProperties(DatasetProperties):
@@ -161,7 +188,7 @@ class LCDataProperties(DatasetProperties):
         :returns: Validated time unit.
         :rtype: Any
         """
-        return unit_check(value, (u.dimensionless_unscaled, u.TIME_UNIT))
+        return unit_check(value, (u.dimensionless_unscaled, u.TIME_UNIT), parameter="x_unit")
 
     @staticmethod
     def y_unit(value: Any) -> Any:
@@ -172,7 +199,7 @@ class LCDataProperties(DatasetProperties):
         :returns: Validated flux unit.
         :rtype: Any
         """
-        return unit_check(value, (u.dimensionless_unscaled, u.mag))
+        return unit_check(value, (u.dimensionless_unscaled, u.mag), parameter="y_unit")
 
     @staticmethod
     def zero_magnitude(value: Any) -> float:
