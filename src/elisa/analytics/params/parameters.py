@@ -735,20 +735,13 @@ class InitialParameter:
                 raise_elisa_initial_parameters_error(message, exc)
 
         if self.unit is not None and self.unit is not u.dimensionless_unscaled and self.constraint is None:
-            fields = ("value", "min", "max")
+            kwargs.update(
+                value=self._attach_unit(kwargs.get("value"), "value"),
+                min=self._attach_unit(kwargs.get("min"), "min"),
+                max=self._attach_unit(kwargs.get("max"), "max"),
+            )
             if kwargs.get("sigma") is not None:
-                fields += ("sigma",)
-
-            for field in fields:
-                value = kwargs.get(field)
-                try:
-                    kwargs[field] = value * self.unit
-                except (TypeError, ValueError, ArithmeticError) as exc:
-                    message = (
-                        f"Invalid `{field}` metadata for initial parameter `{self.param}`: "
-                        f"cannot attach unit `{self.unit}` to {value!r}"
-                    )
-                    raise_elisa_initial_parameters_error(message, exc)
+                kwargs["sigma"] = self._attach_unit(kwargs["sigma"], "sigma")
 
         if self.constraint is None:
             self.value = transform_cls.transform_input(**{self.param: kwargs.get("value")})[self.param]
@@ -761,6 +754,17 @@ class InitialParameter:
             self.min, self.max, self.sigma = None, None, None
 
         self.unit = conf.DEFAULT_FLOAT_UNITS[self.property]
+
+    def _attach_unit(self, value: Any, field: str) -> u.Quantity:
+        """Attach the input unit to metadata, retaining the field in validation errors."""
+        try:
+            return value * self.unit
+        except (TypeError, ValueError, ArithmeticError) as exc:
+            message = (
+                f"Invalid `{field}` metadata for initial parameter `{self.param}`: "
+                f"cannot attach unit `{self.unit}` to {value!r}"
+            )
+            raise_elisa_initial_parameters_error(message, exc)
 
     def copy(self) -> InitialParameter:
         """Create independent deep copy of the InitialParameter.
