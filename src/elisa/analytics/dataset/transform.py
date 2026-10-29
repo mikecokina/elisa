@@ -213,18 +213,14 @@ class LCDataProperties(DatasetProperties):
         :type value: Any
         :returns: Value as numpy float64.
         :rtype: float
-        :raises ElisaAnalyticsDataError: If input type is not supported.
+        :raises ElisaAnalyticsDataError: If the type, unit or scalar conversion is invalid.
         """
-        if isinstance(value, u.Quantity):
-            # Note: Original code calls value.is_equivalent() which is a bug
-            # Should be value.unit.is_equivalent(u.mag), but keeping for compatibility
-            value.is_equivalent(u.mag)
-            value = np.float64(value.to(u.mag))
-        elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(value)
-        else:
-            error_msg = (
-                "Input of variable is not (numpy.)int or (numpy.)float nor astropy.unit.quantity.Quantity instance."
-            )
-            raise_elisa_analytics_data_error(error_msg)
-        return value
+        if not isinstance(value, (u.Quantity, *WHEN_FLOAT64)):
+            message = "Input `zero_magnitude` must be numeric or an astropy Quantity."
+            raise_elisa_analytics_data_error(message)
+        try:
+            converted = value.to_value(u.mag) if isinstance(value, u.Quantity) else value
+            return np.float64(float(converted))
+        except (TypeError, ValueError, ArithmeticError) as exc:
+            message = "Cannot convert `zero_magnitude` to a scalar magnitude value."
+            raise_elisa_analytics_data_error(message, exc)
