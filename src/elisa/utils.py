@@ -20,6 +20,7 @@ from elisa import umpy as up
 from elisa.base.error import (
     ElisaInvalidKwargsError,
     ElisaMissingKwargsError,
+    raise_value_error,
 )
 from elisa.base.types import FLOAT, INT
 from elisa.numba_functions import operations
@@ -692,8 +693,7 @@ def find_surrounded_as_matrix(
     :return: numpy.array;
     """
     if not (np.array(look_in.min() <= look_for).all() and np.array(look_for <= look_in.max()).all()):
-        msg = "At least one value in `look_for` is out of bound of `look_in`"
-        raise ValueError(msg)
+        raise_value_error("At least one value in `look_for` is out of bound of `look_in`")
 
     dif = look_for[:, np.newaxis] - look_in
     positive_mask = dif >= 0
@@ -728,8 +728,7 @@ def find_surrounded(
     :return: List [float, float];
     """
     if look_for > max(look_in) or look_for < min(look_in):
-        msg = "Any value in `look_for` is out of bound of `look_in`"
-        raise ValueError(msg)
+        raise_value_error("Any value in `look_for` is out of bound of `look_in`")
 
     if look_for == min(look_in):
         return [min(look_in), min(look_in)]

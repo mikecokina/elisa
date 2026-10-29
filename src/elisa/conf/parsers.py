@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
+from elisa.base.error import raise_value_error
+
 if TYPE_CHECKING:
     from elisa.types import Number
 
@@ -52,20 +54,17 @@ def parse_tuple_interval(
     :raises ValueError: If the input is missing, not in the correct format, or not ordered when required.
     """
     if raw is None:
-        msg = f"{name}: missing value"
-        raise ValueError(msg)
+        raise_value_error(f"{name}: missing value")
 
     m = _TUPLE_RE.match(raw)
     if not m:
-        msg = f"{name}: invalid format {raw!r}. Expected '(a, b)' with numbers."
-        raise ValueError(msg)
+        raise_value_error(f"{name}: invalid format {raw!r}. Expected '(a, b)' with numbers.")
 
     a_token, b_token = m.group(1), m.group(2)
     low = _parse_number(a_token)
     high = _parse_number(b_token)
 
     if require_ordered and low > high:
-        msg = f"{name}: low > high in {raw!r} ({low} > {high})"
-        raise ValueError(msg)
+        raise_value_error(f"{name}: low > high in {raw!r} ({low} > {high})")
 
     return low, high

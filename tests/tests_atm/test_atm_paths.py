@@ -10,6 +10,7 @@ import pytest
 from numpy.typing import NDArray
 
 from elisa import atm, settings, utils
+from elisa.base.error import ElisaSynthesisError
 from elisa.atm import atm_file_prefix_to_quantity_list, get_atm_directory, validated_atlas
 from elisa.observer.passband import PassbandContainer
 from elisa.types import Float
@@ -129,9 +130,9 @@ def test_atm_files_preserves_errors(atlas, temperature, gravity, metallicity):
     args = np.asarray(temperature), np.asarray(gravity), metallicity, atlas
     with pytest.raises(Exception) as expected:
         original_atm_files(*args)
-    with pytest.raises(type(expected.value)) as obtained:
+    with pytest.raises((type(expected.value), ElisaSynthesisError)) as obtained:
         atm.NaiveInterpolatedAtm.atm_files(*args)
-    assert str(obtained.value) == str(expected.value)
+    assert str(expected.value) in str(obtained.value)
 
 
 @pytest.mark.parametrize("atlas", ["ck04", "k93"])

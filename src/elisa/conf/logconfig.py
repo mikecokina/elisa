@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any, TextIO
 
+from elisa.base.error import raise_value_error
 from elisa.conf.enums import LoggingProfile
 
 _console_handler: logging.StreamHandler | None = None
@@ -26,8 +27,7 @@ def configure_logging(selector: str) -> None:
     builtin = selector in tuple(profile.value for profile in LoggingProfile)
     path = Path(__file__).parent / "logging_schemas" / f"{selector}.json" if builtin else Path(selector)
     if not path.is_file():
-        msg = f"Unknown logging profile or missing JSON configuration file: {selector}"
-        raise ValueError(msg)
+        raise_value_error(f"Unknown logging profile or missing JSON configuration file: {selector}")
     config = json.loads(path.read_text())
     if not builtin:
         # Standard dictConfig may close our console too, even on failure. Do not

@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 
+from elisa.base.error import raise_attribute_error, raise_value_error
 from elisa.conf.enums import IntersectionBackend, LoggingProfile, MeanAnomalySolver
 from elisa.conf.logconfig import configure_logging
 from elisa.conf.parsers import parse_tuple_interval
@@ -270,13 +271,11 @@ class Settings(_Const):
     def __setattr__(self, name: str, value: object) -> None:
         """Route public writes through the same transaction as configure()."""
         if name not in self._fields:
-            msg = f"{name} is not a mutable setting"
-            raise AttributeError(msg)
+            raise_attribute_error(f"{name} is not a mutable setting")
         self.configure(**{name: value})
 
     def __delattr__(self, name: str) -> None:
-        msg = f"Settings attributes cannot be deleted: {name}"
-        raise AttributeError(msg)
+        raise_attribute_error(f"Settings attributes cannot be deleted: {name}")
 
     def settings_serializer(self) -> dict:
         """Return an independent dictionary of the effective user settings."""
@@ -378,8 +377,7 @@ class Settings(_Const):
         """
         unknown = kwargs.keys() - self._fields
         if unknown:
-            msg = f"Unknown or read-only setting(s): {', '.join(sorted(unknown))}"
-            raise ValueError(msg)
+            raise_value_error(f"Unknown or read-only setting(s): {', '.join(sorted(unknown))}")
         candidate = self.settings_serializer()
         candidate.update(kwargs)
         self._validate_candidate(candidate)
@@ -434,25 +432,20 @@ class Settings(_Const):
             elif isinstance(default, str):
                 valid = isinstance(value, str)
             if not valid:
-                msg = f"Invalid value for {name}: {value!r}"
-                raise ValueError(msg)
+                raise_value_error(f"Invalid value for {name}: {value!r}")
         if values["LIMB_DARKENING_LAW"] not in _Const.AVAILABLE_LD_LAWS:
-            msg = (
+            raise_value_error(
                 f"{values['LIMB_DARKENING_LAW']} is not valid name of limb darkening law. "
                 f"Available limb darkening laws are: {_Const.AVAILABLE_LD_LAWS}"
             )
-            raise ValueError(msg)
         backends = tuple(backend.value for backend in IntersectionBackend)
         if values["INTERSECTION_BACKEND"] not in backends:
-            msg = f"INTERSECTION_BACKEND must be one of: {', '.join(backends)}"
-            raise ValueError(msg)
+            raise_value_error(f"INTERSECTION_BACKEND must be one of: {', '.join(backends)}")
         solvers = tuple(solver.value for solver in MeanAnomalySolver)
         if values["MEAN_ANOMALY_SOLVER"] not in solvers:
-            msg = f"MEAN_ANOMALY_SOLVER must be one of: {', '.join(solvers)}"
-            raise ValueError(msg)
+            raise_value_error(f"MEAN_ANOMALY_SOLVER must be one of: {', '.join(solvers)}")
         if values["NUMBER_OF_THREADS"] <= 0:
-            msg = "Invalid value for `number_of_threads`, allowed >= 1"
-            raise ValueError(msg)
+            raise_value_error("Invalid value for `number_of_threads`, allowed >= 1")
         for name in ("NUMBER_OF_PROCESSES", "NUMBER_OF_MCMC_PROCESSES"):
             cores = os.cpu_count() or 1
             if values[name] > cores:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import hashlib
 import itertools
 import json
@@ -9,7 +10,7 @@ from copy import copy, deepcopy
 from pathlib import Path
 from queue import Queue
 from threading import Lock, Thread
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
 import numpy as np
 import pandas as pd
@@ -37,7 +38,7 @@ from elisa.tensor.etensor import Tensor
 # names visible to static analysis tools and IDEs. These imports are evaluated
 # only during type checking and therefore do not affect runtime import order.
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
 
     from numpy.typing import NDArray
 
@@ -45,6 +46,9 @@ if TYPE_CHECKING:
     from elisa.types import Float, Int
 
 logger = getLogger(__name__)
+
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
 # * 1e-7 * 1e4 * 1e10 * (1.0/const.PI)
@@ -656,13 +660,12 @@ class NaiveInterpolatedAtm:
         log_g = utils.convert_gravity_acceleration_array(log_g, "log_cgs")
 
         g_array = np.array(atm_file_prefix_to_quantity_list("gravity", atlas))
-
         m_array = np.array(atm_file_prefix_to_quantity_list("metallicity", atlas))
         t_array = np.array(atm_file_prefix_to_quantity_list("temperature", atlas))
 
-        g = utils.find_nearest_value_as_matrix(g_array, log_g)[0]
-        m = utils.find_nearest_value_as_matrix(m_array, metallicity)[0][0]
-        t = utils.find_surrounded_as_matrix(t_array, temperature)
+        g = _find_nearest_gravity(g_array, log_g)
+        m = _find_nearest_metallicity(m_array, metallicity)
+        t = _find_nearest_temperature(t_array, temperature)
 
         domain_df = pd.DataFrame(
             {
@@ -694,6 +697,70 @@ class NaiveInterpolatedAtm:
         base_directory = Path(settings.ATLAS_TO_BASE_DIR[atlas]) / directory
         paths = [str(base_directory / (fname + ".csv")) for fname in fnames]
         return np.asarray(paths, dtype=object)[inverse].tolist()
+
+
+def _wrap_grid_lookup_errors(func: Callable[P, R]) -> Callable[P, R]:
+    """Convert failures of an atmosphere grid lookup into :class:`AtmosphereError`.
+
+    The signature and return type of the wrapped function are preserved.
+
+    :param func: function performing the grid lookup;
+    :type func: Callable[P, R]
+    :returns: wrapped function raising AtmosphereError on ValueError or IndexError;
+    :rtype: Callable[P, R]
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return func(*args, **kwargs)
+        except (ValueError, IndexError) as e:
+            msg = f"Atmosphere grid lookup `{func.__name__}` failed for arguments {args!r}: {e}"
+            raise AtmosphereError(msg) from e
+
+    return wrapper
+
+
+@_wrap_grid_lookup_errors
+def _find_nearest_temperature(array: NDArray[Float], value: Float | NDArray[Float]) -> NDArray[Float]:
+    """Find the pair of grid temperatures surrounding each requested temperature.
+
+    :param array: available grid temperatures;
+    :type array: NDArray[Float]
+    :param value: requested temperature(s);
+    :type value: Float | NDArray[Float]
+    :returns: matrix of shape (n, 2) with lower and upper surrounding grid temperatures;
+    :rtype: NDArray[Float]
+    """
+    return utils.find_surrounded_as_matrix(array, np.atleast_1d(value))
+
+
+@_wrap_grid_lookup_errors
+def _find_nearest_gravity(array: NDArray[Float], value: Float | NDArray[Float]) -> NDArray[Float]:
+    """Find the nearest grid surface gravity (log g) for each requested value.
+
+    :param array: available grid log g values;
+    :type array: NDArray[Float]
+    :param value: requested log g value(s);
+    :type value: Float | NDArray[Float]
+    :returns: nearest grid log g values, one per requested value;
+    :rtype: NDArray[Float]
+    """
+    return utils.find_nearest_value_as_matrix(array, value)[0]
+
+
+@_wrap_grid_lookup_errors
+def _find_nearest_metallicity(array: NDArray[Float], value: Float | NDArray[Float]) -> Float:
+    """Find the nearest grid metallicity for the requested value.
+
+    :param array: available grid metallicities;
+    :type array: NDArray[Float]
+    :param value: requested metallicity;
+    :type value: Float | NDArray[Float]
+    :returns: nearest grid metallicity;
+    :rtype: Float
+    """
+    return utils.find_nearest_value_as_matrix(array, value)[0][0]
 
 
 def arange_atm_to_same_wavelength(

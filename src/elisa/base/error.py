@@ -147,3 +147,31 @@ class SolutionBubbleError(ElisaError):
 
         # Always pass a single message variable to the base Exception
         super().__init__(message)
+
+
+def raise_value_error(message: str) -> None:
+    """Raise a ValueError with a given message.
+
+    This function is a convenience wrapper to raise a ValueError with a
+    specific message. It can be used to standardize error handling across
+    the codebase.
+
+    :param message: The error message to include in the ValueError.
+    :type message: str
+    :raises ValueError: Always raises a ValueError with the provided message.
+    """
+    raise ValueError(message)
+
+
+def raise_attribute_error(message: str) -> None:
+    """Raise an AttributeError with a given message.
+
+    This function is a convenience wrapper to raise an AttributeError with a
+    specific message. It can be used to standardize error handling across
+    the codebase.
+
+    :param message: The error message to include in the AttributeError.
+    :type message: str
+    :raises AttributeError: Always raises an AttributeError with the provided message.
+    """
+    raise AttributeError(message)
