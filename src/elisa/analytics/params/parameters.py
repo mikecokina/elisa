@@ -690,6 +690,8 @@ class InitialParameter:
     :type transform_cls: type[elisa.types.TransformPropertiesType]
     :param kwargs: Fit parameter attributes dictionary.
     :type kwargs: dict
+    :raises ElisaInitialParametersError: If the unit cannot be parsed or attached
+        to value, min, max or sigma metadata. The original failure is chained.
 
     :**kwargs contents**:
         * **param** (str) - Parameter name
@@ -725,18 +727,28 @@ class InitialParameter:
         self.max: Number | Any | None = None
         self.sigma: Number | Any | None = None
 
-        # units transformaton
-        self.unit = u.Unit(self.unit) if self.unit is not None else self.unit
+        if self.unit is not None:
+            try:
+                self.unit = u.Unit(self.unit)
+            except (TypeError, ValueError, ArithmeticError) as exc:
+                message = f"Invalid `unit` metadata for initial parameter `{self.param}`: {self.unit!r}"
+                raise_elisa_initial_parameters_error(message, exc)
+
         if self.unit is not None and self.unit is not u.dimensionless_unscaled and self.constraint is None:
-            kwargs.update(
-                {
-                    "value": kwargs.get("value") * self.unit,
-                    "min": kwargs.get("min") * self.unit,
-                    "max": kwargs.get("max") * self.unit,
-                },
-            )
+            fields = ("value", "min", "max")
             if kwargs.get("sigma") is not None:
-                kwargs.update({"sigma": kwargs.get("sigma") * self.unit})
+                fields += ("sigma",)
+
+            for field in fields:
+                value = kwargs.get(field)
+                try:
+                    kwargs[field] = value * self.unit
+                except (TypeError, ValueError, ArithmeticError) as exc:
+                    message = (
+                        f"Invalid `{field}` metadata for initial parameter `{self.param}`: "
+                        f"cannot attach unit `{self.unit}` to {value!r}"
+                    )
+                    raise_elisa_initial_parameters_error(message, exc)
 
         if self.constraint is None:
             self.value = transform_cls.transform_input(**{self.param: kwargs.get("value")})[self.param]
