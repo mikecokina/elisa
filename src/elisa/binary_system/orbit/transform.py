@@ -87,6 +87,7 @@ class OrbitProperties(TransformProperties):
             value,
             u.DefaultBinarySystemUnits.system.argument_of_periastron,
             WHEN_FLOAT64,
+            parameter="argument_of_periastron",
         )
         if not np.isfinite(value):
             message = "Nonfinite argument_of_periastron."
@@ -109,6 +110,7 @@ class OrbitProperties(TransformProperties):
             value,
             u.DefaultBinarySystemUnits.system.inclination,
             WHEN_FLOAT64,
+            parameter="inclination",
         )
         if not np.isfinite(value):
             message = "Nonfinite inclination."

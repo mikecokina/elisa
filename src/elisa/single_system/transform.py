@@ -36,6 +36,7 @@ class SingleSystemProperties(SystemProperties):
             u.DefaultSingleSystemUnits.system.rotation_period,
             WHEN_FLOAT64,
             u.DefaultSingleSystemInputUnits.system.rotation_period,
+            parameter="rotation_period",
         )
 
         if not np.isfinite(value) or value <= 0:
@@ -57,7 +58,13 @@ class SingleSystemProperties(SystemProperties):
         :return: Transformed reference time in the default internal unit.
         :rtype: Float
         """
-        value = quantity_transform(value, u.DefaultSingleSystemUnits.system.reference_time, WHEN_FLOAT64, u.DefaultSingleSystemInputUnits.system.reference_time)
+        value = quantity_transform(
+            value,
+            u.DefaultSingleSystemUnits.system.reference_time,
+            WHEN_FLOAT64,
+            u.DefaultSingleSystemInputUnits.system.reference_time,
+            parameter="reference_time",
+        )
         if not np.isfinite(value):
             raise ElisaValidationError("Nonfinite reference_time.")
         return value

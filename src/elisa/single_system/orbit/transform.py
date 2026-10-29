@@ -42,7 +42,12 @@ class OrbitProperties(TransformProperties):
         :return: Inclination converted to the default single system units (radians).
         :rtype: Float
         """
-        value = quantity_transform(value, u.DefaultSingleSystemUnits.system.inclination, WHEN_FLOAT64)
+        value = quantity_transform(
+            value,
+            u.DefaultSingleSystemUnits.system.inclination,
+            WHEN_FLOAT64,
+            parameter="inclination",
+        )
         if not 0 <= value <= const.PI:
             msg = f"Inclination value of {value} is out of bounds (0, pi)."
             raise ElisaValidationError(msg)

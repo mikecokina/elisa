@@ -48,6 +48,8 @@ def quantity_transform(
     unit: Any,
     when_float64: tuple[type, ...] = WHEN_FLOAT64,
     default_input_unit: Any | None = None,
+    *,
+    parameter: str = "value",
 ) -> Float:
     """Transform a value into a floating-point value expressed in ``unit``.
 
@@ -61,26 +63,31 @@ def quantity_transform(
     :param when_float64: Tuple of numeric types treated as unitless numbers.
     :param default_input_unit: Assumed unit for numbers without explicit
         units.
+    :param parameter: Parameter name included in conversion errors.
     :returns: Value converted to ``unit`` as Python float.
     :rtype: float
-    :raises ElisaParametersError: When the input type is not supported.
+    :raises ElisaParametersError: If parsing, scalar conversion or unit conversion fails.
     """
-    if isinstance(value, (u.Quantity, str)):
-        value = u.Quantity(value) if isinstance(value, str) else value
-        value = np.float64(value.to(unit))
-    elif isinstance(value, when_float64):
-        if default_input_unit is None:
-            value = np.float64(value)
+    try:
+        if isinstance(value, (u.Quantity, str)):
+            value = u.Quantity(value) if isinstance(value, str) else value
+            value = np.float64(value.to(unit))
+        elif isinstance(value, when_float64):
+            if default_input_unit is None:
+                value = np.float64(value)
+            else:
+                value = (value * default_input_unit).to(unit).value
+                value = np.float64(value)
         else:
-            value = (value * default_input_unit).to(unit).value
-            value = np.float64(value)
-    else:
-        msg = (
-            "Input of variable is not (numpy.)int or (numpy.)float nor "
-            "astropy.unit.quantity.Quantity instance (or its string representation)."
-        )
-        raise_elisa_parameters_error(msg)
-    return float(value)
+            msg = (
+                f"Input of parameter `{parameter}` is not (numpy.)int or (numpy.)float nor "
+                "astropy.unit.quantity.Quantity instance (or its string representation)."
+            )
+            raise_elisa_parameters_error(msg)
+        return float(value)
+    except (TypeError, ValueError, ArithmeticError) as exc:
+        message = f"Cannot convert parameter `{parameter}` to unit `{unit}`."
+        raise_elisa_parameters_error(message, exc)
 
 
 def deg_transform(
@@ -88,6 +95,8 @@ def deg_transform(
     unit: Any,
     when_float64: tuple[type, ...],
     default_input_unit: Any = u.deg,
+    *,
+    parameter: str = "value",
 ) -> Float:
     """Transform an angular value into ``unit`` and return as float.
 
@@ -98,22 +107,27 @@ def deg_transform(
     :param unit: Target angular unit.
     :param when_float64: Tuple of numeric types treated as unitless numbers.
     :param default_input_unit: Default unit assumed for plain numbers.
+    :param parameter: Parameter name included in conversion errors.
     :returns: Converted value in ``unit`` as float.
     :rtype: float
-    :raises ElisaParametersError: When the input type is not supported.
+    :raises ElisaParametersError: If parsing, scalar conversion or unit conversion fails.
     """
-    if isinstance(value, (u.Quantity, str)):
-        value = u.Quantity(value) if isinstance(value, str) else value
-        value = np.float64(value.to(unit))
-    elif isinstance(value, when_float64):
-        value = np.float64(value) * default_input_unit.to(unit)
-    else:
-        msg = (
-            "Input of the angular variable is not (numpy.)int or (numpy.)float "
-            "nor astropy.unit.quantity.Quantity instance (or its string representation)."
-        )
-        raise_elisa_parameters_error(msg)
-    return float(value)
+    try:
+        if isinstance(value, (u.Quantity, str)):
+            value = u.Quantity(value) if isinstance(value, str) else value
+            value = np.float64(value.to(unit))
+        elif isinstance(value, when_float64):
+            value = np.float64(value) * default_input_unit.to(unit)
+        else:
+            msg = (
+                f"Input of angular parameter `{parameter}` is not (numpy.)int or (numpy.)float "
+                "nor astropy.unit.quantity.Quantity instance (or its string representation)."
+            )
+            raise_elisa_parameters_error(msg)
+        return float(value)
+    except (TypeError, ValueError, ArithmeticError) as exc:
+        message = f"Cannot convert parameter `{parameter}` to unit `{unit}`."
+        raise_elisa_parameters_error(message, exc)
 
 
 class TransformProperties:
@@ -145,19 +159,13 @@ class SystemProperties(TransformProperties):
         :raises ElisaParametersError: If the value is outside the valid range [0, pi].
         :raises ElisaParametersError: If the converted value is nonfinite.
         """
-        if isinstance(value, (u.Quantity, str)):
-            value = u.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(u.DefaultSystemUnits.inclination))
-        elif isinstance(value, (int, INT, float, FLOAT)):
-            value = np.float64(
-                (value * DefaultSystemInputUnits.inclination).to(DefaultSystemUnits.inclination),
-            )
-        else:
-            msg = (
-                "Input of variable `inclination` is not (numpy.)int or (numpy.)float "
-                "nor astropy.unit.quantity.Quantity instance (or its string representation)."
-            )
-            raise_elisa_parameters_error(msg)
+        value = quantity_transform(
+            value,
+            u.DefaultSystemUnits.inclination,
+            (int, INT, float, FLOAT),
+            DefaultSystemInputUnits.inclination,
+            parameter="inclination",
+        )
 
         if not np.isfinite(value):
             msg = "Nonfinite inclination."
@@ -176,7 +184,13 @@ class SystemProperties(TransformProperties):
         :raises ElisaParametersError: If the converted period is not strictly positive.
         :raises ElisaParametersError: If the converted period is nonfinite.
         """
-        value = quantity_transform(value, DefaultSystemUnits.period, WHEN_FLOAT64, u.DefaultSystemInputUnits.period)
+        value = quantity_transform(
+            value,
+            DefaultSystemUnits.period,
+            WHEN_FLOAT64,
+            u.DefaultSystemInputUnits.period,
+            parameter="period",
+        )
         if not np.isfinite(value):
             msg = "Nonfinite orbital period."
             raise_elisa_parameters_error(msg)
@@ -191,7 +205,13 @@ class SystemProperties(TransformProperties):
 
         Accepts numeric values or :class:`astropy.units.Quantity` instances.
         """
-        value = quantity_transform(value, u.DefaultSystemUnits.gamma, WHEN_FLOAT64, u.DefaultSystemInputUnits.gamma)
+        value = quantity_transform(
+            value,
+            u.DefaultSystemUnits.gamma,
+            WHEN_FLOAT64,
+            u.DefaultSystemInputUnits.gamma,
+            parameter="gamma",
+        )
         if not np.isfinite(value):
             msg = "Nonfinite systemic velocity (gamma)."
             raise_elisa_parameters_error(msg)
@@ -214,22 +234,13 @@ class SystemProperties(TransformProperties):
 
         Accepts numeric or :class:`astropy.units.Quantity` values.
         """
-        if isinstance(value, (u.Quantity, str)):
-            value = u.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(u.DefaultBinarySystemUnits.system.semi_major_axis))
-        elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(
-                value
-                * DefaultBinarySystemInputUnits.system.semi_major_axis.to(
-                    u.DefaultBinarySystemUnits.system.semi_major_axis,
-                ),
-            )
-        else:
-            msg = (
-                "User input is not (numpy.)int or (numpy.)float nor "
-                "astropy.unit.quantity.Quantity instance (or its string representation)."
-            )
-            raise_elisa_parameters_error(msg)
+        value = quantity_transform(
+            value,
+            u.DefaultBinarySystemUnits.system.semi_major_axis,
+            WHEN_FLOAT64,
+            DefaultBinarySystemInputUnits.system.semi_major_axis,
+            parameter="semi_major_axis",
+        )
         if not np.isfinite(value):
             msg = "Nonfinite semi_major_axis."
             raise_elisa_parameters_error(msg)
@@ -244,19 +255,13 @@ class SystemProperties(TransformProperties):
 
         Accepts numeric or :class:`astropy.units.Quantity` values.
         """
-        if isinstance(value, (u.Quantity, str)):
-            value = u.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(u.DefaultSystemUnits.distance))
-        elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(
-                value * DefaultBinarySystemInputUnits.system.distance.to(u.DefaultSystemUnits.distance),
-            )
-        else:
-            msg = (
-                "User input is not (numpy.)int or (numpy.)float nor "
-                "astropy.unit.quantity.Quantity instance (or its string representation)."
-            )
-            raise_elisa_parameters_error(msg)
+        value = quantity_transform(
+            value,
+            u.DefaultSystemUnits.distance,
+            WHEN_FLOAT64,
+            DefaultBinarySystemInputUnits.system.distance,
+            parameter="distance",
+        )
         if not np.isfinite(value):
             msg = "Nonfinite system distance."
             raise_elisa_parameters_error(msg)
@@ -305,6 +310,7 @@ class BodyProperties(TransformProperties):
             u.DefaultStarUnits.discretization_factor,
             WHEN_FLOAT64,
             u.DefaultStarInputUnits.discretization_factor,
+            parameter="discretization_factor",
         )
         if not np.isfinite(value):
             msg = "Nonfinite discretization factor."
@@ -320,7 +326,13 @@ class BodyProperties(TransformProperties):
 
         If no unit is provided, Kelvin is assumed.
         """
-        value = quantity_transform(value, u.DefaultStarUnits.t_eff, WHEN_FLOAT64, u.DefaultStarInputUnits.t_eff)
+        value = quantity_transform(
+            value,
+            u.DefaultStarUnits.t_eff,
+            WHEN_FLOAT64,
+            u.DefaultStarInputUnits.t_eff,
+            parameter="t_eff",
+        )
         if not np.isfinite(value):
             msg = "Nonfinite effective temperature."
             raise_elisa_parameters_error(msg)
@@ -337,19 +349,13 @@ class StarProperties(BodyProperties):
 
         If quantity is not provided, the default distance unit is assumed.
         """
-        if isinstance(value, (u.Quantity, str)):
-            value = u.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(u.DefaultStarUnits.equivalent_radius))
-        elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(
-                value * DefaultStarInputUnits.equivalent_radius.to(u.DefaultStarUnits.equivalent_radius),
-            )
-        else:
-            msg = (
-                "User input is not (numpy.)int or (numpy.)float nor "
-                "astropy.unit.quantity.Quantity instance (or its string representation)."
-            )
-            raise_elisa_parameters_error(msg)
+        value = quantity_transform(
+            value,
+            u.DefaultStarUnits.equivalent_radius,
+            WHEN_FLOAT64,
+            DefaultStarInputUnits.equivalent_radius,
+            parameter="equivalent_radius",
+        )
         if not np.isfinite(value):
             msg = "Nonfinite equivalent_radius."
             raise_elisa_parameters_error(msg)
@@ -365,17 +371,13 @@ class StarProperties(BodyProperties):
         If mass is provided as a plain numeric value it is interpreted in
         solar masses unless a Quantity is supplied.
         """
-        if isinstance(value, (u.Quantity, str)):
-            value = u.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(u.DefaultStarUnits.mass))
-        elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(value * DefaultStarInputUnits.mass.to(u.DefaultStarUnits.mass))
-        else:
-            msg = (
-                "User input is not (numpy.)int or (numpy.)float nor "
-                "astropy.unit.quantity.Quantity instance (or its string representation)."
-            )
-            raise_elisa_parameters_error(msg)
+        value = quantity_transform(
+            value,
+            u.DefaultStarUnits.mass,
+            WHEN_FLOAT64,
+            DefaultStarInputUnits.mass,
+            parameter="mass",
+        )
         if not np.isfinite(value):
             msg = "Nonfinite mass."
             raise_elisa_parameters_error(msg)
@@ -422,18 +424,23 @@ class StarProperties(BodyProperties):
         numeric inputs are treated as log g in cgs unless a Quantity is
         provided.
         """
-        if isinstance(value, (u.Quantity, str)):
-            value = u.Dex(value, unit=u.Unit(" ".join(value.split()[1:]))) if isinstance(value, str) else value
-            value = np.float64(value.to(u.LOG_ACCELERATION_UNIT))
-        elif isinstance(value, WHEN_FLOAT64):
-            # conversion from cgs to SI (log10(cm/s^2) -> log10(m/s^2))
-            value -= 2
-        else:
-            msg = (
-                "User input is not (numpy.)int or (numpy.)float nor "
-                "astropy.unit.quantity.Quantity instance (or its string representation)."
-            )
-            raise_elisa_parameters_error(msg)
+        try:
+            if isinstance(value, (u.Quantity, str)):
+                value = u.Dex(value, unit=u.Unit(" ".join(value.split()[1:]))) if isinstance(value, str) else value
+                value = np.float64(value.to(u.LOG_ACCELERATION_UNIT))
+            elif isinstance(value, WHEN_FLOAT64):
+                # conversion from cgs to SI (log10(cm/s^2) -> log10(m/s^2))
+                value = np.float64(value - 2)
+            else:
+                msg = (
+                    "User input is not (numpy.)int or (numpy.)float nor "
+                    "astropy.unit.quantity.Quantity instance (or its string representation)."
+                )
+                raise_elisa_parameters_error(msg)
+            value = float(value)
+        except (TypeError, ValueError, ArithmeticError) as exc:
+            message = f"Cannot convert parameter `polar_log_g` to unit `{u.LOG_ACCELERATION_UNIT}`."
+            raise_elisa_parameters_error(message, exc)
         if not np.isfinite(value):
             msg = "Nonfinite polar_log_g."
             raise_elisa_parameters_error(msg)
@@ -501,12 +508,24 @@ class SpotProperties(BodyProperties):
     @staticmethod
     def latitude(value: Any) -> Float:
         """Convert spot latitude (degrees by default) to internal units."""
-        return deg_transform(value, u.DefaultSpotUnits.latitude, WHEN_FLOAT64, u.DefaultSpotInputUnits.latitude)
+        return deg_transform(
+            value,
+            u.DefaultSpotUnits.latitude,
+            WHEN_FLOAT64,
+            u.DefaultSpotInputUnits.latitude,
+            parameter="latitude",
+        )
 
     @staticmethod
     def longitude(value: Any) -> Float:
         """Convert spot longitude (degrees by default) to internal units."""
-        return deg_transform(value, u.DefaultSpotUnits.longitude, WHEN_FLOAT64, u.DefaultSpotInputUnits.longitude)
+        return deg_transform(
+            value,
+            u.DefaultSpotUnits.longitude,
+            WHEN_FLOAT64,
+            u.DefaultSpotInputUnits.longitude,
+            parameter="longitude",
+        )
 
     @staticmethod
     def angular_radius(value: Any) -> Float:
@@ -516,6 +535,7 @@ class SpotProperties(BodyProperties):
             u.DefaultSpotUnits.angular_radius,
             WHEN_FLOAT64,
             u.DefaultSpotInputUnits.angular_radius,
+            parameter="angular_radius",
         )
         if value <= 0:
             msg = "Spot angular radius must be strictly positive."
@@ -538,6 +558,7 @@ class SpotProperties(BodyProperties):
             u.DefaultSpotUnits.discretization_factor,
             WHEN_FLOAT64,
             u.DefaultSpotInputUnits.discretization_factor,
+            parameter="discretization_factor",
         )
         if value <= 0:
             msg = "Spot discretization factor must be strictly positive."

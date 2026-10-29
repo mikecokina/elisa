@@ -85,17 +85,9 @@ class PulsationModeProperties(SystemProperties):
         :raises ElisaParametersError: If value is not a numeric type or Quantity.
         :raises ElisaParametersError: If amplitude is negative or nonfinite.
         """
-        if isinstance(value, (u.Quantity, str)):
-            retval = u.Quantity(value) if isinstance(value, str) else value
-            retval = np.float64(retval.to(u.VELOCITY_UNIT))
-        elif isinstance(value, (int, INT, float, FLOAT)):
-            retval = FLOAT(value)
-        else:
-            error_msg = (
-                "Value of `amplitude` is not (numpy.)int or (numpy.)float "
-                "nor astropy.unit.quantity.Quantity instance."
-            )
-            raise_elisa_parameters_error(error_msg)
+        retval = quantity_transform(
+            value, u.VELOCITY_UNIT, (int, INT, float, FLOAT), parameter="amplitude",
+        )
         if not np.isfinite(retval) or retval < 0:
             error_msg = "Temperature amplitude of mode has to be non-negative number."
             raise_elisa_parameters_error(error_msg)
@@ -116,21 +108,13 @@ class PulsationModeProperties(SystemProperties):
         :raises ElisaParametersError: If value is not a numeric type or Quantity.
         :raises ElisaParametersError: If frequency is negative or nonfinite.
         """
-        if isinstance(value, (u.Quantity, str)):
-            retval = u.Quantity(value) if isinstance(value, str) else value
-            retval = np.float64(retval.to(u.FREQUENCY_UNIT))
-        elif isinstance(value, (int, INT, float, FLOAT)):
-            retval = (
-                (FLOAT(value) * u.DefaultPulsationsInputUnits["frequency"])
-                .to(u.FREQUENCY_UNIT)
-                .value
-            )
-        else:
-            error_msg = (
-                "Value of `frequency` is not (numpy.)int or (numpy.)float "
-                "nor astropy.unit.quantity.Quantity instance."
-            )
-            raise_elisa_parameters_error(error_msg)
+        retval = quantity_transform(
+            value,
+            u.FREQUENCY_UNIT,
+            (int, INT, float, FLOAT),
+            u.DefaultPulsationsInputUnits.frequency,
+            parameter="frequency",
+        )
         if not np.isfinite(retval) or retval < 0:
             error_msg = "Frequency of the mode has to be non-negative number."
             raise_elisa_parameters_error(error_msg)
@@ -153,6 +137,7 @@ class PulsationModeProperties(SystemProperties):
             u.DefaultPulsationsUnits.start_phase,
             WHEN_FLOAT64,
             u.DefaultPulsationsInputUnits.start_phase,
+            parameter="start_phase",
         )
 
     @staticmethod
@@ -173,6 +158,7 @@ class PulsationModeProperties(SystemProperties):
             u.DefaultPulsationsUnits.mode_axis_theta,
             WHEN_FLOAT64,
             u.DefaultPulsationsInputUnits.mode_axis_theta,
+            parameter="mode_axis_theta",
         )
         if not 0 <= retval < c.PI:
             error_msg = (
@@ -199,6 +185,7 @@ class PulsationModeProperties(SystemProperties):
             u.DefaultPulsationsUnits.mode_axis_phi,
             WHEN_FLOAT64,
             u.DefaultPulsationsInputUnits.mode_axis_phi,
+            parameter="mode_axis_phi",
         )
         if not np.isfinite(retval):
             error_msg = "Value of `mode_axis_phi` must be finite."
@@ -224,6 +211,7 @@ class PulsationModeProperties(SystemProperties):
             u.DefaultPulsationsUnits.temperature_perturbation_phase_shift,
             WHEN_FLOAT64,
             u.DefaultPulsationsInputUnits.temperature_perturbation_phase_shift,
+            parameter="temperature_perturbation_phase_shift",
         )
 
     @staticmethod

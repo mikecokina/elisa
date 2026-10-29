@@ -39,21 +39,13 @@ class BinarySystemProperties(SystemProperties):
         :param value: Numeric value or astropy Quantity.
         :returns: Argument of periastron as float.
         """
-        if isinstance(value, (units.Quantity, str)):
-            value = units.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(units.DefaultBinarySystemUnits.system.argument_of_periastron))
-        elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(
-                (value * DefaultBinarySystemInputUnits.system.argument_of_periastron).to(
-                    units.DefaultBinarySystemUnits.system.argument_of_periastron,
-                ),
-            )
-        else:
-            msg = (
-                "Input of variable `argument_of_periastron` is not (numpy.)int or (numpy.)float "
-                "nor astropy.unit.quantity.Quantity instance."
-            )
-            raise_elisa_parameters_error(msg)
+        value = quantity_transform(
+            value,
+            units.DefaultBinarySystemUnits.system.argument_of_periastron,
+            WHEN_FLOAT64,
+            DefaultBinarySystemInputUnits.system.argument_of_periastron,
+            parameter="argument_of_periastron",
+        )
         if not np.isfinite(value):
             msg = "Nonfinite argument_of_periastron."
             raise_elisa_parameters_error(msg)
@@ -89,6 +81,7 @@ class BinarySystemProperties(SystemProperties):
             units.DefaultBinarySystemUnits.system.primary_minimum_time,
             WHEN_FLOAT64,
             units.DefaultBinarySystemInputUnits.system.primary_minimum_time,
+            parameter="primary_minimum_time",
         )
         if not np.isfinite(value):
             msg = "Nonfinite primary_minimum_time."
@@ -137,17 +130,7 @@ class RadialVelocityObserverProperties(SystemProperties):
         :param value: Numeric value or astropy Quantity.
         :returns: asini value as float.
         """
-        if isinstance(value, (units.Quantity, str)):
-            value = units.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(units.solRad))
-        elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(value)
-        else:
-            msg = (
-                "Input of variable `asini` is not (numpy.)int or (numpy.)float "
-                "nor astropy.unit.quantity.Quantity instance."
-            )
-            raise_elisa_parameters_error(msg)
+        value = quantity_transform(value, units.solRad, WHEN_FLOAT64, parameter="asini")
         if not np.isfinite(value):
             msg = "Nonfinite asini."
             raise_elisa_parameters_error(msg)
