@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import abc
+import ast
 import json
 import re
 from copy import deepcopy
@@ -1177,38 +1178,43 @@ class BinaryInitialParameters(InitialParameters):
         return data
 
     def constraint_validator(self) -> None:
-        """Validate constraints for valid syntax and allowed mathematical operations.
+        """Validate constraint syntax, parameter references and allowed characters.
 
-        Ensures constraints only use allowed functions and characters. Allowed methods:
-        sqrt, arcsin, arccos, arctan, log, sin, cos, tan, exp, degrees, radians.
+        Allowed functions are listed in ALLOWED_CONSTRAINT_METHODS. Expressions
+        are parsed without evaluating their numerical values.
 
-        Allowed characters: '(', ')', '+', '-', '*', '/', '.', 'e'
-
-        :raises ElisaInitialParametersValidationError: If constraint contains forbidden syntax or characters.
+        :raises ElisaInitialParametersValidationError: If constraint syntax or characters are invalid.
         """
         constrained = self.get_constrained(jsonify=False)
         substitution = self.get_substitution_dict()
-        try:
-            subst = {
-                param: utils.str_repalce(
-                    utils.str_repalce(constraint.constraint, substitution.keys(), substitution.values()),
-                    ALLOWED_CONSTRAINT_METHODS,
-                    [""] * len(ALLOWED_CONSTRAINT_METHODS),
-                ).replace(" ", "")
-                for param, constraint in constrained.items()
-            }
-        except KeyError as exc:
-            msg = (
-                "It seems your constraint contain variable that cannot be resolved. "
-                "Make sure that linked constraint variable is not fixed or check for typos in variable name in "
-                "constraint expression."
-            )
-            raise ElisaInitialParametersValidationError(msg) from exc
+        for parameter, constraint in constrained.items():
+            expression = self._constraint_syntax_expression(constraint.constraint, substitution)
+            self._validate_constraint_characters(parameter, expression)
+            self._validate_constraint_syntax(parameter, expression)
 
-        for key, val in subst.items():
-            if not np.all(np.isin(list(val), ALLOWED_CONSTRAINT_CHARS)):
-                msg = f"Constraint {key} contain forbidden characters. Allowed: {ALLOWED_CONSTRAINT_CHARS}"
-                raise ElisaInitialParametersValidationError(msg)
+    @staticmethod
+    def _constraint_syntax_expression(expression: str, substitution: dict) -> str:
+        """Replace known parameter references with numeric placeholders for parsing."""
+        return utils.str_repalce(expression, substitution.keys(), ["1.0"] * len(substitution)).strip(" ")
+
+    @staticmethod
+    def _validate_constraint_characters(parameter: str, expression: str) -> None:
+        """Check the existing character whitelist after removing allowed function names."""
+        characters = utils.str_repalce(
+            expression, ALLOWED_CONSTRAINT_METHODS, [""] * len(ALLOWED_CONSTRAINT_METHODS),
+        ).replace(" ", "")
+        if not np.all(np.isin(list(characters), ALLOWED_CONSTRAINT_CHARS)):
+            msg = f"Constraint {parameter} contain forbidden characters. Allowed: {ALLOWED_CONSTRAINT_CHARS}"
+            raise ElisaInitialParametersValidationError(msg)
+
+    @staticmethod
+    def _validate_constraint_syntax(parameter: str, expression: str) -> None:
+        """Parse a constraint expression and report syntax errors in the initial layer."""
+        try:
+            ast.parse(expression, mode="eval")
+        except SyntaxError as exc:
+            msg = f"Invalid syntax in constraint `{parameter}`: {exc.msg}"
+            raise ElisaInitialParametersValidationError(msg) from exc
 
     def validate_data(self) -> None:
         """Validate that fit parameters contain at least one variable parameter.
@@ -1367,6 +1373,10 @@ class BinaryInitialParameters(InitialParameters):
     def _get_kind_of(self, kind_of: str, *, jsonify: bool = False) -> dict:
         """Extract parameters of a specific kind from the model.
 
+        Constraints are selected when defined (not None), including empty
+        expressions that still need validation. Other kinds use truthy values.
+        Return parameter objects unless jsonify requests their dictionary form.
+
         :param kind_of: Property name to filter by ('fixed', 'constraint', etc.).
         :type kind_of: str
         :param jsonify: If True, convert to JSON-compatible format. Defaults to False.
@@ -1374,9 +1384,14 @@ class BinaryInitialParameters(InitialParameters):
         :returns: Dictionary of parameters matching the filter.
         :rtype: dict
         """
+        if kind_of == "constraint":
+            selected = {key: val for key, val in self.data.items() if val.constraint is not None}
+        else:
+            selected = {key: val for key, val in self.data.items() if getattr(val, kind_of)}
+
         if jsonify:
-            return {key: val.to_dict() for key, val in self.data.items() if getattr(val, kind_of)}
-        return {key: val for key, val in self.data.items() if getattr(val, kind_of)}
+            return {key: val.to_dict() for key, val in selected.items()}
+        return selected
 
     def get_fixed(self, *, jsonify: bool = False) -> dict:
         """Get all fixed parameters from the model.

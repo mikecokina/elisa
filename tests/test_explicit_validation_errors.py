@@ -330,3 +330,62 @@ def test_bv_temperature_accepts_canonical_and_legacy_overcontact_names():
     assert canonical == pytest.approx(legacy)
     assert canonical != pytest.approx(elisa_bv_temperature(0.3, morphology="detached"))
     assert elisa_bv_temperature(0.3, morphology="unknown") == elisa_bv_temperature(0.3, morphology="detached")
+
+
+def initial_parameters_with_constraint(expression):
+    return BinaryInitialParameters(system={
+        "period": {"value": 1.0, "min": 0.5, "max": 2.0},
+        "gamma": {"constraint": expression},
+    })
+
+
+@pytest.mark.parametrize("expression", [
+    ")(", "(", "1 +", "system@period +", "sin(system@period", "sin system@period", "1e-", "", "   ", "1 2",
+])
+def test_initial_constraint_syntax_errors_report_parameter_and_original_cause(expression):
+    with pytest.raises(ElisaInitialParametersValidationError, match="system@gamma") as caught:
+        initial_parameters_with_constraint(expression)
+    assert type(caught.value.__cause__) is SyntaxError
+    assert caught.value.__cause__.msg in str(caught.value)
+
+
+@pytest.mark.parametrize("expression", [
+    "2.0 * system@period",
+    "sin(radians(system@period))",
+    "(-system@period)**2",
+    " 1e-3 + (system@period / 2) ",
+    "1 / (system@period - 1)",
+    "log(system@period - 2)",
+    "1 / 0",
+])
+def test_initial_constraint_syntax_validation_preserves_expressions_without_evaluation(expression):
+    with np.errstate(all="raise"):
+        initial = initial_parameters_with_constraint(expression)
+    assert initial.get_constrained()["system@gamma"].constraint == expression
+
+
+@pytest.mark.parametrize("expression", ["system@missing + 1", "sqrt(system@period)", "system@period ^ 2"])
+def test_constraint_syntax_validation_keeps_existing_reference_and_character_restrictions(expression):
+    with pytest.raises(ElisaInitialParametersValidationError, match="forbidden characters"):
+        initial_parameters_with_constraint(expression)
+
+
+def test_nested_spot_constraint_syntax_is_checked_during_binary_initialization():
+    with pytest.raises(ElisaInitialParametersValidationError, match="primary@spot@feature@longitude") as caught:
+        BinaryInitialParameters(
+            system={"period": {"value": 1.0, "min": 0.5, "max": 2.0}},
+            primary={"spots": [{"label": "feature", "longitude": {"constraint": "system@period +"}}]},
+        )
+    assert type(caught.value.__cause__) is SyntaxError
+
+
+def test_nested_constraint_references_keep_valid_function_syntax():
+    expression = "2 * sin(primary@spot@feature@longitude)"
+    initial = BinaryInitialParameters(
+        system={
+            "period": {"value": 1.0, "min": 0.5, "max": 2.0},
+            "gamma": {"constraint": expression},
+        },
+        primary={"spots": [{"label": "feature", "longitude": {"value": 30.0, "fixed": True}}]},
+    )
+    assert initial.get_constrained()["system@gamma"].constraint == expression
