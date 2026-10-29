@@ -234,6 +234,21 @@ class PulsationMode:
         """
         return PulsationModeProperties.transform_input(**kwargs)
 
+    def reinitialization_kwargs(self) -> dict[str, Any]:
+        """Return current mode descriptors with their internal physical units."""
+        kwargs: dict[str, Any] = {}
+        for kwarg in self.ALL_KWARGS:
+            value = getattr(self, kwarg)
+            # This optional default is calculated during system initialization;
+            # passing None explicitly to its input validator is invalid.
+            if kwarg == "horizontal_to_radial_amplitude_ratio" and value is None:
+                continue
+            unit = self.default_internal_units[kwarg]
+            if unit not in (units.dimensionless_unscaled, bool) and not isinstance(value, units.Quantity):
+                value = value * unit
+            kwargs[kwarg] = value
+        return kwargs
+
     def validate_mode(self) -> None:
         """Validate that azimuthal order constraint ``|m| <= l`` is satisfied.
 

@@ -250,6 +250,7 @@ class SingleSystem(System[Star]):
         utils.check_missing_kwargs(SingleSystem.MANDATORY_KWARGS, kwargs, instance_of=SingleSystem)
         self.object_params_validity_check({"star": star}, self.STAR_MANDATORY_KWARGS)
         kwargs = self.transform_input(**kwargs)
+        self._gamma_was_supplied: bool = "gamma" in kwargs
 
         super().__init__(name, **kwargs)
 
@@ -432,10 +433,25 @@ class SingleSystem(System[Star]):
     def get_info(self) -> None:
         """Return formatted summary information about the system."""
 
+    def reinitialization_kwargs(self) -> dict[str, Any]:
+        """Return current system parameters, omitting the original default gamma.
+
+        As with Star, reassignment of the same NaN singleton to an originally
+        omitted parameter cannot be distinguished from its untouched default.
+        """
+        kwargs = self.kwargs_serializer()
+        # As for Star, newly computed nonfinite values must be validated.
+        if not self._gamma_was_supplied and self.gamma is up.NaN:
+            del kwargs["gamma"]
+        return kwargs
+
     def init(self) -> None:
         """Re-initialize the instance after parameter changes."""
         logger.info("re/initialising class instance %s", SingleSystem.__name__)
-        self.__init__(star=self.star, **self.kwargs_serializer())
+        # Rebuild modes without reconstructing the star's derived surface potential.
+        if self.star.has_pulsations():
+            self.star.pulsations = self.star.kwargs_serializer()["pulsations"]
+        self.__init__(star=self.star, **self.reinitialization_kwargs())
 
     def init_orbit(self) -> None:
         """Initialize the orbit helper used for computing lines of sight."""
@@ -559,7 +575,8 @@ class SingleSystem(System[Star]):
         :returns: Serialized and transformed property mapping.
         :rtype: dict[str, object]
         """
-        props = SingleSystemProperties.transform_input(**self.kwargs_serializer())
+        props = SingleSystemProperties.transform_input(**self.reinitialization_kwargs())
+        props.setdefault("gamma", self.gamma)
         props.update(
             {
                 "angular_velocity": self.angular_velocity,

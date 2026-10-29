@@ -297,6 +297,7 @@ class Star(Body):
             "mass": u.kg,
             "t_eff": u.K,
             "discretization_factor": u.rad,
+            "polar_log_g": u.LOG_ACCELERATION_UNIT,
         }
 
         serialized_kwargs: dict[str, Any] = {}
@@ -309,6 +310,9 @@ class Star(Body):
                     value = [spot.kwargs_serializer() for spot in spots_attr.values()]
                 else:
                     value = [spot.kwargs_serializer() for spot in spots_attr]
+            elif kwarg == "pulsations":
+                modes = self.pulsations.values() if hasattr(self.pulsations, "values") else self.pulsations
+                value = [mode.reinitialization_kwargs() for mode in modes]
             elif kwarg in default_units:
                 value = getattr(self, kwarg)
                 if not isinstance(value, u.Quantity):
@@ -319,9 +323,24 @@ class Star(Body):
             serialized_kwargs[kwarg] = value
         return serialized_kwargs
 
+    def reinitialization_kwargs(self) -> dict[str, Any]:
+        """Return current constructor parameters, omitting original optional sentinels.
+
+        Reassigning the same NaN singleton to an originally omitted parameter
+        is indistinguishable from leaving its default untouched. Newly computed
+        NaNs and explicitly supplied parameters are never omitted.
+        """
+        kwargs = self.kwargs_serializer()
+        for kwarg in ("surface_potential", "synchronicity", "albedo", "polar_log_g", "gravity_darkening"):
+            # Identity restricts omission to the original default sentinel. A NaN
+            # produced by arithmetic must still reach the Properties validator.
+            if kwarg not in self.kwargs and getattr(self, kwarg) is up.NaN:
+                del kwargs[kwarg]
+        return kwargs
+
     def init(self) -> None:
         """Re-initialize the instance from its serialized kwargs."""
-        self.__init__(**self.kwargs_serializer())
+        self.__init__(**self.reinitialization_kwargs())
 
     def has_pulsations(self) -> bool:
         """Return True when the star has defined pulsation modes.

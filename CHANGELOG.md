@@ -147,6 +147,15 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
+- Restore `Star.init()`, `BinarySystem.init()`, and `SingleSystem.init()`
+  after direct parameter changes, preserving current attributes and calculated
+  defaults. Omit original, unspecified optional NaN sentinels during reconstruction
+  while retaining strict validation of explicit and computed nonfinite values.
+- Preserve the internal logarithmic unit of `polar_log_g` during reconstruction,
+  preventing the repeated 2 dex decrease while retaining bare numeric cgs inputs.
+- Reconstruct pulsations from current descriptors with internal frequency and
+  angular units, including mode changes in single systems. Preserve spot units
+  and prevent nested modes or spots from accumulating across reinitializations.
 - Preserve the original `r_squared` value and unit when loading LSQ and MCMC
   fitting results and reevaluating constraints. Keep the diagnostic separate
   from physical parameter processing, without recalculating R² or adding it
