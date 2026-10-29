@@ -84,7 +84,9 @@ def _observation_coordinate_unit(data: Mapping[str, DataSet]) -> UnitType:
 
 
 def _validate_lc_normalization(
-    y_data: Mapping[str, NDArray], kind: str, top_fraction_to_average: Float,
+    y_data: Mapping[str, NDArray],
+    kind: str,
+    top_fraction_to_average: Float,
 ) -> None:
     """Check normalization settings and the observed mean flux scales.
 
@@ -108,7 +110,8 @@ def _validate_lc_normalization(
 
 
 def _validated_normalized_errors(
-    y_data: Mapping[str, NDArray], y_err: Mapping[str, NDArray | None] | None,
+    y_data: Mapping[str, NDArray],
+    y_err: Mapping[str, NDArray | None] | None,
 ) -> dict[str, NDArray]:
     """Check normalized observations and return their usable uncertainties.
 
@@ -315,7 +318,9 @@ class AbstractFit(metaclass=ABCMeta):
             errors[key] = np.full(dataset.y_data.shape, scale, dtype=float)
             logger.warning(
                 "Dataset %s uses estimated y_err=%s: heuristic weights, not calibrated measurement "
-                "uncertainties; MCMC posterior credible intervals depend on this assumed scale.", key, scale,
+                "uncertainties; MCMC posterior credible intervals depend on this assumed scale.",
+                key,
+                scale,
             )
         return errors
 
@@ -478,7 +483,7 @@ class AbstractRVFit(AbstractFit):
         data: dict[str, Any],
         discretization: Float,  # noqa: ARG002
         interp_treshold: int,  # noqa: ARG002
-    )-> Float:
+    ) -> Float:
         """Return R^2 for given model parameters and observed data.
 
         :param model_parameters: Set of model parameters in JSON format.
@@ -770,7 +775,7 @@ class AbstractLCFit(AbstractFit):
         data: dict[str, Any],
         discretization: Float,
         interp_treshold: int,
-    )-> Float:
+    ) -> Float:
         """Return R^2 for given model parameters and observed data.
 
         :param model_parameters: Set of model parameters in JSON format.
@@ -803,8 +808,11 @@ class AbstractLCFit(AbstractFit):
 
 
 def lc_r_squared(
-    synthetic: Callable[..., Any], *args: Any, fit_xs: Any = None,
-    x_data: Any = None, **kwargs: Any,
+    synthetic: Callable[..., Any],
+    *args: Any,
+    fit_xs: Any = None,
+    x_data: Any = None,
+    **kwargs: Any,
 ) -> float:
     """Compute R^2 coefficient of determination between synthetic and observed light curves.
 
@@ -835,8 +843,16 @@ def lc_r_squared(
     observer = Observer(passband=passband, system=None)
     observer.system_cls = cls
     synthetic_result = predict_light_curves(
-        x_data_reduced, y_data, x_data_reducer, discretization, observer,
-        interp_treshold, kwargs, fit_xs=fit_xs, x_data=x_data, synthesis=synthetic,
+        x_data_reduced,
+        y_data,
+        x_data_reducer,
+        discretization,
+        observer,
+        interp_treshold,
+        kwargs,
+        fit_xs=fit_xs,
+        x_data=x_data,
+        synthesis=synthetic,
     )
 
     return r_squared(synthetic_result, y_data)
@@ -866,8 +882,7 @@ def map_rv_predictions(
         curve = synthetic[component]
         if np.shape(curve) != expected_shape:
             msg = (
-                f"RV synthetic shape for {component} must match coordinate grid "
-                f"{expected_shape}, got {np.shape(curve)}"
+                f"RV synthetic shape for {component} must match coordinate grid {expected_shape}, got {np.shape(curve)}"
             )
             raise PredictionAlignmentError(msg)
         if not np.all(np.isfinite(curve)):
@@ -906,7 +921,7 @@ def rv_r_squared(synthetic: Callable[..., Any], *args: Any, **kwargs: Any) -> fl
     return r_squared(synthetic_result, y_data)
 
 
-def r_squared(synthetic: dict[str, Any], observed: dict[str, Any])-> Float:
+def r_squared(synthetic: dict[str, Any], observed: dict[str, Any]) -> Float:
     """Return coefficient of determination between model and observations.
 
     :param synthetic: Dictionary mapping component names to synthetic values.

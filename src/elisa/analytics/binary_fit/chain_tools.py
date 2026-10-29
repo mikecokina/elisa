@@ -8,6 +8,7 @@ import numpy as np
 from emcee.autocorr import AutocorrError, function_1d, integrated_time
 
 from elisa import settings
+from elisa.base.error import raise_elisa_monte_carlo_error
 from elisa.conf.enums import DiscardUnit
 
 if TYPE_CHECKING:
@@ -24,12 +25,12 @@ def get_production_chain(sampler: EnsembleSampler | None) -> NDArray[np.float64]
 
     :param sampler: Completed sampler instance, or ``None`` before sampling.
     :returns: Structured production samples with step, walker and parameter axes.
-    :raises ValueError: If the sampler or its production chain is unavailable.
+    :raises ElisaMonteCarloError: If the sampler or its production chain is unavailable.
     """
     chain = sampler.get_chain() if sampler is not None else None
     if chain is None:
         msg = "Sampler did not provide a production chain"
-        raise ValueError(msg)
+        raise_elisa_monte_carlo_error(msg)
     return chain
 
 
@@ -38,14 +39,14 @@ def validate_flat_samples(data: dict[str, Any]) -> NDArray[np.float64]:
     flat = np.asarray(data["flat_chain"], dtype=float)
     if flat.ndim != FLAT_NDIM or flat.size == 0 or not np.all(np.isfinite(flat)):
         msg = "Chain samples must be a finite nonempty matrix"
-        raise ValueError(msg)
+        raise_elisa_monte_carlo_error(msg)
     labels = data["fitable_parameters"]
     if not isinstance(labels, list) or len(labels) != flat.shape[1]:
         msg = "Chain parameter dimension does not match variable labels"
-        raise ValueError(msg)
+        raise_elisa_monte_carlo_error(msg)
     if any(not isinstance(label, str) for label in labels) or len(set(labels)) != len(labels):
         msg = "Chain variable labels must be unique strings"
-        raise ValueError(msg)
+        raise_elisa_monte_carlo_error(msg)
     return flat
 
 
@@ -56,13 +57,13 @@ def restore_temporal_chain(flat: NDArray[np.float64], data: dict[str, Any]) -> N
     shape = data.get("chain_shape")
     if not isinstance(shape, (list, tuple)) or len(shape) != ENSEMBLE_NDIM:
         msg = "Invalid temporal chain metadata: expected step, walker, parameter axes"
-        raise ValueError(msg)
+        raise_elisa_monte_carlo_error(msg)
     if any(type(size) is not int or size <= 0 for size in shape):
         msg = "Invalid temporal chain metadata: dimensions must be positive integers"
-        raise ValueError(msg)
+        raise_elisa_monte_carlo_error(msg)
     if data.get("chain_order") != CHAIN_ORDER or flat.shape != (shape[0] * shape[1], shape[2]):
         msg = "Invalid temporal chain metadata: shape or ordering does not match samples"
-        raise ValueError(msg)
+        raise_elisa_monte_carlo_error(msg)
     return flat.reshape(tuple(shape))
 
 
@@ -77,17 +78,17 @@ def validate_discard(discard: int, discard_unit: DiscardUnit | str | None) -> Di
     """
     if isinstance(discard, (bool, np.bool_)) or not isinstance(discard, (int, np.integer)):
         msg = "discard must be a nonnegative integer"
-        raise TypeError(msg)
+        raise_elisa_monte_carlo_error(msg)
     if discard < 0:
         msg = "discard must be a nonnegative integer"
-        raise ValueError(msg)
+        raise_elisa_monte_carlo_error(msg)
     if discard_unit is None:
         return None
     try:
         return DiscardUnit(discard_unit)
-    except (TypeError, ValueError) as exc:
+    except (TypeError, ValueError):
         msg = "discard_unit must be DiscardUnit.STEPS or DiscardUnit.ROWS ('steps' or 'rows')"
-        raise ValueError(msg) from exc
+        raise_elisa_monte_carlo_error(msg)
 
 
 def prepare_chain_samples(
@@ -117,10 +118,10 @@ def prepare_chain_samples(
         return discard_steps(chain, discard)
     if discard >= flat.shape[0]:
         msg = "Discard leaves no samples"
-        raise ValueError(msg)
+        raise_elisa_monte_carlo_error(msg)
     if chain is not None:
         nwalkers = chain.shape[1]
-        chain = chain[discard // nwalkers:] if discard % nwalkers == 0 else None
+        chain = chain[discard // nwalkers :] if discard % nwalkers == 0 else None
     return flat[discard:], chain
 
 
@@ -128,10 +129,10 @@ def discard_steps(chain: NDArray[np.float64] | None, discard: int) -> tuple[NDAr
     """Slice complete ensemble iterations before flattening."""
     if chain is None:
         msg = "Step discard requires temporal chain metadata; use discard_unit=DiscardUnit.ROWS for legacy files"
-        raise ValueError(msg)
+        raise_elisa_monte_carlo_error(msg)
     if discard >= chain.shape[0]:
         msg = "Discard leaves no samples"
-        raise ValueError(msg)
+        raise_elisa_monte_carlo_error(msg)
     chain = chain[discard:]
     return chain.reshape(-1, chain.shape[-1]), chain
 
@@ -139,14 +140,14 @@ def discard_steps(chain: NDArray[np.float64] | None, discard: int) -> tuple[NDAr
 def ensemble_autocorrelation(chain: Any) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Return walker-averaged ACFs and reliable integrated times, in step units.
 
-    Missing temporal axes raise ValueError. Short chains and parameters with any
+    Missing temporal axes raise ElisaMonteCarloError. Short chains and parameters with any
     stuck walker return NaN times. No effective sample size is inferred from flat
     samples. Diagnostics run only on request, outside posterior evaluations.
     """
     values = np.asarray(chain, dtype=float)
     if values.ndim != ENSEMBLE_NDIM or values.size == 0 or not np.all(np.isfinite(values)):
         msg = "Temporal autocorrelation requires a finite nonempty (steps, walkers, parameters) chain"
-        raise ValueError(msg)
+        raise_elisa_monte_carlo_error(msg)
     functions = np.full((values.shape[0], values.shape[2]), np.nan)
     times = np.full(values.shape[2], np.nan)
     for idx in range(values.shape[2]):

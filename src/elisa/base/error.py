@@ -73,6 +73,8 @@ class ElisaGraphicsError(ElisaError):
     """Invalid configuration of a graphics / plotting task."""
 
 
+class ElisaMonteCarloError(ElisaError):
+    """Invalid configuration of a Monte Carlo helpers."""
 # ###
 
 
@@ -194,3 +196,17 @@ def raise_elisa_graphics_error(message: str) -> None:
     :raises ElisaGraphicsError: Always raises an ElisaGraphicsError with the provided message.
     """
     raise ElisaGraphicsError(message)
+
+
+def raise_elisa_monte_carlo_error(message: str) -> None:
+    """Raise an ElisaMonteCarloError with a given message.
+
+    This function is a convenience wrapper to raise an ElisaMonteCarloError with a
+    specific message. It can be used to standardize error handling across
+    the codebase.
+
+    :param message: The error message to include in the ElisaMonteCarloError.
+    :type message: str
+    :raises ElisaMonteCarloError: Always raises an ElisaMonteCarloError with the provided message.
+    """
+    raise ElisaMonteCarloError(message)

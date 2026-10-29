@@ -11,6 +11,7 @@ import numpy as np
 from elisa import settings
 from elisa.analytics.binary_fit.chain_tools import prepare_chain_samples
 from elisa.analytics.params.conf import JOINT_POSTERIOR_PERCENTILES_ESTIMATE
+from elisa.base.error import raise_elisa_monte_carlo_error
 from elisa.json_encoder import ElisaJSONEncoder
 from elisa.logger import getPersistentLogger
 from elisa.utc import UTC
@@ -96,11 +97,13 @@ class MCMCMixin:
         result: dict[str, dict[str, Any]] = {}
         for idx, key in enumerate(fitable):
             mcmc_result = np.percentile(flat_chain[:, idx], percentiles)
-            vals = np.asarray(parameters.renormalize_value(
-                mcmc_result,
-                normalization[key][0],
-                normalization[key][1],
-            ))
+            vals = np.asarray(
+                parameters.renormalize_value(
+                    mcmc_result,
+                    normalization[key][0],
+                    normalization[key][1],
+                ),
+            )
 
             result[key] = {
                 "value": float(vals[1]),
@@ -157,7 +160,7 @@ class MCMCMixin:
         :param fixed: Fixed InitialParameter metadata or physical values.
         :param percentiles: Lower, central and upper percentiles; defaults to [16, 50, 84].
         :returns: Constrained marginal summaries in the existing flat result format.
-        :raises ValueError: If any constraint produces nonfinite posterior values.
+        :raises ElisaMonteCarloError: If any constraint produces nonfinite posterior values.
         """
         from elisa.analytics.params import parameters  # noqa: PLC0415
 
@@ -176,7 +179,7 @@ class MCMCMixin:
         for key, values in samples.items():
             if not np.all(np.isfinite(values)):
                 msg = f"Nonfinite posterior constraint values for {key}"
-                raise ValueError(msg)
+                raise_elisa_monte_carlo_error(msg)
             lower, centre, upper = np.percentile(values, percentiles)
             result[key] = {
                 "value": float(centre),
@@ -359,11 +362,10 @@ class MCMCMixin:
         :type nwalkers: int
         :param ndim: Number of free variables (dimensions).
         :type ndim: int
-        :raises RuntimeError: When condition `nwalkers < ndim * 2` is not satisfied.
+        :raises ElisaMonteCarloError: When condition `nwalkers < ndim * 2` is not satisfied.
         """
         if nwalkers < ndim * 2:
             error_msg = (
-                f"Fit cannot be executed with fewer walkers ({nwalkers}) "
-                f"than twice the number of dimensions ({ndim})"
+                f"Fit cannot be executed with fewer walkers ({nwalkers}) than twice the number of dimensions ({ndim})"
             )
-            raise RuntimeError(error_msg)
+            raise_elisa_monte_carlo_error(error_msg)

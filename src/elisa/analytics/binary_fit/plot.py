@@ -264,9 +264,7 @@ class RVPlot:
                     centre=0.0,
                 )
 
-            y_data[component] = (
-                (data_obj.y_data * data_obj.y_unit).to(y_axis_unit).value
-            )
+            y_data[component] = (data_obj.y_data * data_obj.y_unit).to(y_axis_unit).value
             if data_obj.y_err is not None:
                 err_value: NDArray[Float] = (  # type: ignore[assignment]
                     (data_obj.y_err * data_obj.y_unit).to(y_axis_unit).value  # type: ignore[operator]
@@ -837,9 +835,7 @@ def traces(
                 (flat_result[lbl]["confidence_interval"]["min"] * unit).to(plot_units[lbl]).value
             )
             flat_result[lbl]["confidence_interval"]["max"] = (
-                (flat_result[lbl]["confidence_interval"]["max"] * unit)
-                .to(plot_units[lbl])
-                .value
+                (flat_result[lbl]["confidence_interval"]["max"] * unit).to(plot_units[lbl]).value
             )
             flat_result[lbl]["unit"] = plot_units[lbl].to_string()
 

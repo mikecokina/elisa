@@ -1325,7 +1325,8 @@ def simple_lc_fit_summary(  # noqa: C901, PLR0912, PLR0915
 
 
 def simple_rv_fit_summary(
-    fit_instance: LCFitLeastSquares | RVFitLeastSquares | LCFitMCMC | RVFitMCMC, path: str | None,
+    fit_instance: LCFitLeastSquares | RVFitLeastSquares | LCFitMCMC | RVFitMCMC,
+    path: str | None,
 ) -> None:
     """Generate detailed radial velocity fit summary report.
 

@@ -21,6 +21,7 @@ from elisa.analytics.models import cost_fns
 from elisa.analytics.models import rv as rv_model
 from elisa.analytics.params import parameters
 from elisa.analytics.params.conf import NUISANCE_PARSER, PARAM_PARSER
+from elisa.base.error import raise_elisa_monte_carlo_error
 from elisa.base.types import FLOAT
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
@@ -191,7 +192,7 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         """
         if np.shape(vector) != (len(self.fitable),):
             msg = "Normalized initial vector must match the fitted parameters"
-            raise ValueError(msg)
+            raise_elisa_monte_carlo_error(msg)
         sigmas = []
         for key, parameter in self.fitable.items():
             if parameter.sigma is None:
@@ -207,17 +208,17 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
             lower, upper = self.normalization[key]
             if not np.all(np.isfinite([lower, upper])) or lower >= upper:
                 msg = f"Parameter {key} requires finite, strictly increasing bounds"
-                raise ValueError(msg)
+                raise_elisa_monte_carlo_error(msg)
 
             width = upper - lower
             if not np.isfinite(width):
                 msg = f"Parameter {key} requires a finite bound span"
-                raise ValueError(msg)
+                raise_elisa_monte_carlo_error(msg)
 
             sigma = parameter.sigma
             if sigma is not None and (not np.isfinite(sigma) or sigma <= 0):
                 msg = f"Parameter {key} requires a finite, strictly positive Gaussian width"
-                raise ValueError(msg)
+                raise_elisa_monte_carlo_error(msg)
 
     def prepare_priors(self) -> None:
         """Validate free prior metadata once, before normalization or sampling.
@@ -238,13 +239,13 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
 
         if not np.all(np.isfinite(self.norm_init_vector)):
             msg = "Initial free parameter values must have finite normalized coordinates"
-            raise ValueError(msg)
+            raise_elisa_monte_carlo_error(msg)
 
         self.sigmas = self.normalized_sigma(self.norm_init_vector)
         gaussian_widths = self.sigmas[~np.isnan(self.sigmas)]
         if not np.all(np.isfinite(gaussian_widths) & (gaussian_widths > 0)):
             msg = "Gaussian widths must remain finite and positive in normalized coordinates"
-            raise ValueError(msg)
+            raise_elisa_monte_carlo_error(msg)
 
     def _prepare_likelihood_parameters(self, xn: NDArray[Float]) -> tuple[NDArray[Float], dict[str, Any]]:
         """Denormalize a proposal, resolve constraints and check current physical scales.
@@ -389,14 +390,14 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
                 f"Your initial values for sampler do not satisfy required shape ({nwalkers}, {ndim}). "
                 f"Shape of your initial state matrix is {initial_state.shape}"
             )
-            raise ValueError(error_msg)
+            raise_elisa_monte_carlo_error(error_msg)
         ensemble = np.array(initial_state, dtype=FLOAT, copy=True)
         if not np.all(np.isfinite(ensemble)):
             msg = "Supplied initial states must be finite"
-            raise ValueError(msg)
+            raise_elisa_monte_carlo_error(msg)
         if np.any((ensemble < 0.0) | (ensemble > 1.0)):
             msg = "Supplied initial states must lie within normalized prior bounds [0, 1]"
-            raise ValueError(msg)
+            raise_elisa_monte_carlo_error(msg)
         return ensemble
 
 
@@ -548,7 +549,8 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
                 self.constrained,
                 self.fixed,
                 percentiles,
-        ))
+            ),
+        )
 
         r_dict = {key: value["value"] for key, value in result_dict.items()}
         r_squared_result = self.prediction_r_squared(r_dict)
@@ -718,9 +720,7 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
             self.x_data_reducer,
             self.observer.system_cls,
         )
-        r_dict: dict[str, Any] = {
-            key: value["value"] for key, value in result_dict.items()
-        }
+        r_dict: dict[str, Any] = {key: value["value"] for key, value in result_dict.items()}
 
         r_squared_result: Float = rv_r_squared(rv_model.central_rv_synthetic, *r_squared_args, **r_dict)
         result_dict["r_squared"] = {"value": r_squared_result, "unit": None}

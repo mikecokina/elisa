@@ -10,6 +10,7 @@ duplicates and ordering in the flux arrays supplied to statistical costs.
 Structural alignment failures are distinct from physical synthesis failures so
 optimizers cannot silently treat malformed data as an improbable binary system.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, NoReturn
@@ -43,12 +44,12 @@ def _fail(message: str) -> NoReturn:
 
 
 def _validate_band(
-        band: str,
-        xs: NDArray,
-        observed: Any,
-        reducer: Any,
-        x_data: dict | None,
-        y_err: dict | None,
+    band: str,
+    xs: NDArray,
+    observed: Any,
+    reducer: Any,
+    x_data: dict | None,
+    y_err: dict | None,
 ) -> NDArray:
     """Validate one passband's inverse coordinate map and uncertainty shape.
 
@@ -84,11 +85,11 @@ def _validate_band(
 
 
 def validate_observations(
-        xs: NDArray,
-        y_data: dict,
-        x_data_reducer: dict,
-        x_data: dict | None,
-        y_err: dict | None,
+    xs: NDArray,
+    y_data: dict,
+    x_data_reducer: dict,
+    x_data: dict | None,
+    y_err: dict | None,
 ) -> dict:
     """Validate shared observation coordinates and all per-passband reducers.
 
@@ -110,16 +111,13 @@ def validate_observations(
         _fail("LC coordinate and flux passbands differ")
     if y_err is not None and set(y_err) != bands:
         _fail("LC uncertainty and flux passbands differ")
-    return {
-        band: _validate_band(band, xs, y_data[band], x_data_reducer[band], x_data, y_err)
-        for band in y_data
-    }
+    return {band: _validate_band(band, xs, y_data[band], x_data_reducer[band], x_data, y_err) for band in y_data}
 
 
 def _synthesis_support(
-        phases: NDArray,
-        interp_treshold: int,
-        fit_xs: NDArray | None,
+    phases: NDArray,
+    interp_treshold: int,
+    fit_xs: NDArray | None,
 ) -> NDArray:
     """Select prepared support or the common direct/uniform fallback grid.
 
@@ -148,21 +146,21 @@ def _synthesis_support(
 
 
 def predict_light_curves(
-        x_data_reduced: NDArray,
-        y_data: dict,
-        x_data_reducer: dict,
-        discretization: float,
-        observer: Observer,
-        interp_treshold: int,
-        model_parameters: dict,
-        *,
-        fit_xs: NDArray | None = None,
-        x_data: dict | None = None,
-        y_err: dict | None = None,
-        atmosphere_model: dict | None = None,
-        limb_darkening_coefficients: dict | None = None,
-        synthesis: Callable[..., dict] = lc.synthetic_binary,
-        _validated_reducers: dict | None = None,
+    x_data_reduced: NDArray,
+    y_data: dict,
+    x_data_reducer: dict,
+    discretization: float,
+    observer: Observer,
+    interp_treshold: int,
+    model_parameters: dict,
+    *,
+    fit_xs: NDArray | None = None,
+    x_data: dict | None = None,
+    y_err: dict | None = None,
+    atmosphere_model: dict | None = None,
+    limb_darkening_coefficients: dict | None = None,
+    synthesis: Callable[..., dict] = lc.synthetic_binary,
+    _validated_reducers: dict | None = None,
 ) -> dict[str, NDArray]:
     """Synthesize, map to each band's observations, then normalize by its mean.
 
@@ -213,7 +211,8 @@ def predict_light_curves(
     xs = np.asarray(x_data_reduced)
     reducers = (
         validate_observations(xs, y_data, x_data_reducer, x_data, y_err)
-        if _validated_reducers is None else _validated_reducers
+        if _validated_reducers is None
+        else _validated_reducers
     )
     phases, kwargs = time_layer_resolver(xs, pop=False, **model_parameters)
     support = _synthesis_support(phases, interp_treshold, fit_xs)
@@ -225,7 +224,8 @@ def predict_light_curves(
             _fail("LC synthesis support does not cover observation phases")
 
     kwargs = parameters.extend_json_with_atm_params(
-        kwargs, atmosphere_model=atmosphere_model,
+        kwargs,
+        atmosphere_model=atmosphere_model,
         limb_darkening_coefficients=limb_darkening_coefficients,
     )
     raw = synthesis(support, discretization, observer, **kwargs)
@@ -240,8 +240,7 @@ def predict_light_curves(
             msg = f"LC synthetic values are nonfinite for {band}"
             raise ElisaFloatingPointError(msg)
         predictions[band] = (
-            interp1d(support, curve, kind="cubic")(phases[reducers[band]])
-            if interpolate else curve[reducers[band]]
+            interp1d(support, curve, kind="cubic")(phases[reducers[band]]) if interpolate else curve[reducers[band]]
         )
         if predictions[band].shape != np.shape(y_data[band]):
             _fail(f"LC prediction length differs from observations for {band}")

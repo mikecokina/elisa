@@ -35,6 +35,7 @@ if TYPE_CHECKING:
 
 logger = getPersistentLogger(__name__)
 
+
 def _synthesis_penalty_residuals(e: Exception, num_of_points: dict[str, int]) -> NDArray:
     """Log an expected synthesis failure and return the fixed-length chi² penalty."""
     if not settings.SUPPRESS_WARNINGS:
@@ -113,7 +114,6 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
     initial_vector: list[Any]
     normalization: dict[str, tuple[Any, ...]]
     flat_result: dict[str, Any]
-
 
     def model_to_fit(self, xn: NDArray) -> NDArray:
         """Return standardized observation residuals for SciPy least squares.
@@ -203,7 +203,6 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
             observer_system_cls=BinarySystem,
             samples=samples,
         )
-
 
         initial_vector: NDArray = np.asarray(
             parameters.vector_normalizer(
@@ -318,7 +317,6 @@ class CentralRadialVelocity(AbstractRVFit):
     initial_vector: list[Any]
     normalization: dict[str, tuple[Any, ...]]
     flat_result: dict[str, Any]
-
 
     def prepare_synthetic(self, xn: NDArray) -> dict[str, NDArray]:
         """Return synthetic radial velocity observations for given parameters.

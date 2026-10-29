@@ -13,6 +13,7 @@ arithmetic errors are not rejection categories. Existing local recovery inside
 synthesis is separate, as are MCMC prior rejections. Setup errors propagate
 before these evaluation handlers, even when their type appears in this tuple.
 """
+
 from elisa.base.error import (
     ElisaFloatingPointError,
     ElisaSynthesisError,

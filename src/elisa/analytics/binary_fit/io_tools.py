@@ -158,9 +158,7 @@ def update_solution(
     :rtype: None
     :raises ValueError: If the result, chain or normalization state is unavailable.
     """
-    if (mcmc_fit_cls.flat_result is None
-            or mcmc_fit_cls.flat_chain is None
-            or mcmc_fit_cls.normalization is None):
+    if mcmc_fit_cls.flat_result is None or mcmc_fit_cls.flat_chain is None or mcmc_fit_cls.normalization is None:
         error_msg = "Updating posterior summaries requires loaded results, chain and normalization bounds."
         raise ValueError(error_msg)
 
@@ -181,8 +179,12 @@ def update_solution(
         fit_params = parameters.serialize_result(mcmc_fit_cls.flat_result)
         initial = BinaryInitialParameters(**fit_params)
         flat_result_update = MCMCMixin.resolve_constrained_result(
-            mcmc_fit_cls.flat_chain, fitable, mcmc_fit_cls.normalization,
-            initial.get_constrained(), initial.get_fixed(), percentiles,
+            mcmc_fit_cls.flat_chain,
+            fitable,
+            mcmc_fit_cls.normalization,
+            initial.get_constrained(),
+            initial.get_fixed(),
+            percentiles,
         )
         mcmc_fit_cls.flat_result.update(flat_result_update)
 
