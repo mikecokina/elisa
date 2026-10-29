@@ -1,4 +1,6 @@
 """Explicit validation raises and initial-parameter adapters keep their categories."""
+from copy import deepcopy
+
 import numpy as np
 import pytest
 from astropy.units import UnitConversionError
@@ -7,6 +9,8 @@ from elisa import settings
 from elisa import units as u
 from elisa.analytics.dataset.base import LCData
 from elisa.analytics.dataset.transform import RVDataProperties
+from elisa.analytics.binary_fit.lc_fit import LCFitLeastSquares, LCFitMCMC
+from elisa.analytics.binary_fit.shared import check_for_boundary_surface_potentials
 from elisa.analytics.params.parameters import (
     BinaryInitialParameters, PulsationInitialParameters, SpotInitialParameters, StarInitialParameters,
 )
@@ -15,6 +19,7 @@ from elisa.analytics.params.transform import (
     StarInitialProperties, _initial_parameter,
 )
 from elisa.analytics.tasks import LCBinaryAnalyticsTask
+from elisa.analytics.tools.bvi import elisa_bv_temperature
 from elisa.analytics.transform import LCBinaryAnalyticsProperties
 from elisa.base.error import (
     ElisaAnalyticsDataValidationError,
@@ -259,3 +264,69 @@ def test_initial_binary_star_parameters_preserve_the_model_validation_cause(para
         )
     assert type(caught.value.__cause__) is ElisaParametersValidationError
     assert str(caught.value) == str(caught.value.__cause__)
+
+
+@pytest.fixture
+def lc_task_data():
+    return {"bolometric": LCData(x_data=[0.0, 0.5], y_data=[1.0, 0.9], x_unit=None, y_unit=None)}
+
+
+@pytest.mark.parametrize("method", ["least_squares", "mcmc"])
+@pytest.mark.parametrize("morphology", [
+    "invalid", "", "semi-detached", "Detached", None, 0, [], {}, np.array(["detached", "overcontact"]),
+])
+def test_lc_task_rejects_invalid_morphology_with_task_validation_error(method, morphology, lc_task_data):
+    with pytest.raises(ElisaAnalyticsTaskValidationError) as caught:
+        LCBinaryAnalyticsTask(method=method, expected_morphology=morphology, data=lc_task_data)
+    message = str(caught.value)
+    assert "expected_morphology" in message
+    assert repr(morphology) in message
+    for supported in ("detached", "over-contact", "overcontact"):
+        assert supported in message
+
+
+@pytest.mark.parametrize("method", ["least_squares", "mcmc"])
+@pytest.mark.parametrize("morphology", ["detached", "over-contact", "overcontact"])
+def test_lc_task_accepts_supported_morphologies_and_alias(method, morphology, lc_task_data):
+    task = LCBinaryAnalyticsTask(method=method, expected_morphology=morphology, data=lc_task_data)
+    expected = "detached" if morphology == "detached" else "over-contact"
+    assert task.method == method
+    assert task.fit_cls.morphology == expected
+    assert task.fit_cls.fit_method_instance.MORPHOLOGY == expected
+    assert BinaryInitialParameters.is_overcontact(morphology) is (expected == "over-contact")
+
+
+@pytest.mark.parametrize("method", ["least_squares", "mcmc"])
+def test_lc_task_preserves_default_detached_morphology(method, lc_task_data):
+    task = LCBinaryAnalyticsTask(method=method, data=lc_task_data)
+    assert task.fit_cls.morphology == "detached"
+
+
+@pytest.mark.parametrize("constructor", [LCFitLeastSquares, LCFitMCMC])
+@pytest.mark.parametrize("morphology", ["detached", "over-contact", "overcontact"])
+def test_direct_lc_fit_construction_normalizes_morphology(constructor, morphology):
+    fit = constructor(morphology, None, None)
+    expected = "detached" if morphology == "detached" else "over-contact"
+    assert fit.morphology == fit.fit_method_instance.MORPHOLOGY == expected
+
+
+@pytest.mark.parametrize("method", ["least_squares", "mcmc"])
+@pytest.mark.parametrize("morphology", ["over-contact", "overcontact"])
+def test_lc_task_morphology_preserves_overcontact_potential_correction(method, morphology, lc_task_data):
+    task = LCBinaryAnalyticsTask(method=method, expected_morphology=morphology, data=lc_task_data)
+    results = {
+        "primary@surface_potential": {"value": 3.0, "fixed": False},
+        "secondary@surface_potential": {"value": 3.01, "fixed": False},
+        "system@mass_ratio": {"value": 1.0},
+        "system@eccentricity": {"value": 0.0},
+    }
+    corrected = check_for_boundary_surface_potentials(deepcopy(results), task.fit_cls.morphology)
+    assert corrected["primary@surface_potential"]["value"] == corrected["secondary@surface_potential"]["value"] == 3.0
+
+
+def test_bv_temperature_accepts_canonical_and_legacy_overcontact_names():
+    legacy = elisa_bv_temperature(0.3, morphology="overcontact")
+    canonical = elisa_bv_temperature(0.3, morphology="over-contact")
+    assert canonical == pytest.approx(legacy)
+    assert canonical != pytest.approx(elisa_bv_temperature(0.3, morphology="detached"))
+    assert elisa_bv_temperature(0.3, morphology="unknown") == elisa_bv_temperature(0.3, morphology="detached")

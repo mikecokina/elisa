@@ -35,6 +35,14 @@ if version.parse(np.__version__) < version.parse("1.20.0"):
 WHEN_ARRAY = (list, np.ndarray, tuple)
 
 
+def normalize_morphology(morphology: str) -> str:
+    """Normalize the legacy overcontact alias to the internal morphology name.
+
+    Other values are preserved for validation by the calling layer.
+    """
+    return "over-contact" if morphology == "overcontact" else morphology
+
+
 def quantity_transform(
     value: Any,
     unit: Any,

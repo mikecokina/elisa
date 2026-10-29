@@ -32,6 +32,7 @@ from elisa.analytics.params.transform import (
     StarInitialProperties,
 )
 from elisa.base.error import ElisaInitialParametersValidationError
+from elisa.base.transform import normalize_morphology
 from elisa.binary_system.utils import calculate_sma_estimate
 from elisa.json_encoder import ElisaJSONEncoder
 from elisa.logger import getLogger
@@ -1440,4 +1441,4 @@ class BinaryInitialParameters(InitialParameters):
         :returns: True if over-contact morphology, False otherwise.
         :rtype: bool
         """
-        return morphology in ["over-contact", "overcontact"]
+        return normalize_morphology(morphology) == "over-contact"

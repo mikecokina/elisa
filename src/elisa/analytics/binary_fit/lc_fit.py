@@ -11,6 +11,7 @@ from elisa.analytics.binary_fit.summary import (
 )
 from elisa.analytics.params import parameters
 from elisa.analytics.params.result_handler import FitResultHandler
+from elisa.base.transform import normalize_morphology
 from elisa.logger import getLogger
 
 if TYPE_CHECKING:
@@ -37,6 +38,7 @@ class LCFit(FitResultHandler, ABC):
 
     :param morphology: str
         Morphology of the binary system ('detached' or 'over-contact').
+        The legacy 'overcontact' alias is normalized to 'over-contact'.
     :param atmosphere_model: dict | None
         Atmosphere model parameters. If None, default atmosphere model is used.
     :param limb_darkening_coefficients: dict | None
@@ -50,7 +52,7 @@ class LCFit(FitResultHandler, ABC):
         limb_darkening_coefficients: dict | None,
     ) -> None:
         super().__init__()
-        self.morphology: str = morphology
+        self.morphology: str = normalize_morphology(morphology)
         self.fit_method_instance: LCFitLeastSquares | LCFitMCMC | None = None
         self.atmosphere_model: dict | None = atmosphere_model
         self.limb_darkening_coefficients: dict | None = limb_darkening_coefficients
@@ -124,7 +126,7 @@ class LCFitMCMC(LCFit):
         limb_darkening_coefficients: dict | None,
     ) -> None:
         super().__init__(morphology, atmosphere_model, limb_darkening_coefficients)
-        self.fit_method_instance: LightCurveFit = self.resolve_fit_cls(morphology)()
+        self.fit_method_instance: LightCurveFit = self.resolve_fit_cls(self.morphology)()
         self.fit_method_instance.atmosphere_model = atmosphere_model
         self.fit_method_instance.limb_darkening_coefficients = limb_darkening_coefficients
 
@@ -279,7 +281,6 @@ class LCFitMCMC(LCFit):
         _cls = {
             "detached": mcmc.DetachedLightCurveFit,
             "over-contact": mcmc.OvercontactLightCurveFit,
-            "overcontact": mcmc.OvercontactLightCurveFit,
         }
         return _cls[morphology]
 
@@ -305,7 +306,7 @@ class LCFitLeastSquares(LCFit):
         limb_darkening_coefficients: dict | None,
     ) -> None:
         super().__init__(morphology, atmosphere_model, limb_darkening_coefficients)
-        self.fit_method_instance = self.resolve_fit_cls(morphology)()
+        self.fit_method_instance = self.resolve_fit_cls(self.morphology)()
         self.fit_method_instance.atmosphere_model = atmosphere_model
         self.fit_method_instance.limb_darkening_coefficients = limb_darkening_coefficients
 
@@ -362,6 +363,5 @@ class LCFitLeastSquares(LCFit):
         _cls = {
             "detached": least_squares.DetachedLightCurveFit,
             "over-contact": least_squares.OvercontactLightCurveFit,
-            "overcontact": least_squares.OvercontactLightCurveFit,
         }
         return _cls[morphology]
