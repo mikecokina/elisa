@@ -8,7 +8,7 @@ import numpy as np
 
 from elisa import units as u
 from elisa import utils
-from elisa.base.error import ElisaAnalyticsDataError
+from elisa.base.error import raise_elisa_analytics_data_error
 from elisa.base.transform import (
     WHEN_ARRAY,
     WHEN_FLOAT64,
@@ -43,7 +43,7 @@ def array_transform(
         return np.array(value, dtype=FLOAT)
     if not utils.is_empty(value):
         error_msg = "Input of variable is not array-like."
-        raise ElisaAnalyticsDataError(error_msg)
+        raise_elisa_analytics_data_error(error_msg)
     return None
 
 
@@ -69,7 +69,7 @@ def unit_check(
 
     if not value.is_equivalent(base_units):
         error_msg = f"Input {value} is not NoneType or `astropy.Unit` not convertible into desired base units."
-        raise ElisaAnalyticsDataError(error_msg)
+        raise_elisa_analytics_data_error(error_msg)
 
     return value
 
@@ -199,5 +199,5 @@ class LCDataProperties(DatasetProperties):
             error_msg = (
                 "Input of variable is not (numpy.)int or (numpy.)float nor astropy.unit.quantity.Quantity instance."
             )
-            raise ElisaAnalyticsDataError(error_msg)
+            raise_elisa_analytics_data_error(error_msg)
         return value

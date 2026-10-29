@@ -6,7 +6,7 @@ import numpy as np
 
 from elisa import const
 from elisa import units as u
-from elisa.base.error import ElisaParametersError
+from elisa.base.error import raise_elisa_parameters_error
 from elisa.base.transform import (
     WHEN_FLOAT64,
     SystemProperties,
@@ -43,17 +43,17 @@ class OrbitProperties(TransformProperties):
                 "Input of variable `eccentricity` is not "
                 "(numpy.)int or (numpy.)float."
             )
-            raise ElisaParametersError(message)
+            raise_elisa_parameters_error(message)
 
         if not np.isfinite(value):
             message = "Nonfinite eccentricity."
-            raise ElisaParametersError(message)
+            raise_elisa_parameters_error(message)
         if value < 0 or value >= 1:
             message = (
                 "Input of variable `eccentricity` is invalid or out of "
                 "boundaries."
             )
-            raise ElisaParametersError(message)
+            raise_elisa_parameters_error(message)
 
         return np.float64(value)
 
@@ -90,7 +90,7 @@ class OrbitProperties(TransformProperties):
         )
         if not np.isfinite(value):
             message = "Nonfinite argument_of_periastron."
-            raise ElisaParametersError(message)
+            raise_elisa_parameters_error(message)
         return value
 
     @staticmethod
@@ -112,8 +112,8 @@ class OrbitProperties(TransformProperties):
         )
         if not np.isfinite(value):
             message = "Nonfinite inclination."
-            raise ElisaParametersError(message)
+            raise_elisa_parameters_error(message)
         if not 0 <= value <= const.PI:
             message = f"Inclination value of {value} is out of bounds (0, pi)."
-            raise ElisaParametersError(message)
+            raise_elisa_parameters_error(message)
         return value

@@ -9,8 +9,8 @@ import numpy as np
 import elisa.units as u
 from elisa.analytics.params import conf
 from elisa.base.error import (
-    ElisaInitialParametersError,
     ElisaParametersError,
+    raise_elisa_initial_parameters_error,
 )
 from elisa.base.transform import (
     WHEN_FLOAT64,
@@ -52,7 +52,7 @@ def angular(value: Float | Quantity) -> Float:
             "Input of variable is not (numpy.)int or (numpy.)float "
             "nor astropy.unit.quantity.Quantity instance."
         )
-        raise ElisaInitialParametersError(error_msg)
+        raise_elisa_initial_parameters_error(error_msg)
     return value
 
 
@@ -62,7 +62,7 @@ def _initial_parameter(validator: Callable[[Any], _ValueT]) -> staticmethod:
         try:
             return validator(value)
         except ElisaParametersError as exc:
-            raise ElisaInitialParametersError(str(exc)) from exc
+            raise_elisa_initial_parameters_error(str(exc), exc)
 
     return staticmethod(wrapped)
 
@@ -91,13 +91,13 @@ class BinaryInitialProperties(TransformProperties):
                 "Input of variable `semi_major_axis` is not (numpy.)int or (numpy.)float "
                 "nor astropy.unit.quantity.Quantity instance."
             )
-            raise ElisaInitialParametersError(error_msg)
+            raise_elisa_initial_parameters_error(error_msg)
         if not np.isfinite(value):
             error_msg = "Nonfinite semi_major_axis."
-            raise ElisaInitialParametersError(error_msg)
+            raise_elisa_initial_parameters_error(error_msg)
         if value <= 0:
             error_msg = "Invalid value of semi_major_axis, use value > 0!"
-            raise ElisaInitialParametersError(error_msg)
+            raise_elisa_initial_parameters_error(error_msg)
         return value
 
     @staticmethod
@@ -121,13 +121,13 @@ class BinaryInitialProperties(TransformProperties):
                 "User input is not (numpy.)int or (numpy.)float "
                 "nor astropy.unit.quantity.Quantity instance."
             )
-            raise ElisaInitialParametersError(error_msg)
+            raise_elisa_initial_parameters_error(error_msg)
         if not np.isfinite(value):
             error_msg = "Nonfinite mass."
-            raise ElisaInitialParametersError(error_msg)
+            raise_elisa_initial_parameters_error(error_msg)
         if value <= 0:
             error_msg = "Invalid mass, use value > 0!"
-            raise ElisaInitialParametersError(error_msg)
+            raise_elisa_initial_parameters_error(error_msg)
         return value
 
     eccentricity = _initial_parameter(BinarySystemProperties.eccentricity)
@@ -218,7 +218,7 @@ class PulsationModeInitialProperties(PulsationModeProperties):
         try:
             PulsationModeProperties.frequency(value)
         except ElisaParametersError as exc:
-            raise ElisaInitialParametersError(str(exc)) from exc
+            raise_elisa_initial_parameters_error(str(exc), exc)
         if isinstance(value, (u.Quantity, str)):
             return u.Quantity(value).to_value(u.DefaultPulsationsInputUnits.frequency)
         return np.float64(value)

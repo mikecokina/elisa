@@ -10,7 +10,7 @@ import numpy as np
 
 from elisa import const as c
 from elisa import units as u
-from elisa.base.error import ElisaParametersError
+from elisa.base.error import raise_elisa_parameters_error
 from elisa.base.transform import (
     WHEN_FLOAT64,
     SystemProperties,
@@ -42,12 +42,12 @@ class PulsationModeProperties(SystemProperties):
         """
         error_msg = "Angular degree `l` is not (numpy.)int"
         if not isinstance(value, Number) or isinstance(value, (complex, np.complexfloating)):
-            raise ElisaParametersError(error_msg)
+            raise_elisa_parameters_error(error_msg)
         if not isfinite(value) or int(value) - value != 0:
-            raise ElisaParametersError(error_msg)
+            raise_elisa_parameters_error(error_msg)
         if value < 0:
             error_msg = "Angular degree `l` must be non-negative."
-            raise ElisaParametersError(error_msg)
+            raise_elisa_parameters_error(error_msg)
         return int(value)
 
     @staticmethod
@@ -66,9 +66,9 @@ class PulsationModeProperties(SystemProperties):
         """
         error_msg = "Angular degree `m` is not (numpy.)int"
         if not isinstance(value, Number) or isinstance(value, (complex, np.complexfloating)):
-            raise ElisaParametersError(error_msg)
+            raise_elisa_parameters_error(error_msg)
         if not isfinite(value) or int(value) - value != 0:
-            raise ElisaParametersError(error_msg)
+            raise_elisa_parameters_error(error_msg)
         return int(value)
 
     @staticmethod
@@ -95,10 +95,10 @@ class PulsationModeProperties(SystemProperties):
                 "Value of `amplitude` is not (numpy.)int or (numpy.)float "
                 "nor astropy.unit.quantity.Quantity instance."
             )
-            raise ElisaParametersError(error_msg)
+            raise_elisa_parameters_error(error_msg)
         if not np.isfinite(retval) or retval < 0:
             error_msg = "Temperature amplitude of mode has to be non-negative number."
-            raise ElisaParametersError(error_msg)
+            raise_elisa_parameters_error(error_msg)
 
         return retval
 
@@ -130,10 +130,10 @@ class PulsationModeProperties(SystemProperties):
                 "Value of `frequency` is not (numpy.)int or (numpy.)float "
                 "nor astropy.unit.quantity.Quantity instance."
             )
-            raise ElisaParametersError(error_msg)
+            raise_elisa_parameters_error(error_msg)
         if not np.isfinite(retval) or retval < 0:
             error_msg = "Frequency of the mode has to be non-negative number."
-            raise ElisaParametersError(error_msg)
+            raise_elisa_parameters_error(error_msg)
 
         return retval
 
@@ -178,7 +178,7 @@ class PulsationModeProperties(SystemProperties):
             error_msg = (
                 f"Value of `mode_axis_theta`: {retval} is outside bounds (0, pi)."
             )
-            raise ElisaParametersError(error_msg)
+            raise_elisa_parameters_error(error_msg)
 
         return retval
 
@@ -202,7 +202,7 @@ class PulsationModeProperties(SystemProperties):
         )
         if not np.isfinite(retval):
             error_msg = "Value of `mode_axis_phi` must be finite."
-            raise ElisaParametersError(error_msg)
+            raise_elisa_parameters_error(error_msg)
         return retval
 
     @staticmethod
@@ -242,7 +242,7 @@ class PulsationModeProperties(SystemProperties):
         """
         if not isinstance(value, (int, INT, float, FLOAT)):
             error_msg = "Parameter is not is not (numpy.)int or (numpy.)float"
-            raise ElisaParametersError(error_msg)
+            raise_elisa_parameters_error(error_msg)
         return value
 
     @staticmethod
@@ -261,7 +261,7 @@ class PulsationModeProperties(SystemProperties):
         """
         if not isinstance(value, bool):
             error_msg = "Parameter `tidally_locked` can contain only boolean"
-            raise ElisaParametersError(error_msg)
+            raise_elisa_parameters_error(error_msg)
         return value
 
 

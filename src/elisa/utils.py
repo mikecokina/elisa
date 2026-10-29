@@ -18,8 +18,8 @@ from numpy.linalg import norm
 from elisa import const
 from elisa import umpy as up
 from elisa.base.error import (
-    ElisaInvalidKwargsError,
-    ElisaMissingKwargsError,
+    raise_elisa_invalid_kwargs_error,
+    raise_elisa_missing_kwargs_error,
     raise_value_error,
 )
 from elisa.base.types import FLOAT, INT
@@ -106,7 +106,7 @@ def invalid_kwarg_checker(kwargs: dict, kwarglist: list | tuple, instance: type)
             f"in class instance {instance.__name__}.\n "
             f"List of available parameters: {', '.join(kwarglist)}"
         )
-        raise ElisaInvalidKwargsError(msg)
+        raise_elisa_invalid_kwargs_error(msg)
 
 
 def invalid_param_checker(kwargs: dict, kwarglist: list | tuple, message: str) -> None:
@@ -124,7 +124,7 @@ def invalid_param_checker(kwargs: dict, kwarglist: list | tuple, message: str) -
             f"in {message}.\n "
             f"List of available parameters: {', '.join(kwarglist)}"
         )
-        raise ElisaInvalidKwargsError(msg)
+        raise_elisa_invalid_kwargs_error(msg)
 
 
 def is_plane(given: str, expected: str) -> Match[str] | None:
@@ -584,7 +584,7 @@ def check_missing_kwargs(
     missing_kwargs = [f"`{kwarg}`" for kwarg in mandatory_kwargs if kwarg not in supplied_kwargs]
     if len(missing_kwargs) > 0:
         msg = f"Missing argument(s): {', '.join(missing_kwargs)} in class instance {instance_of.__name__}"
-        raise ElisaMissingKwargsError(msg)
+        raise_elisa_missing_kwargs_error(msg)
 
 
 def check_missing_params(
@@ -605,7 +605,7 @@ def check_missing_params(
     missing_kwargs = [f"`{kwarg}`" for kwarg in mandatory_kwargs if kwarg not in supplied_kwargs]
     if len(missing_kwargs) > 0:
         msg = f"Missing argument(s): {', '.join(missing_kwargs)} in object {instance}"
-        raise ElisaMissingKwargsError(msg)
+        raise_elisa_missing_kwargs_error(msg)
 
 
 def numeric_logg_to_string(logg: Float) -> str:

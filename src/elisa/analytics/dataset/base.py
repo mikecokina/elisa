@@ -14,7 +14,7 @@ from elisa import units as u
 from elisa.analytics.dataset import utils as dutils
 from elisa.analytics.dataset.graphic import plot
 from elisa.analytics.dataset.transform import LCDataProperties, RVDataProperties
-from elisa.base.error import ElisaAnalyticsDataError
+from elisa.base.error import raise_elisa_analytics_data_error
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -41,9 +41,9 @@ def _observation_vector(value: NDArray | Sequence[Float] | None, name: str) -> N
         is_nonempty_vector = array.ndim == 1 and array.size > 0
         valid = is_nonempty_vector and np.all(np.isfinite(array))
     except (TypeError, ValueError, ArithmeticError) as exc:
-        raise ElisaAnalyticsDataError(msg) from exc
+        raise_elisa_analytics_data_error(msg, exc)
     if not valid:
-        raise ElisaAnalyticsDataError(msg)
+        raise_elisa_analytics_data_error(msg)
     return array
 
 
@@ -132,7 +132,7 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
             return self.__class__.TRANSFORM_PROPERTIES_CLS.transform_input(**{name: value})
         except (TypeError, ValueError, AttributeError, ArithmeticError) as exc:
             msg = f"Invalid dataset property `{name}`: {exc}"
-            raise ElisaAnalyticsDataError(msg) from exc
+            raise_elisa_analytics_data_error(msg, exc)
 
     def copy(self) -> DataSet:
         """Create a deep copy of the DataSet instance.
@@ -161,21 +161,21 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
         observed = _observation_vector(kwargs.get("y_data"), "y_data")
         if observed.shape != coordinates.shape:
             msg = "`y_data` must have the same shape as `x_data`"
-            raise ElisaAnalyticsDataError(msg)
+            raise_elisa_analytics_data_error(msg)
         if kwargs.get("y_err") is None:
             return
         errors = _observation_vector(kwargs["y_err"], "y_err")
         if errors.shape != coordinates.shape:
             msg = "`y_err` must have the same shape as `x_data`"
-            raise ElisaAnalyticsDataError(msg)
+            raise_elisa_analytics_data_error(msg)
         try:
             nonpositive = np.any(np.less_equal(errors, 0))
         except (TypeError, ValueError, ArithmeticError) as exc:
             msg = "`y_err` must contain strictly positive numeric uncertainties"
-            raise ElisaAnalyticsDataError(msg) from exc
+            raise_elisa_analytics_data_error(msg, exc)
         if nonpositive:
             msg = "`y_err` must contain strictly positive uncertainties"
-            raise ElisaAnalyticsDataError(msg)
+            raise_elisa_analytics_data_error(msg)
 
     @classmethod
     def load_from_file(
@@ -463,7 +463,7 @@ class RVData(DataSet):
 
         except (TypeError, ValueError, AttributeError, ArithmeticError) as exc:
             msg = f"Cannot convert RVData to internal units: {exc}"
-            raise ElisaAnalyticsDataError(msg) from exc
+            raise_elisa_analytics_data_error(msg, exc)
         return kwargs
 
 
@@ -617,5 +617,5 @@ class LCData(DataSet):
 
         except (TypeError, ValueError, AttributeError, ArithmeticError) as exc:
             msg = f"Cannot convert LCData to internal units: {exc}"
-            raise ElisaAnalyticsDataError(msg) from exc
+            raise_elisa_analytics_data_error(msg, exc)
         return kwargs

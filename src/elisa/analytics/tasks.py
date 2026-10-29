@@ -15,7 +15,7 @@ from elisa.analytics.binary_fit.plot import (
     RVPlotMCMC,
 )
 from elisa.analytics.params import bonds, parameters
-from elisa.base.error import ElisaAnalyticsTaskError
+from elisa.base.error import raise_elisa_analytics_task_error
 from elisa.base.transform import normalize_morphology
 from elisa.logger import getLogger
 
@@ -135,7 +135,7 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
             error_msg: str = (
                 f"Invalid fitting method. Use one of: {', '.join(cls.ALLOWED_METHODS)}"
             )
-            raise ElisaAnalyticsTaskError(error_msg)
+            raise_elisa_analytics_task_error(error_msg)
 
     def load_result(self, filename: str, *, autofill_sma: bool = False) -> dict:
         """Load model parameters from JSON file.
@@ -578,7 +578,7 @@ class LCBinaryAnalyticsTask(AnalyticsTask):
                 f"Invalid expected_morphology {morphology!r}. "
                 f"Use one of: {', '.join(cls.ALLOWED_MORPHOLOGIES)}"
             )
-            raise ElisaAnalyticsTaskError(msg)
+            raise_elisa_analytics_task_error(msg)
         return normalize_morphology(morphology)
 
     def load_result(self, filename: str, *, autofill_sma: bool = True) -> dict:

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from elisa.analytics.models import serializers
 from elisa.analytics.tools.utils import time_layer_resolver
-from elisa.base.error import ElisaParametersError
+from elisa.base.error import raise_elisa_parameters_error
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
 from elisa.binary_system.utils import resolve_json_kind
@@ -103,7 +103,7 @@ def central_rv_synthetic(
         )
     else:
         error_msg = "Initial parameters led to unknown model."
-        raise ElisaParametersError(error_msg)
+        raise_elisa_parameters_error(error_msg)
 
     # Set observer system and retrieve RV
     observer._system = observable  # noqa: SLF001

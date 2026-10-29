@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from elisa import settings
-from elisa.base.error import ElisaAnalyticsTaskError
+from elisa.base.error import raise_elisa_analytics_task_error
 from elisa.base.transform import TransformProperties
 
 if TYPE_CHECKING:
@@ -35,7 +35,7 @@ class RVBinaryAnalyticsTask(TransformProperties):
         """
         if not isinstance(value, dict):
             error_msg: str = "`radial_velocities` are not of type `dict`"
-            raise ElisaAnalyticsTaskError(error_msg)
+            raise_elisa_analytics_task_error(error_msg)
 
         for key, val in value.items():
             if key not in settings.BINARY_COUNTERPARTS:
@@ -43,14 +43,14 @@ class RVBinaryAnalyticsTask(TransformProperties):
                     f"{key} is invalid designation for radial velocity dataset. "
                     f"Please choose from {list(settings.BINARY_COUNTERPARTS.keys())}"
                 )
-                raise ElisaAnalyticsTaskError(error_msg)
+                raise_elisa_analytics_task_error(error_msg)
 
             # Import here to avoid circular imports
             from elisa.analytics.dataset.base import RVData  # noqa: PLC0415
 
             if not isinstance(val, RVData):
                 error_msg = f"{val} is not an instance of RVData class."
-                raise ElisaAnalyticsTaskError(error_msg)
+                raise_elisa_analytics_task_error(error_msg)
 
         return value
 
@@ -79,7 +79,7 @@ class LCBinaryAnalyticsProperties(TransformProperties):
         """
         if not isinstance(value, dict):
             error_msg: str = "`light_curves` are not of type `dict`"
-            raise ElisaAnalyticsTaskError(error_msg)
+            raise_elisa_analytics_task_error(error_msg)
 
         for key, val in value.items():
             if key not in settings.PASSBANDS:
@@ -90,14 +90,14 @@ class LCBinaryAnalyticsProperties(TransformProperties):
                     f"{key} is invalid passband. Please choose from available "
                     f"passbands:\n{available_passbands}"
                 )
-                raise ElisaAnalyticsTaskError(error_msg)
+                raise_elisa_analytics_task_error(error_msg)
 
             # Import here to avoid circular imports
             from elisa.analytics.dataset.base import LCData  # noqa: PLC0415
 
             if not isinstance(val, LCData):
                 error_msg = f"{val} is not an instance of LCData class."
-                raise ElisaAnalyticsTaskError(error_msg)
+                raise_elisa_analytics_task_error(error_msg)
 
         return value
 
