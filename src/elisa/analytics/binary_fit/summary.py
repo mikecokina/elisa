@@ -15,7 +15,7 @@ from elisa.analytics.models import lc as lc_model
 from elisa.analytics.models import serializers
 from elisa.analytics.params import parameters
 from elisa.analytics.params.parameters import BinaryInitialParameters
-from elisa.base.error import MaxIterationError, MorphologyError
+from elisa.base.error import MaxIterationError, MorphologyError, raise_value_error
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.surface.gravity import calculate_polar_gravity_acceleration
 from elisa.logger import getLogger
@@ -105,9 +105,8 @@ def fit_lc_summary_with_error_propagation(  # noqa: C901, PLR0912, PLR0915
     fit_instance.fit_method_instance.constrained = params_instance.get_constrained(jsonify=False)
     fit_instance.fit_method_instance.fitable = params_instance.get_fitable(jsonify=False)
 
-    error_msg = "MCMC chain was not found."
     if flat_chain is None:
-        raise ValueError(error_msg)
+        raise_value_error("MCMC chain was not found.")
 
     renormalized_chain = np.empty(flat_chain.shape)
     for ii, lbl in enumerate(variable_labels):
@@ -1506,9 +1505,8 @@ def fit_rv_summary_with_error_propagation(
     fit_instance.fit_method_instance.constrained = params_instance.get_constrained(jsonify=False)
     fit_instance.fit_method_instance.fitable = params_instance.get_fitable(jsonify=False)
 
-    error_msg: str = "MCMC chain was not found."
     if flat_chain is None:
-        raise ValueError(error_msg)
+        raise_value_error("MCMC chain was not found.")
 
     renormalized_chain: NDArray = np.empty(flat_chain.shape)
     for ii, lbl in enumerate(variable_labels):

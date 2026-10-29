@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from elisa.analytics.binary_fit import io_tools
+from elisa.base.error import ElisaMonteCarloError
 
 
 class TestFilterChain:
@@ -35,7 +36,7 @@ class TestFilterChain:
         mock_cls.result = {"primary@te_ff": 5500, "secondary@te_ff": 5000}
         return mock_cls
 
-    @patch("elisa.analytics.binary_fit.io_tools.update_solution")
+    @patch("elisa.analytics.binary_fit.io_tools._update_solution")
     def test_filter_chain_single_boundary(self, mock_update, mock_mcmc_fit_cls: Mock) -> None:
         """Test filtering chain with a single parameter boundary."""
         with patch("elisa.analytics.binary_fit.io_tools.parameters.normalize_value") as mock_norm:
@@ -47,7 +48,7 @@ class TestFilterChain:
             assert result is not None
             assert mock_update.called
 
-    @patch("elisa.analytics.binary_fit.io_tools.update_solution")
+    @patch("elisa.analytics.binary_fit.io_tools._update_solution")
     def test_filter_chain_multiple_boundaries(self, mock_update, mock_mcmc_fit_cls: Mock) -> None:
         """Test filtering chain with multiple parameter boundaries."""
         with patch("elisa.analytics.binary_fit.io_tools.parameters.normalize_value") as mock_norm:
@@ -63,7 +64,7 @@ class TestFilterChain:
 
     def test_filter_chain_invalid_boundary_type(self, mock_mcmc_fit_cls: Mock) -> None:
         """Test filter_chain raises TypeError for invalid boundary type."""
-        with pytest.raises(TypeError, match="boundary is not tuple or list"):
+        with pytest.raises(ElisaMonteCarloError, match="boundary is not tuple or list"):
             io_tools.filter_chain(
                 mock_mcmc_fit_cls,
                 **{"primary@te_ff": "invalid"},
@@ -71,7 +72,7 @@ class TestFilterChain:
 
     def test_filter_chain_invalid_boundary_length(self, mock_mcmc_fit_cls: Mock) -> None:
         """Test filter_chain raises TypeError for incorrect boundary length."""
-        with pytest.raises(TypeError, match="has incorrect length of 3"):
+        with pytest.raises(ElisaMonteCarloError, match="has incorrect length of 3"):
             io_tools.filter_chain(
                 mock_mcmc_fit_cls,
                 **{"primary@te_ff": (0.1, 0.2, 0.3)},
@@ -79,13 +80,13 @@ class TestFilterChain:
 
     def test_filter_chain_invalid_parameter(self, mock_mcmc_fit_cls: Mock) -> None:
         """Test filter_chain raises NameError for invalid parameter name."""
-        with pytest.raises(NameError, match="is not valid model parameter"):
+        with pytest.raises(ElisaMonteCarloError, match="is not valid model parameter"):
             io_tools.filter_chain(
                 mock_mcmc_fit_cls,
                 **{"invalid@param": (0.1, 0.2)},
             )
 
-    @patch("elisa.analytics.binary_fit.io_tools.update_solution")
+    @patch("elisa.analytics.binary_fit.io_tools._update_solution")
     @patch("elisa.analytics.binary_fit.io_tools.parameters.normalize_value")
     def test_filter_chain_empty_result(
         self,
@@ -95,7 +96,7 @@ class TestFilterChain:
     ) -> None:
         """Test filter_chain raises ValueError when boundaries yield empty array."""
         mock_norm.return_value = 0.5  # Returns value outside actual range
-        with pytest.raises(ValueError, match="yielded an empty array"):
+        with pytest.raises(ElisaMonteCarloError, match="yielded an empty array"):
             io_tools.filter_chain(
                 mock_mcmc_fit_cls,
                 **{"primary@te_ff": (0.5, 0.6)},
@@ -103,7 +104,7 @@ class TestFilterChain:
 
     def test_filter_chain_boundary_as_list(self, mock_mcmc_fit_cls: Mock) -> None:
         """Test filter_chain accepts list as boundary."""
-        with patch("elisa.analytics.binary_fit.io_tools.update_solution"):
+        with patch("elisa.analytics.binary_fit.io_tools._update_solution"):
             with patch("elisa.analytics.binary_fit.io_tools.parameters.normalize_value") as mock_norm:
                 mock_norm.side_effect = lambda v, a, b: v
                 result = io_tools.filter_chain(
@@ -114,7 +115,7 @@ class TestFilterChain:
 
     def test_filter_chain_boundary_as_ndarray(self, mock_mcmc_fit_cls: Mock) -> None:
         """Test filter_chain accepts ndarray as boundary."""
-        with patch("elisa.analytics.binary_fit.io_tools.update_solution"):
+        with patch("elisa.analytics.binary_fit.io_tools._update_solution"):
             with patch("elisa.analytics.binary_fit.io_tools.parameters.normalize_value") as mock_norm:
                 mock_norm.side_effect = lambda v, a, b: v
                 result = io_tools.filter_chain(
@@ -138,7 +139,7 @@ class TestLoadChain:
         mock_cls.result = {}
         return mock_cls
 
-    @patch("elisa.analytics.binary_fit.io_tools.update_solution")
+    @patch("elisa.analytics.binary_fit.io_tools._update_solution")
     @patch("elisa.analytics.binary_fit.io_tools.MCMCMixin.load_flat_chain")
     def test_load_chain_basic(
         self,
@@ -162,7 +163,7 @@ class TestLoadChain:
         assert result[1] == ["param1", "param2"]
         assert isinstance(result[2], dict)
 
-    @patch("elisa.analytics.binary_fit.io_tools.update_solution")
+    @patch("elisa.analytics.binary_fit.io_tools._update_solution")
     @patch("elisa.analytics.binary_fit.io_tools.MCMCMixin.load_flat_chain")
     def test_load_chain_with_discard(
         self,
@@ -185,7 +186,7 @@ class TestLoadChain:
         assert result[0].shape[0] == 2
         np.testing.assert_array_equal(result[0], np.array([[0.2, 0.3], [0.25, 0.35]]))
 
-    @patch("elisa.analytics.binary_fit.io_tools.update_solution")
+    @patch("elisa.analytics.binary_fit.io_tools._update_solution")
     @patch("elisa.analytics.binary_fit.io_tools.MCMCMixin.load_flat_chain")
     def test_load_chain_with_percentiles(
         self,
@@ -220,7 +221,7 @@ class TestLoadChain:
         mock_mcmc_fit_cls: Mock,
     ) -> None:
         """Test load_chain correctly sets instance attributes."""
-        with patch("elisa.analytics.binary_fit.io_tools.update_solution"):
+        with patch("elisa.analytics.binary_fit.io_tools._update_solution"):
             mock_load_flat.return_value = {
                 "flat_chain": [[0.1, 0.2]],
                 "fitable_parameters": ["a", "b"],
@@ -268,7 +269,7 @@ class TestUpdateSolution:
         mock_binary_params.return_value = mock_constrained
         mock_eval.return_value = {"param1": {"value": 0.15}, "param2": {"value": 0.25}}
 
-        io_tools.update_solution(
+        io_tools._update_solution(
             mock_mcmc_fit_cls,
             {"param1": {"value": 0.1}, "param2": {"value": 0.2}},
             percentiles=[16, 50, 84],
@@ -282,9 +283,9 @@ class TestUpdateSolution:
         """Test update_solution raises ValueError when result is None."""
         mock_mcmc_fit_cls.result = None
 
-        with pytest.raises(ValueError, match="Load fit parameters before loading the chain"):
+        with pytest.raises(ElisaMonteCarloError, match="Load fit parameters before loading the chain"):
             with patch("elisa.analytics.binary_fit.io_tools.MCMCMixin.resolve_mcmc_result"):
-                io_tools.update_solution(
+                io_tools._update_solution(
                     mock_mcmc_fit_cls,
                     {"param1": {"value": 0.1}},
                     percentiles=None,
@@ -305,7 +306,7 @@ class TestUpdateSolution:
                     mock_ser.side_effect = lambda x: x
 
                     percentiles = [16, 50, 84]
-                    io_tools.update_solution(
+                    io_tools._update_solution(
                         mock_mcmc_fit_cls,
                         {"param1": {"value": 0.1}},
                         percentiles=percentiles,

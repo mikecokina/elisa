@@ -228,7 +228,7 @@ def test_public_load_initialization_and_temporal_state(tmp_path: Path, mcmc_resu
     fit = mcmc_result
     assert fit.chain is None
     original, path = save_chain(tmp_path)
-    with patch.object(io_tools, "update_solution"):
+    with patch.object(io_tools, "_update_solution"):
         result = fit.load_chain(path, discard=1)
         assert_array_equal(fit.chain, original[1:])
         assert_array_equal(result[0], original[1:].reshape(-1, 2))
@@ -249,7 +249,7 @@ def test_filtering_invalidates_temporal_diagnostics() -> None:
     fit.variable_labels = LABELS
     fit.normalization = dict.fromkeys(LABELS, (0.0, 1.0))
     fit.flat_result = dict.fromkeys(LABELS, {})
-    with patch.object(io_tools, "update_solution"):
+    with patch.object(io_tools, "_update_solution"):
         flat = io_tools.filter_chain(fit, **{LABELS[0]: (0.2, 0.8)})
     expected = original.reshape(-1, 2)
     assert_array_equal(flat, expected[(expected[:, 0] > 0.2) & (expected[:, 0] < 0.8)])

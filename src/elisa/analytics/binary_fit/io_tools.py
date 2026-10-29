@@ -8,6 +8,7 @@ from elisa.analytics.binary_fit.chain_tools import prepare_chain_samples
 from elisa.analytics.binary_fit.mixins import MCMCMixin
 from elisa.analytics.params import parameters
 from elisa.analytics.params.parameters import BinaryInitialParameters, ParameterMeta
+from elisa.base.error import raise_elisa_monte_carlo_error
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -40,21 +41,21 @@ def filter_chain(
     :type boundaries: tuple[float, float]
     :returns: Filtered flat chain.
     :rtype: NDArray
-    :raises TypeError: If boundary is not tuple, list, or ndarray.
-    :raises TypeError: If boundary length is not 2.
-    :raises NameError: If boundary key is not a valid model parameter.
-    :raises ValueError: If boundaries yield an empty array.
+    :raises ElisaMonteCarloError: If boundary is not tuple, list, or ndarray.
+    :raises ElisaMonteCarloError: If boundary length is not 2.
+    :raises ElisaMonteCarloError: If boundary key is not a valid model parameter.
+    :raises ElisaMonteCarloError: If boundaries yield an empty array.
     """
     for key, boundary in boundaries.items():
         if not isinstance(boundary, (tuple, list, np.ndarray)):
             error_msg = f"`{key}` boundary is not tuple or list."
-            raise TypeError(error_msg)
+            raise_elisa_monte_carlo_error(error_msg)
         if len(boundary) != BOUNDARY_LENGTH:
             error_msg = f"`{key}` has incorrect length of {len(boundary)}."
-            raise TypeError(error_msg)
+            raise_elisa_monte_carlo_error(error_msg)
         if key not in mcmc_fit_cls.variable_labels:
             error_msg = f"{key} is not valid model parameter."
-            raise NameError(error_msg)
+            raise_elisa_monte_carlo_error(error_msg)
 
         column_idx = mcmc_fit_cls.variable_labels.index(key)
         column = mcmc_fit_cls.flat_chain[:, column_idx]
@@ -73,13 +74,13 @@ def filter_chain(
         )
         if np.sum(condition_mask) == 0:
             error_msg = f"Boundaries for {key} yielded an empty array."
-            raise ValueError(error_msg)
+            raise_elisa_monte_carlo_error(error_msg)
         mcmc_fit_cls.flat_chain = mcmc_fit_cls.flat_chain[condition_mask, :]
         # Value-dependent row selection destroys the uniform ensemble time grid.
         mcmc_fit_cls.chain = None
 
     fitted_params = {key: mcmc_fit_cls.flat_result[key] for key in mcmc_fit_cls.variable_labels}
-    update_solution(mcmc_fit_cls, fitted_params, percentiles=None)
+    _update_solution(mcmc_fit_cls, fitted_params, percentiles=None)
 
     return mcmc_fit_cls.flat_chain
 
@@ -108,7 +109,7 @@ def load_chain(
     :param discard: Number of samples to discard from the chain as burn-in (default: 0).
     :type discard: int
     :param percentiles: Percentile intervals used to generate confidence intervals,
-        provided as [lower, centre, upper].
+        provided as [lower, center, upper].
     :type percentiles: list[float] | None
     :param discard_unit: ``DiscardUnit.STEPS`` requires temporal metadata;
         ``DiscardUnit.ROWS`` discards flat rows and preserves temporal axes only
@@ -129,7 +130,7 @@ def load_chain(
     mcmc_fit_instance.variable_labels = data["fitable_parameters"]
     mcmc_fit_instance.normalization = data["normalization"]
 
-    update_solution(mcmc_fit_instance, data["fitable"], percentiles)
+    _update_solution(mcmc_fit_instance, data["fitable"], percentiles)
 
     return (
         mcmc_fit_instance.flat_chain,
@@ -138,7 +139,7 @@ def load_chain(
     )
 
 
-def update_solution(
+def _update_solution(
     mcmc_fit_cls: LCFitMCMC | RVFitMCMC,
     fitted_params: dict[str, Any],
     percentiles: list[float] | None,
@@ -156,11 +157,11 @@ def update_solution(
     :type percentiles: list[float] | None
     :returns: None.
     :rtype: None
-    :raises ValueError: If the result, chain or normalization state is unavailable.
+    :raises ElisaMonteCarloError: If the result, chain or normalization state is unavailable.
     """
     if mcmc_fit_cls.flat_result is None or mcmc_fit_cls.flat_chain is None or mcmc_fit_cls.normalization is None:
         error_msg = "Updating posterior summaries requires loaded results, chain and normalization bounds."
-        raise ValueError(error_msg)
+        raise_elisa_monte_carlo_error(error_msg)
 
     fitable = {key: ParameterMeta(**val) for key, val in fitted_params.items()}
 
@@ -194,7 +195,7 @@ def update_solution(
         error_msg = (
             "Load fit parameters before loading the chain. For example, call load_results() or similar method first."
         )
-        raise ValueError(error_msg)
+        raise_elisa_monte_carlo_error(error_msg)
 
 
 def write_ln(

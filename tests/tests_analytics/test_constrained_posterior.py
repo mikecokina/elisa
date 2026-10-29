@@ -235,7 +235,7 @@ def test_update_rejects_missing_state(missing) -> None:
     fit.normalization = NORMALIZATION
     setattr(fit, missing, None)
     with pytest.raises(ValueError, match="requires loaded results, chain and normalization"):
-        io_tools.update_solution(fit, {}, None)
+        io_tools._update_solution(fit, {}, None)
 
 
 @pytest.mark.parametrize("value", [-2.0, -1.0, 0.0, 0.5, 2.0])

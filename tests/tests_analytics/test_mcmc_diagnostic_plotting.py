@@ -221,7 +221,7 @@ def test_structured_public_reload_preserves_plots(tmp_path: Path) -> None:
         chain_shape=chain.shape,
     )
     loaded = RVFitMCMC()
-    with patch.object(io_tools, "update_solution"):
+    with patch.object(io_tools, "_update_solution"):
         loaded.load_chain(path)
     loaded.flat_result = deepcopy(fit.flat_result)
     for method in (plot.traces, plot.autocorrelation):
