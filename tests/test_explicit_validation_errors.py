@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 from astropy.units import UnitConversionError
 
+from elisa import settings
 from elisa import units as u
 from elisa.analytics.dataset.base import LCData
 from elisa.analytics.dataset.transform import RVDataProperties
@@ -23,11 +24,12 @@ from elisa.base.error import (
     ElisaMissingKwargsError,
     ElisaParametersValidationError,
 )
-from elisa.base.transform import StarProperties
+from elisa.base.transform import SpotProperties, StarProperties
 from elisa.base.spot import Spot
 from elisa.base.star import Star
 from elisa.binary_system.transform import BinarySystemProperties
 from elisa.pulse.mode import PulsationMode
+from elisa.pulse.transform import PulsationModeProperties
 
 
 @pytest.mark.parametrize("error_type", [
@@ -197,3 +199,63 @@ def test_missing_nested_phenomenon_label_keeps_its_own_constructor_context(pheno
     with pytest.raises(ElisaMissingKwargsError) as caught:
         StarInitialParameters(**{phenomenon: [definition]})
     assert str(caught.value) == f"Missing argument(s): `label` in class instance {constructor.__name__}"
+
+
+@pytest.mark.parametrize("initial,model,parameter,invalid,valid", [
+    (StarInitialProperties, StarProperties, "albedo", 2.0, 0.5),
+    (StarInitialProperties, StarProperties, "discretization_factor", -1.0, 5.0),
+    (StarInitialProperties, StarProperties, "equivalent_radius", 0.0, 1.0),
+    (StarInitialProperties, StarProperties, "gravity_darkening", 2.0, 0.3),
+    (StarInitialProperties, StarProperties, "limb_darkening_coefficients", "invalid", None),
+    (StarInitialProperties, StarProperties, "metallicity", np.nan, 0.0),
+    (StarInitialProperties, StarProperties, "polar_log_g", object(), 4.2),
+    (StarInitialProperties, StarProperties, "surface_potential", -1.0, 3.0),
+    (StarInitialProperties, StarProperties, "synchronicity", 0.0, 1.0),
+    (StarInitialProperties, StarProperties, "t_eff", -1.0, 6000.0),
+    (SpotInitialProperties, SpotProperties, "albedo", 2.0, 0.5),
+    (SpotInitialProperties, SpotProperties, "discretization_factor", -1.0, 5.0),
+    (SpotInitialProperties, SpotProperties, "synchronicity", 0.0, 1.0),
+    (SpotInitialProperties, SpotProperties, "t_eff", -1.0, 6000.0),
+    (PulsationModeInitialProperties, PulsationModeProperties, "additional_light", 2.0, 0.1),
+    (PulsationModeInitialProperties, PulsationModeProperties, "distance", 0.0, 10.0),
+    (PulsationModeInitialProperties, PulsationModeProperties, "gamma", np.inf, 0.0),
+    (PulsationModeInitialProperties, PulsationModeProperties, "horizontal_to_radial_amplitude_ratio", object(), 0.5),
+    (PulsationModeInitialProperties, PulsationModeProperties, "inclination", object(), 90.0),
+    (PulsationModeInitialProperties, PulsationModeProperties, "period", 0.0, 1.0),
+    (PulsationModeInitialProperties, PulsationModeProperties, "semi_major_axis", 0.0, 1.0),
+    (PulsationModeInitialProperties, PulsationModeProperties, "temperature_perturbation_phase_shift", object(), 90.0),
+    (PulsationModeInitialProperties, PulsationModeProperties, "tidally_locked", "yes", True),
+])
+def test_delegated_initial_validators_keep_their_layer_and_valid_conversions(initial, model, parameter, invalid, valid):
+    with pytest.raises(ElisaParametersValidationError) as original:
+        getattr(model, parameter)(invalid)
+
+    if parameter == "limb_darkening_coefficients":
+        valid = {"bolometric": [0.1] * len(settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW])}
+    expected = getattr(model, parameter)(valid)
+
+    def transform(value):
+        return initial.transform_input(**{parameter: value})[parameter]
+
+    for validate in (getattr(initial(), parameter), transform):
+        with pytest.raises(ElisaInitialParametersValidationError) as caught:
+            validate(invalid)
+        assert type(caught.value.__cause__) is ElisaParametersValidationError
+        assert str(caught.value) == str(caught.value.__cause__) == str(original.value)
+        converted = validate(valid)
+        assert converted == expected
+        assert type(converted) is type(expected)
+
+
+@pytest.mark.parametrize("parameter,value", [
+    ("t_eff", -1.0), ("albedo", 2.0), ("gravity_darkening", 2.0),
+    ("metallicity", np.nan), ("surface_potential", -1.0), ("synchronicity", 0.0),
+])
+def test_initial_binary_star_parameters_preserve_the_model_validation_cause(parameter, value):
+    with pytest.raises(ElisaInitialParametersValidationError) as caught:
+        BinaryInitialParameters(
+            system={"period": {"value": 1.0, "min": 0.5, "max": 2.0}},
+            primary={parameter: {"value": value, "fixed": True}},
+        )
+    assert type(caught.value.__cause__) is ElisaParametersValidationError
+    assert str(caught.value) == str(caught.value.__cause__)

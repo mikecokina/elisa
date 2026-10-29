@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import numpy as np
 
@@ -31,6 +31,9 @@ if TYPE_CHECKING:
     from elisa.types import Float
 
 
+_ValueT = TypeVar("_ValueT")
+
+
 def angular(value: Float | Quantity) -> Float:
     """Transform all angular units to ELISa's default internal angular unit.
 
@@ -53,9 +56,9 @@ def angular(value: Float | Quantity) -> Float:
     return value
 
 
-def _initial_parameter(validator: Callable[[Any], Float]) -> staticmethod:
+def _initial_parameter(validator: Callable[[Any], _ValueT]) -> staticmethod:
     """Adapt a model validator to report initial-parameter validation errors."""
-    def wrapped(value: Any) -> Float:
+    def wrapped(value: Any) -> _ValueT:
         try:
             return validator(value)
         except ElisaParametersValidationError as exc:
@@ -142,6 +145,16 @@ class StarInitialProperties(StarProperties):
     """Handler for conversion of star component parameters units."""
 
     mass = staticmethod(BinaryInitialProperties.mass)
+    t_eff = _initial_parameter(StarProperties.t_eff)
+    albedo = _initial_parameter(StarProperties.albedo)
+    gravity_darkening = _initial_parameter(StarProperties.gravity_darkening)
+    metallicity = _initial_parameter(StarProperties.metallicity)
+    surface_potential = _initial_parameter(StarProperties.surface_potential)
+    synchronicity = _initial_parameter(StarProperties.synchronicity)
+    discretization_factor = _initial_parameter(StarProperties.discretization_factor)
+    equivalent_radius = _initial_parameter(StarProperties.equivalent_radius)
+    polar_log_g = _initial_parameter(StarProperties.polar_log_g)
+    limb_darkening_coefficients = _initial_parameter(StarProperties.limb_darkening_coefficients)
 
 
 class SpotInitialProperties(SpotProperties):
@@ -151,6 +164,10 @@ class SpotInitialProperties(SpotProperties):
     longitude = staticmethod(angular)
     angular_radius = staticmethod(angular)
     temperature_factor = _initial_parameter(SpotProperties.temperature_factor)
+    albedo = _initial_parameter(SpotProperties.albedo)
+    discretization_factor = _initial_parameter(SpotProperties.discretization_factor)
+    synchronicity = _initial_parameter(SpotProperties.synchronicity)
+    t_eff = _initial_parameter(SpotProperties.t_eff)
 
 
 class NuisanceInitialProperties(TransformProperties):
@@ -175,6 +192,19 @@ class PulsationModeInitialProperties(PulsationModeProperties):
     m = _initial_parameter(PulsationModeProperties.m)
     amplitude = _initial_parameter(PulsationModeProperties.amplitude)
     start_phase = _initial_parameter(PulsationModeProperties.start_phase)
+    additional_light = _initial_parameter(PulsationModeProperties.additional_light)
+    distance = _initial_parameter(PulsationModeProperties.distance)
+    gamma = _initial_parameter(PulsationModeProperties.gamma)
+    horizontal_to_radial_amplitude_ratio = _initial_parameter(
+        PulsationModeProperties.horizontal_to_radial_amplitude_ratio,
+    )
+    inclination = _initial_parameter(PulsationModeProperties.inclination)
+    period = _initial_parameter(PulsationModeProperties.period)
+    semi_major_axis = _initial_parameter(PulsationModeProperties.semi_major_axis)
+    temperature_perturbation_phase_shift = _initial_parameter(
+        PulsationModeProperties.temperature_perturbation_phase_shift,
+    )
+    tidally_locked = _initial_parameter(PulsationModeProperties.tidally_locked)
     mode_axis_theta = staticmethod(angular)
     mode_axis_phi = staticmethod(angular)
 
