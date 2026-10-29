@@ -9,6 +9,7 @@ import pandas as pd
 
 from elisa import settings, utils
 from elisa import units as u
+from elisa.base.error import ElisaAnalyticsDataValidationError
 from elisa.base.types import FLOAT, INT
 
 if TYPE_CHECKING:
@@ -64,14 +65,14 @@ def convert_flux(
     :type zero_point: Float | None
     :returns: Converted flux array (dimensionless or normalized).
     :rtype: NDArray[Float]
-    :raises ValueError: If unit is magnitude-based but zero_point is not provided.
+    :raises ElisaAnalyticsDataValidationError: If unit is magnitude-based but zero_point is not provided.
     """
     if unit in [u.mag, u.mmag] and zero_point is None:
         error_msg = (
             "You supplied your data in magnitudes. Please also specify "
             "a zero point using keyword argument `reference_magnitude`."
         )
-        raise ValueError(error_msg)
+        raise ElisaAnalyticsDataValidationError(error_msg)
 
     if unit == u.mag:
         data = utils.magnitude_to_flux(data, zero_point)
@@ -99,7 +100,7 @@ def convert_flux_error(
     :param flux: Pointwise converted flux using the same reference magnitude.
         Required for magnitude units; a zero point alone cannot set flux errors.
     :returns: Absolute flux uncertainties, with mmag errors divided by 1000.
-    :raises ValueError: If magnitude conversion metadata or shapes are invalid.
+    :raises ElisaAnalyticsDataValidationError: If magnitude conversion metadata or shapes are invalid.
     """
     errors = np.asarray(error, dtype=float)
     if unit not in (u.mag, u.mmag):
@@ -119,18 +120,18 @@ def _magnitude_error_flux(
     :param zero_point: Reference magnitude used to convert the observations.
     :param flux: Converted pointwise flux vector.
     :returns: Converted flux with the same shape as the errors.
-    :raises ValueError: If the reference, flux or array correspondence is invalid.
+    :raises ElisaAnalyticsDataValidationError: If the reference, flux or array correspondence is invalid.
     """
     if zero_point is None or not np.isfinite(zero_point):
         msg = "Magnitude uncertainty conversion requires a finite zero point"
-        raise ValueError(msg)
+        raise ElisaAnalyticsDataValidationError(msg)
     if flux is None:
         msg = "Magnitude uncertainty conversion requires pointwise converted flux"
-        raise ValueError(msg)
+        raise ElisaAnalyticsDataValidationError(msg)
     fluxes = np.asarray(flux, dtype=float)
     if errors.ndim != 1 or errors.shape != fluxes.shape:
         msg = "Magnitude errors and converted flux must be matching one-dimensional arrays"
-        raise ValueError(msg)
+        raise ElisaAnalyticsDataValidationError(msg)
     return fluxes
 
 
@@ -187,7 +188,7 @@ def read_data_file(
     values = data.to_numpy(dtype=FLOAT)
     if not np.all(np.isfinite(values)):
         msg = "Observation file contains nonfinite values"
-        raise ValueError(msg)
+        raise ElisaAnalyticsDataValidationError(msg)
     return values
 
 

@@ -40,6 +40,34 @@ class ElisaError(Exception):
     """
 
 
+class ElisaInputKwargsError(ElisaError):
+    """Unknown or missing required keyword arguments."""
+
+
+class ElisaInvalidKwargsError(ElisaInputKwargsError):
+    """Keyword argument names are not accepted by the target object."""
+
+
+class ElisaMissingKwargsError(ElisaInputKwargsError):
+    """Required keyword arguments were not supplied."""
+
+
+class ElisaAnalyticsTaskValidationError(ElisaError):
+    """Invalid configuration of an analytics task."""
+
+
+class ElisaAnalyticsDataValidationError(ElisaError):
+    """Invalid observational data or dataset conversion metadata."""
+
+
+class ElisaInitialParametersValidationError(ElisaError):
+    """Invalid initial fitting parameters, bounds, units or constraints."""
+
+
+class ElisaParametersValidationError(ElisaError):
+    """Invalid parameters supplied to a physical model or its components."""
+
+
 class ElisaSynthesisError(ElisaError):
     """Expected failure while constructing a physical synthetic model."""
 

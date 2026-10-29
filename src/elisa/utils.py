@@ -15,9 +15,12 @@ import scipy as sp
 from matplotlib.cbook import flatten
 from numpy.linalg import norm
 
-from elisa.base.error import ElisaValueError
 from elisa import const
 from elisa import umpy as up
+from elisa.base.error import (
+    ElisaInvalidKwargsError,
+    ElisaMissingKwargsError,
+)
 from elisa.base.types import FLOAT, INT
 from elisa.numba_functions import operations
 
@@ -93,6 +96,7 @@ def invalid_kwarg_checker(kwargs: dict, kwarglist: list | tuple, instance: type)
     :param kwargs: dict; kwargs to evaluate if are in kwarg list.
     :param kwarglist: list | tuple; list of allowed kwargs for given instance.
     :param instance: Any; class/instance with attribute `__name__`
+    :raises ElisaInvalidKwargsError: If any supplied argument name is not allowed.
     """
     invalid_kwargs = [kwarg for kwarg in kwargs if kwarg not in kwarglist]
     if len(invalid_kwargs) > 0:
@@ -101,7 +105,7 @@ def invalid_kwarg_checker(kwargs: dict, kwarglist: list | tuple, instance: type)
             f"in class instance {instance.__name__}.\n "
             f"List of available parameters: {', '.join(kwarglist)}"
         )
-        raise ElisaValueError(msg)
+        raise ElisaInvalidKwargsError(msg)
 
 
 def invalid_param_checker(kwargs: dict, kwarglist: list | tuple, message: str) -> None:
@@ -110,6 +114,7 @@ def invalid_param_checker(kwargs: dict, kwarglist: list | tuple, message: str) -
     :param kwargs: dict; kwargs to evaluate if are in kwarg list.
     :param kwarglist: list | tuple; list of allowed kwargs for given instance
     :param message: Any class
+    :raises ElisaInvalidKwargsError: If a supplied parameter name is not allowed.
     """
     invalid_kwargs = [kwarg for kwarg in kwargs if kwarg not in kwarglist]
     if len(invalid_kwargs) > 0:
@@ -118,7 +123,7 @@ def invalid_param_checker(kwargs: dict, kwarglist: list | tuple, message: str) -
             f"in {message}.\n "
             f"List of available parameters: {', '.join(kwarglist)}"
         )
-        raise ElisaValueError(msg)
+        raise ElisaInvalidKwargsError(msg)
 
 
 def is_plane(given: str, expected: str) -> Match[str] | None:
@@ -567,17 +572,18 @@ def check_missing_kwargs(
 ) -> None:
     """Check if all `kwargs` are all in `instance kwargs`.
 
-    If missing raise ValuerError with missing `kwargs`.
+    Report missing required keyword arguments.
 
     :param mandatory_kwargs: list[str] | tuple[str]
     :param supplied_kwargs: dict[str, Any]
     :param instance_of: class
+    :raises ElisaMissingKwargsError: If required argument names are absent.
     :return:
     """
     missing_kwargs = [f"`{kwarg}`" for kwarg in mandatory_kwargs if kwarg not in supplied_kwargs]
     if len(missing_kwargs) > 0:
         msg = f"Missing argument(s): {', '.join(missing_kwargs)} in class instance {instance_of.__name__}"
-        raise ElisaValueError(msg)
+        raise ElisaMissingKwargsError(msg)
 
 
 def check_missing_params(
@@ -587,17 +593,18 @@ def check_missing_params(
 ) -> None:
     """Check if all `kwargs` are all in parameter `obj`.
 
-    If missing raise ValuerError with missing `kwargs`.
+    Report missing required parameter names.
 
     :param mandatory_kwargs: List[str]
     :param supplied_kwargs: List[str]
     :param instance: class instance
+    :raises ElisaMissingKwargsError: If required parameter names are absent.
     :return:
     """
     missing_kwargs = [f"`{kwarg}`" for kwarg in mandatory_kwargs if kwarg not in supplied_kwargs]
     if len(missing_kwargs) > 0:
         msg = f"Missing argument(s): {', '.join(missing_kwargs)} in object {instance}"
-        raise ElisaValueError(msg)
+        raise ElisaMissingKwargsError(msg)
 
 
 def numeric_logg_to_string(logg: Float) -> str:

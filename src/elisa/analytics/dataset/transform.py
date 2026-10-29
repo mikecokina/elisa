@@ -8,6 +8,7 @@ import numpy as np
 
 from elisa import units as u
 from elisa import utils
+from elisa.base.error import ElisaAnalyticsDataValidationError
 from elisa.base.transform import (
     WHEN_ARRAY,
     WHEN_FLOAT64,
@@ -36,13 +37,13 @@ def array_transform(
     :type when_array: tuple[type, ...]
     :returns: Converted numpy array with float64 dtype, or None if input is empty.
     :rtype: NDArray[Any] | None
-    :raises TypeError: If value is not None/empty and not array-like.
+    :raises ElisaAnalyticsDataValidationError: If value is not None/empty and not array-like.
     """
     if isinstance(value, when_array):
         return np.array(value, dtype=FLOAT)
     if not utils.is_empty(value):
         error_msg = "Input of variable is not array-like."
-        raise TypeError(error_msg)
+        raise ElisaAnalyticsDataValidationError(error_msg)
     return None
 
 
@@ -61,14 +62,14 @@ def unit_check(
     :type base_units: tuple[Any, ...]
     :returns: The validated unit (same as input or dimensionless if None).
     :rtype: Any
-    :raises ValueError: If unit is not equivalent to any base unit.
+    :raises ElisaAnalyticsDataValidationError: If unit is not equivalent to any base unit.
     """
     if value is None or value.to_string() == "":
         value = u.dimensionless_unscaled
 
     if not value.is_equivalent(base_units):
         error_msg = f"Input {value} is not NoneType or `astropy.Unit` not convertible into desired base units."
-        raise ValueError(error_msg)
+        raise ElisaAnalyticsDataValidationError(error_msg)
 
     return value
 
@@ -185,7 +186,7 @@ class LCDataProperties(DatasetProperties):
         :type value: Any
         :returns: Value as numpy float64.
         :rtype: float
-        :raises TypeError: If input type is not supported.
+        :raises ElisaAnalyticsDataValidationError: If input type is not supported.
         """
         if isinstance(value, u.Quantity):
             # Note: Original code calls value.is_equivalent() which is a bug
@@ -198,5 +199,5 @@ class LCDataProperties(DatasetProperties):
             error_msg = (
                 "Input of variable is not (numpy.)int or (numpy.)float nor astropy.unit.quantity.Quantity instance."
             )
-            raise TypeError(error_msg)
+            raise ElisaAnalyticsDataValidationError(error_msg)
         return value

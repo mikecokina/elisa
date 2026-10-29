@@ -16,8 +16,6 @@ try:
 except ImportError:
     from collections.abc import Iterable
 
-from jsonschema import ValidationError
-
 from elisa import settings, utils
 from elisa import units as u
 from elisa.analytics.params import bonds, conf
@@ -33,7 +31,7 @@ from elisa.analytics.params.transform import (
     SpotInitialProperties,
     StarInitialProperties,
 )
-from elisa.base.error import InitialParamsError
+from elisa.base.error import ElisaInitialParametersValidationError
 from elisa.binary_system.utils import calculate_sma_estimate
 from elisa.json_encoder import ElisaJSONEncoder
 from elisa.logger import getLogger
@@ -314,7 +312,7 @@ def check_initial_param_validity(
     :type all_fit_params: list[str]
     :param mandatory_fit_params: List of mandatory system parameter names (spot and pulsation parameters excluded).
     :type mandatory_fit_params: list[str]
-    :raises InitialParamsError: If mandatory parameters are missing or invalid parameters are found.
+    :raises ElisaInitialParametersValidationError: If mandatory parameters are missing or invalid parameters are found.
     """
     param_names = {
         key: val.value for key, val in x0.items() if not re.search(r"|".join(conf.COMPOSITE_FLAT_PARAMS), key)
@@ -532,7 +530,7 @@ def check_for_invalid_constraint(constrained: dict, allowed_params: list | dict 
     :type constrained: dict[str, str]
     :param allowed_params: Names of valid model parameters that can be used.
     :type allowed_params: list | dict | Any
-    :raises InitialParamsError: If constraint contains non-variable parameters.
+    :raises ElisaInitialParametersValidationError: If constraint contains non-variable parameters.
     """
     for c_param, constraint in constrained.items():
         if conf.PARAM_PARSER in constraint:
@@ -541,7 +539,7 @@ def check_for_invalid_constraint(constrained: dict, allowed_params: list | dict 
                 f"contains non-variable parameter. Only following parameters can be used to "
                 f"define a constrained parameter: {allowed_params}"
             )
-            raise InitialParamsError(error_msg)
+            raise ElisaInitialParametersValidationError(error_msg)
 
 
 def constraints_evaluator(substitution: dict, constrained: dict) -> dict:
@@ -556,7 +554,7 @@ def constraints_evaluator(substitution: dict, constrained: dict) -> dict:
     :type constrained: dict[str, str | InitialParameter]
     :returns: Dictionary of evaluated constraint values.
     :rtype: dict[str, float]
-    :raises InitialParamsError: If constraint syntax is invalid or evaluation fails.
+    :raises ElisaInitialParametersValidationError: If constraint syntax is invalid or evaluation fails.
     """
     if is_empty(constrained):
         return {}
@@ -585,7 +583,7 @@ def constraints_evaluator(substitution: dict, constrained: dict) -> dict:
         evaluated = {key: eval(val) for key, val in numpy_callable.items()}  # noqa: S307
     except (ValueError, NameError, TypeError) as e:
         error_msg = f"Invalid syntax or value in constraint: {e!s}."
-        raise InitialParamsError(error_msg) from e
+        raise ElisaInitialParametersValidationError(error_msg) from e
     return evaluated
 
 
@@ -828,7 +826,7 @@ class InitialParameters(metaclass=abc.ABCMeta):
         * **variable**: InitialParameter.fixed = False, InitialParameter.constraint = None
         * **constrained**: InitialParameter.fixed = None, constraint = valid expression
 
-        :raises InitialParamsError: If bounds are invalid or both fixed and constraint are set.
+        :raises ElisaInitialParametersValidationError: If bounds are invalid or both fixed and constraint are set.
         """
         for slot in self.slots_:
             if not hasattr(self, str(slot)):
@@ -843,10 +841,10 @@ class InitialParameters(metaclass=abc.ABCMeta):
                     f"Initial parameters in parameter `{prop.param}` are not valid. "
                     f"Invalid bounds: {prop.min} <= {prop.value} <= {prop.max}"
                 )
-                raise InitialParamsError(error_msg)
+                raise ElisaInitialParametersValidationError(error_msg)
             if prop.fixed is not None and prop.constraint is not None:
                 error_msg = f"It is not allowed for `{prop.param}` to contain both `fixed` and `constraint` parameter."
-                raise InitialParamsError(error_msg)
+                raise ElisaInitialParametersValidationError(error_msg)
 
     def init_parameter(self, parameter: str, items: dict) -> InitialParameter:
         """Initialize InitialParameter instance from dictionary definition.
@@ -1106,7 +1104,7 @@ class BinaryInitialParameters(InitialParameters):
         Ensures no two spots or pulsations in the same stellar component have
         the same label identifier.
 
-        :raises InitialParamsError: If duplicate labels are found.
+        :raises ElisaInitialParametersValidationError: If duplicate labels are found.
         """
 
         def _test(_what: str) -> None:
@@ -1118,7 +1116,7 @@ class BinaryInitialParameters(InitialParameters):
                         _all = [_phenom.label for _phenom in phenom]
                         if len(_all) != len(set(_all)):
                             msg = f"It is not allowed to have multiple {_what} with same label."
-                            raise InitialParamsError(msg)
+                            raise ElisaInitialParametersValidationError(msg)
 
         _test("spots")
         _test("pulsations")
@@ -1179,7 +1177,7 @@ class BinaryInitialParameters(InitialParameters):
 
         Allowed characters: '(', ')', '+', '-', '*', '/', '.', 'e'
 
-        :raises ValidationError: If constraint contains forbidden syntax or characters.
+        :raises ElisaInitialParametersValidationError: If constraint contains forbidden syntax or characters.
         """
         constrained = self.get_constrained(jsonify=False)
         substitution = self.get_substitution_dict()
@@ -1198,12 +1196,12 @@ class BinaryInitialParameters(InitialParameters):
                 "Make sure that linked constraint variable is not fixed or check for typos in variable name in "
                 "constraint expression."
             )
-            raise ValidationError(msg) from exc
+            raise ElisaInitialParametersValidationError(msg) from exc
 
         for key, val in subst.items():
             if not np.all(np.isin(list(val), ALLOWED_CONSTRAINT_CHARS)):
                 msg = f"Constraint {key} contain forbidden characters. Allowed: {ALLOWED_CONSTRAINT_CHARS}"
-                raise ValidationError(msg)
+                raise ElisaInitialParametersValidationError(msg)
 
     def validate_data(self) -> None:
         """Validate that fit parameters contain at least one variable parameter.
@@ -1211,12 +1209,12 @@ class BinaryInitialParameters(InitialParameters):
         Checks that the model has parameters that can be varied during fitting and
         validates all constrained parameters for mathematical correctness.
 
-        :raises ValidationError: If no variable parameters exist or constraints are invalid.
+        :raises ElisaInitialParametersValidationError: If no variable parameters exist or constraints are invalid.
         """
         # validate that at least one parameter is not fixed
         if len(self.get_fitable(jsonify=False)) == 0:
             msg = "There are no variable parameters to fit."
-            raise ValidationError(msg)
+            raise ElisaInitialParametersValidationError(msg)
 
         # constraint validation
         self.constraint_validator()
@@ -1246,7 +1244,7 @@ class BinaryInitialParameters(InitialParameters):
 
         :param morphology: System morphology ('over-contact' or 'detached').
         :type morphology: str
-        :raises ValidationError: If required parameters are missing or incompatible.
+        :raises ElisaInitialParametersValidationError: If required parameters are missing or incompatible.
         """
         mandatory_fit_params = [
             "system@eccentricity",
@@ -1283,12 +1281,12 @@ class BinaryInitialParameters(InitialParameters):
         supplied = self.data.keys()
         if mass_parameters & supplied and community_parameters & supplied:
             msg = "LC parameters must use either component masses or mass_ratio and semi_major_axis, not both."
-            raise ValidationError(msg)
+            raise ElisaInitialParametersValidationError(msg)
         required = mass_parameters if mass_parameters & supplied else community_parameters
         missing = required - supplied
         if missing:
             msg = f"Incomplete LC parameterization; missing: {', '.join(sorted(missing))}."
-            raise ValidationError(msg)
+            raise ElisaInitialParametersValidationError(msg)
 
         is_oc = self.is_overcontact(morphology)
         are_same = self.data["primary@surface_potential"].value == self.data["secondary@surface_potential"].value
@@ -1303,10 +1301,10 @@ class BinaryInitialParameters(InitialParameters):
             return
         if is_oc and all_fixed and not are_same:
             msg = "Different potential in over-contact morphology with all fixed (potential) value are not allowed."
-            raise ValidationError(msg)
+            raise ElisaInitialParametersValidationError(msg)
         if is_oc and any_fixed:
             msg = "Just one fixed potential in over-contact morphology is not allowed."
-            raise ValidationError(msg)
+            raise ElisaInitialParametersValidationError(msg)
 
         # adjust constraint for secondary potential
         self.adjust_overcontact_potential(morphology)
@@ -1317,7 +1315,7 @@ class BinaryInitialParameters(InitialParameters):
         Ensures all mandatory RV parameters are present and valid.
         Checks consistency of time, period and RV parameterization.
 
-        :raises ValidationError: If required parameters are missing or inconsistent.
+        :raises ElisaInitialParametersValidationError: If required parameters are missing or inconsistent.
         """
         mandatory_fit_params = ["system@eccentricity", "system@argument_of_periastron", "system@gamma"]
         optional_fit_params = [
@@ -1339,17 +1337,17 @@ class BinaryInitialParameters(InitialParameters):
         if has_primary_minimum_time:
             if not (has_primary_minimum_time and has_period):
                 msg = "Input requires both, period and primary minimum time."
-                raise ValidationError(msg)
+                raise ElisaInitialParametersValidationError(msg)
         elif not has_period:
             msg = "Input requires at least period."
-            raise ValidationError(msg)
+            raise ElisaInitialParametersValidationError(msg)
 
         mass_parameters = {"primary@mass", "secondary@mass"}
         community_parameters = {"system@mass_ratio", "system@asini"}
         supplied = self.data.keys()
         if mass_parameters & supplied and community_parameters & supplied:
             msg = "RV parameters must use either component masses or mass_ratio and asini, not both."
-            raise ValidationError(msg)
+            raise ElisaInitialParametersValidationError(msg)
         required = (
             mass_parameters | {"system@inclination"}
             if mass_parameters & supplied else community_parameters
@@ -1357,7 +1355,7 @@ class BinaryInitialParameters(InitialParameters):
         missing = required - supplied
         if missing:
             msg = f"Incomplete RV parameterization; missing: {', '.join(sorted(missing))}."
-            raise ValidationError(msg)
+            raise ElisaInitialParametersValidationError(msg)
 
     def _get_kind_of(self, kind_of: str, *, jsonify: bool = False) -> dict:
         """Extract parameters of a specific kind from the model.

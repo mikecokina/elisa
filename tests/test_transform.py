@@ -6,7 +6,7 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from elisa import const, units as u
-from elisa.base.error import SpotError
+from elisa.base.error import ElisaParametersValidationError
 from elisa.base.transform import SystemProperties, BodyProperties, StarProperties, SpotProperties
 from elisa.binary_system.transform import BinarySystemProperties
 from elisa.binary_system.orbit.transform import OrbitProperties
@@ -263,7 +263,7 @@ class TransformSpotPropertiesTestCase(ElisaTestCase):
         valid_values = [90.0, 180., const.PI * u.rad, 180.0 * u.deg]
         expected = [1.5708, 3.1416, 3.1416, 3.1416]
         generate_test(valid_values, SpotProperties.angular_radius, expected, 4)
-        with self.assertRaises(SpotError):
+        with self.assertRaises(ElisaParametersValidationError):
             SpotProperties.angular_radius(0.0)
 
     @staticmethod

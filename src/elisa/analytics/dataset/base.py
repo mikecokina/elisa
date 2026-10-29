@@ -14,6 +14,7 @@ from elisa import units as u
 from elisa.analytics.dataset import utils as dutils
 from elisa.analytics.dataset.graphic import plot
 from elisa.analytics.dataset.transform import LCDataProperties, RVDataProperties
+from elisa.base.error import ElisaAnalyticsDataValidationError
 from elisa.base.types import INT
 
 if TYPE_CHECKING:
@@ -33,13 +34,17 @@ def _observation_vector(value: NDArray | Sequence[Float] | None, name: str) -> N
     :param value: Coordinate, observable or uncertainty values.
     :param name: Dataset field name used in diagnostics.
     :returns: The validated values as a one-dimensional NumPy array.
-    :raises ValueError: If the values are empty, nonfinite or not a vector.
+    :raises ElisaAnalyticsDataValidationError: If the values are empty, nonfinite or not a vector.
     """
-    array = np.asarray(value)
-    is_nonempty_vector = array.ndim == 1 and array.size > 0
-    if not is_nonempty_vector or not np.all(np.isfinite(array)):
-        msg = f"`{name}` must be a nonempty finite one-dimensional array"
-        raise ValueError(msg)
+    msg = f"`{name}` must be a nonempty finite one-dimensional array of numeric values"
+    try:
+        array = np.asarray(value)
+        is_nonempty_vector = array.ndim == 1 and array.size > 0
+        valid = is_nonempty_vector and np.all(np.isfinite(array))
+    except (TypeError, ValueError, ArithmeticError) as exc:
+        raise ElisaAnalyticsDataValidationError(msg) from exc
+    if not valid:
+        raise ElisaAnalyticsDataValidationError(msg)
     return array
 
 
@@ -82,7 +87,7 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
         :type name: str | None
         :param kwargs: Additional keyword arguments for data initialization.
         :type kwargs: Any
-        :raises ValueError: If data shapes or validity checks fail.
+        :raises ElisaAnalyticsDataValidationError: If data shapes or validity checks fail.
         """
         # initial kwargs
         self.kwargs: dict[str, Any] = copy(kwargs)
@@ -115,8 +120,20 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
         :type kwargs: Any
         :returns: Transformed and validated parameters.
         :rtype: dict[str, Any]
+        :raises ElisaAnalyticsDataValidationError: If a property has an invalid type or unit.
         """
-        return self.__class__.TRANSFORM_PROPERTIES_CLS.transform_input(**kwargs)
+        properties = {}
+        for name, value in kwargs.items():
+            properties.update(self._transform_property(name, value))
+        return properties
+
+    def _transform_property(self, name: str, value: Any) -> dict[str, Any]:
+        """Transform one property and report input failures with its name."""
+        try:
+            return self.__class__.TRANSFORM_PROPERTIES_CLS.transform_input(**{name: value})
+        except (TypeError, ValueError, AttributeError, ArithmeticError) as exc:
+            msg = f"Invalid dataset property `{name}`: {exc}"
+            raise ElisaAnalyticsDataValidationError(msg) from exc
 
     def copy(self) -> DataSet:
         """Create a deep copy of the DataSet instance.
@@ -138,22 +155,28 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
 
         :param kwargs: Dictionary containing data arrays (x_data, y_data, y_err).
         :type kwargs: Any
-        :raises ValueError: If arrays are malformed, nonfinite, or supplied errors are not positive.
+        :raises ElisaAnalyticsDataValidationError: If arrays are malformed, nonfinite,
+            or supplied errors are not positive.
         """
         coordinates = _observation_vector(kwargs.get("x_data"), "x_data")
         observed = _observation_vector(kwargs.get("y_data"), "y_data")
         if observed.shape != coordinates.shape:
             msg = "`y_data` must have the same shape as `x_data`"
-            raise ValueError(msg)
+            raise ElisaAnalyticsDataValidationError(msg)
         if kwargs.get("y_err") is None:
             return
         errors = _observation_vector(kwargs["y_err"], "y_err")
         if errors.shape != coordinates.shape:
             msg = "`y_err` must have the same shape as `x_data`"
-            raise ValueError(msg)
-        if np.any(np.less_equal(errors, 0)):
+            raise ElisaAnalyticsDataValidationError(msg)
+        try:
+            nonpositive = np.any(np.less_equal(errors, 0))
+        except (TypeError, ValueError, ArithmeticError) as exc:
+            msg = "`y_err` must contain strictly positive numeric uncertainties"
+            raise ElisaAnalyticsDataValidationError(msg) from exc
+        if nonpositive:
             msg = "`y_err` must contain strictly positive uncertainties"
-            raise ValueError(msg)
+            raise ElisaAnalyticsDataValidationError(msg)
 
     @classmethod
     def load_from_file(
@@ -375,8 +398,9 @@ class RVData(DataSet):
         :type name: str | None
         :param kwargs: Keyword arguments including x_data, y_data, y_err, x_unit, y_unit.
         :type kwargs: Any
-        :raises ValueError: If data validity checks fail or mandatory kwargs are missing.
-        :raises TypeError: If invalid kwargs are provided.
+        :raises ElisaAnalyticsDataValidationError: If arrays, properties or unit conversions are invalid.
+        :raises elisa.base.error.ElisaInvalidKwargsError: If keyword argument names are unknown.
+        :raises elisa.base.error.ElisaMissingKwargsError: If mandatory kwargs are missing.
         """
         utils.invalid_kwarg_checker(kwargs, self.__slots__, RVData)
         utils.check_missing_kwargs(self.MANDATORY_KWARGS, kwargs, instance_of=RVData)
@@ -416,31 +440,36 @@ class RVData(DataSet):
         :type kwargs: Any
         :returns: Dictionary with converted data and units.
         :rtype: dict[str, Any]
+        :raises ElisaAnalyticsDataValidationError: If arrays or units cannot be converted.
         """
-        # converting x-axis
-        kwargs["x_data"] = dutils.convert_data(
-            kwargs["x_data"],
-            kwargs["x_unit"],
-            u.DEFAULT_PERIOD_UNIT,
-        )
-        kwargs["x_unit"] = dutils.convert_unit(kwargs["x_unit"], u.DEFAULT_PERIOD_UNIT)
+        try:
+            # converting x-axis
+            kwargs["x_data"] = dutils.convert_data(
+                kwargs["x_data"],
+                kwargs["x_unit"],
+                u.DEFAULT_PERIOD_UNIT,
+            )
+            kwargs["x_unit"] = dutils.convert_unit(kwargs["x_unit"], u.DEFAULT_PERIOD_UNIT)
 
-        # converting y-axis
-        kwargs["y_data"] = dutils.convert_data(
-            kwargs["y_data"],
-            kwargs["y_unit"],
-            u.VELOCITY_UNIT,
-        )
-
-        # convert errors
-        if kwargs.get("y_err") is not None:
-            kwargs["y_err"] = dutils.convert_data(
-                kwargs["y_err"],
+            # converting y-axis
+            kwargs["y_data"] = dutils.convert_data(
+                kwargs["y_data"],
                 kwargs["y_unit"],
                 u.VELOCITY_UNIT,
             )
-        kwargs["y_unit"] = dutils.convert_unit(kwargs["y_unit"], u.VELOCITY_UNIT)
 
+            # convert errors
+            if kwargs.get("y_err") is not None:
+                kwargs["y_err"] = dutils.convert_data(
+                    kwargs["y_err"],
+                    kwargs["y_unit"],
+                    u.VELOCITY_UNIT,
+                )
+            kwargs["y_unit"] = dutils.convert_unit(kwargs["y_unit"], u.VELOCITY_UNIT)
+
+        except (TypeError, ValueError, AttributeError, ArithmeticError) as exc:
+            msg = f"Cannot convert RVData to internal units: {exc}"
+            raise ElisaAnalyticsDataValidationError(msg) from exc
         return kwargs
 
 
@@ -519,8 +548,9 @@ class LCData(DataSet):
         :param kwargs: Keyword arguments including x_data, y_data, y_err, x_unit, y_unit,
             and optionally reference_magnitude and passband.
         :type kwargs: Any
-        :raises ValueError: If data validity checks fail or mandatory kwargs are missing.
-        :raises TypeError: If invalid kwargs are provided.
+        :raises ElisaAnalyticsDataValidationError: If arrays, properties or unit conversions are invalid.
+        :raises elisa.base.error.ElisaInvalidKwargsError: If keyword argument names are unknown.
+        :raises elisa.base.error.ElisaMissingKwargsError: If mandatory kwargs are missing.
         """
         self.passband: str | None = None
         self.reference_magnitude: float | None = None
@@ -566,29 +596,34 @@ class LCData(DataSet):
         :type kwargs: Any
         :returns: Dictionary with converted data and units.
         :rtype: dict[str, Any]
+        :raises ElisaAnalyticsDataValidationError: If arrays or units cannot be converted.
         """
-        # converting x-axis
-        kwargs["x_data"] = dutils.convert_data(
-            kwargs["x_data"],
-            kwargs["x_unit"],
-            u.DEFAULT_PERIOD_UNIT,
-        )
-        kwargs["x_unit"] = dutils.convert_unit(kwargs["x_unit"], u.DEFAULT_PERIOD_UNIT)
-        kwargs["reference_magnitude"] = kwargs.get("reference_magnitude")
-
-        flux = dutils.convert_flux(
-            kwargs["y_data"], kwargs["y_unit"], zero_point=kwargs["reference_magnitude"],
-        )
-        if kwargs.get("y_err") is not None:
-            kwargs["y_err"] = dutils.convert_flux_error(
-                kwargs["y_err"], kwargs["y_unit"],
-                zero_point=kwargs["reference_magnitude"], flux=flux,
+        try:
+            # converting x-axis
+            kwargs["x_data"] = dutils.convert_data(
+                kwargs["x_data"],
+                kwargs["x_unit"],
+                u.DEFAULT_PERIOD_UNIT,
             )
-        kwargs["y_data"] = flux
-        kwargs["y_unit"] = dutils.convert_unit(
-            kwargs["y_unit"], u.dimensionless_unscaled,
-        )
+            kwargs["x_unit"] = dutils.convert_unit(kwargs["x_unit"], u.DEFAULT_PERIOD_UNIT)
+            kwargs["reference_magnitude"] = kwargs.get("reference_magnitude")
 
+            flux = dutils.convert_flux(
+                kwargs["y_data"], kwargs["y_unit"], zero_point=kwargs["reference_magnitude"],
+            )
+            if kwargs.get("y_err") is not None:
+                kwargs["y_err"] = dutils.convert_flux_error(
+                    kwargs["y_err"], kwargs["y_unit"],
+                    zero_point=kwargs["reference_magnitude"], flux=flux,
+                )
+            kwargs["y_data"] = flux
+            kwargs["y_unit"] = dutils.convert_unit(
+                kwargs["y_unit"], u.dimensionless_unscaled,
+            )
+
+        except (TypeError, ValueError, AttributeError, ArithmeticError) as exc:
+            msg = f"Cannot convert LCData to internal units: {exc}"
+            raise ElisaAnalyticsDataValidationError(msg) from exc
         return kwargs
 
 

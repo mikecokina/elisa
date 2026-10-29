@@ -30,6 +30,7 @@ import numpy as np
 
 from elisa.analytics import LCBinaryAnalyticsTask
 from elisa.analytics.binary_fit.shared import extend_observations_to_desired_interval
+from elisa.base.error import ElisaInputKwargsError
 from elisa.ui.shared.plotting import figure_to_pil, serialized_plot
 from elisa.ui.shared.utils import collect_param_values
 from elisa.ui.shared.validators import mcmc_integer
@@ -964,7 +965,7 @@ def build() -> None:  # noqa: C901, PLR0915
             # (mirroring the RV fitting pattern where the tab owns the task instance).
             try:
                 lc_data = compute.load_lc_dataset(lc_rows, x_unit_str)
-            except ValueError as exc:
+            except (ValueError, ElisaInputKwargsError) as exc:
                 raise gr.Error(str(exc)) from exc
 
             task_obj = LCBinaryAnalyticsTask(data=lc_data, method="least_squares", expected_morphology=morphology)

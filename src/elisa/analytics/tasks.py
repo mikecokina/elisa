@@ -15,6 +15,7 @@ from elisa.analytics.binary_fit.plot import (
     RVPlotMCMC,
 )
 from elisa.analytics.params import bonds, parameters
+from elisa.base.error import ElisaAnalyticsTaskValidationError
 from elisa.logger import getLogger
 
 if TYPE_CHECKING:
@@ -127,13 +128,13 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
 
         :param method: Name of the optimization method provided by the user
         :type method: str
-        :raises ValueError: If method name is not in ALLOWED_METHODS
+        :raises ElisaAnalyticsTaskValidationError: If method name is not in ALLOWED_METHODS
         """
         if method not in cls.ALLOWED_METHODS:
             error_msg: str = (
                 f"Invalid fitting method. Use one of: {', '.join(cls.ALLOWED_METHODS)}"
             )
-            raise ValueError(error_msg)
+            raise ElisaAnalyticsTaskValidationError(error_msg)
 
     def load_result(self, filename: str, *, autofill_sma: bool = False) -> dict:
         """Load model parameters from JSON file.

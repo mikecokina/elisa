@@ -6,7 +6,7 @@ import numpy as np
 
 from elisa import const
 from elisa import units as u
-from elisa.base.error import PhysicalStateError
+from elisa.base.error import ElisaParametersValidationError
 from elisa.base.transform import (
     WHEN_FLOAT64,
     SystemProperties,
@@ -33,27 +33,27 @@ class OrbitProperties(TransformProperties):
         :type value: int | INT | Float | FLOAT
         :return: Validated eccentricity converted to ``Float``.
         :rtype: Float
-        :raises TypeError: If ``value`` is not a supported numeric scalar.
-        :raises PhysicalStateError: If ``value`` is outside the allowed interval
+        :raises ElisaParametersValidationError: If ``value`` is not a supported numeric scalar.
+        :raises ElisaParametersValidationError: If ``value`` is outside the allowed interval
             ``[0, 1)``.
-        :raises FloatingPointError: If ``value`` is nonfinite.
+        :raises ElisaParametersValidationError: If ``value`` is nonfinite.
         """
         if not isinstance(value, (int, INT, float, FLOAT)):
             message = (
                 "Input of variable `eccentricity` is not "
                 "(numpy.)int or (numpy.)float."
             )
-            raise TypeError(message)
+            raise ElisaParametersValidationError(message)
 
         if not np.isfinite(value):
             message = "Nonfinite eccentricity."
-            raise FloatingPointError(message)
+            raise ElisaParametersValidationError(message)
         if value < 0 or value >= 1:
             message = (
                 "Input of variable `eccentricity` is invalid or out of "
                 "boundaries."
             )
-            raise PhysicalStateError(message)
+            raise ElisaParametersValidationError(message)
 
         return np.float64(value)
 
@@ -90,7 +90,7 @@ class OrbitProperties(TransformProperties):
         )
         if not np.isfinite(value):
             message = "Nonfinite argument_of_periastron."
-            raise FloatingPointError(message)
+            raise ElisaParametersValidationError(message)
         return value
 
     @staticmethod
@@ -112,8 +112,8 @@ class OrbitProperties(TransformProperties):
         )
         if not np.isfinite(value):
             message = "Nonfinite inclination."
-            raise FloatingPointError(message)
+            raise ElisaParametersValidationError(message)
         if not 0 <= value <= const.PI:
             message = f"Inclination value of {value} is out of bounds (0, pi)."
-            raise PhysicalStateError(message)
+            raise ElisaParametersValidationError(message)
         return value
