@@ -887,7 +887,9 @@ class SpotInitialParameters(InitialParameters):
 
         :param kwargs: Spot parameter definitions.
         :type kwargs: dict
+        :raises elisa.base.error.ElisaMissingKwargsError: If the spot label is missing.
         """
+        utils.check_missing_kwargs(("label",), kwargs, instance_of=self.__class__)
         self.label = f"spot{conf.PARAM_PARSER}{kwargs.pop('label')}"
         for parameter, items in kwargs.items():
             value = self.init_parameter(parameter, items)
@@ -912,7 +914,9 @@ class PulsationInitialParameters(InitialParameters):
 
         :param kwargs: Pulsation mode parameter definitions.
         :type kwargs: dict
+        :raises elisa.base.error.ElisaMissingKwargsError: If the pulsation mode label is missing.
         """
+        utils.check_missing_kwargs(("label",), kwargs, instance_of=self.__class__)
         self.label = f"pulsation{conf.PARAM_PARSER}{kwargs.pop('label')}"
         self.mode_axis_phi = 0
         self.mode_axis_theta = 0
@@ -1030,7 +1034,9 @@ class BinaryInitialParameters(InitialParameters):
 
         :param kwargs: Binary system parameter definitions including system, primary, and secondary components.
         :type kwargs: dict
+        :raises elisa.base.error.ElisaMissingKwargsError: If the system section is missing.
         """
+        utils.check_missing_kwargs(("system",), kwargs, instance_of=self.__class__)
         self._primary: dict | None = kwargs.pop("primary", None)
         self._secondary: dict | None = kwargs.pop("secondary", None)
         self._nuisance = kwargs.pop(conf.NUISANCE_PARSER, None)

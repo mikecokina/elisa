@@ -6,7 +6,9 @@ from astropy.units import UnitConversionError
 from elisa import units as u
 from elisa.analytics.dataset.base import LCData
 from elisa.analytics.dataset.transform import RVDataProperties
-from elisa.analytics.params.parameters import BinaryInitialParameters, StarInitialParameters
+from elisa.analytics.params.parameters import (
+    BinaryInitialParameters, PulsationInitialParameters, SpotInitialParameters, StarInitialParameters,
+)
 from elisa.analytics.params.transform import (
     BinaryInitialProperties, PulsationModeInitialProperties, SpotInitialProperties,
     StarInitialProperties, _initial_parameter,
@@ -18,6 +20,7 @@ from elisa.base.error import (
     ElisaAnalyticsTaskValidationError,
     ElisaError,
     ElisaInitialParametersValidationError,
+    ElisaMissingKwargsError,
     ElisaParametersValidationError,
 )
 from elisa.base.transform import StarProperties
@@ -170,3 +173,27 @@ def test_valid_spots_and_pulsations_keep_their_values_in_both_layers():
     assert star.pulsations[0].m == initial.pulsations[0].m.value == -1
     assert star.pulsations[0].frequency == pytest.approx(1.0 / 86400)
     assert initial.pulsations[0].frequency.value == 1.0
+
+
+@pytest.mark.parametrize("constructor,kwargs,missing", [
+    (BinaryInitialParameters, {}, "system"),
+    (BinaryInitialParameters, {"primary": {}}, "system"),
+    (SpotInitialParameters, {}, "label"),
+    (SpotInitialParameters, {"longitude": {"value": 0.0, "fixed": True}}, "label"),
+    (PulsationInitialParameters, {}, "label"),
+    (PulsationInitialParameters, {"l": {"value": 1, "fixed": True}}, "label"),
+])
+def test_missing_initial_structure_keys_report_argument_and_constructor(constructor, kwargs, missing):
+    with pytest.raises(ElisaMissingKwargsError) as caught:
+        constructor(**kwargs)
+    assert str(caught.value) == f"Missing argument(s): `{missing}` in class instance {constructor.__name__}"
+
+
+@pytest.mark.parametrize("phenomenon,constructor,definition", [
+    ("spots", SpotInitialParameters, {"longitude": {"value": 0.0, "fixed": True}}),
+    ("pulsations", PulsationInitialParameters, {"l": {"value": 1, "fixed": True}}),
+])
+def test_missing_nested_phenomenon_label_keeps_its_own_constructor_context(phenomenon, constructor, definition):
+    with pytest.raises(ElisaMissingKwargsError) as caught:
+        StarInitialParameters(**{phenomenon: [definition]})
+    assert str(caught.value) == f"Missing argument(s): `label` in class instance {constructor.__name__}"
