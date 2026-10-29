@@ -393,8 +393,8 @@ class RVData(DataSet):
         :param kwargs: Keyword arguments including x_data, y_data, y_err, x_unit, y_unit.
         :type kwargs: Any
         :raises ElisaAnalyticsDataError: If arrays, properties or unit conversions are invalid.
-        :raises elisa.base.error.ElisaInvalidKwargsError: If keyword argument names are unknown.
-        :raises elisa.base.error.ElisaMissingKwargsError: If mandatory kwargs are missing.
+        :raises ElisaInvalidKwargsError: If keyword argument names are unknown.
+        :raises ElisaMissingKwargsError: If mandatory kwargs are missing.
         """
         utils.invalid_kwarg_checker(kwargs, self.__slots__, RVData)
         utils.check_missing_kwargs(self.MANDATORY_KWARGS, kwargs, instance_of=RVData)
@@ -619,6 +619,3 @@ class LCData(DataSet):
             msg = f"Cannot convert LCData to internal units: {exc}"
             raise ElisaAnalyticsDataError(msg) from exc
         return kwargs
-
-
-
