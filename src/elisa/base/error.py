@@ -39,6 +39,7 @@ class ElisaError(Exception):
     Catch this when you want to handle all errors produced by ELISa.
     """
 
+# ###
 
 class ElisaInputKwargsError(ElisaError):
     """Unknown or missing required keyword arguments."""
@@ -66,6 +67,8 @@ class ElisaInitialParametersError(ElisaError):
 
 class ElisaParametersError(ElisaError):
     """Invalid parameters supplied to a physical model or its components."""
+
+# ###
 
 
 class ElisaSynthesisError(ElisaError):
@@ -106,14 +109,6 @@ class LimbDarkeningError(ElisaSynthesisError):
 
 class LimbDarkeningSourceError(LimbDarkeningError):
     """Raised when a required limb-darkening source table is unavailable."""
-
-
-class MetallicityError(ElisaSynthesisError):
-    """Raised when metallicity-related validation fails."""
-
-
-class GravityError(ElisaSynthesisError):
-    """Raised when gravity-related validation fails."""
 
 
 class PhysicalStateError(ElisaSynthesisError):

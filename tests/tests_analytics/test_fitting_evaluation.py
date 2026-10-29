@@ -26,11 +26,9 @@ from elisa.base.error import (
     ElisaMaxIterationError,
     ElisaRuntimeError,
     ElisaValueError,
-    GravityError,
     LimbDarkeningError,
     LimbDarkeningSourceError,
     MaxIterationError,
-    MetallicityError,
     MorphologyError,
     PhysicalStateError,
     PredictionAlignmentError,
@@ -63,8 +61,6 @@ EXPECTED_FAILURES = [
     LimbDarkeningError,
     LimbDarkeningSourceError,
     TemperatureError,
-    MetallicityError,
-    GravityError,
 ]
 
 

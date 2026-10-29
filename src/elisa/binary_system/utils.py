@@ -6,10 +6,9 @@ from typing import TYPE_CHECKING, Literal, TypeAlias
 import numpy as np
 from jsonschema import ValidationError, validate
 
-from elisa.base.error import ElisaValueError
 from elisa import const, settings, units
 from elisa import umpy as up
-from elisa.base.error import YouHaveNoIdeaError
+from elisa.base.error import ElisaValueError, YouHaveNoIdeaError
 from elisa.base.transform import SystemProperties
 from elisa.binary_system import model
 from elisa.binary_system.radius import calculate_side_radius
