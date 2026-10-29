@@ -9,7 +9,7 @@ from elisa import units as u
 from elisa.analytics.dataset import utils as dutils
 from elisa.analytics.dataset.base import LCData, RVData
 from elisa.base.error import (
-    ElisaAnalyticsDataValidationError,
+    ElisaAnalyticsDataError,
     ElisaInvalidKwargsError,
     ElisaMissingKwargsError,
 )
@@ -31,7 +31,7 @@ def dataset_case(request):
 def test_invalid_numeric_fields_report_field_and_original_cause(dataset_case, field, values):
     dataset, kwargs = dataset_case
     kwargs[field] = values
-    with pytest.raises(ElisaAnalyticsDataValidationError, match=field) as caught:
+    with pytest.raises(ElisaAnalyticsDataError, match=field) as caught:
         dataset(**kwargs)
     assert isinstance(caught.value.__cause__, (TypeError, ValueError))
 
@@ -41,7 +41,7 @@ def test_invalid_numeric_fields_report_field_and_original_cause(dataset_case, fi
 def test_invalid_unit_objects_report_property_and_original_cause(dataset_case, field, unit):
     dataset, kwargs = dataset_case
     kwargs[field] = unit
-    with pytest.raises(ElisaAnalyticsDataValidationError, match=field) as caught:
+    with pytest.raises(ElisaAnalyticsDataError, match=field) as caught:
         dataset(**kwargs)
     assert isinstance(caught.value.__cause__, (TypeError, ValueError, AttributeError))
 
@@ -58,7 +58,7 @@ def test_later_processing_failures_use_data_validation_error(dataset_case, stage
     target = (RVDataProperties if dataset is RVData else LCDataProperties) if stage == "transform_input" else dutils
     method = "x_unit" if stage == "transform_input" else "convert_data"
     with patch.object(target, method, side_effect=failure):
-        with pytest.raises(ElisaAnalyticsDataValidationError) as caught:
+        with pytest.raises(ElisaAnalyticsDataError) as caught:
             dataset(**kwargs)
     assert caught.value.__cause__ is failure
     assert ("x_unit" if stage == "transform_input" else dataset.__name__) in str(caught.value)
@@ -66,7 +66,7 @@ def test_later_processing_failures_use_data_validation_error(dataset_case, stage
 
 @pytest.mark.parametrize("zero_point", ["invalid", object(), [1.0, 2.0, 3.0], 1 * u.m])
 def test_bad_magnitude_reference_is_normalized_during_conversion(zero_point):
-    with pytest.raises(ElisaAnalyticsDataValidationError, match="LCData") as caught:
+    with pytest.raises(ElisaAnalyticsDataError, match="LCData") as caught:
         LCData(x_data=[0.0, 0.5], y_data=[10.0, 11.0], y_err=[0.1, 0.1],
                x_unit=u.dimensionless_unscaled, y_unit=u.mag, reference_magnitude=zero_point)
     assert isinstance(caught.value.__cause__, (TypeError, ValueError))
@@ -97,9 +97,9 @@ def test_unknown_and_missing_kwargs_keep_their_dedicated_errors(dataset_case):
 
 def test_supplied_validation_errors_are_not_wrapped_again(dataset_case):
     dataset, kwargs = dataset_case
-    failure = ElisaAnalyticsDataValidationError("specific conversion diagnostics")
+    failure = ElisaAnalyticsDataError("specific conversion diagnostics")
     with patch.object(dutils, "convert_data", side_effect=failure):
-        with pytest.raises(ElisaAnalyticsDataValidationError) as caught:
+        with pytest.raises(ElisaAnalyticsDataError) as caught:
             dataset(**kwargs)
     assert caught.value is failure
 
@@ -122,7 +122,7 @@ def test_valid_magnitude_conversion_and_uncertainties_are_preserved():
 def test_nonnumeric_uncertainties_are_normalized_during_positivity_check(dataset_case):
     dataset, kwargs = dataset_case
     kwargs["y_err"] = np.array(["2026-01-01", "2026-01-02"], dtype="datetime64[D]")
-    with pytest.raises(ElisaAnalyticsDataValidationError, match="y_err") as caught:
+    with pytest.raises(ElisaAnalyticsDataError, match="y_err") as caught:
         dataset(**kwargs)
     assert isinstance(caught.value.__cause__, TypeError)
 
@@ -133,7 +133,7 @@ def test_direct_array_conversion_normalizes_unit_failures(dataset_case):
     dataset, kwargs = dataset_case
     kwargs["x_data"] = np.asarray(kwargs["x_data"])
     kwargs["x_unit"] = u.m
-    with pytest.raises(ElisaAnalyticsDataValidationError, match=dataset.__name__) as caught:
+    with pytest.raises(ElisaAnalyticsDataError, match=dataset.__name__) as caught:
         dataset.convert_arrays(**kwargs)
     assert isinstance(caught.value.__cause__, UnitConversionError)
 
@@ -142,7 +142,7 @@ def test_property_transformation_handles_empty_input_and_first_property_failure(
     dataset, kwargs = dataset_case
     data = dataset(**kwargs)
     assert data.transform_input() == {}
-    with pytest.raises(ElisaAnalyticsDataValidationError, match="`x_unit`") as caught:
+    with pytest.raises(ElisaAnalyticsDataError, match="`x_unit`") as caught:
         data.transform_input(x_unit=object())
     assert isinstance(caught.value.__cause__, AttributeError)
 
@@ -175,7 +175,7 @@ def test_observation_file_validation_reports_file_and_original_cause(
 ):
     path = tmp_path / "observations.dat"
     path.write_bytes(content)
-    with pytest.raises(ElisaAnalyticsDataValidationError, match=message) as caught:
+    with pytest.raises(ElisaAnalyticsDataError, match=message) as caught:
         observation_file_loader(path)
     assert str(path) in str(caught.value)
     if cause is None:
@@ -220,7 +220,7 @@ def test_observation_file_io_errors_keep_their_type(tmp_path, observation_file_l
 def test_invalid_observation_column_selection_uses_data_error(tmp_path, observation_file_loader, columns, cause):
     path = tmp_path / "observations.dat"
     path.write_text("0 1 .1\n")
-    with pytest.raises(ElisaAnalyticsDataValidationError, match="Cannot select") as caught:
+    with pytest.raises(ElisaAnalyticsDataError, match="Cannot select") as caught:
         observation_file_loader(path, data_columns=columns)
     assert isinstance(caught.value.__cause__, cause)
     assert repr(columns) in str(caught.value)
@@ -245,7 +245,7 @@ def test_invalid_downselection_ratio_uses_data_validation_error(tmp_path, datase
     dataset, kwargs = dataset_case
     path = tmp_path / "observations.dat"
     path.write_text("0 1 .1\n.5 2 .2\n")
-    with pytest.raises(ElisaAnalyticsDataValidationError, match="`downselect_ratio`") as caught:
+    with pytest.raises(ElisaAnalyticsDataError, match="`downselect_ratio`") as caught:
         dataset.load_from_file(str(path), x_unit=kwargs["x_unit"], y_unit=kwargs["y_unit"],
                                downselect_ratio=ratio)
     assert "(0, 1]" in str(caught.value)
@@ -288,6 +288,6 @@ def test_original_observations_are_validated_before_downselection(tmp_path, data
     path = tmp_path / "observations.dat"
     # The invalid uncertainty would be omitted by stride two.
     path.write_text("0 1 .1\n.1 2 0\n.2 3 .1\n")
-    with pytest.raises(ElisaAnalyticsDataValidationError, match="strictly positive"):
+    with pytest.raises(ElisaAnalyticsDataError, match="strictly positive"):
         dataset.load_from_file(str(path), x_unit=kwargs["x_unit"], y_unit=kwargs["y_unit"],
                                downselect_ratio=0.5)

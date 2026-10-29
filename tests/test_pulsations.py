@@ -14,7 +14,7 @@ from elisa import units as u
 from elisa.base.error import (
     ElisaInvalidKwargsError,
     ElisaMissingKwargsError,
-    ElisaParametersValidationError,
+    ElisaParametersError,
     PulsationModeError,
 )
 from elisa.base.star import Star
@@ -892,13 +892,13 @@ class TestPulsationModeProperties(ElisaTestCase):
         self.assertEqual(result, 3)
 
     def test_l_invalid_float(self):
-        """Test l property raises ElisaParametersValidationError for non-integer float."""
-        with self.assertRaises(ElisaParametersValidationError):
+        """Test l property raises ElisaParametersError for non-integer float."""
+        with self.assertRaises(ElisaParametersError):
             self.props.l(2.5)
 
     def test_l_invalid_string(self):
-        """Test l property raises ElisaParametersValidationError for string input."""
-        with self.assertRaises(ElisaParametersValidationError):
+        """Test l property raises ElisaParametersError for string input."""
+        with self.assertRaises(ElisaParametersError):
             self.props.l("2")
 
     def test_m_valid_int(self):
@@ -919,13 +919,13 @@ class TestPulsationModeProperties(ElisaTestCase):
         self.assertEqual(result, -1)
 
     def test_m_invalid_float(self):
-        """Test m property raises ElisaParametersValidationError for non-integer float."""
-        with self.assertRaises(ElisaParametersValidationError):
+        """Test m property raises ElisaParametersError for non-integer float."""
+        with self.assertRaises(ElisaParametersError):
             self.props.m(1.5)
 
     def test_m_invalid_string(self):
-        """Test m property raises ElisaParametersValidationError for string input."""
-        with self.assertRaises(ElisaParametersValidationError):
+        """Test m property raises ElisaParametersError for string input."""
+        with self.assertRaises(ElisaParametersError):
             self.props.m("1")
 
     def test_amplitude_valid_float(self):
@@ -951,8 +951,8 @@ class TestPulsationModeProperties(ElisaTestCase):
         self.assertTrue(np.isfinite(result))
 
     def test_amplitude_negative_raises_error(self):
-        """Test amplitude property raises ElisaParametersValidationError for negative values."""
-        with self.assertRaises(ElisaParametersValidationError):
+        """Test amplitude property raises ElisaParametersError for negative values."""
+        with self.assertRaises(ElisaParametersError):
             self.props.amplitude(-10.0)
 
     def test_amplitude_invalid_type(self):
@@ -983,8 +983,8 @@ class TestPulsationModeProperties(ElisaTestCase):
         self.assertTrue(np.isfinite(result))
 
     def test_frequency_negative_raises_error(self):
-        """Test frequency property raises ElisaParametersValidationError for negative values."""
-        with self.assertRaises(ElisaParametersValidationError):
+        """Test frequency property raises ElisaParametersError for negative values."""
+        with self.assertRaises(ElisaParametersError):
             self.props.frequency(-1.0)
 
     def test_frequency_invalid_type(self):
@@ -1032,13 +1032,13 @@ class TestPulsationModeProperties(ElisaTestCase):
         self.assertTrue(0 <= result < const.PI)
 
     def test_mode_axis_theta_above_pi_raises_error(self):
-        """Test mode_axis_theta property raises ElisaParametersValidationError for value >= pi."""
-        with self.assertRaises(ElisaParametersValidationError):
+        """Test mode_axis_theta property raises ElisaParametersError for value >= pi."""
+        with self.assertRaises(ElisaParametersError):
             self.props.mode_axis_theta(180.0)  # 180 degrees = pi radians
 
     def test_mode_axis_theta_negative_raises_error(self):
-        """Test mode_axis_theta property raises ElisaParametersValidationError for negative values."""
-        with self.assertRaises(ElisaParametersValidationError):
+        """Test mode_axis_theta property raises ElisaParametersError for negative values."""
+        with self.assertRaises(ElisaParametersError):
             self.props.mode_axis_theta(-45.0)
 
     def test_mode_axis_phi_valid(self):
@@ -1099,8 +1099,8 @@ class TestPulsationModeProperties(ElisaTestCase):
         self.assertAlmostEqual(result, 0.75)
 
     def test_horizontal_to_radial_amplitude_ratio_invalid_type(self):
-        """Test horizontal_to_radial_amplitude_ratio raises ElisaParametersValidationError for invalid type."""
-        with self.assertRaises(ElisaParametersValidationError):
+        """Test horizontal_to_radial_amplitude_ratio raises ElisaParametersError for invalid type."""
+        with self.assertRaises(ElisaParametersError):
             self.props.horizontal_to_radial_amplitude_ratio("0.5")
 
     def test_tidally_locked_true(self):
@@ -1116,18 +1116,18 @@ class TestPulsationModeProperties(ElisaTestCase):
         self.assertIsInstance(result, bool)
 
     def test_tidally_locked_invalid_int(self):
-        """Test tidally_locked property raises ElisaParametersValidationError for integer."""
-        with self.assertRaises(ElisaParametersValidationError):
+        """Test tidally_locked property raises ElisaParametersError for integer."""
+        with self.assertRaises(ElisaParametersError):
             self.props.tidally_locked(1)
 
     def test_tidally_locked_invalid_string(self):
-        """Test tidally_locked property raises ElisaParametersValidationError for string."""
-        with self.assertRaises(ElisaParametersValidationError):
+        """Test tidally_locked property raises ElisaParametersError for string."""
+        with self.assertRaises(ElisaParametersError):
             self.props.tidally_locked("True")
 
     def test_tidally_locked_invalid_none(self):
-        """Test tidally_locked property raises ElisaParametersValidationError for None."""
-        with self.assertRaises(ElisaParametersValidationError):
+        """Test tidally_locked property raises ElisaParametersError for None."""
+        with self.assertRaises(ElisaParametersError):
             self.props.tidally_locked(None)
 
 
@@ -1685,7 +1685,7 @@ class TestPulsationModeInitialization(ElisaTestCase):
 
     def test_validate_mode_invalid_m_exceeds_l(self):
         """Test mode validation raises error when |m| > l."""
-        with self.assertRaises(ElisaParametersValidationError):
+        with self.assertRaises(ElisaParametersError):
             PulsationMode(
                 l=2,
                 m=3,
@@ -1695,7 +1695,7 @@ class TestPulsationModeInitialization(ElisaTestCase):
 
     def test_validate_mode_invalid_negative_m_exceeds_l(self):
         """Test mode validation raises error when |m| > l with negative m."""
-        with self.assertRaises(ElisaParametersValidationError):
+        with self.assertRaises(ElisaParametersError):
             PulsationMode(
                 l=2,
                 m=-4,
@@ -1816,7 +1816,7 @@ class TestPulsationModeInitialization(ElisaTestCase):
 
     def test_amplitude_negative_raises_error(self):
         """Test that negative amplitude raises error."""
-        with self.assertRaises(ElisaParametersValidationError):
+        with self.assertRaises(ElisaParametersError):
             PulsationMode(
                 l=2,
                 m=1,
@@ -1826,7 +1826,7 @@ class TestPulsationModeInitialization(ElisaTestCase):
 
     def test_frequency_negative_raises_error(self):
         """Test that negative frequency raises error."""
-        with self.assertRaises(ElisaParametersValidationError):
+        with self.assertRaises(ElisaParametersError):
             PulsationMode(
                 l=2,
                 m=1,
@@ -1938,7 +1938,7 @@ class TestPulsationModeInitialization(ElisaTestCase):
 
 @pytest.mark.parametrize('value', [-1, -1., np.int32(-2), Decimal('-1'), Fraction(-1, 1)])
 def test_degree_transform_rejects_negative_integers(value):
-    with pytest.raises(ElisaParametersValidationError, match='must be non-negative'):
+    with pytest.raises(ElisaParametersError, match='must be non-negative'):
         PulsationModeProperties.l(value)
 
 

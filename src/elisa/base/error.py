@@ -52,19 +52,19 @@ class ElisaMissingKwargsError(ElisaInputKwargsError):
     """Required keyword arguments were not supplied."""
 
 
-class ElisaAnalyticsTaskValidationError(ElisaError):
+class ElisaAnalyticsTaskError(ElisaError):
     """Invalid configuration of an analytics task."""
 
 
-class ElisaAnalyticsDataValidationError(ElisaError):
+class ElisaAnalyticsDataError(ElisaError):
     """Invalid observational data or dataset conversion metadata."""
 
 
-class ElisaInitialParametersValidationError(ElisaError):
+class ElisaInitialParametersError(ElisaError):
     """Invalid initial fitting parameters, bounds, units or constraints."""
 
 
-class ElisaParametersValidationError(ElisaError):
+class ElisaParametersError(ElisaError):
     """Invalid parameters supplied to a physical model or its components."""
 
 

@@ -22,12 +22,12 @@ from elisa.analytics.tasks import LCBinaryAnalyticsTask
 from elisa.analytics.tools.bvi import elisa_bv_temperature
 from elisa.analytics.transform import LCBinaryAnalyticsProperties
 from elisa.base.error import (
-    ElisaAnalyticsDataValidationError,
-    ElisaAnalyticsTaskValidationError,
+    ElisaAnalyticsDataError,
+    ElisaAnalyticsTaskError,
     ElisaError,
-    ElisaInitialParametersValidationError,
+    ElisaInitialParametersError,
     ElisaMissingKwargsError,
-    ElisaParametersValidationError,
+    ElisaParametersError,
 )
 from elisa.base.transform import SpotProperties, StarProperties
 from elisa.base.spot import Spot
@@ -38,8 +38,8 @@ from elisa.pulse.transform import PulsationModeProperties
 
 
 @pytest.mark.parametrize("error_type", [
-    ElisaAnalyticsTaskValidationError, ElisaAnalyticsDataValidationError,
-    ElisaInitialParametersValidationError, ElisaParametersValidationError,
+    ElisaAnalyticsTaskError, ElisaAnalyticsDataError,
+    ElisaInitialParametersError, ElisaParametersError,
 ])
 def test_validation_errors_inherit_directly_from_elisa_error(error_type):
     assert error_type.__bases__ == (ElisaError,)
@@ -47,11 +47,11 @@ def test_validation_errors_inherit_directly_from_elisa_error(error_type):
 
 @pytest.mark.parametrize("value", [-1.0, 1.0, np.nan, np.inf, -np.inf, "invalid"])
 def test_eccentricity_adapter_translates_only_the_model_validation_error(value):
-    with pytest.raises(ElisaParametersValidationError) as physical:
+    with pytest.raises(ElisaParametersError) as physical:
         BinarySystemProperties.eccentricity(value)
-    with pytest.raises(ElisaInitialParametersValidationError) as initial:
+    with pytest.raises(ElisaInitialParametersError) as initial:
         BinaryInitialProperties.eccentricity(value)
-    assert type(initial.value.__cause__) is ElisaParametersValidationError
+    assert type(initial.value.__cause__) is ElisaParametersError
     assert str(initial.value) == str(physical.value)
 
 
@@ -60,20 +60,20 @@ def test_eccentricity_adapter_translates_only_the_model_validation_error(value):
     ("asini", -1.0), ("additional_light", 2.0), ("primary_minimum_time", np.inf),
 ])
 def test_shared_initial_adapters_keep_the_original_validation_cause(method, value):
-    with pytest.raises(ElisaInitialParametersValidationError) as error:
+    with pytest.raises(ElisaInitialParametersError) as error:
         getattr(BinaryInitialProperties, method)(value)
-    assert type(error.value.__cause__) is ElisaParametersValidationError
+    assert type(error.value.__cause__) is ElisaParametersError
 
 
 @pytest.mark.parametrize("validator,value,error_type", [
-    (LCBinaryAnalyticsProperties.data, "invalid", ElisaAnalyticsTaskValidationError),
-    (RVDataProperties.y_unit, u.kg, ElisaAnalyticsDataValidationError),
-    (BinaryInitialProperties.mass, 0.0, ElisaInitialParametersValidationError),
-    (BinaryInitialProperties.mass, np.inf, ElisaInitialParametersValidationError),
-    (StarProperties.mass, object(), ElisaParametersValidationError),
-    (StarProperties.t_eff, -1.0, ElisaParametersValidationError),
-    (StarProperties.t_eff, np.inf, ElisaParametersValidationError),
-    (PulsationModeInitialProperties.frequency, -1.0, ElisaInitialParametersValidationError),
+    (LCBinaryAnalyticsProperties.data, "invalid", ElisaAnalyticsTaskError),
+    (RVDataProperties.y_unit, u.kg, ElisaAnalyticsDataError),
+    (BinaryInitialProperties.mass, 0.0, ElisaInitialParametersError),
+    (BinaryInitialProperties.mass, np.inf, ElisaInitialParametersError),
+    (StarProperties.mass, object(), ElisaParametersError),
+    (StarProperties.t_eff, -1.0, ElisaParametersError),
+    (StarProperties.t_eff, np.inf, ElisaParametersError),
+    (PulsationModeInitialProperties.frequency, -1.0, ElisaInitialParametersError),
 ])
 def test_explicit_raises_use_their_validation_layer(validator, value, error_type):
     with pytest.raises(error_type):
@@ -81,11 +81,11 @@ def test_explicit_raises_use_their_validation_layer(validator, value, error_type
 
 
 def test_existing_data_and_parameter_definition_checks_use_new_types():
-    with pytest.raises(ElisaAnalyticsDataValidationError, match="same shape"):
+    with pytest.raises(ElisaAnalyticsDataError, match="same shape"):
         LCData.check_data_validity(x_data=[0.0, 1.0], y_data=[1.0])
-    with pytest.raises(ElisaInitialParametersValidationError, match="no variable"):
+    with pytest.raises(ElisaInitialParametersError, match="no variable"):
         BinaryInitialParameters(system={})
-    with pytest.raises(ElisaAnalyticsTaskValidationError, match="Invalid fitting method"):
+    with pytest.raises(ElisaAnalyticsTaskError, match="Invalid fitting method"):
         LCBinaryAnalyticsTask.validate_method("invalid")
 
 
@@ -136,7 +136,7 @@ def test_aliases_keep_static_method_behavior(properties, name, value):
                    discretization_factor=0), "discretization factor"),
 ])
 def test_phenomenon_validation_uses_model_error_through_star_construction(nested, phenomenon, values, message):
-    with pytest.raises(ElisaParametersValidationError, match=message):
+    with pytest.raises(ElisaParametersError, match=message):
         if nested:
             Star(mass=1.0, t_eff=6000, **{phenomenon: [values]})
         else:
@@ -154,14 +154,14 @@ def test_phenomenon_validation_uses_model_error_through_star_construction(nested
 def test_initial_phenomenon_validation_preserves_cause_through_star_parameters(
     phenomenon, properties, parameter, value,
 ):
-    with pytest.raises(ElisaInitialParametersValidationError) as direct:
+    with pytest.raises(ElisaInitialParametersError) as direct:
         getattr(properties, parameter)(value)
-    assert type(direct.value.__cause__) is ElisaParametersValidationError
+    assert type(direct.value.__cause__) is ElisaParametersError
 
     definition = {"label": "feature", parameter: {"value": value, "fixed": True}}
-    with pytest.raises(ElisaInitialParametersValidationError) as nested:
+    with pytest.raises(ElisaInitialParametersError) as nested:
         StarInitialParameters(**{phenomenon: [definition]})
-    assert type(nested.value.__cause__) is ElisaParametersValidationError
+    assert type(nested.value.__cause__) is ElisaParametersError
     assert str(nested.value) == str(direct.value)
 
 
@@ -232,7 +232,7 @@ def test_missing_nested_phenomenon_label_keeps_its_own_constructor_context(pheno
     (PulsationModeInitialProperties, PulsationModeProperties, "tidally_locked", "yes", True),
 ])
 def test_delegated_initial_validators_keep_their_layer_and_valid_conversions(initial, model, parameter, invalid, valid):
-    with pytest.raises(ElisaParametersValidationError) as original:
+    with pytest.raises(ElisaParametersError) as original:
         getattr(model, parameter)(invalid)
 
     if parameter == "limb_darkening_coefficients":
@@ -243,9 +243,9 @@ def test_delegated_initial_validators_keep_their_layer_and_valid_conversions(ini
         return initial.transform_input(**{parameter: value})[parameter]
 
     for validate in (getattr(initial(), parameter), transform):
-        with pytest.raises(ElisaInitialParametersValidationError) as caught:
+        with pytest.raises(ElisaInitialParametersError) as caught:
             validate(invalid)
-        assert type(caught.value.__cause__) is ElisaParametersValidationError
+        assert type(caught.value.__cause__) is ElisaParametersError
         assert str(caught.value) == str(caught.value.__cause__) == str(original.value)
         converted = validate(valid)
         assert converted == expected
@@ -257,12 +257,12 @@ def test_delegated_initial_validators_keep_their_layer_and_valid_conversions(ini
     ("metallicity", np.nan), ("surface_potential", -1.0), ("synchronicity", 0.0),
 ])
 def test_initial_binary_star_parameters_preserve_the_model_validation_cause(parameter, value):
-    with pytest.raises(ElisaInitialParametersValidationError) as caught:
+    with pytest.raises(ElisaInitialParametersError) as caught:
         BinaryInitialParameters(
             system={"period": {"value": 1.0, "min": 0.5, "max": 2.0}},
             primary={parameter: {"value": value, "fixed": True}},
         )
-    assert type(caught.value.__cause__) is ElisaParametersValidationError
+    assert type(caught.value.__cause__) is ElisaParametersError
     assert str(caught.value) == str(caught.value.__cause__)
 
 
@@ -276,7 +276,7 @@ def lc_task_data():
     "invalid", "", "semi-detached", "Detached", None, 0, [], {}, np.array(["detached", "overcontact"]),
 ])
 def test_lc_task_rejects_invalid_morphology_with_task_validation_error(method, morphology, lc_task_data):
-    with pytest.raises(ElisaAnalyticsTaskValidationError) as caught:
+    with pytest.raises(ElisaAnalyticsTaskError) as caught:
         LCBinaryAnalyticsTask(method=method, expected_morphology=morphology, data=lc_task_data)
     message = str(caught.value)
     assert "expected_morphology" in message
@@ -343,7 +343,7 @@ def initial_parameters_with_constraint(expression):
     ")(", "(", "1 +", "system@period +", "sin(system@period", "sin system@period", "1e-", "", "   ", "1 2",
 ])
 def test_initial_constraint_syntax_errors_report_parameter_and_original_cause(expression):
-    with pytest.raises(ElisaInitialParametersValidationError, match="system@gamma") as caught:
+    with pytest.raises(ElisaInitialParametersError, match="system@gamma") as caught:
         initial_parameters_with_constraint(expression)
     assert type(caught.value.__cause__) is SyntaxError
     assert caught.value.__cause__.msg in str(caught.value)
@@ -366,12 +366,12 @@ def test_initial_constraint_syntax_validation_preserves_expressions_without_eval
 
 @pytest.mark.parametrize("expression", ["system@missing + 1", "sqrt(system@period)", "system@period ^ 2"])
 def test_constraint_syntax_validation_keeps_existing_reference_and_character_restrictions(expression):
-    with pytest.raises(ElisaInitialParametersValidationError, match="forbidden characters"):
+    with pytest.raises(ElisaInitialParametersError, match="forbidden characters"):
         initial_parameters_with_constraint(expression)
 
 
 def test_nested_spot_constraint_syntax_is_checked_during_binary_initialization():
-    with pytest.raises(ElisaInitialParametersValidationError, match="primary@spot@feature@longitude") as caught:
+    with pytest.raises(ElisaInitialParametersError, match="primary@spot@feature@longitude") as caught:
         BinaryInitialParameters(
             system={"period": {"value": 1.0, "min": 0.5, "max": 2.0}},
             primary={"spots": [{"label": "feature", "longitude": {"constraint": "system@period +"}}]},

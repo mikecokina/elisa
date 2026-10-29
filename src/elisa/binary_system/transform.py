@@ -5,7 +5,7 @@ from typing import Any
 import numpy as np
 
 from elisa import const, units
-from elisa.base.error import ElisaParametersValidationError
+from elisa.base.error import ElisaParametersError
 from elisa.base.transform import WHEN_FLOAT64, SystemProperties, quantity_transform
 from elisa.base.types import FLOAT, INT
 from elisa.units import DefaultBinarySystemInputUnits
@@ -21,13 +21,13 @@ class BinarySystemProperties(SystemProperties):
         """
         if not isinstance(value, (int, INT, float, FLOAT)):
             msg = "Input of variable `eccentricity` is not (numpy.)int or (numpy.)float."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if not np.isfinite(value):
             msg = "Nonfinite eccentricity."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if value < 0 or value >= 1:
             msg = "Input of variable `eccentricity` is out of boundaries [0, 1)."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return float(np.float64(value))
 
     @staticmethod
@@ -53,10 +53,10 @@ class BinarySystemProperties(SystemProperties):
                 "Input of variable `argument_of_periastron` is not (numpy.)int or (numpy.)float "
                 "nor astropy.unit.quantity.Quantity instance."
             )
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if not np.isfinite(value):
             msg = "Nonfinite argument_of_periastron."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if not 0 <= value <= const.FULL_ARC:
             value %= const.FULL_ARC
         return float(value)
@@ -74,7 +74,7 @@ class BinarySystemProperties(SystemProperties):
         value = float(np.float64(value))
         if not np.isfinite(value):
             msg = "Nonfinite phase_shift."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return value
 
     @staticmethod
@@ -92,7 +92,7 @@ class BinarySystemProperties(SystemProperties):
         )
         if not np.isfinite(value):
             msg = "Nonfinite primary_minimum_time."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return value
 
     @classmethod
@@ -122,10 +122,10 @@ class RadialVelocityObserverProperties(SystemProperties):
         """
         if not np.isfinite(value):
             msg = "Nonfinite mass_ratio."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if not value > 0:
             msg = f"Invalid value of property `mass_ratio`. Expected > 0, given {value}."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return float(np.float64(value))
 
     @staticmethod
@@ -147,11 +147,11 @@ class RadialVelocityObserverProperties(SystemProperties):
                 "Input of variable `asini` is not (numpy.)int or (numpy.)float "
                 "nor astropy.unit.quantity.Quantity instance."
             )
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if not np.isfinite(value):
             msg = "Nonfinite asini."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if value < 0:
             msg = "Value of `asini` cannot be negative."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return float(value)

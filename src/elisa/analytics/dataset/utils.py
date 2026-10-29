@@ -10,7 +10,7 @@ import pandas as pd
 
 from elisa import settings, utils
 from elisa import units as u
-from elisa.base.error import ElisaAnalyticsDataValidationError
+from elisa.base.error import ElisaAnalyticsDataError
 from elisa.base.types import FLOAT, INT
 
 if TYPE_CHECKING:
@@ -66,14 +66,14 @@ def convert_flux(
     :type zero_point: Float | None
     :returns: Converted flux array (dimensionless or normalized).
     :rtype: NDArray[Float]
-    :raises ElisaAnalyticsDataValidationError: If unit is magnitude-based but zero_point is not provided.
+    :raises ElisaAnalyticsDataError: If unit is magnitude-based but zero_point is not provided.
     """
     if unit in [u.mag, u.mmag] and zero_point is None:
         error_msg = (
             "You supplied your data in magnitudes. Please also specify "
             "a zero point using keyword argument `reference_magnitude`."
         )
-        raise ElisaAnalyticsDataValidationError(error_msg)
+        raise ElisaAnalyticsDataError(error_msg)
 
     if unit == u.mag:
         data = utils.magnitude_to_flux(data, zero_point)
@@ -101,7 +101,7 @@ def convert_flux_error(
     :param flux: Pointwise converted flux using the same reference magnitude.
         Required for magnitude units; a zero point alone cannot set flux errors.
     :returns: Absolute flux uncertainties, with mmag errors divided by 1000.
-    :raises ElisaAnalyticsDataValidationError: If magnitude conversion metadata or shapes are invalid.
+    :raises ElisaAnalyticsDataError: If magnitude conversion metadata or shapes are invalid.
     """
     errors = np.asarray(error, dtype=float)
     if unit not in (u.mag, u.mmag):
@@ -121,18 +121,18 @@ def _magnitude_error_flux(
     :param zero_point: Reference magnitude used to convert the observations.
     :param flux: Converted pointwise flux vector.
     :returns: Converted flux with the same shape as the errors.
-    :raises ElisaAnalyticsDataValidationError: If the reference, flux or array correspondence is invalid.
+    :raises ElisaAnalyticsDataError: If the reference, flux or array correspondence is invalid.
     """
     if zero_point is None or not np.isfinite(zero_point):
         msg = "Magnitude uncertainty conversion requires a finite zero point"
-        raise ElisaAnalyticsDataValidationError(msg)
+        raise ElisaAnalyticsDataError(msg)
     if flux is None:
         msg = "Magnitude uncertainty conversion requires pointwise converted flux"
-        raise ElisaAnalyticsDataValidationError(msg)
+        raise ElisaAnalyticsDataError(msg)
     fluxes = np.asarray(flux, dtype=float)
     if errors.ndim != 1 or errors.shape != fluxes.shape:
         msg = "Magnitude errors and converted flux must be matching one-dimensional arrays"
-        raise ElisaAnalyticsDataValidationError(msg)
+        raise ElisaAnalyticsDataError(msg)
     return fluxes
 
 
@@ -174,7 +174,7 @@ def read_data_file(
     :type delimiter: str
     :returns: Numeric array with N rows and len(data_columns) selected observation columns.
     :rtype: NDArray[Float]
-    :raises ElisaAnalyticsDataValidationError: If the file content or selected columns are invalid.
+    :raises ElisaAnalyticsDataError: If the file content or selected columns are invalid.
     :raises OSError: If the file cannot be opened.
     """
     data = _read_observation_table(filename, delimiter)
@@ -195,7 +195,7 @@ def _read_observation_table(filename: str, delimiter: str) -> pd.DataFrame:
         )
     except (pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeDecodeError) as exc:
         msg = f"Cannot parse observation file `{filename}`: {exc}"
-        raise ElisaAnalyticsDataValidationError(msg) from exc
+        raise ElisaAnalyticsDataError(msg) from exc
 
 
 def _select_observation_columns(
@@ -206,7 +206,7 @@ def _select_observation_columns(
         return data[list(data_columns)]
     except (KeyError, TypeError, ValueError) as exc:
         msg = f"Cannot select observation columns {data_columns!r} in file `{filename}`: {exc}"
-        raise ElisaAnalyticsDataValidationError(msg) from exc
+        raise ElisaAnalyticsDataError(msg) from exc
 
 
 def _numeric_observation_values(
@@ -218,10 +218,10 @@ def _numeric_observation_values(
         values = numeric.to_numpy(dtype=FLOAT)
     except (TypeError, ValueError, ArithmeticError) as exc:
         msg = f"Invalid numeric observations in file `{filename}`, columns {data_columns!r}: {exc}"
-        raise ElisaAnalyticsDataValidationError(msg) from exc
+        raise ElisaAnalyticsDataError(msg) from exc
     if not np.all(np.isfinite(values)):
         msg = f"Observation file `{filename}` contains nonfinite values in columns {data_columns!r}"
-        raise ElisaAnalyticsDataValidationError(msg)
+        raise ElisaAnalyticsDataError(msg)
     return values
 
 
@@ -231,7 +231,7 @@ def downselect_data(data: NDArray[Float], downselect_ratio: float | None) -> NDA
     :param data: Validated observation rows.
     :param downselect_ratio: Finite real selection ratio in (0, 1], or None to keep all rows.
     :returns: Rows selected with the existing int(1/downselect_ratio) stride.
-    :raises ElisaAnalyticsDataValidationError: If the ratio has an invalid type or range.
+    :raises ElisaAnalyticsDataError: If the ratio has an invalid type or range.
     """
     if downselect_ratio is None:
         return data
@@ -241,7 +241,7 @@ def downselect_data(data: NDArray[Float], downselect_ratio: float | None) -> NDA
         or not 0 < downselect_ratio <= 1
     ):
         msg = "`downselect_ratio` must be a finite real number in (0, 1]"
-        raise ElisaAnalyticsDataValidationError(msg)
+        raise ElisaAnalyticsDataError(msg)
     # A stride at least as large as the table selects only the first row.
     # Handle it before taking the reciprocal, which could overflow for tiny ratios.
     if downselect_ratio <= 1.0 / len(data):

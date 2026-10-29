@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from elisa import settings
-from elisa.base.error import ElisaAnalyticsTaskValidationError
+from elisa.base.error import ElisaAnalyticsTaskError
 from elisa.base.transform import TransformProperties
 
 if TYPE_CHECKING:
@@ -30,12 +30,12 @@ class RVBinaryAnalyticsTask(TransformProperties):
         :type value: Any
         :return: Validated radial velocity data dictionary
         :rtype: dict[str, RVData]
-        :raises ElisaAnalyticsTaskValidationError: If value is not a dict or contains non-RVData values
-        :raises ElisaAnalyticsTaskValidationError: If dict keys are not valid binary counterpart designations
+        :raises ElisaAnalyticsTaskError: If value is not a dict or contains non-RVData values
+        :raises ElisaAnalyticsTaskError: If dict keys are not valid binary counterpart designations
         """
         if not isinstance(value, dict):
             error_msg: str = "`radial_velocities` are not of type `dict`"
-            raise ElisaAnalyticsTaskValidationError(error_msg)
+            raise ElisaAnalyticsTaskError(error_msg)
 
         for key, val in value.items():
             if key not in settings.BINARY_COUNTERPARTS:
@@ -43,14 +43,14 @@ class RVBinaryAnalyticsTask(TransformProperties):
                     f"{key} is invalid designation for radial velocity dataset. "
                     f"Please choose from {list(settings.BINARY_COUNTERPARTS.keys())}"
                 )
-                raise ElisaAnalyticsTaskValidationError(error_msg)
+                raise ElisaAnalyticsTaskError(error_msg)
 
             # Import here to avoid circular imports
             from elisa.analytics.dataset.base import RVData  # noqa: PLC0415
 
             if not isinstance(val, RVData):
                 error_msg = f"{val} is not an instance of RVData class."
-                raise ElisaAnalyticsTaskValidationError(error_msg)
+                raise ElisaAnalyticsTaskError(error_msg)
 
         return value
 
@@ -74,12 +74,12 @@ class LCBinaryAnalyticsProperties(TransformProperties):
         :type value: Any
         :return: Validated light curve data dictionary
         :rtype: dict[str, LCData]
-        :raises ElisaAnalyticsTaskValidationError: If value is not a dict or contains non-LCData values
-        :raises ElisaAnalyticsTaskValidationError: If dict keys are not valid passband designations
+        :raises ElisaAnalyticsTaskError: If value is not a dict or contains non-LCData values
+        :raises ElisaAnalyticsTaskError: If dict keys are not valid passband designations
         """
         if not isinstance(value, dict):
             error_msg: str = "`light_curves` are not of type `dict`"
-            raise ElisaAnalyticsTaskValidationError(error_msg)
+            raise ElisaAnalyticsTaskError(error_msg)
 
         for key, val in value.items():
             if key not in settings.PASSBANDS:
@@ -90,14 +90,14 @@ class LCBinaryAnalyticsProperties(TransformProperties):
                     f"{key} is invalid passband. Please choose from available "
                     f"passbands:\n{available_passbands}"
                 )
-                raise ElisaAnalyticsTaskValidationError(error_msg)
+                raise ElisaAnalyticsTaskError(error_msg)
 
             # Import here to avoid circular imports
             from elisa.analytics.dataset.base import LCData  # noqa: PLC0415
 
             if not isinstance(val, LCData):
                 error_msg = f"{val} is not an instance of LCData class."
-                raise ElisaAnalyticsTaskValidationError(error_msg)
+                raise ElisaAnalyticsTaskError(error_msg)
 
         return value
 

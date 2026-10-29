@@ -15,7 +15,7 @@ from elisa.analytics.binary_fit.plot import (
     RVPlotMCMC,
 )
 from elisa.analytics.params import bonds, parameters
-from elisa.base.error import ElisaAnalyticsTaskValidationError
+from elisa.base.error import ElisaAnalyticsTaskError
 from elisa.base.transform import normalize_morphology
 from elisa.logger import getLogger
 
@@ -129,13 +129,13 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
 
         :param method: Name of the optimization method provided by the user
         :type method: str
-        :raises ElisaAnalyticsTaskValidationError: If method name is not in ALLOWED_METHODS
+        :raises ElisaAnalyticsTaskError: If method name is not in ALLOWED_METHODS
         """
         if method not in cls.ALLOWED_METHODS:
             error_msg: str = (
                 f"Invalid fitting method. Use one of: {', '.join(cls.ALLOWED_METHODS)}"
             )
-            raise ElisaAnalyticsTaskValidationError(error_msg)
+            raise ElisaAnalyticsTaskError(error_msg)
 
     def load_result(self, filename: str, *, autofill_sma: bool = False) -> dict:
         """Load model parameters from JSON file.
@@ -541,7 +541,7 @@ class LCBinaryAnalyticsTask(AnalyticsTask):
         :type limb_darkening_coefficients: dict | None
         :param kwargs: Additional configuration options (data, atmosphere_model, etc.)
         :type kwargs: dict
-        :raises ElisaAnalyticsTaskValidationError: If the fitting method or morphology is unsupported.
+        :raises ElisaAnalyticsTaskError: If the fitting method or morphology is unsupported.
         """
         self.validate_method(method)
         expected_morphology = self.validate_morphology(expected_morphology)
@@ -571,14 +571,14 @@ class LCBinaryAnalyticsTask(AnalyticsTask):
 
         :param morphology: Requested morphology, including the overcontact alias.
         :returns: Canonical morphology: detached or over-contact.
-        :raises ElisaAnalyticsTaskValidationError: If the morphology type or value is unsupported.
+        :raises ElisaAnalyticsTaskError: If the morphology type or value is unsupported.
         """
         if not isinstance(morphology, str) or morphology not in cls.ALLOWED_MORPHOLOGIES:
             msg = (
                 f"Invalid expected_morphology {morphology!r}. "
                 f"Use one of: {', '.join(cls.ALLOWED_MORPHOLOGIES)}"
             )
-            raise ElisaAnalyticsTaskValidationError(msg)
+            raise ElisaAnalyticsTaskError(msg)
         return normalize_morphology(morphology)
 
     def load_result(self, filename: str, *, autofill_sma: bool = True) -> dict:

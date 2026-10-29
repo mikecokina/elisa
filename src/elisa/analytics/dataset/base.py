@@ -14,7 +14,7 @@ from elisa import units as u
 from elisa.analytics.dataset import utils as dutils
 from elisa.analytics.dataset.graphic import plot
 from elisa.analytics.dataset.transform import LCDataProperties, RVDataProperties
-from elisa.base.error import ElisaAnalyticsDataValidationError
+from elisa.base.error import ElisaAnalyticsDataError
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -33,7 +33,7 @@ def _observation_vector(value: NDArray | Sequence[Float] | None, name: str) -> N
     :param value: Coordinate, observable or uncertainty values.
     :param name: Dataset field name used in diagnostics.
     :returns: The validated values as a one-dimensional NumPy array.
-    :raises ElisaAnalyticsDataValidationError: If the values are empty, nonfinite or not a vector.
+    :raises ElisaAnalyticsDataError: If the values are empty, nonfinite or not a vector.
     """
     msg = f"`{name}` must be a nonempty finite one-dimensional array of numeric values"
     try:
@@ -41,9 +41,9 @@ def _observation_vector(value: NDArray | Sequence[Float] | None, name: str) -> N
         is_nonempty_vector = array.ndim == 1 and array.size > 0
         valid = is_nonempty_vector and np.all(np.isfinite(array))
     except (TypeError, ValueError, ArithmeticError) as exc:
-        raise ElisaAnalyticsDataValidationError(msg) from exc
+        raise ElisaAnalyticsDataError(msg) from exc
     if not valid:
-        raise ElisaAnalyticsDataValidationError(msg)
+        raise ElisaAnalyticsDataError(msg)
     return array
 
 
@@ -86,7 +86,7 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
         :type name: str | None
         :param kwargs: Additional keyword arguments for data initialization.
         :type kwargs: Any
-        :raises ElisaAnalyticsDataValidationError: If data shapes or validity checks fail.
+        :raises ElisaAnalyticsDataError: If data shapes or validity checks fail.
         """
         # initial kwargs
         self.kwargs: dict[str, Any] = copy(kwargs)
@@ -119,7 +119,7 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
         :type kwargs: Any
         :returns: Transformed and validated parameters.
         :rtype: dict[str, Any]
-        :raises ElisaAnalyticsDataValidationError: If a property has an invalid type or unit.
+        :raises ElisaAnalyticsDataError: If a property has an invalid type or unit.
         """
         properties = {}
         for name, value in kwargs.items():
@@ -132,7 +132,7 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
             return self.__class__.TRANSFORM_PROPERTIES_CLS.transform_input(**{name: value})
         except (TypeError, ValueError, AttributeError, ArithmeticError) as exc:
             msg = f"Invalid dataset property `{name}`: {exc}"
-            raise ElisaAnalyticsDataValidationError(msg) from exc
+            raise ElisaAnalyticsDataError(msg) from exc
 
     def copy(self) -> DataSet:
         """Create a deep copy of the DataSet instance.
@@ -154,28 +154,28 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
 
         :param kwargs: Dictionary containing data arrays (x_data, y_data, y_err).
         :type kwargs: Any
-        :raises ElisaAnalyticsDataValidationError: If arrays are malformed, nonfinite,
+        :raises ElisaAnalyticsDataError: If arrays are malformed, nonfinite,
             or supplied errors are not positive.
         """
         coordinates = _observation_vector(kwargs.get("x_data"), "x_data")
         observed = _observation_vector(kwargs.get("y_data"), "y_data")
         if observed.shape != coordinates.shape:
             msg = "`y_data` must have the same shape as `x_data`"
-            raise ElisaAnalyticsDataValidationError(msg)
+            raise ElisaAnalyticsDataError(msg)
         if kwargs.get("y_err") is None:
             return
         errors = _observation_vector(kwargs["y_err"], "y_err")
         if errors.shape != coordinates.shape:
             msg = "`y_err` must have the same shape as `x_data`"
-            raise ElisaAnalyticsDataValidationError(msg)
+            raise ElisaAnalyticsDataError(msg)
         try:
             nonpositive = np.any(np.less_equal(errors, 0))
         except (TypeError, ValueError, ArithmeticError) as exc:
             msg = "`y_err` must contain strictly positive numeric uncertainties"
-            raise ElisaAnalyticsDataValidationError(msg) from exc
+            raise ElisaAnalyticsDataError(msg) from exc
         if nonpositive:
             msg = "`y_err` must contain strictly positive uncertainties"
-            raise ElisaAnalyticsDataValidationError(msg)
+            raise ElisaAnalyticsDataError(msg)
 
     @classmethod
     def load_from_file(
@@ -214,7 +214,7 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
         :type kwargs: Any
         :returns: DataSet instance with loaded data.
         :rtype: DataSet
-        :raises ElisaAnalyticsDataValidationError: If observations or downselect_ratio are invalid.
+        :raises ElisaAnalyticsDataError: If observations or downselect_ratio are invalid.
         :raises OSError: If the file cannot be opened.
         """
         data_columns = (0, 1, 2) if data_columns is None else data_columns
@@ -392,7 +392,7 @@ class RVData(DataSet):
         :type name: str | None
         :param kwargs: Keyword arguments including x_data, y_data, y_err, x_unit, y_unit.
         :type kwargs: Any
-        :raises ElisaAnalyticsDataValidationError: If arrays, properties or unit conversions are invalid.
+        :raises ElisaAnalyticsDataError: If arrays, properties or unit conversions are invalid.
         :raises elisa.base.error.ElisaInvalidKwargsError: If keyword argument names are unknown.
         :raises elisa.base.error.ElisaMissingKwargsError: If mandatory kwargs are missing.
         """
@@ -434,7 +434,7 @@ class RVData(DataSet):
         :type kwargs: Any
         :returns: Dictionary with converted data and units.
         :rtype: dict[str, Any]
-        :raises ElisaAnalyticsDataValidationError: If arrays or units cannot be converted.
+        :raises ElisaAnalyticsDataError: If arrays or units cannot be converted.
         """
         try:
             # converting x-axis
@@ -463,7 +463,7 @@ class RVData(DataSet):
 
         except (TypeError, ValueError, AttributeError, ArithmeticError) as exc:
             msg = f"Cannot convert RVData to internal units: {exc}"
-            raise ElisaAnalyticsDataValidationError(msg) from exc
+            raise ElisaAnalyticsDataError(msg) from exc
         return kwargs
 
 
@@ -542,7 +542,7 @@ class LCData(DataSet):
         :param kwargs: Keyword arguments including x_data, y_data, y_err, x_unit, y_unit,
             and optionally reference_magnitude and passband.
         :type kwargs: Any
-        :raises ElisaAnalyticsDataValidationError: If arrays, properties or unit conversions are invalid.
+        :raises ElisaAnalyticsDataError: If arrays, properties or unit conversions are invalid.
         :raises elisa.base.error.ElisaInvalidKwargsError: If keyword argument names are unknown.
         :raises elisa.base.error.ElisaMissingKwargsError: If mandatory kwargs are missing.
         """
@@ -590,7 +590,7 @@ class LCData(DataSet):
         :type kwargs: Any
         :returns: Dictionary with converted data and units.
         :rtype: dict[str, Any]
-        :raises ElisaAnalyticsDataValidationError: If arrays or units cannot be converted.
+        :raises ElisaAnalyticsDataError: If arrays or units cannot be converted.
         """
         try:
             # converting x-axis
@@ -617,7 +617,7 @@ class LCData(DataSet):
 
         except (TypeError, ValueError, AttributeError, ArithmeticError) as exc:
             msg = f"Cannot convert LCData to internal units: {exc}"
-            raise ElisaAnalyticsDataValidationError(msg) from exc
+            raise ElisaAnalyticsDataError(msg) from exc
         return kwargs
 
 

@@ -7,7 +7,7 @@ from packaging import version
 
 from elisa import const, settings
 from elisa import units as u
-from elisa.base.error import ElisaParametersValidationError
+from elisa.base.error import ElisaParametersError
 from elisa.base.types import FLOAT, INT
 from elisa.ld import CustomLimbDarkeningCoefficients
 from elisa.units import (
@@ -63,7 +63,7 @@ def quantity_transform(
         units.
     :returns: Value converted to ``unit`` as Python float.
     :rtype: float
-    :raises ElisaParametersValidationError: When the input type is not supported.
+    :raises ElisaParametersError: When the input type is not supported.
     """
     if isinstance(value, (u.Quantity, str)):
         value = u.Quantity(value) if isinstance(value, str) else value
@@ -79,7 +79,7 @@ def quantity_transform(
             "Input of variable is not (numpy.)int or (numpy.)float nor "
             "astropy.unit.quantity.Quantity instance (or its string representation)."
         )
-        raise ElisaParametersValidationError(msg)
+        raise ElisaParametersError(msg)
     return float(value)
 
 
@@ -100,7 +100,7 @@ def deg_transform(
     :param default_input_unit: Default unit assumed for plain numbers.
     :returns: Converted value in ``unit`` as float.
     :rtype: float
-    :raises ElisaParametersValidationError: When the input type is not supported.
+    :raises ElisaParametersError: When the input type is not supported.
     """
     if isinstance(value, (u.Quantity, str)):
         value = u.Quantity(value) if isinstance(value, str) else value
@@ -112,7 +112,7 @@ def deg_transform(
             "Input of the angular variable is not (numpy.)int or (numpy.)float "
             "nor astropy.unit.quantity.Quantity instance (or its string representation)."
         )
-        raise ElisaParametersValidationError(msg)
+        raise ElisaParametersError(msg)
     return float(value)
 
 
@@ -141,9 +141,9 @@ class SystemProperties(TransformProperties):
         :param value: Inclination value.
         :returns: Inclination in radians.
         :rtype: float
-        :raises ElisaParametersValidationError: If the input type is unsupported.
-        :raises ElisaParametersValidationError: If the value is outside the valid range [0, pi].
-        :raises ElisaParametersValidationError: If the converted value is nonfinite.
+        :raises ElisaParametersError: If the input type is unsupported.
+        :raises ElisaParametersError: If the value is outside the valid range [0, pi].
+        :raises ElisaParametersError: If the converted value is nonfinite.
         """
         if isinstance(value, (u.Quantity, str)):
             value = u.Quantity(value) if isinstance(value, str) else value
@@ -157,14 +157,14 @@ class SystemProperties(TransformProperties):
                 "Input of variable `inclination` is not (numpy.)int or (numpy.)float "
                 "nor astropy.unit.quantity.Quantity instance (or its string representation)."
             )
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
 
         if not np.isfinite(value):
             msg = "Nonfinite inclination."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if not 0 <= value <= const.PI:
             msg = f"Inclination value of {value} is out of bounds (0, pi)."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return float(value)
 
     @staticmethod
@@ -173,16 +173,16 @@ class SystemProperties(TransformProperties):
 
         If unit is omitted, the default period input unit is assumed.
 
-        :raises ElisaParametersValidationError: If the converted period is not strictly positive.
-        :raises ElisaParametersValidationError: If the converted period is nonfinite.
+        :raises ElisaParametersError: If the converted period is not strictly positive.
+        :raises ElisaParametersError: If the converted period is nonfinite.
         """
         value = quantity_transform(value, DefaultSystemUnits.period, WHEN_FLOAT64, u.DefaultSystemInputUnits.period)
         if not np.isfinite(value):
             msg = "Nonfinite orbital period."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if value <= 0:
             msg = "Invalid orbital period, use value > 0!"
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return value
 
     @staticmethod
@@ -194,7 +194,7 @@ class SystemProperties(TransformProperties):
         value = quantity_transform(value, u.DefaultSystemUnits.gamma, WHEN_FLOAT64, u.DefaultSystemInputUnits.gamma)
         if not np.isfinite(value):
             msg = "Nonfinite systemic velocity (gamma)."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return value
 
     @staticmethod
@@ -202,10 +202,10 @@ class SystemProperties(TransformProperties):
         """Validate additional (third) light fraction in range [0, 1]."""
         if not np.isfinite(value):
             msg = "Nonfinite additional light."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if not 0.0 <= value <= 1.0:
             msg = "Invalid value of additional light. Valid values are between 0 and 1."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return float(value)
 
     @staticmethod
@@ -229,13 +229,13 @@ class SystemProperties(TransformProperties):
                 "User input is not (numpy.)int or (numpy.)float nor "
                 "astropy.unit.quantity.Quantity instance (or its string representation)."
             )
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if not np.isfinite(value):
             msg = "Nonfinite semi_major_axis."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if value <= 0:
             msg = "Invalid value of semi_major_axis, use value > 0!"
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return float(value)
 
     @staticmethod
@@ -256,13 +256,13 @@ class SystemProperties(TransformProperties):
                 "User input is not (numpy.)int or (numpy.)float nor "
                 "astropy.unit.quantity.Quantity instance (or its string representation)."
             )
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if not np.isfinite(value):
             msg = "Nonfinite system distance."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if value <= 0:
             msg = "Invalid value of system's distance, use value > 0!"
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
 
         return float(value)
 
@@ -276,10 +276,10 @@ class BodyProperties(TransformProperties):
         """
         if not np.isfinite(value):
             msg = "Nonfinite synchronicity."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if value <= 0:
             msg = "Invalid synchronicity, use value > 0!"
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return float(value)
 
     @staticmethod
@@ -287,10 +287,10 @@ class BodyProperties(TransformProperties):
         """Validate and transform bolometric albedo (range 0..1)."""
         if not np.isfinite(value):
             msg = "Nonfinite albedo."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if value < 0 or value > 1:
             msg = f"Parameter albedo = {value} is out of range <0, 1>"
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return float(value)
 
     @staticmethod
@@ -308,10 +308,10 @@ class BodyProperties(TransformProperties):
         )
         if not np.isfinite(value):
             msg = "Nonfinite discretization factor."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if value < 0 or value > const.HALF_PI:
             msg = "Invalid value of alpha parameter. Use value between 0 and 90 degrees."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return float(value)
 
     @staticmethod
@@ -323,10 +323,10 @@ class BodyProperties(TransformProperties):
         value = quantity_transform(value, u.DefaultStarUnits.t_eff, WHEN_FLOAT64, u.DefaultStarInputUnits.t_eff)
         if not np.isfinite(value):
             msg = "Nonfinite effective temperature."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if value <= 0:
             msg = "Invalid effective temperature, use value > 0!"
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return value
 
 
@@ -349,13 +349,13 @@ class StarProperties(BodyProperties):
                 "User input is not (numpy.)int or (numpy.)float nor "
                 "astropy.unit.quantity.Quantity instance (or its string representation)."
             )
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if not np.isfinite(value):
             msg = "Nonfinite equivalent_radius."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if value <= 0:
             msg = "Invalid value of equivalent_radius, use value > 0!"
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return float(value)
 
     @staticmethod
@@ -375,13 +375,13 @@ class StarProperties(BodyProperties):
                 "User input is not (numpy.)int or (numpy.)float nor "
                 "astropy.unit.quantity.Quantity instance (or its string representation)."
             )
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if not np.isfinite(value):
             msg = "Nonfinite mass."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if value <= 0:
             msg = "Invalid mass, use value > 0!"
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return float(value)
 
     @staticmethod
@@ -393,10 +393,10 @@ class StarProperties(BodyProperties):
         """
         if not np.isfinite(value):
             msg = "Nonfinite surface potential."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if value < 0:
             msg = "Invalid surface potential, use value >= 0!"
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return float(value)
 
     @staticmethod
@@ -408,10 +408,10 @@ class StarProperties(BodyProperties):
         """
         if not isinstance(value, WHEN_FLOAT64):
             msg = "Input of variable `metallicity` is not (np.)int or (np.)float instance."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if not np.isfinite(value):
             msg = "Nonfinite metallicity."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return float(value)
 
     @staticmethod
@@ -433,10 +433,10 @@ class StarProperties(BodyProperties):
                 "User input is not (numpy.)int or (numpy.)float nor "
                 "astropy.unit.quantity.Quantity instance (or its string representation)."
             )
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if not np.isfinite(value):
             msg = "Nonfinite polar_log_g."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return float(value)
 
     @staticmethod
@@ -444,10 +444,10 @@ class StarProperties(BodyProperties):
         """Validate gravity darkening parameter in range [0, 1]."""
         if not np.isfinite(value):
             msg = "Nonfinite gravity darkening."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if value > 1 or value < 0:
             msg = f"Parameter gravity darkening = {value} is out of range <0, 1>"
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return float(value)
 
     @staticmethod
@@ -471,7 +471,7 @@ class StarProperties(BodyProperties):
                         retval[passband] = [ld_coeffs]
                     else:
                         msg = "Scalar limb darkening coefficient is available only for linear (cosine) law."
-                        raise ElisaParametersValidationError(msg)
+                        raise ElisaParametersError(msg)
                 elif isinstance(ld_coeffs, WHEN_ARRAY):
                     desired_vector_length = len(settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW])
                     if np.shape(ld_coeffs)[0] != desired_vector_length:
@@ -483,7 +483,7 @@ class StarProperties(BodyProperties):
                             f"You provided a vector with {len(ld_coeffs)} components with shape {np.shape(ld_coeffs)}."
                         )
                         msg = part1 + part2
-                        raise ElisaParametersValidationError(msg)
+                        raise ElisaParametersError(msg)
                     retval[passband] = ld_coeffs
         else:
             msg = (
@@ -491,7 +491,7 @@ class StarProperties(BodyProperties):
                 "{`passband`: ld_coeffs}, where `ld_coeffs` is a float (for linear law) "
                 "or a sequence (numpy.array/list) in other cases."
             )
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
 
         law = value.law if isinstance(value, CustomLimbDarkeningCoefficients) else settings.LIMB_DARKENING_LAW
         return CustomLimbDarkeningCoefficients(retval, law)
@@ -519,7 +519,7 @@ class SpotProperties(BodyProperties):
         )
         if value <= 0:
             msg = "Spot angular radius must be strictly positive."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return value
 
     @staticmethod
@@ -527,7 +527,7 @@ class SpotProperties(BodyProperties):
         """Validate temperature factor is numeric."""
         if not isinstance(value, (int, INT, float, FLOAT)):
             msg = "Input of variable `temperature_factor` is not (numpy.)int or (numpy.)float."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return float(value)
 
     @staticmethod
@@ -541,8 +541,8 @@ class SpotProperties(BodyProperties):
         )
         if value <= 0:
             msg = "Spot discretization factor must be strictly positive."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         if value > const.HALF_PI:
             msg = "Invalid value of alpha parameter. Use value less than 90."
-            raise ElisaParametersValidationError(msg)
+            raise ElisaParametersError(msg)
         return float(value)

@@ -9,8 +9,8 @@ import numpy as np
 import elisa.units as u
 from elisa.analytics.params import conf
 from elisa.base.error import (
-    ElisaInitialParametersValidationError,
-    ElisaParametersValidationError,
+    ElisaInitialParametersError,
+    ElisaParametersError,
 )
 from elisa.base.transform import (
     WHEN_FLOAT64,
@@ -41,7 +41,7 @@ def angular(value: Float | Quantity) -> Float:
     :type value: float | Quantity
     :returns: Transformed angular value in default internal angular unit.
     :rtype: float
-    :raises ElisaInitialParametersValidationError: If input is not a numeric type or astropy Quantity.
+    :raises ElisaInitialParametersError: If input is not a numeric type or astropy Quantity.
     """
     if isinstance(value, u.Quantity):
         value = np.float64(value.to(conf.DEFAULT_FLOAT_ANGULAR_UNIT))
@@ -52,7 +52,7 @@ def angular(value: Float | Quantity) -> Float:
             "Input of variable is not (numpy.)int or (numpy.)float "
             "nor astropy.unit.quantity.Quantity instance."
         )
-        raise ElisaInitialParametersValidationError(error_msg)
+        raise ElisaInitialParametersError(error_msg)
     return value
 
 
@@ -61,8 +61,8 @@ def _initial_parameter(validator: Callable[[Any], _ValueT]) -> staticmethod:
     def wrapped(value: Any) -> _ValueT:
         try:
             return validator(value)
-        except ElisaParametersValidationError as exc:
-            raise ElisaInitialParametersValidationError(str(exc)) from exc
+        except ElisaParametersError as exc:
+            raise ElisaInitialParametersError(str(exc)) from exc
 
     return staticmethod(wrapped)
 
@@ -78,9 +78,9 @@ class BinaryInitialProperties(TransformProperties):
         :type value: float | Quantity
         :returns: Transformed semi-major axis value in solar radii.
         :rtype: float
-        :raises ElisaInitialParametersValidationError: If input is not a numeric type or astropy Quantity.
-        :raises ElisaInitialParametersValidationError: If value is not strictly positive.
-        :raises ElisaInitialParametersValidationError: If the converted value is nonfinite.
+        :raises ElisaInitialParametersError: If input is not a numeric type or astropy Quantity.
+        :raises ElisaInitialParametersError: If value is not strictly positive.
+        :raises ElisaInitialParametersError: If the converted value is nonfinite.
         """
         if isinstance(value, u.Quantity):
             value = np.float64(value.to(u.solRad))
@@ -91,13 +91,13 @@ class BinaryInitialProperties(TransformProperties):
                 "Input of variable `semi_major_axis` is not (numpy.)int or (numpy.)float "
                 "nor astropy.unit.quantity.Quantity instance."
             )
-            raise ElisaInitialParametersValidationError(error_msg)
+            raise ElisaInitialParametersError(error_msg)
         if not np.isfinite(value):
             error_msg = "Nonfinite semi_major_axis."
-            raise ElisaInitialParametersValidationError(error_msg)
+            raise ElisaInitialParametersError(error_msg)
         if value <= 0:
             error_msg = "Invalid value of semi_major_axis, use value > 0!"
-            raise ElisaInitialParametersValidationError(error_msg)
+            raise ElisaInitialParametersError(error_msg)
         return value
 
     @staticmethod
@@ -108,9 +108,9 @@ class BinaryInitialProperties(TransformProperties):
         :type value: float | Quantity
         :returns: Transformed mass value in default mass unit.
         :rtype: float
-        :raises ElisaInitialParametersValidationError: If input is not a numeric type or astropy Quantity.
-        :raises ElisaInitialParametersValidationError: If value is not positive.
-        :raises ElisaInitialParametersValidationError: If the converted value is nonfinite.
+        :raises ElisaInitialParametersError: If input is not a numeric type or astropy Quantity.
+        :raises ElisaInitialParametersError: If value is not positive.
+        :raises ElisaInitialParametersError: If the converted value is nonfinite.
         """
         if isinstance(value, u.Quantity):
             value = np.float64(value.to(conf.DEFAULT_FLOAT_MASS_UNIT))
@@ -121,13 +121,13 @@ class BinaryInitialProperties(TransformProperties):
                 "User input is not (numpy.)int or (numpy.)float "
                 "nor astropy.unit.quantity.Quantity instance."
             )
-            raise ElisaInitialParametersValidationError(error_msg)
+            raise ElisaInitialParametersError(error_msg)
         if not np.isfinite(value):
             error_msg = "Nonfinite mass."
-            raise ElisaInitialParametersValidationError(error_msg)
+            raise ElisaInitialParametersError(error_msg)
         if value <= 0:
             error_msg = "Invalid mass, use value > 0!"
-            raise ElisaInitialParametersValidationError(error_msg)
+            raise ElisaInitialParametersError(error_msg)
         return value
 
     eccentricity = _initial_parameter(BinarySystemProperties.eccentricity)
@@ -217,8 +217,8 @@ class PulsationModeInitialProperties(PulsationModeProperties):
         """
         try:
             PulsationModeProperties.frequency(value)
-        except ElisaParametersValidationError as exc:
-            raise ElisaInitialParametersValidationError(str(exc)) from exc
+        except ElisaParametersError as exc:
+            raise ElisaInitialParametersError(str(exc)) from exc
         if isinstance(value, (u.Quantity, str)):
             return u.Quantity(value).to_value(u.DefaultPulsationsInputUnits.frequency)
         return np.float64(value)
