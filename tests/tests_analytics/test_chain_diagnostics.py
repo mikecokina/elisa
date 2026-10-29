@@ -10,6 +10,7 @@ import pytest
 from numpy.testing import assert_allclose
 from numpy.typing import NDArray
 
+from elisa.base.error import ElisaGraphicsError
 from elisa.analytics.binary_fit import chain_tools as chains
 from elisa.analytics.binary_fit import plot
 from elisa.analytics.binary_fit.rv_fit import RVFitMCMC
@@ -98,5 +99,5 @@ def test_plot_selection_uses_parameter_axis_without_flattening(correlated: NDArr
     with patch.object(plot.MCMCPlot, "autocorr") as draw:
         plot.autocorrelation(fit, flat_chain=correlated[:, :, 1:], variable_labels=LABELS[1:])
     assert_allclose(draw.call_args.kwargs["autocorr_time"], args["autocorr_time"][1:])
-    with pytest.raises(ValueError, match="parameter dimension"):
+    with pytest.raises(ElisaGraphicsError, match="parameter dimension"):
         plot.autocorrelation(fit, variable_labels=LABELS[:1])

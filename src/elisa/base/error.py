@@ -68,6 +68,11 @@ class ElisaInitialParametersError(ElisaError):
 class ElisaParametersError(ElisaError):
     """Invalid parameters supplied to a physical model or its components."""
 
+
+class ElisaGraphicsError(ElisaError):
+    """Invalid configuration of a graphics / plotting task."""
+
+
 # ###
 
 
@@ -175,3 +180,17 @@ def raise_attribute_error(message: str) -> None:
     :raises AttributeError: Always raises an AttributeError with the provided message.
     """
     raise AttributeError(message)
+
+
+def raise_elisa_graphics_error(message: str) -> None:
+    """Raise an ElisaGraphicsError with a given message.
+
+    This function is a convenience wrapper to raise an ElisaGraphicsError with a
+    specific message. It can be used to standardize error handling across
+    the codebase.
+
+    :param message: The error message to include in the ElisaGraphicsError.
+    :type message: str
+    :raises ElisaGraphicsError: Always raises an ElisaGraphicsError with the provided message.
+    """
+    raise ElisaGraphicsError(message)

@@ -20,6 +20,7 @@ from numpy.testing import assert_allclose, assert_array_equal
 
 from elisa import units as u
 from elisa.analytics.binary_fit import chain_tools, io_tools, plot
+from elisa.base.error import ElisaGraphicsError
 from elisa.analytics.binary_fit.mixins import MCMCMixin
 from elisa.analytics.binary_fit.rv_fit import RVFitMCMC
 from elisa.analytics.params.parameters import InitialParameter
@@ -110,7 +111,7 @@ def test_internal_reordered_subset_maps_from_internal_source_axis() -> None:
 @pytest.mark.parametrize("selection", [[], ["missing"], [LABELS[0], LABELS[0]], [LABELS[0], "missing"]])
 def test_invalid_selections_create_no_figure(method, keyword, selection) -> None:
     fit = diagnostic_result(np.ones((5, 3, 2)))
-    with pytest.raises(ValueError, match="selection"):
+    with pytest.raises(ElisaGraphicsError, match="selection"):
         method(fit, **{keyword: selection})
     assert not plt.get_fignums()
 
@@ -120,14 +121,14 @@ def test_invalid_selections_create_no_figure(method, keyword, selection) -> None
 def test_bad_source_labels_create_no_figure(method, labels) -> None:
     fit = diagnostic_result(np.ones((5, 3, 2)))
     custom = fit.flat_chain if method is plot.traces else fit.chain
-    with pytest.raises(ValueError):
+    with pytest.raises(ElisaGraphicsError):
         method(fit, flat_chain=custom, variable_labels=labels)
     assert not plt.get_fignums()
 
 
 @pytest.mark.parametrize("samples", [np.ones(5), np.ones((0, 2)), np.ones((5, 3, 2))])
 def test_trace_custom_format_is_not_expanded(samples) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ElisaGraphicsError):
         plot.traces(diagnostic_result(np.ones((5, 3, 2))), flat_chain=samples)
     assert not plt.get_fignums()
 
@@ -192,7 +193,7 @@ def test_unavailable_acf_annotations(constant, monkeypatch) -> None:
     ("renderer", "selection_key"), [(Plot.paramtrace, "traces_to_plot"), (Plot.autocorr, "correlations_to_plot")]
 )
 def test_backend_rejects_invalid_selection_before_figure(renderer, selection_key) -> None:
-    with pytest.raises(ValueError, match="selection"):
+    with pytest.raises(ElisaGraphicsError, match="selection"):
         renderer(
             **{selection_key: [], "variable_labels": LABELS, "labels": LABELS},
             **(

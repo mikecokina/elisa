@@ -14,6 +14,7 @@ from elisa.analytics.binary_fit.mixins import MCMCMixin
 from elisa.analytics.models.lc import synthetic_binary
 from elisa.analytics.models.rv import central_rv_synthetic
 from elisa.analytics.params import conf, parameters
+from elisa.base.error import raise_elisa_graphics_error
 from elisa.binary_system import t_layer
 from elisa.binary_system.system import BinarySystem
 from elisa.graphic import graphics
@@ -240,11 +241,10 @@ class RVPlot:
         fit_result: dict = kwargs.get("fit_result", self.fit.result)
 
         if fit_result is None:
-            msg = (
+            raise_elisa_graphics_error(
                 "You did not performed radial velocity fit on this instance "
-                "or you did not provided result parameter dictionary."
+                "or you did not provided result parameter dictionary.",
             )
-            raise ValueError(msg)
 
         x_data: dict[str, NDArray[Float]] = {}
         y_data: dict[str, NDArray[Float]] = {}
@@ -412,8 +412,9 @@ class LCPlot:
         fit_result: dict = kwargs.get("fit_result", self.fit.result)
 
         if fit_result is None:
-            msg = "You did not performed light curve fit on this instance or you did not provided parameter dictionary."
-            raise ValueError(msg)
+            raise_elisa_graphics_error(
+                "You did not performed light curve fit on this instance or you did not provided parameter dictionary.",
+            )
 
         x_data: dict[str, NDArray[Float]] = {}
         y_data: dict[str, NDArray[Float]] = {}
@@ -629,8 +630,7 @@ def corner(
     flat_result = deepcopy(mcmc_fit_instance.flat_result)
 
     if flat_chain is None:
-        msg = "You can use corner plot after running mcmc method or after loading the flat chain."
-        raise ValueError(msg)
+        raise_elisa_graphics_error("You can use corner plot after running mcmc method or after loading the flat chain.")
 
     plot_labels = serialize_plot_labels(variable_labels)
     flat_chain = MCMCMixin.renormalize_flat_chain(
@@ -724,8 +724,7 @@ def autocorrelation(
     validate_selection(variable_labels, correlations_to_plot)
     autocorr_fns, autocorr_time = ensemble_autocorrelation(chain)
     if variable_labels is None or len(variable_labels) != autocorr_time.size:
-        msg = "Chain parameter dimension does not match variable labels"
-        raise ValueError(msg)
+        raise_elisa_graphics_error("Chain parameter dimension does not match variable labels")
     labels = serialize_plot_labels(variable_labels)
 
     autocorr_plot_kwargs = {
@@ -747,18 +746,14 @@ def _validate_trace_samples(
 ) -> NDArray[np.float64]:
     """Validate chain availability, supported dimensions and source column count."""
     if chain is None:
-        msg = "You can use trace plot after running mcmc or loading a chain."
-        raise ValueError(msg)
+        raise_elisa_graphics_error("You can use trace plot after running mcmc or loading a chain.")
     samples = np.asarray(chain)
     if custom and samples.ndim != FLAT_NDIM:
-        msg = "Custom trace samples must be a flat (samples, parameters) chain"
-        raise ValueError(msg)
+        raise_elisa_graphics_error("Custom trace samples must be a flat (samples, parameters) chain")
     if samples.ndim not in (FLAT_NDIM, ENSEMBLE_NDIM) or samples.size == 0:
-        msg = "Trace samples must be a nonempty flat or structured chain"
-        raise ValueError(msg)
+        raise_elisa_graphics_error("Trace samples must be a nonempty flat or structured chain")
     if samples.shape[-1] != len(source_labels):
-        msg = "Chain parameter dimension does not match variable labels"
-        raise ValueError(msg)
+        raise_elisa_graphics_error("Chain parameter dimension does not match variable labels")
     return samples
 
 

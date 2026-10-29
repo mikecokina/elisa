@@ -11,6 +11,7 @@ from mpl_toolkits.mplot3d import axes3d
 from elisa import umpy as up
 from elisa import units, utils
 from elisa import units as u
+from elisa.base.error import raise_elisa_graphics_error
 from elisa.graphic import utils as gutils
 
 if TYPE_CHECKING:
@@ -435,11 +436,10 @@ def binary_surface(**kwargs) -> Figure | None:  # noqa: C901, PLR0912, PLR0915
             )
 
     else:
-        msg = (
+        raise_elisa_graphics_error(
             "Invalid value of keyword argument `components_to_plot`. "
-            "Expected values are: `primary`, `secondary` or `both`"
+            "Expected values are: `primary`, `secondary` or `both`",
         )
-        raise ValueError(msg)
 
     if kwargs.get("edges", False):
         if kwargs["separate_colormaps"]:
@@ -670,11 +670,10 @@ def binary_wireframe(**kwargs) -> Figure | None:
                                shade=False, color="none")
 
     else:
-        msg = (
+        raise_elisa_graphics_error(
             "Invalid value of keyword argument `components_to_plot`. "
-            "Expected values are: `primary`, `secondary` or `both`"
+            "Expected values are: `primary`, `secondary` or `both`",
         )
-        raise ValueError(msg)
 
     plot.set_edgecolor("black")
 

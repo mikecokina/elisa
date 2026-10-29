@@ -7,6 +7,8 @@ from corner import corner as _corner
 from matplotlib import gridspec
 from matplotlib import pyplot as plt
 
+from elisa.base.error import raise_elisa_graphics_error
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -23,14 +25,11 @@ _ENSEMBLE_NDIM = 3
 def validate_selection(variable_labels: Sequence[str], selection: Sequence[str]) -> None:
     """Reject ambiguous source labels and empty, repeated or unknown panels."""
     if len(variable_labels) == 0 or len(set(variable_labels)) != len(variable_labels):
-        msg = "Variable labels must be nonempty and unique"
-        raise ValueError(msg)
+        raise_elisa_graphics_error("Variable labels must be nonempty and unique")
     if len(selection) == 0 or len(set(selection)) != len(selection):
-        msg = "Parameter selection must be nonempty and unique"
-        raise ValueError(msg)
+        raise_elisa_graphics_error("Parameter selection must be nonempty and unique")
     if any(label not in variable_labels for label in selection):
-        msg = "Parameter selection contains unknown variable labels"
-        raise ValueError(msg)
+        raise_elisa_graphics_error("Parameter selection contains unknown variable labels")
 
 
 class Plot:
