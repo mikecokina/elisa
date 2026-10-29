@@ -2,6 +2,7 @@
 from unittest.mock import patch
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from elisa import units as u
@@ -144,3 +145,91 @@ def test_property_transformation_handles_empty_input_and_first_property_failure(
     with pytest.raises(ElisaAnalyticsDataValidationError, match="`x_unit`") as caught:
         data.transform_input(x_unit=object())
     assert isinstance(caught.value.__cause__, AttributeError)
+
+
+@pytest.fixture(params=[None, RVData, LCData], ids=["reader", "RVData", "LCData"])
+def observation_file_loader(request):
+    def load(path, *, data_columns=(0, 1, 2), delimiter=r"\s+"):
+        if request.param is None:
+            return dutils.read_data_file(str(path), data_columns, delimiter=delimiter)
+        return request.param.load_from_file(
+            str(path), data_columns=data_columns, delimiter=delimiter,
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.m / u.s if request.param is RVData else u.dimensionless_unscaled,
+        )
+    return load
+
+
+@pytest.mark.parametrize("content,cause,message", [
+    (b"", pd.errors.EmptyDataError, "Cannot parse"),
+    (b"# comments only\n", pd.errors.EmptyDataError, "Cannot parse"),
+    (b"0 1 .1\n1 2 .2 extra\n", pd.errors.ParserError, "Cannot parse"),
+    (b"\xff\xfe\n", UnicodeDecodeError, "Cannot parse"),
+    (b"0 abc .1\n", ValueError, "Invalid numeric"),
+    (b"0 1\n", KeyError, "Cannot select"),
+    (b"0 1 inf\n", None, "nonfinite"),
+    (b"0 1 .1\n1 2\n", None, "nonfinite"),
+])
+def test_observation_file_validation_reports_file_and_original_cause(
+    tmp_path, observation_file_loader, content, cause, message,
+):
+    path = tmp_path / "observations.dat"
+    path.write_bytes(content)
+    with pytest.raises(ElisaAnalyticsDataValidationError, match=message) as caught:
+        observation_file_loader(path)
+    assert str(path) in str(caught.value)
+    if cause is None:
+        assert caught.value.__cause__ is None
+    else:
+        assert isinstance(caught.value.__cause__, cause)
+        assert str(caught.value.__cause__) in str(caught.value)
+    if message != "Cannot parse":
+        assert "(0, 1, 2)" in str(caught.value)
+
+
+@pytest.mark.parametrize("content,columns,delimiter,expected", [
+    ("# header\n1 0 1 .1 unused\n2 .5 .9 .2 ignored\n", (1, 2, 3), r"\s+",
+     [[0.0, 1.0, 0.1], [0.5, 0.9, 0.2]]),
+    ("unused,0,1\nignored,.5,.9\n", (1, 2), ",", [[0.0, 1.0], [0.5, 0.9]]),
+])
+def test_valid_observation_files_preserve_column_selection_and_optional_errors(
+    tmp_path, observation_file_loader, content, columns, delimiter, expected,
+):
+    path = tmp_path / "observations.dat"
+    path.write_text(content)
+    result = observation_file_loader(path, data_columns=columns, delimiter=delimiter)
+    expected = np.asarray(expected)
+    if isinstance(result, np.ndarray):
+        np.testing.assert_array_equal(result, expected)
+        assert result.dtype == np.float64
+    else:
+        np.testing.assert_array_equal(result.x_data, expected[:, 0])
+        np.testing.assert_array_equal(result.y_data, expected[:, 1])
+        if len(columns) == 3:
+            np.testing.assert_array_equal(result.y_err, expected[:, 2])
+        else:
+            assert result.y_err is None
+
+
+def test_observation_file_io_errors_keep_their_type(tmp_path, observation_file_loader):
+    with pytest.raises(FileNotFoundError):
+        observation_file_loader(tmp_path / "missing.dat")
+
+
+@pytest.mark.parametrize("columns,cause", [((0, 99), KeyError), (1, TypeError)])
+def test_invalid_observation_column_selection_uses_data_error(tmp_path, observation_file_loader, columns, cause):
+    path = tmp_path / "observations.dat"
+    path.write_text("0 1 .1\n")
+    with pytest.raises(ElisaAnalyticsDataValidationError, match="Cannot select") as caught:
+        observation_file_loader(path, data_columns=columns)
+    assert isinstance(caught.value.__cause__, cause)
+    assert repr(columns) in str(caught.value)
+    assert str(path) in str(caught.value)
+
+
+def test_unexpected_reader_runtime_error_is_not_reclassified(tmp_path):
+    failure = RuntimeError("unexpected reader failure")
+    with patch.object(dutils.pd, "read_csv", side_effect=failure):
+        with pytest.raises(RuntimeError) as caught:
+            dutils.read_data_file(str(tmp_path / "observations.dat"), (0, 1, 2))
+    assert caught.value is failure

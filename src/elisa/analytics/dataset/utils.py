@@ -171,23 +171,55 @@ def read_data_file(
     :type data_columns: tuple[int, ...]
     :param delimiter: Regex pattern defining column separator.
     :type delimiter: str
-    :returns: Loaded data as (N x 3) array with columns for time, observable,
-        and error.
+    :returns: Numeric array with N rows and len(data_columns) selected observation columns.
     :rtype: NDArray[Float]
+    :raises ElisaAnalyticsDataValidationError: If the file content or selected columns are invalid.
+    :raises OSError: If the file cannot be opened.
     """
-    # noinspection PyArgumentList
-    data = pd.read_csv(
-        filename,
-        header=None,
-        comment="#",
-        delimiter=delimiter,
-        engine="python",
-        on_bad_lines="error",
-    )[list(data_columns)]
-    data = data.apply(lambda column: pd.to_numeric(column, errors="raise"))
-    values = data.to_numpy(dtype=FLOAT)
+    data = _read_observation_table(filename, delimiter)
+    columns = _select_observation_columns(data, data_columns, filename)
+    return _numeric_observation_values(columns, filename, data_columns)
+
+
+def _read_observation_table(filename: str, delimiter: str) -> pd.DataFrame:
+    """Parse an observation table while preserving file I/O errors."""
+    try:
+        return pd.read_csv(
+            filename,
+            header=None,
+            comment="#",
+            delimiter=delimiter,
+            engine="python",
+            on_bad_lines="error",
+        )
+    except (pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeDecodeError) as exc:
+        msg = f"Cannot parse observation file `{filename}`: {exc}"
+        raise ElisaAnalyticsDataValidationError(msg) from exc
+
+
+def _select_observation_columns(
+    data: pd.DataFrame, data_columns: tuple[int, ...], filename: str,
+) -> pd.DataFrame:
+    """Select requested observation columns and report invalid selections."""
+    try:
+        return data[list(data_columns)]
+    except (KeyError, TypeError, ValueError) as exc:
+        msg = f"Cannot select observation columns {data_columns!r} in file `{filename}`: {exc}"
+        raise ElisaAnalyticsDataValidationError(msg) from exc
+
+
+def _numeric_observation_values(
+    columns: pd.DataFrame, filename: str, data_columns: tuple[int, ...],
+) -> NDArray[Float]:
+    """Convert selected observations to finite float values."""
+    try:
+        numeric = columns.apply(lambda column: pd.to_numeric(column, errors="raise"))
+        values = numeric.to_numpy(dtype=FLOAT)
+    except (TypeError, ValueError, ArithmeticError) as exc:
+        msg = f"Invalid numeric observations in file `{filename}`, columns {data_columns!r}: {exc}"
+        raise ElisaAnalyticsDataValidationError(msg) from exc
     if not np.all(np.isfinite(values)):
-        msg = "Observation file contains nonfinite values"
+        msg = f"Observation file `{filename}` contains nonfinite values in columns {data_columns!r}"
         raise ElisaAnalyticsDataValidationError(msg)
     return values
 
