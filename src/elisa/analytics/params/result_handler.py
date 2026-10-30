@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from elisa.analytics.binary_fit.shared import eval_constraint_in_dict
 from elisa.analytics.params import parameters
+from elisa.base.error import raise_elisa_operation_input_error
 from elisa.json_encoder import ElisaJSONEncoder
 
 if TYPE_CHECKING:
@@ -54,11 +55,11 @@ class FitResultHandler:
 
         :param path: Path to file where result will be saved.
         :type path: str | Path
-        :raises OSError: If no result has been set.
+        :raises ElisaOperationInputError: If no result has been set.
         """
         if self.result is None:
             error_msg = "No result to store."
-            raise OSError(error_msg)
+            raise_elisa_operation_input_error(error_msg)
 
         path_obj = Path(path) if isinstance(path, str) else path
         path_obj.write_text(

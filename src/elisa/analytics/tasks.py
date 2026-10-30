@@ -15,7 +15,7 @@ from elisa.analytics.binary_fit.plot import (
     RVPlotMCMC,
 )
 from elisa.analytics.params import bonds, parameters
-from elisa.base.error import raise_elisa_analytics_task_error
+from elisa.base.error import raise_elisa_analytics_task_error, raise_elisa_operation_input_error
 from elisa.base.transform import normalize_morphology
 from elisa.logger import getLogger
 
@@ -244,11 +244,11 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
         :type discard_unit: DiscardUnit | str | None
         :return: Self for method chaining
         :rtype: AnalyticsTask
-        :raises ValueError: If method is not MCMC
+        :raises ElisaOperationInputError: If method is not MCMC
         """
         if self.method not in self.MCMC_NAMES:
             error_msg: str = "load_chain method can be used only with MCMC task."
-            raise ValueError(error_msg)
+            raise_elisa_operation_input_error(error_msg)
         self.fit_cls.load_chain(filename, discard, percentiles, discard_unit=discard_unit)
         return self
 
@@ -263,11 +263,11 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
                           {param_name: (min_value, max_value), ...}
                           Example: {'primary@t_eff': (5000, 6000), ...}
         :type boundaries: dict
-        :raises ValueError: If method is not MCMC
+        :raises ElisaOperationInputError: If method is not MCMC
         """
         if self.method not in self.MCMC_NAMES:
             error_msg: str = "filter_chain method can be used only with MCMC task."
-            raise ValueError(error_msg)
+            raise_elisa_operation_input_error(error_msg)
         self.fit_cls.filter_chain(**boundaries)
 
     def fit(
