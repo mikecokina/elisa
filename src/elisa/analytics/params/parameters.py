@@ -690,6 +690,7 @@ class InitialParameter:
     :type transform_cls: type[elisa.types.TransformPropertiesType]
     :param kwargs: Fit parameter attributes dictionary.
     :type kwargs: dict
+    :raises ElisaInvalidKwargsError: If metadata contains an unsupported field name.
     :raises ElisaInitialParametersError: If the unit cannot be parsed or attached
         to value, min, max or sigma metadata. The original failure is chained.
 
@@ -726,6 +727,10 @@ class InitialParameter:
         self.min: Number | Any | None = None
         self.max: Number | Any | None = None
         self.sigma: Number | Any | None = None
+
+        # Reject unknown metadata so unsupported fields and typos are not silently
+        # ignored when only recognized fields are read from kwargs.
+        utils.invalid_kwarg_checker(kwargs, tuple(self.DEFAULT), InitialParameter)
 
         if self.unit is not None:
             try:
