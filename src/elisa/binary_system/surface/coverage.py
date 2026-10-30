@@ -8,7 +8,7 @@ from scipy.spatial import ConvexHull
 
 from elisa import const, settings, utils
 from elisa import umpy as up
-from elisa.base.error import ElisaRuntimeError, ElisaValueError
+from elisa.base.error import ElisaNumericError, ElisaRuntimeError, ElisaValueError, raise_elisa_numeric_error
 from elisa.base.surface import coverage as bcoverage
 from elisa.base.types import BOOL, FLOAT, INT
 from elisa.binary_system import utils as bsutils
@@ -32,19 +32,64 @@ def _calculate_intersection_areas(
     """Calculate hull/triangle intersection areas with the configured backend."""
     backend = settings.INTERSECTION_BACKEND
     if backend == IntersectionBackend.PYPEX:
-        pypex_hull = bsutils.hull_to_pypex_poly(hull)
-        pypex_faces = bsutils.faces_to_pypex_poly(triangles)
-        intersections = bsutils.pypex_poly_hull_intersection(pypex_faces, pypex_hull)
-        # The area adapter maps missing intersections to zero.
-        return np.array(bsutils.pypex_poly_surface_area(intersections), dtype=FLOAT)
+        return _calculate_pypex_intersection_areas(hull, triangles)
 
     if backend in {IntersectionBackend.REFERENCE, IntersectionBackend.SUTHERLAND_HODGMAN}:
-        from elisa.binary_system.surface.clipping import intersection_areas  # noqa: PLC0415 - optional backend
-
-        return intersection_areas(hull, triangles, compiled=backend == IntersectionBackend.SUTHERLAND_HODGMAN)
+        return _calculate_sutherland_hodgman_intersection_areas(
+            hull, triangles, compiled=backend == IntersectionBackend.SUTHERLAND_HODGMAN,
+        )
 
     message = f"Unknown intersection backend: {backend}"
     raise ElisaValueError(message)
+
+
+def _calculate_pypex_intersection_areas(
+    hull: NDArray[Float],
+    triangles: NDArray[Float],
+) -> NDArray[Float]:
+    """Translate standalone PYPEX failures into numeric candidate failures.
+
+    Only the coverage adapter assigns ELISA semantics. PYPEX helpers and other
+    callers, such as the horizon tool, keep their original builtin errors.
+    """
+    try:
+        pypex_hull = bsutils.hull_to_pypex_poly(hull)
+        pypex_faces = bsutils.faces_to_pypex_poly(triangles)
+        intersections = bsutils.pypex_poly_hull_intersection(pypex_faces, pypex_hull)
+        # A missing intersection is a valid zero area.
+        areas = np.array(bsutils.pypex_poly_surface_area(intersections), dtype=FLOAT)
+    except Exception as exc:  # noqa: BLE001 - coverage deliberately rejects any failed PYPEX computation
+        msg = f"PyPex failed to calculate surface intersection areas: {exc}"
+        raise_elisa_numeric_error(msg, exc)
+
+    areas_match_faces = areas.shape == (len(triangles),)
+    areas_are_finite = np.all(np.isfinite(areas))
+    areas_are_nonnegative = np.all(areas >= 0)
+    if not (areas_match_faces and areas_are_finite and areas_are_nonnegative):
+        msg = "PyPex must return one finite nonnegative intersection area per face"
+        raise_elisa_numeric_error(msg)
+    return areas
+
+
+def _calculate_sutherland_hodgman_intersection_areas(
+    hull: NDArray[Float],
+    triangles: NDArray[Float],
+    *,
+    compiled: bool,
+) -> NDArray[Float]:
+    """Assign candidate-rejection semantics at the Sutherland-Hodgman boundary."""
+    from elisa.binary_system.surface.clipping import (  # noqa: PLC0415 - optional backend
+        sutherland_hodgman_intersection_areas,
+    )
+
+    try:
+        areas = sutherland_hodgman_intersection_areas(hull, triangles, compiled=compiled)
+    except ElisaNumericError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - coverage rejects failed intersection computations
+        msg = f"Sutherland-Hodgman failed to calculate surface intersection areas: {exc}"
+        raise_elisa_numeric_error(msg, exc)
+    return areas
 
 
 def partial_visible_faces_surface_coverage(

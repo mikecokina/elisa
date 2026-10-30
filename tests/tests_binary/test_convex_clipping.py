@@ -17,7 +17,7 @@ from elisa.binary_system.surface.clipping import (
     convex_polygon_triangle_intersection_area as reference,
 )
 from elisa.binary_system.surface.clipping import (
-    intersection_areas,
+    sutherland_hodgman_intersection_areas,
 )
 from elisa.binary_system.surface.clipping import (
     optimized_intersection_area as optimized,
@@ -254,7 +254,7 @@ def _known_area_backend(request: pytest.FixtureRequest) -> BatchAreaKernel:
     if request.param == "numba-batch":
 
         def compiled_batch(polygon: FloatArray, triangles: FloatArray) -> FloatArray:
-            return np.asarray(intersection_areas(polygon, triangles), dtype=np.float64)
+            return np.asarray(sutherland_hodgman_intersection_areas(polygon, triangles), dtype=np.float64)
 
         return compiled_batch
     kernel = reference if request.param == "reference" else optimized
@@ -326,7 +326,7 @@ def test_explicit_mixed_numba_batch(reverse_batch: bool) -> None:
     cases = [case for case in KNOWN_AREA_CASES if np.array_equal(case.polygon, SQUARE)]
     if reverse_batch:
         cases.reverse()
-    actual = np.asarray(intersection_areas(SQUARE, np.stack([case.triangle for case in cases])), dtype=np.float64)
+    actual = np.asarray(sutherland_hodgman_intersection_areas(SQUARE, np.stack([case.triangle for case in cases])), dtype=np.float64)
     assert actual.shape == (len(cases),)
     for result, case in zip(actual, cases):
         _assert_known_area(result, case, case.explanation)
@@ -394,20 +394,20 @@ def test_tiny_positive() -> None:
 
 def test_invalid_and_empty() -> None:
     for kernel in (reference, optimized):
-        with pytest.raises(ValueError):
+        with pytest.raises(FloatingPointError):
             kernel(SQUARE, np.full((3, 2), np.nan))
         with pytest.raises(ValueError):
             kernel(SQUARE, np.zeros((4, 2)))
         assert kernel(np.empty((0, 2)), SQUARE[:3]) == 0
-    assert intersection_areas(SQUARE, np.empty((0, 3, 2))).shape == (0,)
+    assert sutherland_hodgman_intersection_areas(SQUARE, np.empty((0, 3, 2))).shape == (0,)
 
 
 def test_captured_geometry() -> None:
     data = np.load(Path(__file__).parents[1] / "data/clipping/eclipse_geometry.npz")
     for i in range(int(data["batches"])):
         p, t = data[f"h{i}"], data[f"t{i}"]
-        compiled_areas = intersection_areas(p, t)
-        reference_areas = intersection_areas(p, t, compiled=False)
+        compiled_areas = sutherland_hodgman_intersection_areas(p, t)
+        reference_areas = sutherland_hodgman_intersection_areas(p, t, compiled=False)
         np.testing.assert_allclose(compiled_areas, reference_areas, rtol=0.0, atol=64.0 * float(np.finfo(float).eps))
         if len(compiled_areas) == 0:
             continue

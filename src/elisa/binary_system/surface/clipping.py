@@ -1,10 +1,11 @@
-"""Private area-only clipping experiment; no coordinate quantization or fastmath.
+"""Sutherland-Hodgman area-only clipping; no coordinate quantization or fastmath.
 
 Inputs are finite, cyclically ordered convex polygons and triangles in 2D.
 Either winding is accepted, including repeated/collinear boundary vertices.
 An exactly zero float64 triangle determinant returns zero; no epsilon widens
 half-planes. Extremely ill-conditioned or overflowing coordinates are outside
-ordinary float64 accuracy. Invalid shapes/nonfinite coordinates raise ValueError.
+ordinary float64 accuracy. Malformed arrays raise ElisaValueError;
+nonfinite coordinates and results raise ElisaNumericError.
 """
 
 # Geometric dimensions and vertex counts are explicit in the clipping formulas.
@@ -17,9 +18,10 @@ import numpy as np
 from numba import njit
 
 from elisa.base.error import (
-    ElisaValueError,
+    ElisaNumericError,
     _register_numba_error_helpers,
     raise_elisa_numeric_error,
+    raise_elisa_value_error,
 )
 
 _register_numba_error_helpers()
@@ -30,18 +32,31 @@ if TYPE_CHECKING:
     from elisa.types import Float
 
 
+def _clipping_coordinates(values: NDArray[Float]) -> NDArray[Float]:
+    """Convert coordinates while retaining malformed-array diagnostics."""
+    try:
+        coordinates = np.asarray(values, dtype=np.float64)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise_elisa_value_error("Clipping coordinates must be numeric arrays", exc)
+    return coordinates
+
+
 def _inputs(
     polygon: NDArray[Float],
     triangle: NDArray[Float],
 ) -> tuple[NDArray[Float], NDArray[Float]]:
-    polygon = np.asarray(polygon, dtype=np.float64)
-    triangle = np.asarray(triangle, dtype=np.float64)
-    if polygon.ndim != 2 or polygon.shape[1] != 2 or triangle.shape != (3, 2):
+    polygon = _clipping_coordinates(polygon)
+    triangle = _clipping_coordinates(triangle)
+    polygon_has_xy_vertices = polygon.ndim == 2 and polygon.shape[1] == 2
+    triangle_has_three_xy_vertices = triangle.shape == (3, 2)
+    if not (polygon_has_xy_vertices and triangle_has_three_xy_vertices):
         message = "Expected polygon (n, 2) and triangle (3, 2)"
-        raise ElisaValueError(message)
-    if not np.isfinite(polygon).all() or not np.isfinite(triangle).all():
-        message = "Coordinates must be finite"
-        raise ElisaValueError(message)
+        raise_elisa_value_error(message)
+
+    polygon_is_finite = np.all(np.isfinite(polygon))
+    triangle_is_finite = np.all(np.isfinite(triangle))
+    if not (polygon_is_finite and triangle_is_finite):
+        raise_elisa_numeric_error("Coordinates must be finite")
     return polygon, triangle
 
 
@@ -183,27 +198,64 @@ def _compiled_areas(polygon: NDArray[Float], triangles: NDArray[Float]) -> NDArr
     return areas
 
 
-def intersection_areas(
+def _validated_intersection_inputs(
+    polygon: NDArray[Float],
+    triangles: NDArray[Float],
+) -> tuple[NDArray[Float], NDArray[Float]]:
+    """Convert and validate polygon/triangle coordinates once per face batch."""
+    polygon = _clipping_coordinates(polygon)
+    triangles = _clipping_coordinates(triangles)
+    polygon_has_xy_vertices = polygon.ndim == 2 and polygon.shape[1] == 2
+    triangles_have_three_xy_vertices = triangles.ndim == 3 and triangles.shape[1:] == (3, 2)
+    if not (polygon_has_xy_vertices and triangles_have_three_xy_vertices):
+        message = "Expected polygon (n, 2) and triangles (m, 3, 2)"
+        raise_elisa_value_error(message)
+
+    polygon_is_finite = np.all(np.isfinite(polygon))
+    triangles_are_finite = np.all(np.isfinite(triangles))
+    if not (polygon_is_finite and triangles_are_finite):
+        raise_elisa_numeric_error("Coordinates must be finite")
+    return polygon, triangles
+
+
+def _validate_intersection_areas(areas: NDArray[Float], face_count: int) -> None:
+    """Require one finite nonnegative intersection area per input face."""
+    areas_match_faces = areas.shape == (face_count,)
+    areas_are_finite = np.all(np.isfinite(areas))
+    areas_are_nonnegative = np.all(areas >= 0)
+    if not (areas_match_faces and areas_are_finite and areas_are_nonnegative):
+        raise_elisa_numeric_error("Sutherland-Hodgman must return one finite nonnegative area per face")
+
+
+def sutherland_hodgman_intersection_areas(
     polygon: NDArray[Float],
     triangles: NDArray[Float],
     *,
     compiled: bool = True,
 ) -> NDArray[Float]:
-    """Private batch adapter: validation once per selected face batch."""
-    polygon = np.asarray(polygon, dtype=np.float64)
-    triangles = np.asarray(triangles, dtype=np.float64)
-    if polygon.ndim != 2 or polygon.shape[1] != 2 or triangles.ndim != 3 or triangles.shape[1:] != (3, 2):
-        message = "Expected polygon (n, 2) and triangles (m, 3, 2)"
-        raise ElisaValueError(message)
-    if not np.isfinite(polygon).all() or not np.isfinite(triangles).all():
-        message = "Coordinates must be finite"
-        raise ElisaValueError(message)
-    areas = (
-        _compiled_areas(polygon, triangles)
-        if compiled
-        else np.array([convex_polygon_triangle_intersection_area(polygon, t) for t in triangles], dtype=np.float64)
-    )
-    if not np.isfinite(areas).all():
-        message = "Nonfinite clipping area"
-        raise_elisa_numeric_error(message)
+    """Compute Sutherland-Hodgman areas, validating once per face batch.
+
+    :param polygon: Cyclically ordered convex polygon with shape (n, 2).
+    :param triangles: Selected face coordinates with shape (m, 3, 2).
+    :param compiled: Use the Numba kernel rather than the Python reference.
+    :returns: One nonnegative finite area per face, in the same order.
+    :raises ElisaValueError: If coordinate arrays have invalid types or shapes.
+    :raises ElisaNumericError: If coordinates or computed areas are unusable.
+    """
+    polygon, triangles = _validated_intersection_inputs(polygon, triangles)
+
+    try:
+        if compiled:
+            areas = _compiled_areas(polygon, triangles)
+        else:
+            areas = np.array(
+                [convex_polygon_triangle_intersection_area(polygon, triangle) for triangle in triangles],
+                dtype=np.float64,
+            )
+    except ElisaNumericError:
+        raise
+    except FloatingPointError as exc:
+        raise_elisa_numeric_error("Sutherland-Hodgman clipping arithmetic failed", exc)
+
+    _validate_intersection_areas(areas, face_count=len(triangles))
     return areas

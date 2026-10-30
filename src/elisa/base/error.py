@@ -189,6 +189,16 @@ def _raise_error(
     raise error_type(message)
 
 
+def raise_elisa_value_error(message: str, exc: Exception | None = None) -> NoReturn:
+    """Raise an ELISA value/contract marker, preserving an optional cause.
+
+    :param message: Description of the invalid value or internal contract.
+    :param exc: Original exception, if any.
+    :raises ElisaValueError: Always raised with the provided message.
+    """
+    _raise_error(ElisaValueError, message, exc)
+
+
 def raise_value_error(message: str, exc: Exception | None = None) -> NoReturn:
     """Raise a ValueError with a given message.
 
