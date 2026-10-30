@@ -8,7 +8,7 @@ import numpy as np
 
 from elisa import const, utils
 from elisa import umpy as up
-from elisa.base.error import ElisaValueError
+from elisa.base.error import ElisaValueError, raise_elisa_not_implemented_error
 from elisa.base.surface.faces import mirror_face_values, symmetry_face_reduction
 from elisa.base.surface.mesh import symmetry_point_reduction
 from elisa.logger import getLogger
@@ -74,31 +74,35 @@ class PositionContainer(ABC):
     @abstractmethod
     def build(self, *args, **kwargs) -> None:
         """Build per-position data for the container."""
-        raise NotImplementedError
+        raise_elisa_not_implemented_error("PositionContainer.build must be implemented by subclasses.")
 
     @abstractmethod
     def build_mesh(self, *args, **kwargs) -> None:
-        raise NotImplementedError
+        raise_elisa_not_implemented_error("PositionContainer.build_mesh must be implemented by subclasses.")
 
     @abstractmethod
     def build_faces(self, *args, **kwargs) -> None:
-        raise NotImplementedError
+        raise_elisa_not_implemented_error("PositionContainer.build_faces must be implemented by subclasses.")
 
     @abstractmethod
     def build_surface_areas(self, *args, **kwargs) -> None:
-        raise NotImplementedError
+        raise_elisa_not_implemented_error("PositionContainer.build_surface_areas must be implemented by subclasses.")
 
     @abstractmethod
     def build_faces_orientation(self, *args, **kwargs) -> None:
-        raise NotImplementedError
+        raise_elisa_not_implemented_error(
+            "PositionContainer.build_faces_orientation must be implemented by subclasses.",
+        )
 
     @abstractmethod
     def build_surface_gravity(self, *args, **kwargs) -> None:
-        raise NotImplementedError
+        raise_elisa_not_implemented_error("PositionContainer.build_surface_gravity must be implemented by subclasses.")
 
     @abstractmethod
     def build_temperature_distribution(self, *args, **kwargs) -> None:
-        raise NotImplementedError
+        raise_elisa_not_implemented_error(
+            "PositionContainer.build_temperature_distribution must be implemented by subclasses.",
+        )
 
     def is_flat(self) -> bool:
         return self._flatten

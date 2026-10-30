@@ -14,7 +14,7 @@ from elisa import units as u
 from elisa.analytics.dataset import utils as dutils
 from elisa.analytics.dataset.graphic import plot
 from elisa.analytics.dataset.transform import LCDataProperties, RVDataProperties
-from elisa.base.error import raise_elisa_analytics_data_error
+from elisa.base.error import raise_elisa_analytics_data_error, raise_elisa_not_implemented_error
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -310,7 +310,7 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
         :type kwargs: Any
         :returns: None (modifies dataset in-place).
         :rtype: None
-        :raises NotImplementedError: If specified method is not available.
+        :raises ElisaNotImplementedError: If specified method is not available.
         """
         available_methods = ["central_moving_average"]
         if method == "central_moving_average":
@@ -325,7 +325,7 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
             )
         else:
             error_msg = f"Method {method} is not implemented. Try one of these: {available_methods}"
-            raise NotImplementedError(error_msg)
+            raise_elisa_not_implemented_error(error_msg)
 
 
 class RVData(DataSet):

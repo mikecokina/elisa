@@ -21,6 +21,10 @@ class ElisaRuntimeError(RuntimeError):
     """Runtime failure explicitly raised by ELISA; not a physical-state signal."""
 
 
+class ElisaNotImplementedError(NotImplementedError):
+    """An ELISA feature or abstract operation has no implementation."""
+
+
 class PredictionAlignmentError(ValueError):
     """Synthetic prediction keys or shapes do not align with observations.
 
@@ -193,6 +197,16 @@ def raise_attribute_error(message: str, exc: Exception | None = None) -> NoRetur
     :raises AttributeError: Always raises an AttributeError with the provided message.
     """
     _raise_error(AttributeError, message, exc)
+
+
+def raise_elisa_not_implemented_error(message: str, exc: Exception | None = None) -> NoReturn:
+    """Raise ElisaNotImplementedError, preserving an optional original cause.
+
+    :param message: Description of the operation that lacks an implementation.
+    :param exc: Original exception, if any.
+    :raises ElisaNotImplementedError: Always raised with the provided message.
+    """
+    _raise_error(ElisaNotImplementedError, message, exc)
 
 
 def raise_elisa_graphics_error(message: str, exc: Exception | None = None) -> NoReturn:

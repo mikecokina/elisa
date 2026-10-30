@@ -7,8 +7,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 from numpy.typing import NDArray
 
-from elisa.base.error import ElisaValueError
 from elisa import umpy as up
+from elisa.base.error import ElisaValueError, raise_elisa_not_implemented_error
 from elisa.base.types import FLOAT
 from elisa.logger import getLogger
 from elisa.types import Float, NumpyBool
@@ -204,16 +204,19 @@ class OrbitalSupplements(Sequence[tuple[NDArray[Float], NDArray[Float]]]):
         """
         return self.__len__()
 
+    # noinspection PyMethodMayBeStatic
     def to_orbital_position(self) -> None:
         """Convert stored rows to orbital-position objects.
 
         This method is currently not implemented.
 
+        :raises ElisaNotImplementedError: Always raised for this unfinished helper.
+
         :return: ``None``.
         :rtype: None
         """
         message = "`to_orbital_position` is not implemented yet."
-        raise NotImplementedError(message)
+        raise_elisa_not_implemented_error(message)
 
     def plot_bodies(self) -> None:
         """Visualize orbital positions stored in ``body``.

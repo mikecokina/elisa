@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 
+from elisa.base.error import raise_elisa_not_implemented_error
+
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
@@ -91,4 +93,4 @@ class AbstractOrbit(metaclass=ABCMeta):
         :returns: Result of the orbital motion computation.
         :rtype: numpy.ndarray | elisa.types.Float
         """
-        raise NotImplementedError
+        raise_elisa_not_implemented_error("AbstractOrbit.orbital_motion must be implemented by subclasses.")
