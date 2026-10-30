@@ -10,7 +10,7 @@ from copy import copy, deepcopy
 from pathlib import Path
 from queue import Queue
 from threading import Lock, Thread
-from typing import TYPE_CHECKING, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, NoReturn, ParamSpec, TypeVar
 
 import numpy as np
 import pandas as pd
@@ -27,7 +27,8 @@ from elisa import (
 )
 from elisa.atm.const import ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX, normalize_atlas
 from elisa.base.error import (
-    ElisaAtmosphereError,  # noqa: F401 - preserve the existing module-level re-export
+    ElisaAtmosphereError,
+    ElisaUnexpectedError,
     raise_elisa_atmosphere_error,
     raise_elisa_unexpected_error,
 )
@@ -1342,6 +1343,23 @@ def get_atm_directory(metallicity: Float, atlas: str) -> str:
     return f"{prefix}{utils.numeric_metallicity_to_string(metallicity)}"
 
 
+def _read_atm_csv(path: str | Path, dtype: dict) -> pd.DataFrame:
+    """Read a selected table, preserving failures outside candidate physics."""
+    try:
+        # noinspection PyArgumentList
+        return pd.read_csv(path, dtype=dtype)
+    except FileNotFoundError as exc:
+        raise_elisa_atmosphere_error(f"There is no file like {path}", exc)
+    except OSError as exc:
+        # Access rights, device failures and resource exhaustion are outside the
+        # model's control. Never turn them into candidate rejection penalties.
+        raise_elisa_unexpected_error(f"Cannot read atmosphere table {path}: {exc}", exc)
+    except Exception as exc:  # noqa: BLE001 - fixed table contents are not candidate parameters
+        # An installed table must be readable numeric CSV. Malformed contents,
+        # resource failures and reader bugs must abort rather than reject proposals.
+        raise_elisa_unexpected_error(f"Cannot decode atmosphere table {path}: {exc}", exc)
+
+
 def get_atm_table(
     temperature: Float,
     log_g: Float,
@@ -1371,12 +1389,7 @@ def get_atm_table(
     filename = get_atm_table_filename(temperature, log_g, metallicity, atlas)
     path = Path(source) / directory / filename if directory is not None else Path(source) / filename
 
-    if not path.is_file():
-        msg = f"There is no file like {path}"
-        raise_elisa_atmosphere_error(msg)
-
-    # noinspection PyArgumentList
-    return pd.read_csv(path, dtype=settings.ATM_MODEL_DATAFARME_DTYPES)
+    return _read_atm_csv(path, settings.ATM_MODEL_DATAFARME_DTYPES)
 
 
 def get_list_of_all_atm_tables(atlas: str) -> list[str]:
@@ -1391,6 +1404,28 @@ def get_list_of_all_atm_tables(atlas: str) -> list[str]:
     """
     source = settings.ATLAS_TO_BASE_DIR[validated_atlas(atlas)]
     return [str(path) for path in Path(source).rglob("*.csv") if path.is_file()]
+
+
+def _load_atm_container(file_path: str | Path) -> AtmDataContainer:
+    """Load one selected model without hiding source/contract failures as penalties."""
+    try:
+        dtype_map = {"flux": FLOAT, "wave": FLOAT}
+        t, log_g, m = parse_domain_quantities_from_atm_table_filename(Path(file_path).name)
+        return AtmDataContainer(_read_atm_csv(file_path, dtype_map), t, log_g, m, fpath=file_path)
+    except (ElisaAtmosphereError, ElisaUnexpectedError):
+        raise
+    except Exception as exc:  # noqa: BLE001 - classify failures at the fixed source loading boundary
+        # Grid selection already succeeded. Filename syntax, required columns and
+        # nonempty model data are contracts of the installed source and our loader,
+        # not quantities changed by fitting. Keep the original failure for diagnosis.
+        raise_elisa_unexpected_error(f"Cannot construct atmosphere model from {file_path}: {exc}", exc)
+
+
+def _raise_atm_reader_error(error: Exception | KeyboardInterrupt) -> NoReturn:
+    """Restore classified worker failures without penalizing unknown exceptions."""
+    if isinstance(error, (ElisaAtmosphereError, ElisaUnexpectedError, KeyboardInterrupt)):
+        raise error
+    raise_elisa_unexpected_error(f"Atmosphere table reader failed: {error}", error)
 
 
 def multithread_atm_tables_reader(
@@ -1411,25 +1446,40 @@ def multithread_atm_tables_reader(
     :param result_queue: Queue for (index, AtmDataContainer) results.
     :type result_queue: Queue;
     """
-    while True:
-        args = path_queue.get(timeout=1)
-        if args == "TERMINATOR":
-            break
-        if not error_queue.empty():
-            break
-        index, file_path = args
-        if file_path is None:
-            result_queue.put((index, None))
-            continue
-        try:
-            dtype_map = {"flux": FLOAT, "wave": FLOAT}
-            t, l, m = parse_domain_quantities_from_atm_table_filename(Path(file_path).name)  # noqa: E741
-            # noinspection PyArgumentList
-            atm_container = AtmDataContainer(pd.read_csv(file_path, dtype=dtype_map), t, l, m, fpath=file_path)
+    try:
+        while True:
+            args = path_queue.get(timeout=1)
+            if args == "TERMINATOR":
+                break
+            if not error_queue.empty():
+                break
+            index, file_path = args
+            if file_path is None:
+                result_queue.put((index, None))
+                continue
+            atm_container = _load_atm_container(file_path)
             result_queue.put((index, atm_container))
-        except Exception as we:  # noqa: BLE001
-            error_queue.put(we)
-            break
+    except (Exception, KeyboardInterrupt) as exc:  # noqa: BLE001 - transport to the main thread
+        # A thread-local interrupt must reach the caller just like a main-thread
+        # interrupt. Unknown queue/worker failures are classified by the runner.
+        error_queue.put(exc)
+
+
+def _require_atm_table_file(fpath: str | Path) -> None:
+    """Distinguish a missing candidate table from an operating-system failure."""
+    try:
+        Path(fpath).stat()
+    except FileNotFoundError as exc:
+        logger.debug("accessing atmosphere file %s", fpath)
+        msg = (
+            f"file {fpath} doesn't exist. Your atmosphere tables are "
+            f"either not properly installed or atmosphere parameters "
+            f"of your stellar model are not covered by the currently "
+            f"used table."
+        )
+        raise_elisa_atmosphere_error(msg, exc)
+    except OSError as exc:
+        raise_elisa_unexpected_error(f"Cannot access atmosphere table {fpath}: {exc}", exc)
 
 
 def multithread_atm_tables_reader_runner(fpaths: list[str] | tuple[str]) -> Queue:
@@ -1442,8 +1492,9 @@ def multithread_atm_tables_reader_runner(fpaths: list[str] | tuple[str]) -> Queu
     :type fpaths: Iterable[str]
     :returns: Queue containing (index, AtmDataContainer) tuples.
     :rtype: Queue
-    :raises AtmosphereError: If any file path does not exist or
-        if a worker thread encounters an error.
+    :raises ElisaAtmosphereError: If a required model table is missing.
+    :raises ElisaUnexpectedError: If source, system or worker contracts fail.
+    :raises KeyboardInterrupt: If interrupted in the runner or a worker.
     """
     n_threads = settings.NUMBER_OF_THREADS
 
@@ -1454,15 +1505,7 @@ def multithread_atm_tables_reader_runner(fpaths: list[str] | tuple[str]) -> Queu
     threads = []
     try:
         for index, fpath in enumerate(fpaths):
-            if not Path(fpath).is_file():
-                logger.debug("accessing atmosphere file %s", fpath)
-                msg = (
-                    f"file {fpath} doesn't exist. Your atmosphere tables are "
-                    f"either not properly installed or atmosphere parameters "
-                    f"of your stellar model are not covered by the currently "
-                    f"used table."
-                )
-                raise_elisa_atmosphere_error(msg)
+            _require_atm_table_file(fpath)
             path_queue.put((index, fpath))
 
         for _ in range(n_threads):
@@ -1482,11 +1525,17 @@ def multithread_atm_tables_reader_runner(fpaths: list[str] | tuple[str]) -> Queu
             t.join()
         logger.debug("atm multithread reader finished all jobs")
     except KeyboardInterrupt:
-        logger.info("Keyboard interrupt received, terminating atmosphere table reader threads.")
+        logger.info("Keyboard interrupt received while reading atmosphere tables.")
         raise
-    finally:
-        if not error_queue.empty():
-            raise error_queue.get()
+    except (ElisaAtmosphereError, ElisaUnexpectedError):
+        raise
+    except Exception as exc:  # noqa: BLE001 - reader infrastructure must never become a proposal penalty
+        raise_elisa_unexpected_error(f"Atmosphere table reader failed: {exc}", exc)
+
+    # Inspect worker failures only after successful joins. Raising from finally
+    # could replace a main-thread KeyboardInterrupt with a queued model failure.
+    if not error_queue.empty():
+        _raise_atm_reader_error(error_queue.get())
     return result_queue
 
 
@@ -1697,6 +1746,8 @@ def read_unique_atm_tables(
                 "used table."
             )
             raise_elisa_atmosphere_error(msg, exc)
+        except OSError as exc:
+            raise_elisa_unexpected_error(f"Cannot identify atmosphere table {fpath}: {exc}", exc)
         key = (source, Path(fpath).name, settings.ATM_MODEL_DATAFRAME_FLUX, settings.ATM_MODEL_DATAFRAME_WAVE)
         source_keys[fpath] = key
         if key in buffer.ATMOSPHERE_TABLES:

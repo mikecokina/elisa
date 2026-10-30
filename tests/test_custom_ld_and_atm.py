@@ -69,7 +69,7 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
         definition["secondary"].update({**definition["secondary"], "atmosphere": "ck04"})
         binary = BinarySystem.from_json(definition)
         assert binary.primary.atmosphere == "bb"
-        assert binary.secondary.atmosphere == "ck04"
+        assert binary.secondary.atmosphere == "ck"
 
     @staticmethod
     def test_custom_lds_linear():

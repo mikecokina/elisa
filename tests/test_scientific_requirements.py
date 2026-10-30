@@ -9,7 +9,7 @@ import pytest
 
 from elisa import ld
 from elisa.atm import atm
-from elisa.base.error import ElisaAtmosphereError
+from elisa.base.error import ElisaAtmosphereError, ElisaUnexpectedError
 from tests.scientific_requirements import (
     atmosphere_unavailability_reason,
     ld_unavailability_reason,
@@ -207,5 +207,6 @@ def test_malformed_model_after_successful_preflight_raises(tmp_path: Path) -> No
     reason = atmosphere_unavailability_reason(tmp_path, atlas="ck04")
     assert reason is None
 
-    with pytest.raises(KeyError, match="flux"):
+    with pytest.raises(ElisaUnexpectedError, match="flux") as caught:
         atm.read_unique_atm_tables([str(malformed_model)])
+    assert isinstance(caught.value.__cause__, KeyError)

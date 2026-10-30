@@ -144,7 +144,7 @@ def test_ck04_spectra_and_absolute_radiance_match_unrounded_pipeline(monkeypatch
     monkeypatch.setattr(settings, "CK04_ATM_TABLES", directory)
     monkeypatch.setattr(atm.buffer, "ATMOSPHERE_TABLES", {})
     band = PassbandContainer.from_name("Generic.Bessell.U")
-    args = np.array([10000.0, 10001.0, 10250.0]), np.repeat(2.0, 3), 0.0, "ck04"
+    args = np.array([10000.0, 10001.0, 10250.0]), np.repeat(2.0, 3), 0.0, "ck"
     kwargs = dict(passband={"Generic.Bessell.U": band}, left_bandwidth=band.left_bandwidth,
                   right_bandwidth=band.right_bandwidth)
     with patch.object(atm, "extend_atm_container_on_bandwidth_boundary", rounded_boundary_extension):
@@ -178,8 +178,9 @@ def test_ck04_raw_and_normalized_eccentric_curves(normalize, monkeypatch):
 
     monkeypatch.setattr(atm.buffer, "ATMOSPHERE_TABLES", {})
     binary = prepare_binary_system(BINARY_SYSTEM_PARAMS["detached.ecc"])
-    binary.primary.atmosphere = "ck04"
-    binary.secondary.atmosphere = "ck04"
+    # Direct internal mutation bypasses Star input normalization: use canonical names.
+    binary.primary.atmosphere = "ck"
+    binary.secondary.atmosphere = "ck"
     observer = Observer(passband=["Generic.Bessell.V"], system=binary)
     phases = np.linspace(-0.5, 0.5, 11)
     with patch.object(atm, "extend_atm_container_on_bandwidth_boundary", rounded_boundary_extension):

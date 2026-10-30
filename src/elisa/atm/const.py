@@ -20,6 +20,7 @@ ATM_ATLAS_NORMALIZER = {
     **ATLAS_TO_ATM_FILE_PREFIX,
     "bb": "bb",
     "black_body": "bb",
+    "black-body": "bb",
 }
 
 ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX = {
