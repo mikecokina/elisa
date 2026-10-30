@@ -24,6 +24,7 @@ from elisa.analytics.binary_fit import lc_prediction, least_squares, mcmc, share
 from elisa.analytics.binary_fit.shared import lc_r_squared
 from elisa.analytics.models import cost_fns, lc
 from elisa.analytics.params import parameters as p
+from elisa.base.error import ElisaAnalyticsDataError, ElisaAnalyticsTaskError
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
 from elisa.conf.enums import SamplingMethod
@@ -148,7 +149,7 @@ def test_second_setup_replaces_and_validates_data(science_settings: None) -> Non
         assert len(calls) == 2
         data[V].y_err = np.ones(2)
         for fit in fits:
-            with pytest.raises(ValueError, match="same shape"):
+            with pytest.raises(ElisaAnalyticsDataError, match="same shape"):
                 fit.set_up(
                     p.BinaryInitialParameters(**deepcopy(cfg)),
                     data,
@@ -320,5 +321,5 @@ def test_sampling_enum_defaults_serialization_and_invalid_strategy(science_setti
     assert json.dumps(SamplingMethod.ADAPTIVE) == '"adaptive"'
     assert str(SamplingMethod.UNIFORM) == "uniform"
     assert pickle.loads(pickle.dumps(SamplingMethod.ADAPTIVE)) is SamplingMethod.ADAPTIVE
-    with pytest.raises(ValueError, match="SamplingMethod.UNIFORM"):
+    with pytest.raises(ElisaAnalyticsTaskError, match="SamplingMethod.UNIFORM"):
         prepare_lc_fits({V: LC_PHASES}, 4, samples="unknown")

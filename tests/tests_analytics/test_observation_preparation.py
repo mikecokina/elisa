@@ -15,6 +15,7 @@ from elisa.analytics.binary_fit import least_squares, mcmc, shared
 from elisa.analytics.dataset.utils import convert_flux_error
 from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.analytics.tools.utils import radialcurves_mean_error
+from elisa.base.error import ElisaAnalyticsDataError, ElisaAnalyticsTaskError
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from tests.tests_analytics.fitting_helpers import (
     LC_PHASES,
@@ -48,7 +49,7 @@ def test_pointwise_magnitude_uncertainties(unit, factor) -> None:
 
 
 def test_magnitude_zero_point_alone_cannot_determine_flux_errors() -> None:
-    with pytest.raises(ValueError, match="pointwise"):
+    with pytest.raises(ElisaAnalyticsDataError, match="pointwise"):
         convert_flux_error([0.01], u.mag, zero_point=10.0)
 
 
@@ -157,13 +158,13 @@ def test_constant_rv_with_explicit_errors(cls) -> None:
 @pytest.mark.parametrize(("dataset_cls", "unit"), [(LCData, u.dimensionless_unscaled), (RVData, u.m / u.s)])
 @pytest.mark.parametrize("errors", [[], [0.0, 0.1], [-0.1, 0.1], [np.nan, 0.1], [np.inf, 0.1], [0.1], [[0.1, 0.1]]])
 def test_invalid_supplied_errors(dataset_cls, unit, errors) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ElisaAnalyticsDataError):
         dataset_cls(x_data=[0.0, 0.5], y_data=[1.0, 2.0], y_err=errors, x_unit=u.dimensionless_unscaled, y_unit=unit)
 
 
 @pytest.mark.parametrize("values", [[], [np.nan], [np.inf], [[1.0, 2.0]], 1.0])
 def test_invalid_observation_arrays(values) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ElisaAnalyticsDataError):
         LCData(x_data=values, y_data=values, x_unit=u.dimensionless_unscaled, y_unit=u.dimensionless_unscaled)
 
 
@@ -173,30 +174,30 @@ def test_setup_rejects_mutated_dataset(cls) -> None:
         data = make_lc(errors=[0.1] * 3)
         assert data.y_err is not None
         data.y_err[0] = 0.0
-        with pytest.raises(ValueError):
+        with pytest.raises(ElisaAnalyticsDataError):
             lc_setup(cls(), {V: data})
     else:
         cfg, data = rv_problem()
         assert data["primary"].y_err is not None
         data["primary"].y_err[0] = 0.0
-        with pytest.raises(ValueError):
+        with pytest.raises(ElisaAnalyticsDataError):
             cls().set_up(BinaryInitialParameters(**cfg), data, observer_system_cls=RadialVelocitySystem)
 
 
 @pytest.mark.parametrize("values", [[-1.0, 1.0], [-2.0, -1.0]])
 def test_lc_invalid_normalization(values) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ElisaAnalyticsDataError):
         lc_setup(least_squares.DetachedLightCurveFit(), {V: make_lc(values, [0.1, 0.1])})
 
 
 def test_file_validation_precedes_downselection_and_smoothing_preserves_none(tmp_path: Path) -> None:
     path = tmp_path / "observations.dat"
     path.write_text("0 1 .1\n.1 1 0\n.2 1 .1\n")
-    with pytest.raises(ValueError, match="strictly positive"):
+    with pytest.raises(ElisaAnalyticsDataError, match="strictly positive"):
         LCData.load_from_file(str(path), downselect_ratio=0.5)
     for bad in ("nan", "inf", "bad"):
         path.write_text(f"0 1\n.2 {bad}\n")
-        with pytest.raises(ValueError):
+        with pytest.raises(ElisaAnalyticsDataError):
             LCData.load_from_file(str(path), data_columns=(0, 1))
     path.write_text("0 1\n.2 2\n.4 3\n")
     data = LCData.load_from_file(str(path), data_columns=(0, 1))
@@ -265,8 +266,8 @@ def test_real_lc_evaluations_with_optional_errors(science_settings: None, suppli
 @pytest.mark.parametrize("cls", RV_CLASSES)
 def test_empty_and_invalid_component_datasets(cls) -> None:
     cfg, data = rv_problem()
-    for bad in ({}, {"tertiary": data["primary"]}):
-        with pytest.raises(ValueError):
+    for bad, error_type in (({}, ElisaAnalyticsDataError), ({"tertiary": data["primary"]}, ElisaAnalyticsTaskError)):
+        with pytest.raises(error_type):
             cls().set_up(BinaryInitialParameters(**cfg), bad, observer_system_cls=RadialVelocitySystem)
 
 
@@ -274,5 +275,5 @@ def test_normalization_fraction_validated_during_setup_operations() -> None:
     fit = least_squares.DetachedLightCurveFit()
     lc_setup(fit, {V: make_lc()})
     for fraction in (0.0, 1.1, -0.1, np.nan, np.inf, -np.inf):
-        with pytest.raises(ValueError, match="fraction"):
+        with pytest.raises(ElisaAnalyticsTaskError, match="fraction"):
             fit.normalize_data(top_fraction_to_average=fraction)

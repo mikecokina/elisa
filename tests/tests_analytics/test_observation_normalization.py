@@ -9,6 +9,7 @@ from numpy.testing import assert_allclose
 from elisa import units as u
 from elisa.analytics import LCData
 from elisa.analytics.binary_fit import least_squares, shared
+from elisa.base.error import ElisaAnalyticsTaskError
 from elisa.observer.utils import normalize_light_curve
 from tests.tests_analytics.fitting_helpers import V, lc_setup, make_lc
 
@@ -67,7 +68,7 @@ def test_extrema_normalization_preserves_selection_and_error_scaling() -> None:
         "minimum": {"V": 3.0, "B": 3.0},
     }
     for kind, scales in expected_scales.items():
-        with pytest.raises(ValueError, match="fraction"):
+        with pytest.raises(ElisaAnalyticsTaskError, match="fraction"):
             shared._validate_lc_normalization(values, kind, np.nan)
         normalized, normalized_errors = normalize_light_curve(values, errors, kind, 0.5)
         assert normalized_errors is not None
@@ -96,7 +97,7 @@ def test_normalization_fraction_boundaries(kind) -> None:
 
     values = {"V": np.array([2.0, 4.0, 8.0]), "B": np.array([6.0, 12.0])}
     for fraction in (0.0, np.nextafter(1.0, np.inf), 1.1, np.nan, np.inf, -np.inf):
-        with pytest.raises(ValueError, match="fraction"):
+        with pytest.raises(ElisaAnalyticsTaskError, match="fraction"):
             shared._validate_lc_normalization(values, kind, fraction)
     shared._validate_lc_normalization(values, kind, 1.0)
     normalized, _ = normalize_light_curve(values, kind=kind, top_fraction_to_average=1.0)

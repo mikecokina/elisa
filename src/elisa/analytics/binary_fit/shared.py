@@ -22,7 +22,12 @@ from elisa.analytics.tools.utils import (
     radialcurves_mean_error,
     time_layer_resolver,
 )
-from elisa.base.error import ElisaFloatingPointError, PredictionAlignmentError
+from elisa.base.error import (
+    ElisaFloatingPointError,
+    PredictionAlignmentError,
+    raise_elisa_analytics_data_error,
+    raise_elisa_analytics_task_error,
+)
 from elisa.base.transform import StarProperties
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
@@ -48,14 +53,14 @@ def _fit_passbands(passband: Iterable[str] | None, data: Mapping[str, DataSet]) 
     :param passband: Requested LC passbands, or None for RV fitting.
     :param data: Observations keyed by passband or RV component.
     :returns: Observer passbands, using bolometric for RV fitting.
-    :raises ValueError: If requested LC passbands differ from the dataset keys.
+    :raises ElisaAnalyticsTaskError: If requested LC passbands differ from the dataset keys.
     """
     if passband is None:
         return "bolometric"
     bands = list(passband)
     if set(bands) != set(data):
         msg = "Fitting passbands must match observation dataset identifiers"
-        raise ValueError(msg)
+        raise_elisa_analytics_task_error(msg)
     return bands
 
 
@@ -64,14 +69,15 @@ def _observation_coordinate_unit(data: Mapping[str, DataSet]) -> UnitType:
 
     :param data: Nonempty observations keyed by dataset identifier.
     :returns: Common coordinate unit for the supplied observations.
-    :raises ValueError: If identifiers or coordinate units are inconsistent.
+    :raises ElisaAnalyticsTaskError: If dataset identifiers are invalid.
+    :raises ElisaAnalyticsDataError: If observations are absent or coordinate units differ.
     """
     if not data:
         msg = "Fitting requires at least one observational dataset"
-        raise ValueError(msg)
+        raise_elisa_analytics_data_error(msg)
     if any(not isinstance(key, str) or not key for key in data):
         msg = "Observation dataset identifiers must be nonempty strings"
-        raise ValueError(msg)
+        raise_elisa_analytics_task_error(msg)
     x_units = {key: dataset.x_unit for key, dataset in data.items()}
     unique_units = set(x_units.values())
     if len(unique_units) > 1:
@@ -79,7 +85,7 @@ def _observation_coordinate_unit(data: Mapping[str, DataSet]) -> UnitType:
             "Please make sure that all synthetic observations are supplied "
             f"in BJD or photometric phases. Current state: {x_units}"
         )
-        raise ValueError(msg)
+        raise_elisa_analytics_data_error(msg)
     return unique_units.pop()
 
 
@@ -94,19 +100,20 @@ def _validate_lc_normalization(
     :param kind: Requested normalization method.
     :param top_fraction_to_average: Finite fraction in ``(0, 1]``, used only for
         maximum, global_maximum and minimum normalization; ignored for mean modes.
-    :raises ValueError: If the fraction or a mean normalization scale is invalid.
+    :raises ElisaAnalyticsTaskError: If the normalization fraction is invalid.
+    :raises ElisaAnalyticsDataError: If a mean normalization scale is unusable.
     """
     uses_fraction = kind in ("maximum", "global_maximum", "minimum")
     if uses_fraction and (not np.isfinite(top_fraction_to_average) or not 0 < top_fraction_to_average <= 1):
         msg = "LC normalization fraction must be finite and satisfy 0 < fraction <= 1"
-        raise ValueError(msg)
+        raise_elisa_analytics_task_error(msg)
     if kind != "average":
         return
     for key, values in y_data.items():
         scale = np.mean(values)
         if not np.isfinite(scale) or scale <= 0:
             msg = f"LC normalization requires a finite positive mean flux for {key}"
-            raise ValueError(msg)
+            raise_elisa_analytics_data_error(msg)
 
 
 def _validated_normalized_errors(
@@ -118,7 +125,8 @@ def _validated_normalized_errors(
     :param y_data: Normalized observed flux vectors.
     :param y_err: Normalized errors returned by the public normalization utility.
     :returns: Matching finite, strictly positive uncertainty vectors.
-    :raises ValueError: If normalization produced unusable fluxes or errors.
+    :raises ElisaAnalyticsDataError: If normalized fluxes or errors are nonfinite, or errors are nonpositive.
+    :raises ValueError: If prepared uncertainties are missing.
     """
     if y_err is None:
         msg = "LC fitting requires prepared uncertainties"
@@ -133,10 +141,10 @@ def _validated_normalized_errors(
         finite_errors = np.all(np.isfinite(errors))
         if not finite_flux or not finite_errors:
             msg = f"LC normalization produced nonfinite data or uncertainties for {key}"
-            raise ValueError(msg)
+            raise_elisa_analytics_data_error(msg)
         if np.any(errors <= 0):
             msg = f"LC normalization requires strictly positive uncertainties for {key}"
-            raise ValueError(msg)
+            raise_elisa_analytics_data_error(msg)
         validated[key] = errors
     return validated
 
@@ -278,7 +286,7 @@ class AbstractFit(metaclass=ABCMeta):
 
         :param data: Observations keyed by passband or RV component.
         :returns: Uncertainty vectors, warning for each estimated dataset.
-        :raises ValueError: If observations, supplied errors or estimates are invalid.
+        :raises ElisaAnalyticsDataError: If dataset validation fails or an estimated scale is unusable.
         """
         errors: dict[str, NDArray[np.float64]] = {}
         for key, dataset in data.items():
@@ -289,7 +297,7 @@ class AbstractFit(metaclass=ABCMeta):
             scale = abs(self.__class__.MEAN_ERROR_FN(dataset.y_data))
             if not np.isfinite(scale) or scale <= 0:
                 msg = f"Cannot estimate positive y_err for {key}; supply explicit positive y_err"
-                raise ValueError(msg)
+                raise_elisa_analytics_data_error(msg)
             errors[key] = np.full(dataset.y_data.shape, scale, dtype=float)
             logger.warning(
                 "Dataset %s uses estimated y_err=%s: heuristic weights, not calibrated measurement "
@@ -302,31 +310,31 @@ class AbstractFit(metaclass=ABCMeta):
     def _validate_atmosphere_parameters(self) -> None:
         """Validate optional atmosphere and limb-darkening configuration dictionaries.
 
-        :raises TypeError: If either existing option has an unsupported type.
+        :raises ElisaAnalyticsTaskError: If configuration dictionaries or component names are invalid.
         """
         if not isinstance(getattr(self, "atmosphere_model", None), (dict, type(None))):
             error_msg = (
                 "Please provide argument `atmosphere_model` in format "
                 "{component (primary or secondary): atmosphere_model_name (ck04, bb, ...), }"
             )
-            raise TypeError(error_msg)
+            raise_elisa_analytics_task_error(error_msg)
 
         if not isinstance(getattr(self, "limb_darkening_coefficients", None), (dict, type(None))):
             error_msg = (
                 "Please provide argument `limb_darkening_coefficients` in format "
                 "{component (primary or secondary): {passband: ld_coeffs (float, list), }, }"
             )
-            raise TypeError(error_msg)
+            raise_elisa_analytics_task_error(error_msg)
 
         for component, atlas in (self.atmosphere_model or {}).items():
             if component not in settings.BINARY_COUNTERPARTS:
                 msg = f"Unknown atmosphere component: {component}"
-                raise ValueError(msg)
+                raise_elisa_analytics_task_error(msg)
             atm.validated_atlas(atlas)
         for component, coefficients in (self.limb_darkening_coefficients or {}).items():
             if component not in settings.BINARY_COUNTERPARTS:
                 msg_0 = f"Unknown limb-darkening component: {component}"
-                raise ValueError(msg_0)
+                raise_elisa_analytics_task_error(msg_0)
             StarProperties.limb_darkening_coefficients(coefficients)
 
     @staticmethod
@@ -341,7 +349,8 @@ class AbstractFit(metaclass=ABCMeta):
         :type x0: BinaryInitialParameters
         :param data: Observational data in photometric filters or RV.
         :type data: dict[str, Any]
-        :raises ValueError: When data and parameters are incompatible.
+        :raises ElisaAnalyticsTaskError: If data and parameter configuration are incompatible.
+        :raises ElisaAnalyticsDataError: If observations are absent or their coordinate units differ.
         """
         coordinate_unit = _observation_coordinate_unit(data)
         has_epoch = hasattr(x0, "primary_minimum_time")
@@ -352,7 +361,7 @@ class AbstractFit(metaclass=ABCMeta):
                 "phases using `DataSet.convert_to_phases(period, t0)` or include "
                 "`primary_minimum_time` to your initial fit parameters."
             )
-            raise ValueError(msg)
+            raise_elisa_analytics_task_error(msg)
         if coordinate_unit == units.dimensionless_unscaled and has_epoch:
             msg = (
                 "Your initial parameters contain `primary_minimum_time`, yet you provided "
@@ -360,7 +369,7 @@ class AbstractFit(metaclass=ABCMeta):
                 "to JD using `DataSet.convert_to_time(period, t0)` or remove `primary_minimum_"
                 "time` from your initial fit parameters."
             )
-            raise ValueError(msg)
+            raise_elisa_analytics_task_error(msg)
 
     @abstractmethod
     def fit(self, *args: Any, **kwargs: Any) -> Any:
@@ -459,10 +468,10 @@ class AbstractRVFit(AbstractFit):
         x0.validate_rv_parameters()
         if kwargs.get("observer_system_cls") is RadialVelocitySystem and settings.RV_METHOD != "kinematic":
             msg = "Community RV fitting supports only the kinematic RV method."
-            raise ValueError(msg)
+            raise_elisa_analytics_task_error(msg)
         if not set(data).issubset(settings.BINARY_COUNTERPARTS):
             msg = "RV datasets must be keyed by primary or secondary"
-            raise ValueError(msg)
+            raise_elisa_analytics_task_error(msg)
         super().set_up(x0, data, passband=None, **kwargs)
         validate_observations(self.x_data_reduced, self.y_data, self.x_data_reducer, self.x_data, self.y_err)
 
@@ -687,7 +696,7 @@ class AbstractLCFit(AbstractFit):
         :type samples: SamplingMethod | str | list | NDArray
         :return: Photometric phases or None if insufficient datapoints.
         :rtype: NDArray | None
-        :raises ValueError: When ``samples`` parameter is invalid.
+        :raises ElisaAnalyticsTaskError: When ``samples`` parameter is invalid.
         """
         kwargs: dict[str, Any] = parameters.prepare_properties_set(
             self.initial_vector,
@@ -708,7 +717,7 @@ class AbstractLCFit(AbstractFit):
                 "Parameter `samples` must be SamplingMethod.UNIFORM, SamplingMethod.ADAPTIVE, "
                 "their string values, or a manual phase list/array"
             )
-            raise ValueError(error_msg) from exc
+            raise_elisa_analytics_task_error(error_msg, exc)
         if method is SamplingMethod.UNIFORM:
             diff = 1.0 / self.interp_treshold
             return np.linspace(0.0 - diff, 1.0 + diff, num=self.interp_treshold + 2)
