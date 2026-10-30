@@ -25,6 +25,7 @@ from elisa.analytics.tools.utils import (
     time_layer_resolver,
 )
 from elisa.base.error import (
+    ElisaAtmosphereError,
     ElisaNumericError,
     ElisaParametersError,
     ElisaPassbandError,
@@ -786,6 +787,7 @@ class AbstractLCFit(AbstractFit):
             synthetic = lc_model.synthetic_binary(x, self.discretization, observer, **kwargs)
             synthetic, _ = normalize_light_curve(synthetic, kind="average")
         except (
+                ElisaAtmosphereError,
                 ElisaParametersError,
                 ElisaSynthesisError,
                 MaxIterationError,

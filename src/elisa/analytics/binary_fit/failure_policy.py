@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 
 from elisa import settings
 from elisa.base.error import (
+    ElisaAtmosphereError,
     ElisaNumericError,
     ElisaParametersError,
     ElisaSynthesisError,
@@ -27,6 +28,7 @@ from elisa.logger import getPersistentLogger
 # reject LSQ proposals just like synthesis failures; setup remains outside callbacks.
 # Numerical markers retain their legacy inheritance and remain explicit here.
 SYNTHESIS_FAILURES = (
+    ElisaAtmosphereError,
     ElisaParametersError,
     ElisaSynthesisError,
     MaxIterationError,

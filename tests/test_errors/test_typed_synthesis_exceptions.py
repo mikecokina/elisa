@@ -144,7 +144,7 @@ def test_lagrange_solver_still_skips_isolated_failed_guesses(monkeypatch):
 
 
 @pytest.mark.parametrize('cls', [error.PhysicalStateError, error.MorphologyError, error.SpotError,
-                                 error.PulsationModeError, error.ElisaAtmosphereError, error.LimbDarkeningError,
+                                 error.PulsationModeError, error.LimbDarkeningError,
                                  error.LimbDarkeningSourceError, error.TemperatureError])
 def test_synthesis_hierarchy_and_pickle(cls):
     assert issubclass(cls, error.ElisaSynthesisError)
@@ -152,3 +152,13 @@ def test_synthesis_hierarchy_and_pickle(cls):
     assert type(pickle.loads(pickle.dumps(cls('diagnostic')))) is cls
     assert not issubclass(error.SpotError, error.PulsationModeError)
     assert not issubclass(error.PulsationModeError, error.SpotError)
+
+
+def test_atmosphere_error_is_explicitly_penalized():
+    from elisa.analytics.binary_fit.failure_policy import SYNTHESIS_FAILURES
+
+    assert error.ElisaAtmosphereError.__bases__ == (error.ElisaError,)
+    assert not issubclass(error.ElisaAtmosphereError, error.ElisaSynthesisError)
+    assert error.ElisaAtmosphereError in SYNTHESIS_FAILURES
+    failure = error.ElisaAtmosphereError('diagnostic')
+    assert type(pickle.loads(pickle.dumps(failure))) is error.ElisaAtmosphereError

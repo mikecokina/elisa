@@ -26,8 +26,9 @@ from elisa import (
     umpy as up,
 )
 from elisa.base.error import (
-    ElisaAtmosphereError,
-    ElisaValueError,
+    ElisaAtmosphereError,  # noqa: F401 - preserve the existing module-level re-export
+    raise_elisa_atmosphere_error,
+    raise_elisa_unexpected_error,
 )
 from elisa.base.types import FLOAT
 from elisa.buffer import buffer
@@ -716,7 +717,7 @@ def _wrap_grid_lookup_errors(func: Callable[P, R]) -> Callable[P, R]:
             return func(*args, **kwargs)
         except (ValueError, IndexError) as e:
             msg = f"Atmosphere grid lookup `{func.__name__}` failed for arguments {args!r}: {e}"
-            raise ElisaAtmosphereError(msg) from e
+            raise_elisa_atmosphere_error(msg, e)
 
     return wrapper
 
@@ -834,6 +835,12 @@ def strip_atm_containers_by_bandwidth(
     ]
 
 
+def _require_nonempty_atm_container(atm_container: AtmDataContainer) -> None:
+    """Require an initialized atmosphere model before bandwidth processing."""
+    if atm_container.is_empty():
+        raise_elisa_unexpected_error("Atmosphere container is empty.")
+
+
 def strip_atm_container_by_bandwidth(
     atm_container: AtmDataContainer,
     left_bandwidth: Float,
@@ -865,9 +872,7 @@ def strip_atm_container_by_bandwidth(
       otherwise return a copy.
     """
     inplace = kwargs.get("inplace", False)
-    if atm_container.is_empty():
-        msg = "Atmosphere container is empty."
-        raise ElisaValueError(msg)
+    _require_nonempty_atm_container(atm_container)
 
     # evaluate whether you use argument bandwidth or global bandwidth
     # use case when use global bandwidth is in case of bolometric `filter`, where bandwidth in observer
@@ -1124,7 +1129,7 @@ def extend_atm_container_on_bandwidth_boundary(
     on_border_flux: NDArray[Float] = interpolator([left_bandwidth, right_bandwidth])
     if np.isnan(on_border_flux).any():
         msg = "Interpolation on bandwidth boundaries resulted in NaN value."
-        raise ElisaAtmosphereError(msg)
+        raise_elisa_atmosphere_error(msg)
 
     atm_model: AtmModel = atm_container.model
     atm_model.wavelength[np.array([0, -1])] = [left_bandwidth, right_bandwidth]
@@ -1372,7 +1377,7 @@ def get_atm_table(
 
     if not path.is_file():
         msg = f"There is no file like {path}"
-        raise ElisaAtmosphereError(msg)
+        raise_elisa_atmosphere_error(msg)
 
     # noinspection PyArgumentList
     return pd.read_csv(path, dtype=settings.ATM_MODEL_DATAFARME_DTYPES)
@@ -1461,7 +1466,7 @@ def multithread_atm_tables_reader_runner(fpaths: list[str] | tuple[str]) -> Queu
                     f"of your stellar model are not covered by the currently "
                     f"used table."
                 )
-                raise ElisaAtmosphereError(msg)
+                raise_elisa_atmosphere_error(msg)
             path_queue.put((index, fpath))
 
         for _ in range(n_threads):
@@ -1695,7 +1700,7 @@ def read_unique_atm_tables(
                 "of your stellar model are not covered by the currently "
                 "used table."
             )
-            raise ElisaAtmosphereError(msg) from exc
+            raise_elisa_atmosphere_error(msg, exc)
         key = (source, Path(fpath).name, settings.ATM_MODEL_DATAFRAME_FLUX, settings.ATM_MODEL_DATAFRAME_WAVE)
         source_keys[fpath] = key
         if key in buffer.ATMOSPHERE_TABLES:
@@ -1736,12 +1741,17 @@ def find_atm_si_multiplicators(
     :type atm_containers: Iterable[AtmDataContainer]
     :returns: Tuple of (flux_multiplicator, wavelength_multiplicator).
     :rtype: tuple[Float, Float]
-    :raises ValueError: If no valid container is supplied.
+    :raises ElisaUnexpectedError: If the required atmosphere containers are missing.
     """
     for atm_container in atm_containers:
         return atm_container.flux_to_si_mult, atm_container.wave_to_si_mult
     msg = "No valid atmospheric container has been supplied to method."
-    raise ElisaValueError(msg)
+    # This is an internal helper, not a user-facing input boundary. The programmer
+    # must ensure its callers supply the models required by the synthesis flow.
+    # A built stellar surface requires atmosphere tables; grid selection and table
+    # loading report their own failures before reaching this point. An empty result
+    # therefore breaks the internal pipeline contract and must not penalize a candidate.
+    return raise_elisa_unexpected_error(msg)
 
 
 def find_atm_defined_wavelength(
@@ -1755,12 +1765,17 @@ def find_atm_defined_wavelength(
     :type atm_containers: Iterable[AtmDataContainer]
     :returns: Wavelength array from the first container.
     :rtype: NDArray
-    :raises AtmosphereError: If no valid container is supplied.
+    :raises ElisaUnexpectedError: If the required atmosphere containers are missing.
     """
     for atm_container in atm_containers:
         return atm_container.model.wavelength
     msg = "No valid atmospheric container has been supplied to method."
-    raise ElisaAtmosphereError(msg)
+    # This is an internal helper, not a user-facing input boundary. The programmer
+    # must ensure its callers supply the models required by the synthesis flow.
+    # Successful loading and remapping must preserve the required atmosphere models.
+    # Missing tables fail earlier; an empty collection here is an internal contract
+    # violation, not a candidate atmosphere failure that fitting should penalize.
+    return raise_elisa_unexpected_error(msg)
 
 
 def remap_passbanded_unique_atms_to_matrix(

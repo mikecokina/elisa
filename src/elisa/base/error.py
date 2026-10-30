@@ -128,7 +128,7 @@ class ElisaNumericError(FloatingPointError):
     """Recognized numerical failure while evaluating an ELISA model or candidate."""
 
 
-class ElisaAtmosphereError(ElisaSynthesisError):
+class ElisaAtmosphereError(ElisaError):
     """Raised for errors related to atmosphere model handling."""
 
 

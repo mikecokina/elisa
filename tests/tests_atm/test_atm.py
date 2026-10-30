@@ -87,6 +87,12 @@ class TestAtmModuleGeneral(ElisaTestCase):
         # are xpected
         assert_array_equal(result[0].model.wavelength, expected_wavelength)
 
+    def test_strip_empty_atmosphere_is_internal_contract_failure(self):
+        container = atm.AtmDataContainer(AtmModel(np.ones(3), np.arange(3)), 10, 10, 10)
+        container.model.wavelength = np.array([])
+        with pytest.raises(error.ElisaUnexpectedError, match="Atmosphere container is empty"):
+            atm.strip_atm_container_by_bandwidth(container, 0.0, 2.0)
+
     def test_strip_atm_container_by_bandwidth(self):
         c = atm.AtmDataContainer(AtmModel.from_dataframe(pd.DataFrame({
             settings.ATM_MODEL_DATAFRAME_FLUX: up.arange(0, 100, 10, dtype=FLOAT),
@@ -254,6 +260,11 @@ class TestAtmModuleGeneral(ElisaTestCase):
 
         obtained_paths = sorted([r.fpath for r in result])
         assert_array_equal(obtained_paths, expected_paths)
+
+    def test_empty_atmosphere_collections_are_internal_contract_failures(self):
+        for extract in (atm.find_atm_si_multiplicators, atm.find_atm_defined_wavelength):
+            with pytest.raises(error.ElisaUnexpectedError, match="No valid atmospheric container"):
+                extract([])
 
     def test_find_atm_si_multiplicators(self):
         expected = (1e-7 * 1e4 * 1e10, 1e-10)

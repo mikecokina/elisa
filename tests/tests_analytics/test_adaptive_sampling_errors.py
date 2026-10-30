@@ -8,6 +8,7 @@ from elisa import BinarySystem
 from elisa.analytics.binary_fit import least_squares
 from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.base.error import (
+    ElisaAtmosphereError,
     ElisaInitialParametersError,
     ElisaNumericError,
     ElisaParametersError,
@@ -29,7 +30,9 @@ def prepared_fit():
     return fit
 
 
-@pytest.mark.parametrize("category", [ElisaParametersError, ElisaSynthesisError, MaxIterationError, ElisaNumericError])
+@pytest.mark.parametrize("category", [
+    ElisaAtmosphereError, ElisaParametersError, ElisaSynthesisError, MaxIterationError, ElisaNumericError,
+])
 def test_initial_model_failure_becomes_initial_parameters_error(prepared_fit, category):
     failure = category("initial model failed")
     with patch("elisa.analytics.models.lc.synthetic_binary", side_effect=failure):
