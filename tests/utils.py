@@ -397,7 +397,8 @@ class ElisaTestCase(unittest.TestCase):
 
         # Mocks can populate caches with synthetic scientific results. Clearing
         # these is test isolation policy, not a production configure side effect.
-        from elisa import atm, ld
+        from elisa import ld
+        from elisa.atm import atm
         from elisa.buffer import buffer
         from elisa.base.curves.utils import _get_rv_passband
         from elisa.binary_system.surface.mesh import _load_correction_factors

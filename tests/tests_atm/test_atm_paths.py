@@ -9,9 +9,10 @@ import pandas as pd
 import pytest
 from numpy.typing import NDArray
 
-from elisa import atm, settings, utils
+from elisa import settings, utils
+from elisa.atm import atm
 from elisa.base.error import ElisaSynthesisError
-from elisa.atm import atm_file_prefix_to_quantity_list, get_atm_directory, validated_atlas
+from elisa.atm.atm import atm_file_prefix_to_quantity_list, get_atm_directory, validated_atlas
 from elisa.observer.passband import PassbandContainer
 from elisa.types import Float
 
@@ -27,7 +28,7 @@ def original_atm_files(
     :param temperature: Iterable[float];
     :param log_g: Iterable[float];
     :param metallicity: float;
-    :param atlas: str; atmosphere model identificator (see settings.ATLAS_TO_ATM_FILE_PREFIX.keys())
+    :param atlas: str; atmosphere model identificator (see elisa.atm.const.ATLAS_TO_ATM_FILE_PREFIX.keys())
     :return: List[str];
     """
     atlas = validated_atlas(atlas)

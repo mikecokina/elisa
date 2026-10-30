@@ -8,9 +8,10 @@ import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 from pandas.testing import assert_frame_equal
 
-from elisa import atm, const, settings
+from elisa import const, settings
+from elisa.atm import atm, const as atm_const
 from elisa import umpy as up
-from elisa.atm import AtmModel
+from elisa.atm.atm import AtmModel
 from elisa.base import error
 from elisa.base.types import FLOAT
 from elisa.observer.passband import PassbandContainer
@@ -22,7 +23,7 @@ from tests.utils import ElisaTestCase
 set_astropy_units()
 
 
-from elisa.atm import (
+from elisa.atm.atm import (
     AtmDataContainer,
     IntensityContainer,
     compute_integral_si_intensity_from_atm_data_containers,
@@ -37,7 +38,7 @@ class TestMapDict(ElisaTestCase):
     def test_ATLAS_TO_ATM_FILE_PREFIX(self):
         supplied = ["castelli", "castelli-kurucz", "ck", "ck04", "kurucz", "k93", "k"]
         expected = ["ck", "ck", "ck", "ck", "k", "k", "k"]
-        obtained = [settings.ATLAS_TO_ATM_FILE_PREFIX[s] for s in supplied]
+        obtained = [atm_const.ATLAS_TO_ATM_FILE_PREFIX[s] for s in supplied]
         assert_array_equal(obtained, expected)
 
     def test_ATLAS_TO_BASE_DIR(self):
@@ -51,7 +52,7 @@ class TestMapDict(ElisaTestCase):
     def test_ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX(self):
         supplied = ["temperature", "gravity", "metallicity"]
         expected = ["TEMPERATURE_LIST_ATM", "GRAVITY_LIST_ATM", "METALLICITY_LIST_ATM"]
-        obtained = [settings.ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX[s] for s in supplied]
+        obtained = [atm_const.ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX[s] for s in supplied]
         assert_array_equal(expected, obtained)
 
 
@@ -147,7 +148,7 @@ class TestAtmModuleGeneral(ElisaTestCase):
         assert_frame_equal(result, expected, check_dtype=False)
 
     def test_atm_file_prefix_to_quantity_list(self):
-        atlas = ["ck04", "kurucz", "ck"]
+        atlas = ["ck", "k", "ck"]
         quantities = ["temperature", "gravity", "metallicity"]
         expected = [[3500.0, 3750.0, 4000.0],
                     [3500.0, 3750.0, 4000.0],
@@ -181,13 +182,13 @@ class TestAtmModuleGeneral(ElisaTestCase):
         log_g = [0.0, 2.5, 4]
         m_h = [-0.1, 0.0, 1]
 
-        obtained = [atm.get_atm_table_filename(_t, _g, _m, atlas="ck04") for _t, _g, _m in zip(t, log_g, m_h)]
+        obtained = [atm.get_atm_table_filename(_t, _g, _m, atlas="ck") for _t, _g, _m in zip(t, log_g, m_h)]
         expected = ["ckm01_3500_g00.csv", "ckp00_10250_g25.csv", "ckp10_13000_g40.csv"]
         assert_array_equal(expected, obtained)
 
     def test_get_atm_directory(self):
         m_h = [-0.1, -5, 0.0, 0.1, 2]
-        atlas = ["ck", "ck04", "k93", "k", "kurucz"]
+        atlas = ["ck", "ck", "k", "k", "k"]
         obtained = [atm.get_atm_directory(_m, _a) for _m, _a in zip(m_h, atlas)]
         expected = ["ckm01", "ckm50", "kp00", "kp01", "kp20"]
         assert_array_equal(obtained, expected)
@@ -311,7 +312,7 @@ class TestNaiveInterpolation(ElisaTestCase):
         g = np.array([1.5, 2, 2])
         t = np.array([4999, 11300, 11500])
 
-        obtained = sorted([os.path.basename(v) for v in atm.NaiveInterpolatedAtm.atm_files(t, g, 0.5, "ck04")])
+        obtained = sorted([os.path.basename(v) for v in atm.NaiveInterpolatedAtm.atm_files(t, g, 0.5, "ck")])
         expected = ["ckp05_11250_g40.csv", "ckp05_11500_g40.csv",
                     "ckp05_11500_g40.csv", "ckp05_11500_g40.csv",
                     "ckp05_4750_g35.csv", "ckp05_5000_g35.csv"]
@@ -689,7 +690,8 @@ class TestAtmDataContainerEdgeCases(ElisaTestCase):
 
 
 def test_missing_atmosphere_source_boundary_is_domain_error(tmp_path):
-    from elisa import atm, settings
+    from elisa import settings
+    from elisa.atm import atm
     previous = settings.settings_serializer()
     try:
         settings.configure(CK04_ATM_TABLES=str(tmp_path))

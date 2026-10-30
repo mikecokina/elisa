@@ -25,6 +25,7 @@ from elisa import (
 from elisa import (
     umpy as up,
 )
+from elisa.atm.const import ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX, normalize_atlas
 from elisa.base.error import (
     ElisaAtmosphereError,  # noqa: F401 - preserve the existing module-level re-export
     raise_elisa_atmosphere_error,
@@ -316,7 +317,7 @@ class NaiveInterpolatedAtm:
         :param temperature: numpy.array;
         :param log_g: numpy.array;
         :param metallicity: float;
-        :param atlas: str;
+        :param atlas: Canonical atlas name, resolved at the Star/settings input boundary.
         :param kwargs:
         :**kwargs options**:
             * **left_bandwidth** * -- float; maximal allowed wavelength from left (Angstrom)
@@ -324,7 +325,8 @@ class NaiveInterpolatedAtm:
             * **passband** * -- dict[str, elisa.observer.observer.PassbandContainer]
         :return: List;
         """
-        if validated_atlas(atlas) == "bb":
+        # Star construction / fit setup already resolved this fixed configuration.
+        if atlas == "bb":
             return NaiveInterpolatedAtm.black_body_radiance(temperature, **kwargs)
         return NaiveInterpolatedAtm.atlas_radiance(
             temperature,
@@ -432,7 +434,7 @@ class NaiveInterpolatedAtm:
         :param temperature: Iterable[float];
         :param log_g: Iterable[float];
         :param metallicity: float;
-        :param atlas: str; atmosphere model identificator (see settings.ATLAS_TO_ATM_FILE_PREFIX.keys())
+        :param atlas: Canonical atlas name, already validated by the input boundary.
         :param kwargs: dict;
         :return: Tuple[dict, numpy.float, numpy.float]; atmosphere profiles for each passband, flux multiplicator,
                                                         wave multiplicator;
@@ -499,7 +501,7 @@ class NaiveInterpolatedAtm:
         :param metallicity: Metallicity [Fe/H].
         :type metallicity: Float
         :param atlas: Atlas identifier (see
-            :data:`settings.ATLAS_TO_ATM_FILE_PREFIX`).
+            :data:`elisa.atm.const.ATLAS_TO_ATM_FILE_PREFIX`).
         :type atlas: str
         :param kwargs: Additional parameters forwarded to
             :meth:`NaiveInterpolatedAtm.get_atm_profiles` (e.g. passband,
@@ -529,8 +531,8 @@ class NaiveInterpolatedAtm:
         1.0 is choosen to fit interpolation method and return correct atmosphere.
 
         :param temperatures: numpy.array[float];
-        :param top_atm_containers: numpy.ndarray[elisa.atm.AtmDataContainer];
-        :param bottom_atm_containers: numpy.ndarray[elisa.atm.AtmDataContainer];
+        :param top_atm_containers: numpy.ndarray[elisa.atm.atm.AtmDataContainer];
+        :param bottom_atm_containers: numpy.ndarray[elisa.atm.atm.AtmDataContainer];
         :return: numpy.ndarray[float];
         """
         with np.errstate(divide="ignore", invalid="ignore"):
@@ -557,8 +559,8 @@ class NaiveInterpolatedAtm:
         ! Top and bottom atmosphere model are have to be defined in same wavelengths !
 
         :param weight: Iterable[float];
-        :param top_atm_container: elisa.atm.AtmDataContainer;
-        :param bottom_atm_container: elisa.atm.AtmDataContainer;
+        :param top_atm_container: elisa.atm.atm.AtmDataContainer;
+        :param bottom_atm_container: elisa.atm.atm.AtmDataContainer;
         :return: Tuple[numpy.array, numpy.ndarray]; (flux, wave);
         """
         if bottom_atm_container is None:
@@ -598,7 +600,7 @@ class NaiveInterpolatedAtm:
     ) -> dict[str, dict[str, NDArray[Float]]]:
         """Interpolate spectra for given temperature based on surounded spectra related to upper and lower temperatures.
 
-        From supplied elisa.atm.AtmDataContainer's, `flux_matrices` and `temeprature`.
+        From supplied elisa.atm.atm.AtmDataContainer's, `flux_matrices` and `temeprature`.
         Interpolation is computed in vector form::
 
             (weights * (top_flux_matrix.T - bottom_flux_matrix.T) + bottom_flux_matrix.T).T
@@ -612,7 +614,7 @@ class NaiveInterpolatedAtm:
 
             {"passband": numpy.ndarray (matrix)}
 
-        :param passbanded_atm_containers: dict[str, elisa.atm.AtmDataContainers];
+        :param passbanded_atm_containers: dict[str, elisa.atm.atm.AtmDataContainers];
         :param temperature: numpy.ndarray[float];
         :return: dict[str, numpy.ndarray];
         """
@@ -654,10 +656,9 @@ class NaiveInterpolatedAtm:
         :param temperature: Iterable[float];
         :param log_g: Iterable[float];
         :param metallicity: float;
-        :param atlas: str; atmosphere model identificator (see settings.ATLAS_TO_ATM_FILE_PREFIX.keys())
+        :param atlas: str; atmosphere model identificator (see elisa.atm.const.ATLAS_TO_ATM_FILE_PREFIX.keys())
         :return: List[str]; lower-temperature paths followed by upper-temperature paths.
         """
-        atlas = validated_atlas(atlas)
         log_g = utils.convert_gravity_acceleration_array(log_g, "log_cgs")
 
         g_array = np.array(atm_file_prefix_to_quantity_list("gravity", atlas))
@@ -1208,10 +1209,9 @@ def atm_file_prefix_to_quantity_list(qname: str, atlas: str) -> list:
     :returns: List of available values for the quantity in the atlas.
     :rtype: list
     """
-    atlas = validated_atlas(atlas)
     return getattr(
         const,
-        f"{str(atlas).upper()}_{settings.ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX[qname]!s}",
+        f"{str(atlas).upper()}_{ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX[qname]!s}",
     )
 
 
@@ -1226,14 +1226,9 @@ def validated_atlas(atlas: str) -> str:
     :type atlas: str
     :returns: Canonical atlas identifier.
     :rtype: str
-    :raises KeyError: If atlas is not in the supported list.
+    :raises ElisaInitialParametersError: If atlas is not in the supported list.
     """
-    try:
-        return settings.ATM_ATLAS_NORMALIZER[atlas]
-    except KeyError as exc:
-        allowed = ", ".join(settings.ATM_ATLAS_NORMALIZER.keys())
-        msg = f"Incorrect atlas: {atlas}. Following are allowed: {allowed}"
-        raise KeyError(msg) from exc
+    return normalize_atlas(atlas)
 
 
 def parse_domain_quantities_from_atm_table_filename(filename: str) -> tuple[Float, Float, Float]:
@@ -1323,7 +1318,7 @@ def get_atm_table_filename(
     :returns: Filename for the atmosphere table.
     :rtype: str
     """
-    prefix = validated_atlas(atlas)
+    prefix = atlas
     return (
         f"{prefix}{utils.numeric_metallicity_to_string(metallicity)}_"
         f"{int(temperature)}_{utils.numeric_logg_to_string(log_g)}.csv"
@@ -1343,7 +1338,7 @@ def get_atm_directory(metallicity: Float, atlas: str) -> str:
     :returns: Directory name for the atmosphere table.
     :rtype: str
     """
-    prefix = validated_atlas(atlas)
+    prefix = atlas
     return f"{prefix}{utils.numeric_metallicity_to_string(metallicity)}"
 
 
@@ -1370,6 +1365,7 @@ def get_atm_table(
     :rtype: pd.DataFrame
     :raises AtmosphereError: If the atmosphere table file is not found.
     """
+    atlas = validated_atlas(atlas)
     source = settings.ATLAS_TO_BASE_DIR[atlas]
     directory = get_atm_directory(metallicity, atlas)
     filename = get_atm_table_filename(temperature, log_g, metallicity, atlas)

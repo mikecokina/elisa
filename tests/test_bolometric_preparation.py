@@ -12,7 +12,8 @@ import pytest
 from numpy.testing import assert_array_equal
 from numpy.typing import NDArray
 
-from elisa import BinarySystem, Observer, Star, atm, ld, settings
+from elisa import BinarySystem, Observer, Star, ld, settings
+from elisa.atm import atm
 from elisa.binary_system.curves import utils
 from elisa.observer.passband import init_bolometric_passband
 

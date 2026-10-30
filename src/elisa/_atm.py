@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from elisa import utils
-from elisa.atm import (
+from elisa.atm.atm import (
     atm_file_prefix_to_quantity_list,
     get_list_of_all_atm_tables,
     parse_domain_quantities_from_atm_table_filename,

@@ -8,7 +8,8 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from elisa import atm, settings
+from elisa import settings
+from elisa.atm import atm
 from elisa.observer.passband import PassbandContainer
 
 

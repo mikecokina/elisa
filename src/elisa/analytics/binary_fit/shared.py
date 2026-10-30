@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from elisa import atm, settings, units
+from elisa import settings, units
 from elisa.analytics.binary_fit.lc_prediction import (
     predict_light_curves,
     validate_observations,
@@ -26,6 +26,7 @@ from elisa.analytics.tools.utils import (
 )
 from elisa.base.error import (
     ElisaAtmosphereError,
+    ElisaInitialParametersError,
     ElisaNumericError,
     ElisaParametersError,
     ElisaPassbandError,
@@ -355,11 +356,16 @@ class AbstractFit(metaclass=ABCMeta):
             )
             raise_elisa_analytics_task_error(error_msg)
 
+        # Atlas choices are fixed task inputs, resolved before proposal evaluation.
+        # Internal atmosphere calculations rely on these canonical names.
+        normalized_atmospheres = {}
         for component, atlas in (self.atmosphere_model or {}).items():
             if component not in settings.BINARY_COUNTERPARTS:
                 msg = f"Unknown atmosphere component: {component}"
                 raise_elisa_analytics_task_error(msg)
-            atm.validated_atlas(atlas)
+            normalized_atmospheres[component] = StarProperties.atmosphere(atlas)
+        if self.atmosphere_model is not None:
+            self.atmosphere_model = normalized_atmospheres
         for component, coefficients in (self.limb_darkening_coefficients or {}).items():
             if component not in settings.BINARY_COUNTERPARTS:
                 msg_0 = f"Unknown limb-darkening component: {component}"
@@ -795,7 +801,10 @@ class AbstractLCFit(AbstractFit):
         ) as exc:
             msg = "The initial model could not be evaluated to generate adaptive phase sampling."
             raise_elisa_initial_parameters_error(msg, exc)
-        except (ElisaPassbandError, ElisaPredictionAlignmentError, ElisaSettingsError, ElisaUnexpectedError):
+        except (
+            ElisaInitialParametersError, ElisaPassbandError, ElisaPredictionAlignmentError,
+            ElisaSettingsError, ElisaUnexpectedError,
+        ):
             raise
         except Exception as exc:  # noqa: BLE001 - preserve context for otherwise unclassified setup failures
             msg = "Adaptive phase sampling failed while evaluating or normalizing the initial model."

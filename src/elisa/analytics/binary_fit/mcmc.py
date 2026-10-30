@@ -25,6 +25,7 @@ from elisa.analytics.models import rv as rv_model
 from elisa.analytics.params import parameters
 from elisa.analytics.params.conf import NUISANCE_PARSER, PARAM_PARSER
 from elisa.base.error import (
+    ElisaInitialParametersError,
     ElisaPassbandError,
     ElisaUnexpectedError,
     raise_elisa_monte_carlo_error,
@@ -189,7 +190,7 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
             posterior = prior + likelihood
             if not np.isfinite(posterior):
                 raise_elisa_numeric_error(f"Nonfinite posterior: {posterior}")
-        except (ElisaPassbandError, ElisaUnexpectedError):
+        except (ElisaInitialParametersError, ElisaPassbandError, ElisaUnexpectedError):
             raise
         except Exception as exc:  # noqa: BLE001 - retain existing rejection policy for other failure categories
             record_candidate_failure(self, xn, exc, stage=stage)

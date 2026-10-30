@@ -5,7 +5,7 @@ import numpy as np
 
 from elisa import settings
 from elisa import units as u
-from elisa.atm import atm_file_prefix_to_quantity_list, validated_atlas
+from elisa.atm.atm import atm_file_prefix_to_quantity_list, validated_atlas
 from elisa.utils import jd_from_datetime
 
 PARAM_PARSER = "@"
@@ -57,7 +57,7 @@ def get_default_normalization_star() -> dict:
     these are finite fitting defaults, not physical limits on blackbodies.
     """
     atlas = validated_atlas(settings.ATM_ATLAS)
-    atlas = "ck04" if atlas == "bb" else atlas
+    atlas = "ck" if atlas == "bb" else atlas
     temperatures = atm_file_prefix_to_quantity_list("temperature", atlas)
     metallicity = atm_file_prefix_to_quantity_list("metallicity", atlas)
     return {

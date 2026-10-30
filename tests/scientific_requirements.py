@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from elisa import ld, settings
+from elisa.atm import const as atm_const
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
@@ -82,7 +83,7 @@ def atmosphere_unavailability_reason(
     files: Sequence[str] | None = None,
 ) -> str | None:
     """Check an atlas installation or the exact model files required by a case."""
-    prefix = settings.ATM_ATLAS_NORMALIZER.get(atlas)
+    prefix = atm_const.ATM_ATLAS_NORMALIZER.get(atlas)
     if prefix is None:
         return f"Atmosphere atlas {atlas!r} is not supported"
     if prefix == "bb":

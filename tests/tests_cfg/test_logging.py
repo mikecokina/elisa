@@ -207,7 +207,8 @@ def test_internal_module_is_renamed_without_a_shim():
 
 
 def test_production_loggers_use_module_names():
-    from elisa import atm, ld
+    from elisa import ld
+    from elisa.atm import atm
     from elisa.analytics.binary_fit import least_squares
     from elisa.observer import observer
     for module in (atm, ld, least_squares, observer):

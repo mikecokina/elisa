@@ -12,7 +12,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from elisa import atm, settings, units as u, utils
+from elisa import settings, units as u, utils
+from elisa.atm import atm
 from elisa.base.curves import utils as curves
 from elisa.binary_system.surface import mesh as binary_mesh, temperature
 from elisa.observer import observer as observer_module

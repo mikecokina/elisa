@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 
+from elisa.atm.const import ATLAS_TO_ATM_FILE_PREFIX, normalize_atlas
 from elisa.base.error import raise_elisa_settings_error
 from elisa.conf.enums import IntersectionBackend, LoggingProfile, MeanAnomalySolver
 from elisa.conf.logconfig import configure_logging
@@ -119,28 +120,6 @@ class _Const:
     # ******************************************************************************************************************
 
     BINARY_COUNTERPARTS: ClassVar = {"primary": "secondary", "secondary": "primary"}
-
-    ATLAS_TO_ATM_FILE_PREFIX: ClassVar = {
-        "castelli": "ck",
-        "castelli-kurucz": "ck",
-        "ck": "ck",
-        "ck04": "ck",
-        "kurucz": "k",
-        "k": "k",
-        "k93": "k",
-    }
-
-    ATM_ATLAS_NORMALIZER: ClassVar = {
-        **ATLAS_TO_ATM_FILE_PREFIX,
-        "bb": "bb",
-        "black_body": "bb",
-    }
-
-    ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX: ClassVar = {
-        "temperature": "TEMPERATURE_LIST_ATM",
-        "gravity": "GRAVITY_LIST_ATM",
-        "metallicity": "METALLICITY_LIST_ATM",
-    }
 
     DATETIME_MASK = "%Y-%m-%dT%H.%M.%S"
     DATE_MASK = "%Y-%m-%d"
@@ -264,6 +243,7 @@ class Settings(_Const):
     )
     _defaults: ClassVar = {name: getattr(DefaultSettings, name) for name in _fields if name != "CONFIG_FILE"}
     _defaults["CONFIG_FILE"] = config_file
+    _defaults["ATM_ATLAS"] = normalize_atlas(_defaults["ATM_ATLAS"])
     DEFAULT_SETTINGS = MappingProxyType(_defaults)
 
     def __new__(cls) -> Settings:  # noqa: PYI034
@@ -393,6 +373,7 @@ class Settings(_Const):
         candidate = self.settings_serializer()
         candidate.update(kwargs)
         self._validate_candidate(candidate)
+        candidate["ATM_ATLAS"] = normalize_atlas(candidate["ATM_ATLAS"])
         candidate["ATLAS_TO_BASE_DIR"] = self._atlas_to_base_dir(candidate)
         if "HOME" in kwargs:
             _create_settings_directory(candidate["HOME"])
@@ -696,7 +677,7 @@ class Settings(_Const):
         return MappingProxyType(
             {
                 alias: values["CK04_ATM_TABLES" if prefix == "ck" else "K93_ATM_TABLES"]
-                for alias, prefix in _Const.ATLAS_TO_ATM_FILE_PREFIX.items()
+                for alias, prefix in ATLAS_TO_ATM_FILE_PREFIX.items()
             },
         )
 

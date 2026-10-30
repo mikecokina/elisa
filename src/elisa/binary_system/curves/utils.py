@@ -4,9 +4,10 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from elisa.base.error import ElisaRuntimeError
-from elisa import atm, const, settings
+from elisa import const, settings
+from elisa.atm import atm
 from elisa.base.curves.utils import get_component_limbdarkening_cfs
+from elisa.base.error import ElisaRuntimeError
 from elisa.binary_system import radius as bsradius
 from elisa.binary_system import utils as butils
 

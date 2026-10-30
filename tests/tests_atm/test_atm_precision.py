@@ -8,7 +8,8 @@ import numpy as np
 import pytest
 from scipy.interpolate import Akima1DInterpolator
 
-from elisa import atm, settings
+from elisa import settings
+from elisa.atm import atm
 from elisa.observer.passband import PassbandContainer
 
 

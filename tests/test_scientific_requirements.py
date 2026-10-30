@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from elisa import atm, ld
+from elisa import ld
+from elisa.atm import atm
 from elisa.base.error import ElisaAtmosphereError
 from tests.scientific_requirements import (
     atmosphere_unavailability_reason,
