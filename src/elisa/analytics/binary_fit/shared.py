@@ -27,11 +27,13 @@ from elisa.analytics.tools.utils import (
 from elisa.base.error import (
     ElisaPassbandError,
     ElisaPredictionAlignmentError,
+    ElisaUnexpectedError,
     raise_elisa_analytics_data_error,
     raise_elisa_analytics_task_error,
     raise_elisa_numeric_error,
     raise_elisa_passband_error,
     raise_elisa_prediction_alignment_error,
+    raise_elisa_unexpected_error,
 )
 from elisa.base.transform import StarProperties
 from elisa.binary_system.curves.community import RadialVelocitySystem
@@ -134,17 +136,21 @@ def _validated_normalized_errors(
     :param y_err: Normalized errors returned by the public normalization utility.
     :returns: Matching finite, strictly positive uncertainty vectors.
     :raises ElisaAnalyticsDataError: If normalized fluxes or errors are nonfinite, or errors are nonpositive.
-    :raises ValueError: If prepared uncertainties are missing.
+    :raises ElisaUnexpectedError: If prepared uncertainties are missing after setup preparation.
     """
     if y_err is None:
-        msg = "LC fitting requires prepared uncertainties"
-        raise ValueError(msg)
+        msg = "LC uncertainty preparation must run before normalization validation"
+        raise_elisa_unexpected_error(msg)
     validated: dict[str, NDArray] = {}
     for key, values in y_data.items():
-        errors = y_err[key]
+        try:
+            errors = y_err[key]
+        except KeyError as exc:
+            msg = f"Prepared LC uncertainties are missing for dataset {key}"
+            raise_elisa_unexpected_error(msg, exc)
         if errors is None:
-            msg = f"LC normalization produced nonfinite data or uncertainties for {key}"
-            raise ValueError(msg)
+            msg = f"Prepared LC uncertainties must not be None for dataset {key}"
+            raise_elisa_unexpected_error(msg)
         finite_flux = np.all(np.isfinite(values))
         finite_errors = np.all(np.isfinite(errors))
         if not finite_flux or not finite_errors:
@@ -764,7 +770,7 @@ class AbstractLCFit(AbstractFit):
         try:
             synthetic = lc_model.synthetic_binary(x, self.discretization, observer, **kwargs)
             synthetic, _ = normalize_light_curve(synthetic, kind="average")
-        except (ElisaPredictionAlignmentError, ElisaPassbandError):
+        except (ElisaPredictionAlignmentError, ElisaPassbandError, ElisaUnexpectedError):
             raise
         except Exception as e:
             error_msg = "Your initial parameters are invalid and phase sampling could not be generated."

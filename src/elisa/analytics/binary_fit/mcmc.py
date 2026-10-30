@@ -26,6 +26,7 @@ from elisa.analytics.params import parameters
 from elisa.analytics.params.conf import NUISANCE_PARSER, PARAM_PARSER
 from elisa.base.error import (
     ElisaPassbandError,
+    ElisaUnexpectedError,
     raise_elisa_monte_carlo_error,
     raise_elisa_numeric_error,
 )
@@ -164,7 +165,7 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
 
         Combines the prior and likelihood for the candidate. Ordinary evaluation
         exceptions and nonfinite results are recorded and reject it with -inf.
-        Fixed passband input/source errors always propagate.
+        Fixed passband input/source errors and explicit internal contract failures always propagate.
         A uniform-prior exclusion (-inf) is a normal rejection without diagnostics.
         Setup and process-control exceptions remain outside this rejection policy.
 
@@ -188,7 +189,7 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
             posterior = prior + likelihood
             if not np.isfinite(posterior):
                 raise_elisa_numeric_error(f"Nonfinite posterior: {posterior}")
-        except ElisaPassbandError:
+        except (ElisaPassbandError, ElisaUnexpectedError):
             raise
         except Exception as exc:  # noqa: BLE001 - retain existing rejection policy for other failure categories
             record_candidate_failure(self, xn, exc, stage=stage)

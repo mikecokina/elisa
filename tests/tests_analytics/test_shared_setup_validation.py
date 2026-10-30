@@ -145,3 +145,39 @@ def test_sampling_does_not_reclassify_unexpected_errors():
         with pytest.raises(RuntimeError) as caught:
             fit.generate_sample_phases("uniform")
     assert caught.value is failure
+
+
+@pytest.mark.parametrize("errors", [None, {}, {V: None}])
+def test_missing_prepared_uncertainties_are_internal_contract_failures(errors):
+    from elisa.analytics.binary_fit.failure_policy import SYNTHESIS_FAILURES
+    from elisa.base.error import ElisaUnexpectedError
+
+    with pytest.raises(ElisaUnexpectedError, match="uncertainties|uncertainty preparation") as caught:
+        shared._validated_normalized_errors({V: np.ones(2)}, errors)
+    assert not isinstance(caught.value, SYNTHESIS_FAILURES)
+    assert not isinstance(caught.value, ElisaAnalyticsDataError)
+    if errors == {}:
+        assert isinstance(caught.value.__cause__, KeyError)
+
+
+def test_missing_prepared_uncertainties_abort_setup():
+    from elisa.base.error import ElisaUnexpectedError
+
+    fit = least_squares.DetachedLightCurveFit()
+    from tests.tests_analytics.fitting_helpers import lc_setup
+    with patch.object(type(fit), "_prepare_observation_errors", return_value=None):
+        with pytest.raises(ElisaUnexpectedError):
+            lc_setup(fit, {V: make_lc(errors=[0.1, 0.1, 0.1])})
+
+
+def test_internal_contract_failure_is_not_an_mcmc_rejection():
+    from elisa.base.error import ElisaUnexpectedError
+    from tests.tests_analytics.test_mcmc_posterior import make_quadratic_posterior
+
+    fit = make_quadratic_posterior()
+    failure = ElisaUnexpectedError("missing prepared state")
+    with patch.object(fit, "likelihood", side_effect=failure):
+        with pytest.raises(ElisaUnexpectedError) as caught:
+            fit.ln_probability(np.array([0.5]))
+    assert caught.value is failure
+    assert fit._candidate_failure_diagnostics.total == 0

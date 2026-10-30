@@ -24,6 +24,10 @@ class ElisaRuntimeError(RuntimeError):
     """Runtime failure explicitly raised by ELISA; not a physical-state signal."""
 
 
+class ElisaUnexpectedError(ElisaRuntimeError):
+    """An internal state or execution-order invariant guaranteed by ELISA was violated."""
+
+
 class ElisaNotImplementedError(NotImplementedError):
     """An ELISA feature or abstract operation has no implementation."""
 
@@ -187,6 +191,16 @@ def _raise_error(
     if exc is not None:
         raise error_type(message) from exc
     raise error_type(message)
+
+
+def raise_elisa_unexpected_error(message: str, exc: Exception | None = None) -> NoReturn:
+    """Raise an internal contract failure, preserving an optional original cause.
+
+    :param message: Description of the violated internal invariant.
+    :param exc: Original exception, if any.
+    :raises ElisaUnexpectedError: Always raised with the provided message.
+    """
+    _raise_error(ElisaUnexpectedError, message, exc)
 
 
 def raise_elisa_value_error(message: str, exc: Exception | None = None) -> NoReturn:
