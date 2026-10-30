@@ -8,6 +8,7 @@ from numpy.testing import assert_allclose
 
 from elisa import BinarySystem, SingleSystem, Star, const, units as u
 from elisa import umpy as up
+from elisa.base.error import ElisaParametersError
 from elisa.pulse.utils import phase_correction
 from elisa.single_system.container import SinglePositionContainer
 
@@ -83,7 +84,7 @@ def test_missing_mandatory_star_parameters_are_not_filtered(key: str) -> None:
     del values[key]
     star = Star(**values)
     assert key in star.reinitialization_kwargs()
-    with pytest.raises(FloatingPointError):
+    with pytest.raises(ElisaParametersError):
         star.init()
 
 
@@ -286,7 +287,7 @@ def test_single_current_finite_gamma_is_preserved(explicit: bool) -> None:
 @pytest.mark.parametrize("invalid", [np.nan, np.inf, -np.inf])
 def test_explicit_nonfinite_stellar_inputs_still_fail(key: str, invalid: float) -> None:
     kwargs = dict(mass=1.0, t_eff=6000.0) | {key: invalid}
-    with pytest.raises(FloatingPointError):
+    with pytest.raises(ElisaParametersError):
         Star(**kwargs)
 
 
@@ -296,7 +297,7 @@ def test_nonfinite_current_values_are_not_mistaken_for_omitted_sentinels(key: st
     star = Star(mass=1.0, t_eff=6000.0)
     setattr(star, key, invalid)
     assert key in star.reinitialization_kwargs()
-    with pytest.raises(FloatingPointError):
+    with pytest.raises(ElisaParametersError):
         star.init()
 
 
@@ -305,7 +306,7 @@ def test_nan_arithmetic_results_are_not_discarded(key: str) -> None:
     star = Star(mass=1.0, t_eff=6000.0)
     with np.errstate(invalid="ignore"):
         setattr(star, key, np.sqrt(-1.0))
-    with pytest.raises(FloatingPointError):
+    with pytest.raises(ElisaParametersError):
         star.init()
 
 
@@ -315,13 +316,13 @@ def test_explicit_finite_star_value_later_set_to_nan_is_not_discarded(key: str) 
                  polar_log_g=4.4, gravity_darkening=0.32)
     star = Star(mass=1.0, t_eff=6000.0, **{key: valid[key]})
     setattr(star, key, np.nan)
-    with pytest.raises(FloatingPointError):
+    with pytest.raises(ElisaParametersError):
         star.init()
 
 
 @pytest.mark.parametrize("invalid", [np.nan, np.inf, -np.inf])
 def test_single_explicit_invalid_gamma_is_rejected(invalid: float) -> None:
-    with pytest.raises(FloatingPointError):
+    with pytest.raises(ElisaParametersError):
         make_single(gamma=invalid)
 
 
@@ -331,9 +332,9 @@ def test_single_invalid_current_gamma_reaches_validation(explicit: bool, invalid
     system = make_single(**({"gamma": 0.0} if explicit else {}))
     system.gamma = invalid
     assert "gamma" in system.reinitialization_kwargs()
-    with pytest.raises(FloatingPointError):
+    with pytest.raises(ElisaParametersError):
         system.properties_serializer()
-    with pytest.raises(FloatingPointError):
+    with pytest.raises(ElisaParametersError):
         system.init()
 
 
@@ -356,7 +357,7 @@ def test_new_finite_star_parameters_acquire_provenance_after_reconstruction(key:
     star.init()
     assert key in star.kwargs
     setattr(star, key, np.nan)
-    with pytest.raises(FloatingPointError):
+    with pytest.raises(ElisaParametersError):
         star.init()
 
 
@@ -365,5 +366,5 @@ def test_new_finite_single_gamma_acquires_provenance_after_reconstruction() -> N
     system.gamma = 0.0
     system.init()
     system.gamma = np.nan
-    with pytest.raises(FloatingPointError):
+    with pytest.raises(ElisaParametersError):
         system.init()

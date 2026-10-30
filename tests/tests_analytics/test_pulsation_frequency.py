@@ -110,6 +110,18 @@ class PulsationFrequencyTestCase(ElisaTestCase):
                         self.assertIsNone(fit.primary.pulsations[0].frequency.min)
                         self.assertIsNone(fit.primary.pulsations[0].frequency.sigma)
 
+    def test_repeated_candidates_keep_initial_frequency_in_cycles_per_day(self):
+        for fixed in (False, True):
+            for value in self.frequency_inputs():
+                with self.subTest(fixed=fixed, value=value):
+                    fit = self.fit_parameters({"value": value, "fixed": fixed, "min": 0.5, "max": 2.0})
+                    for _ in range(3):
+                        kwargs, serialized, binary = self.construct_fitting_model(fit)
+                        self.assertAlmostEqual(fit.primary.pulsations[0].frequency.value, 1.0)
+                        self.assertAlmostEqual(kwargs["primary@pulsation@mode1@frequency"], 1.0)
+                        self.assertAlmostEqual(serialized["pulsations"][0]["frequency"], 1.0)
+                        self.assertAlmostEqual(binary.primary.pulsations[0].frequency, 1 / 86400, places=14)
+
     def test_constrained_frequency_uses_same_convention(self):
         for fixed in (False, True):
             with self.subTest(source_fixed=fixed):
