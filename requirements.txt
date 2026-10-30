@@ -1,6 +1,5 @@
-# Core deps
-astropy>=6.1.7; python_version < '3.11'
-astropy>=7.2.0; python_version >= '3.11'  # Requires-Python >=3.11
+# Core deps (Python 3.11+)
+astropy>=7.2.0
 
 corner>=2.2.3
 emcee>=3.1.6
@@ -8,13 +7,9 @@ jsonschema>=4.26.0
 
 matplotlib>=3.10.8
 
-# NumPy 2.3+ dropped Python 3.10 support; keep a compatible floor for 3.10
-numpy>=2.2.0; python_version < '3.11'
-numpy>=2.4.2; python_version >= '3.11'
+numpy>=2.4.2
 
-# pandas 3.x requires Python >=3.11
-pandas>=2.2.3; python_version < '3.11'
-pandas>=3.0.1; python_version >= '3.11'
+pandas>=3.0.1
 
 packaging>=26.0
 pytest>=9.0.2
@@ -22,9 +17,7 @@ python-dateutil>=2.9.0.post0
 pytz>=2025.2
 six>=1.17.0
 
-# SciPy 1.17+ requires Python >=3.11
-scipy>=1.15.0; python_version < '3.11'
-scipy>=1.17.1; python_version >= '3.11'
+scipy>=1.17.1
 
 tqdm>=4.67.3
 parameterized>=0.9.0
