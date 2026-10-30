@@ -6,23 +6,23 @@ functions used in light curve and radial velocity fitting.
 
 from __future__ import annotations
 
-import io
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import numpy as np
 import pytest
 
-from elisa import settings, umpy as up
+from elisa import settings
+from elisa.analytics.binary_fit.rv_fit import RVFitMCMC
+# noinspection PyProtectedMember
 from elisa.analytics.binary_fit.summary import (
     _manage_chain_evaluation,
-    evaluate_binary_params,
-    evaluate_rv_params,
     fit_lc_summary_with_error_propagation,
     fit_rv_summary_with_error_propagation,
     simple_lc_fit_summary,
     simple_rv_fit_summary,
 )
+from elisa.base.error import ElisaMonteCarloError
 
 
 class TestManageChainEvaluation:
@@ -32,7 +32,7 @@ class TestManageChainEvaluation:
         """Test chain evaluation with single process."""
         mock_chain = np.array([[0.1, 0.2], [0.15, 0.25], [0.2, 0.3]])
 
-        def mock_eval_func(dummy_arg: str, chain: np.ndarray) -> np.ndarray:
+        def mock_eval_func(_: str, chain: np.ndarray) -> np.ndarray:
             """Mock evaluation function."""
             return chain * 2
 
@@ -46,7 +46,7 @@ class TestManageChainEvaluation:
         """Test chain evaluation with multiprocessing."""
         mock_chain = np.array([[0.1, 0.2], [0.15, 0.25], [0.2, 0.3], [0.25, 0.35]])
 
-        def mock_eval_func(dummy_arg: str, chain: np.ndarray) -> np.ndarray:
+        def mock_eval_func(_: str, chain: np.ndarray) -> np.ndarray:
             """Mock evaluation function."""
             return chain * 2
 
@@ -345,3 +345,15 @@ class TestSimpleRVFitSummary:
 # tested as integration tests with real or fully-mocked system parameters.
 # The unit tests above cover the main public APIs and data processing pipelines.
 
+
+@pytest.mark.parametrize("summarize", [
+    fit_lc_summary_with_error_propagation, fit_rv_summary_with_error_propagation,
+])
+def test_error_propagation_summary_requires_a_monte_carlo_chain(summarize) -> None:
+    fit = RVFitMCMC()
+    fit.result = {"system": {"period": {"value": 1.0, "fixed": False, "min": 0.5, "max": 2.0}}}
+    fit.flat_result = {}
+    fit.variable_labels = ["system@period"]
+    fit.normalization = {"system@period": (0.5, 2.0)}
+    with pytest.raises(ElisaMonteCarloError, match="MCMC chain was not found"):
+        summarize(fit, None, [16, 50, 84])
