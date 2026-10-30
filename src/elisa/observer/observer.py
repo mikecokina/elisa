@@ -9,7 +9,12 @@ import numpy as np
 from elisa import settings
 from elisa import umpy as up
 from elisa import units as u
-from elisa.base.error import ElisaValueError, raise_elisa_not_implemented_error, raise_elisa_passband_error
+from elisa.base.error import (
+    ElisaValueError,
+    raise_elisa_not_implemented_error,
+    raise_elisa_passband_error,
+    raise_elisa_unexpected_error,
+)
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.logger import getLogger
 from elisa.observer import utils as outils
@@ -266,7 +271,13 @@ class Observer:
     def _get_zero_points(self) -> ZeroPointType:
         """Refresh the one-entry calibration cache when its source changes."""
         system = settings.MAGNITUDE_SYSTEM.lower()
-        source = file_source_identity(Path(settings.DATA_PATH) / "zero_points" / f"{system}.json")
+        source_path = Path(settings.DATA_PATH) / "zero_points" / f"{system}.json"
+        try:
+            source = file_source_identity(source_path)
+        except FileNotFoundError as exc:
+            # Cache lookup must enforce the same packaged-resource contract as loading.
+            msg = f"Zero points file for system {system!r} not found at {source_path}"
+            raise_elisa_unexpected_error(msg, exc)
         key = (system, source)
         if (
             is_empty(self.zero_points) or self._zero_points_source != key
