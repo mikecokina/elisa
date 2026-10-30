@@ -276,6 +276,7 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
             self.fitable.keys(),
             self.constrained,
             self.fixed,
+            raise_initial=False,
         )
         return xn_renorm, kwargs
 

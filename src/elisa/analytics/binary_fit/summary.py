@@ -745,6 +745,7 @@ def evaluate_binary_params(*args: Any) -> NDArray:
             fit_instance.fit_method_instance.fitable.keys(),
             fit_instance.fit_method_instance.constrained,
             fit_instance.fit_method_instance.fixed,
+            raise_initial=False,
         )
 
         try:
@@ -1675,6 +1676,7 @@ def evaluate_rv_params(*args: Any) -> NDArray:
             fit_instance.fit_method_instance.fitable.keys(),
             fit_instance.fit_method_instance.constrained,
             fit_instance.fit_method_instance.fixed,
+            raise_initial=False,
         )
         system_kwgs: dict[str, Any] = serializers.serialize_system_kwargs(**init_rv_kwargs)
 

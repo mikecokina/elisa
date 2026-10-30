@@ -137,6 +137,7 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
                 self.fitable.keys(),
                 self.constrained,
                 self.fixed,
+                raise_initial=False,
             )
             synthetic = self.predict_light_curves(kwargs, synthesis=_log_decorator(lc_model.synthetic_binary))
         except SYNTHESIS_FAILURES as e:
@@ -335,6 +336,7 @@ class CentralRadialVelocity(AbstractRVFit):
             self.fitable.keys(),
             self.constrained,
             self.fixed,
+            raise_initial=False,
         )
         fn = rv_model.central_rv_synthetic
         synthetic: dict[str, NDArray] = _log_decorator(fn)(

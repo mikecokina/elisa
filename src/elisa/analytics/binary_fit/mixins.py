@@ -170,7 +170,7 @@ class MCMCMixin:
         physical_chain = MCMCMixin.renormalize_flat_chain(flat_chain, labels, labels, normalization)
         samples: dict[str, list[float]] = {key: [] for key in constrained}
         for row in physical_chain:
-            model = parameters.prepare_properties_set(row, labels, constrained, fixed)
+            model = parameters.prepare_properties_set(row, labels, constrained, fixed, raise_initial=False)
             for key in constrained:
                 samples[key].append(model[key])
 

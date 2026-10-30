@@ -127,17 +127,56 @@ def test_constrained_period_is_validated_by_the_candidate_model(fitting_problem,
     synthesis.assert_called_once()
 
 
-def test_unexpected_constraint_arithmetic_keeps_the_fitter_failure_policy(fitting_problem):
+def constraint_with_singularity(config, fit):
+    if isinstance(fit, AbstractLCFit):
+        config["secondary"]["t_eff"] = {"constraint": "5000 / (system@inclination - 86)**2"}
+        return "system@inclination", 86.0
+    config["system"]["mass_ratio"] = {"constraint": "0.7 / (system@asini - 10)**2"}
+    return "system@asini", 10.0
+
+
+def test_constraint_arithmetic_rejects_candidate_and_recovers(fitting_problem):
     fit, config, data, synthesis = fitting_problem
-    config["system"]["period"] = {"constraint": "3"}
+    label, singularity = constraint_with_singularity(config, fit)
     prepare_fit(fit, config, data)
-    fit.constrained["system@period"].constraint = "1/0"
-    if isinstance(fit, mcmc.MCMCFit):
-        assert fit.ln_probability(normalized(fit)) == -np.inf
-    else:
-        with pytest.raises(ZeroDivisionError):
-            evaluate(fit, normalized(fit))
+    valid = normalized(fit)
+    invalid = valid.copy()
+    invalid[list(fit.fitable).index(label)] = p.normalize_value(singularity, *fit.normalization[label])
+    with pytest.raises(ElisaParametersError) as failure:
+        p.prepare_properties_set(
+            p.vector_renormalizer(invalid, fit.fitable, fit.normalization),
+            fit.fitable, fit.constrained, fit.fixed, raise_initial=False,
+        )
+    assert isinstance(failure.value.__cause__, ZeroDivisionError)
+    synthesis.reset_mock()
+    assert_evaluation(fit, invalid, valid=False)
     synthesis.assert_not_called()
+    assert_evaluation(fit, valid, valid=True)
+    synthesis.assert_called_once()
+
+
+def test_same_constraint_failure_in_setup_is_initial_parameter_error(fitting_problem):
+    fit, config, data, synthesis = fitting_problem
+    label, singularity = constraint_with_singularity(config, fit)
+    config["system"][label.split("@")[1]]["value"] = singularity
+    with pytest.raises(ElisaInitialParametersError) as failure:
+        prepare_fit(fit, config, data)
+    assert isinstance(failure.value.__cause__, ZeroDivisionError)
+    synthesis.assert_not_called()
+
+
+@pytest.mark.parametrize("raise_initial", [True, False])
+@pytest.mark.parametrize("expression,cause", [
+    ("missing@parameter", None),
+    ("undefined", NameError),
+    ("1 / 0", ZeroDivisionError),
+])
+def test_constraint_errors_follow_evaluation_context(raise_initial, expression, cause):
+    error = ElisaInitialParametersError if raise_initial else ElisaParametersError
+    with pytest.raises(error) as failure:
+        p.constraints_evaluator({"system@period": 3.0}, {"result": expression}, raise_initial=raise_initial)
+    if cause is not None:
+        assert isinstance(failure.value.__cause__, cause)
 
 
 @pytest.mark.parametrize("fit_class", [least_squares.CentralRadialVelocity, mcmc.CentralRadialVelocity])

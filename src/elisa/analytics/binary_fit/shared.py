@@ -297,6 +297,14 @@ class AbstractFit(metaclass=ABCMeta):
         self.x_data_reducer = x_data_reducer
 
         self.initial_vector = [val.value for val in self.fitable.values()]
+        # Evaluate initial constraints once before either solver starts proposing candidates.
+        parameters.prepare_properties_set(
+            self.initial_vector,
+            self.fitable.keys(),
+            self.constrained,
+            self.fixed,
+            raise_initial=True,
+        )
         self.flat_result = {}
 
         self._validate_atmosphere_parameters()
@@ -425,7 +433,7 @@ class AbstractFit(metaclass=ABCMeta):
             return result_dict
 
         res_val_dict = {key: val["value"] for key, val in result_dict.items()}
-        constrained_values = parameters.constraints_evaluator(res_val_dict, constraints)
+        constrained_values = parameters.constraints_evaluator(res_val_dict, constraints, raise_initial=False)
         result_dict.update(
             {
                 key: {
@@ -1095,7 +1103,7 @@ def eval_constraint_in_dict(input_dict: dict[str, Any]) -> dict[str, Any]:
             result_dict[key] = previous
             del constraints[key]
 
-    constrained_values = parameters.constraints_evaluator(reduced_dict, constraints)
+    constrained_values = parameters.constraints_evaluator(reduced_dict, constraints, raise_initial=False)
     result_dict.update(
         {
             key: {

@@ -36,6 +36,7 @@ from elisa.analytics.params.transform import (
 from elisa.base.error import (
     raise_elisa_initial_parameters_error,
     raise_elisa_invalid_kwargs_error,
+    raise_elisa_parameters_error,
 )
 from elisa.base.transform import normalize_morphology
 from elisa.binary_system.utils import calculate_sma_estimate
@@ -477,27 +478,35 @@ def vector_normalizer(vector: Iterable[Float] | NDArray[Float], properties: Iter
     return [normalize_value(value, *normalization[prop]) for value, prop in zip(vector, properties, strict=False)]
 
 
-def prepare_properties_set(xn: NDArray, properties: list[str] | Iterable[str], constrained: dict, fixed: dict) -> dict:
+def prepare_properties_set(
+    xn: Iterable[Float] | NDArray,
+    properties: list[str] | Iterable[str],
+    constrained: dict,
+    fixed: dict,
+    *,
+    raise_initial: bool = True,
+) -> dict:
     """Prepare final keyword arguments for synthetic model evaluation.
 
     Combines variable parameters with their values, applies constraints,
     and adds fixed parameters to create a complete parameter set.
 
-    :param xn: Array of variable parameter values.
-    :type xn: NDArray
+    :param xn: Iterable of variable parameter values.
+    :type xn: Iterable[Float] | NDArray
     :param properties: Parameter names corresponding to `xn` values.
     :type properties: list[str]
     :param constrained: Constrained initial parameters' dictionary.
     :type constrained: dict
     :param fixed: Fixed initial parameters' dictionary.
     :type fixed: dict
+    :param raise_initial: Use initial-definition errors; False selects penalizable candidate errors.
     :returns: Flat model parameters dictionary {'param@name': value, ...}.
     :rtype: dict
     """
     kwargs = dict(zip(properties, xn, strict=True))
     fixed_values = {key: val.value if isinstance(val, InitialParameter) else val for key, val in fixed.items()}
     kwargs.update(fixed_values)
-    kwargs.update(constraints_evaluator(kwargs, constrained))
+    kwargs.update(constraints_evaluator(kwargs, constrained, raise_initial=raise_initial))
     return kwargs
 
 
@@ -526,7 +535,9 @@ def prepare_nuisance_properties_set(xn: NDArray | Iterable, properties: list[str
     return kwargs
 
 
-def check_for_invalid_constraint(constrained: dict, allowed_params: list | dict | Any) -> None:
+def check_for_invalid_constraint(
+    constrained: dict, allowed_params: list | dict | Any, *, raise_initial: bool = True,
+) -> None:
     """Validate that constraint expressions only reference allowed parameters.
 
     Ensures that constraint expressions, after substitution of valid parameters
@@ -536,8 +547,11 @@ def check_for_invalid_constraint(constrained: dict, allowed_params: list | dict 
     :type constrained: dict[str, str]
     :param allowed_params: Names of valid model parameters that can be used.
     :type allowed_params: list | dict | Any
-    :raises ElisaInitialParametersError: If constraint contains non-variable parameters.
+    :param raise_initial: True for setup; False for evaluating a candidate.
+    :raises ElisaInitialParametersError: If a setup constraint references unknown parameters.
+    :raises ElisaParametersError: If a candidate constraint references unknown parameters.
     """
+    raise_constraint_error = raise_elisa_initial_parameters_error if raise_initial else raise_elisa_parameters_error
     for c_param, constraint in constrained.items():
         if conf.PARAM_PARSER in constraint:
             error_msg = (
@@ -545,10 +559,10 @@ def check_for_invalid_constraint(constrained: dict, allowed_params: list | dict 
                 f"contains non-variable parameter. Only following parameters can be used to "
                 f"define a constrained parameter: {allowed_params}"
             )
-            raise_elisa_initial_parameters_error(error_msg)
+            raise_constraint_error(error_msg)
 
 
-def constraints_evaluator(substitution: dict, constrained: dict) -> dict:
+def constraints_evaluator(substitution: dict, constrained: dict, *, raise_initial: bool = True) -> dict:
     """Substitute variables in constraints with their values and evaluate to numbers.
 
     Replaces parameter references in constraint expressions with their actual values,
@@ -560,7 +574,9 @@ def constraints_evaluator(substitution: dict, constrained: dict) -> dict:
     :type constrained: dict[str, str | InitialParameter]
     :returns: Dictionary of evaluated constraint values.
     :rtype: dict[str, float]
-    :raises ElisaInitialParametersError: If constraint syntax is invalid or evaluation fails.
+    :param raise_initial: True for setup; False for evaluating a candidate.
+    :raises ElisaInitialParametersError: If setup constraint evaluation fails.
+    :raises ElisaParametersError: If candidate constraint evaluation fails.
     """
     if is_empty(constrained):
         return {}
@@ -583,14 +599,15 @@ def constraints_evaluator(substitution: dict, constrained: dict) -> dict:
     numpy_callable = {key: utils.str_repalce(val, allowed_methods, numpy_methods) for key, val in subst.items()}
 
     # Check for invalid parameters in constraint
-    check_for_invalid_constraint(numpy_callable, substitution.keys())
+    check_for_invalid_constraint(numpy_callable, substitution.keys(), raise_initial=raise_initial)
 
     try:
-        evaluated = {key: eval(val) for key, val in numpy_callable.items()}  # noqa: S307
-    except (ValueError, NameError, TypeError) as e:
+        return {key: eval(val) for key, val in numpy_callable.items()}  # noqa: S307
+    except (ArithmeticError, ValueError, NameError, TypeError) as e:
         error_msg = f"Invalid syntax or value in constraint: {e!s}."
-        raise_elisa_initial_parameters_error(error_msg, e)
-    return evaluated
+        if raise_initial:
+            raise_elisa_initial_parameters_error(error_msg, e)
+        raise_elisa_parameters_error(error_msg, e)
 
 
 def extend_result_with_sma(fit_parameters: dict) -> dict:
