@@ -20,7 +20,7 @@ from scipy.interpolate import interp1d
 
 from elisa import const
 from elisa.analytics.binary_fit import least_squares, mcmc, shared
-from elisa.analytics.binary_fit.lc_prediction import PredictionAlignmentError
+from elisa.base.error import ElisaPredictionAlignmentError
 from elisa.analytics.binary_fit.shared import AbstractLCFit, lc_r_squared
 from elisa.analytics.models import lc
 from elisa.analytics.params import parameters as p
@@ -335,7 +335,7 @@ def test_invalid_observation_mapping_requires_revalidation(defect) -> None:
             fit.x_data_reducer[V] = fit.x_data_reducer[V].astype(float)
         else:
             fit.y_err[B] = np.ones(8)
-        with pytest.raises(PredictionAlignmentError):
+        with pytest.raises(ElisaPredictionAlignmentError):
             fit.validate_observations()
 
 
@@ -358,7 +358,7 @@ def test_invalid_support_escapes_physical_penalty_handlers(support) -> None:
             callback = fit.ln_probability
         else:
             callback = fit.model_to_fit
-        with pytest.raises(PredictionAlignmentError):
+        with pytest.raises(ElisaPredictionAlignmentError):
             callback(normalized_values)
 
 
@@ -372,5 +372,5 @@ def test_missing_passband_escapes_physical_penalty_handlers() -> None:
             callback = fit.ln_probability
         else:
             callback = fit.model_to_fit
-        with pytest.raises(PredictionAlignmentError):
+        with pytest.raises(ElisaPredictionAlignmentError):
             callback(normalized_values)

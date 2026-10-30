@@ -12,7 +12,7 @@ from elisa.base import error
 from elisa.base.error import (
     ElisaError, ElisaFloatingPointError, ElisaMaxIterationError,
     ElisaRuntimeError, ElisaValueError, MaxIterationError, PhysicalStateError,
-    PredictionAlignmentError,
+    ElisaPredictionAlignmentError,
 )
 from elisa.base.surface import coverage, temperature
 from elisa.binary_system import radius
@@ -58,7 +58,7 @@ def test_worker_failure_keeps_type_and_remote_diagnostics(marker, public_base):
 def test_markers_do_not_broaden_existing_semantic_hierarchies():
     assert not issubclass(ElisaValueError, ElisaError)
     assert not issubclass(ElisaRuntimeError, ElisaError)
-    assert not issubclass(PredictionAlignmentError, ElisaValueError)
+    assert not issubclass(ElisaPredictionAlignmentError, ElisaValueError)
 
 
 def test_static_physical_range_check_retains_message():

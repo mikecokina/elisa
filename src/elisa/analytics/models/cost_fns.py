@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, NamedTuple
 
 import numpy as np
 
-from elisa.base.error import PredictionAlignmentError
+from elisa.base.error import raise_elisa_prediction_alignment_error
 from elisa.const import PI
 
 _TWO_PI = 2.0 * PI
@@ -81,17 +81,17 @@ def validate_predictions(prepared: PreparedObservations, synthetic: dict[str, ND
 
     :param prepared: Validated observations and expected array dimensions.
     :param synthetic: Current synthetic output.
-    :raises PredictionAlignmentError: If prediction keys or shapes differ.
+    :raises ElisaPredictionAlignmentError: If prediction keys or shapes differ.
     :raises ValueError: If predictions contain nonfinite values.
     """
     if len(synthetic) != len(prepared.labels) or any(key not in synthetic for key in prepared.labels):
         msg = "Likelihood observation, model and uncertainty dataset keys must match"
-        raise PredictionAlignmentError(msg)
+        raise_elisa_prediction_alignment_error(msg)
     for key, observed in zip(prepared.labels, prepared.observed, strict=True):
         model = np.asarray(synthetic[key])
         if model.shape != observed.shape:
             msg = f"Likelihood prediction shape differs from observations for {key}"
-            raise PredictionAlignmentError(msg)
+            raise_elisa_prediction_alignment_error(msg)
         if not np.all(np.isfinite(model)):
             msg = f"Likelihood arrays for {key} must be matching finite one-dimensional vectors"
             raise ValueError(msg)
@@ -239,9 +239,8 @@ def standardized_residuals(
         False after setup validation and dynamic prediction alignment checks.
     :return: Concatenated (observed - synthetic) / uncertainty. Its squared norm
         is chi² and SciPy's default linear-loss cost is half that value.
-    :raises PredictionAlignmentError: If prediction keys or shapes differ from observations.
-    :raises ValueError: If observation or uncertainty shapes are invalid.
-        Scalar uncertainties remain supported.
+    :raises ElisaPredictionAlignmentError: If prediction keys or shapes differ from observations.
+        Observation and uncertainty shapes must also align; scalar uncertainties remain supported.
     """
     if validate:
         _validate_residual_shapes(y_data, y_err, synthetic)
@@ -254,22 +253,21 @@ def _validate_residual_shapes(y_data: dict, y_err: dict, synthetic: dict) -> Non
     :param y_data: Observed vectors by dataset.
     :param y_err: Matching uncertainty vectors or scalar uncertainty fallbacks.
     :param synthetic: Predictions mapped into each observation vector's order.
-    :raises PredictionAlignmentError: If prediction keys or shapes differ.
-    :raises ValueError: If observation or uncertainty keys/shapes are invalid.
+    :raises ElisaPredictionAlignmentError: If observation, prediction or uncertainty keys/shapes differ.
     """
     if set(y_data) != set(synthetic):
         message = "Residual observation and prediction datasets differ"
-        raise PredictionAlignmentError(message)
+        raise_elisa_prediction_alignment_error(message)
     if set(y_data) != set(y_err):
         message = "Residual observation, prediction and uncertainty datasets differ"
-        raise ValueError(message)
+        raise_elisa_prediction_alignment_error(message)
     for key, observed in y_data.items():
         if np.ndim(observed) != 1:
             message = f"Residual prediction shape differs from observations for {key}"
-            raise ValueError(message)
+            raise_elisa_prediction_alignment_error(message)
         if np.shape(synthetic[key]) != np.shape(observed):
             message = f"Residual prediction shape differs from observations for {key}"
-            raise PredictionAlignmentError(message)
+            raise_elisa_prediction_alignment_error(message)
         if np.shape(y_err[key]) not in ((), np.shape(observed)):
             message = f"Residual uncertainty shape differs from observations for {key}"
-            raise ValueError(message)
+            raise_elisa_prediction_alignment_error(message)

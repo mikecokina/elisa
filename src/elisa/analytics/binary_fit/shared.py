@@ -24,9 +24,10 @@ from elisa.analytics.tools.utils import (
 )
 from elisa.base.error import (
     ElisaFloatingPointError,
-    PredictionAlignmentError,
+    ElisaPredictionAlignmentError,
     raise_elisa_analytics_data_error,
     raise_elisa_analytics_task_error,
+    raise_elisa_prediction_alignment_error,
 )
 from elisa.base.transform import StarProperties
 from elisa.binary_system.curves.community import RadialVelocitySystem
@@ -582,7 +583,7 @@ class AbstractLCFit(AbstractFit):
         content fingerprint is retained. Flux/error value edits with unchanged
         shapes do not change the mappings; normalize_data() revalidates them.
 
-        :raises PredictionAlignmentError: If observation alignment is invalid.
+        :raises ElisaPredictionAlignmentError: If observation alignment is invalid.
         """
         self._validated_reducers = None
         self._validated_reducers = validate_observations(
@@ -599,7 +600,7 @@ class AbstractLCFit(AbstractFit):
 
         :param model_parameters: Flat physical parameters with constraints resolved.
         :return: Coefficient of determination for observation-point predictions.
-        :raises PredictionAlignmentError: If dynamic synthesis alignment is invalid.
+        :raises ElisaPredictionAlignmentError: If dynamic synthesis alignment is invalid.
         """
         synthetic = self.predict_light_curves(model_parameters)
         return r_squared(synthetic, self.y_data)
@@ -615,7 +616,7 @@ class AbstractLCFit(AbstractFit):
         :param model_parameters: Flat physical parameters with constraints resolved.
         :param kwargs: Optional prediction arguments, such as a synthesis callable.
         :return: Per-band mean-normalized flux arrays in observation order.
-        :raises PredictionAlignmentError: If dynamic prediction alignment is invalid.
+        :raises ElisaPredictionAlignmentError: If dynamic prediction alignment is invalid.
         Synthesis exceptions propagate unchanged.
         """
         return predict_light_curves(
@@ -732,7 +733,7 @@ class AbstractLCFit(AbstractFit):
         :return: Photometric phases.
         :rtype: NDArray[Float]
         :raises RuntimeError: When initial parameters are invalid.
-        :raises PredictionAlignmentError: If synthesis reports a structural alignment error.
+        :raises ElisaPredictionAlignmentError: If synthesis reports a structural alignment error.
         """
         n = 3 * settings.MAX_CURVE_DATAPOINTS
         diff = 1.0 / n
@@ -756,7 +757,7 @@ class AbstractLCFit(AbstractFit):
         try:
             synthetic = lc_model.synthetic_binary(x, self.discretization, observer, **kwargs)
             synthetic, _ = normalize_light_curve(synthetic, kind="average")
-        except PredictionAlignmentError:
+        except ElisaPredictionAlignmentError:
             raise
         except Exception as e:
             error_msg = "Your initial parameters are invalid and phase sampling could not be generated."
@@ -870,12 +871,12 @@ def map_rv_predictions(
     :param x_data_reduced: Coordinate grid supplied to RV synthesis.
     :param x_data_reducer: Prepared component indices into that grid.
     :returns: Curves in each component's original observation order.
-    :raises PredictionAlignmentError: If a required component is missing, or an
+    :raises ElisaPredictionAlignmentError: If a required component is missing, or an
         observed component's raw curve has the wrong shape or nonfinite values.
     """
     if not x_data_reducer.keys() <= synthetic.keys():
         msg = "RV synthesis and observation components differ"
-        raise PredictionAlignmentError(msg)
+        raise_elisa_prediction_alignment_error(msg)
     expected_shape = np.shape(x_data_reduced)
     predictions = {}
     for component, reducer in x_data_reducer.items():
@@ -884,7 +885,7 @@ def map_rv_predictions(
             msg = (
                 f"RV synthetic shape for {component} must match coordinate grid {expected_shape}, got {np.shape(curve)}"
             )
-            raise PredictionAlignmentError(msg)
+            raise_elisa_prediction_alignment_error(msg)
         if not np.all(np.isfinite(curve)):
             msg = f"RV synthetic values are nonfinite for {component}"
             raise ElisaFloatingPointError(msg)
@@ -909,7 +910,7 @@ def rv_r_squared(synthetic: Callable[..., Any], *args: Any, **kwargs: Any) -> fl
     :type kwargs: Any
     :return: Coefficient of determination (1.0 means perfect fit).
     :rtype: float
-    :raises PredictionAlignmentError: If raw RV components or shapes do not match the synthesis grid.
+    :raises ElisaPredictionAlignmentError: If raw RV components or shapes do not match the synthesis grid.
     """
     x_data_reduced, y_data, x_data_reducer, cls = args
 

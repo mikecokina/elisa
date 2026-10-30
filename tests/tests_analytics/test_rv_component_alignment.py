@@ -12,7 +12,7 @@ from elisa.analytics.binary_fit import least_squares, mcmc
 from elisa.analytics.binary_fit.shared import map_rv_predictions, rv_r_squared
 from elisa.analytics.models.rv import central_rv_synthetic
 from elisa.analytics.params.parameters import BinaryInitialParameters
-from elisa.base.error import PredictionAlignmentError
+from elisa.base.error import ElisaPredictionAlignmentError
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
 from elisa.observer.observer import Observer
@@ -134,5 +134,5 @@ def test_rv_mapping_rejects_missing_required_components(observed_components: tup
     synthetic = {"primary": np.ones(3), "secondary": np.ones(3), "unobserved": np.ones(3)}
     del synthetic[observed_components[0]]
 
-    with pytest.raises(PredictionAlignmentError, match="components"):
+    with pytest.raises(ElisaPredictionAlignmentError, match="components"):
         map_rv_predictions(synthetic, coordinates, reducers)

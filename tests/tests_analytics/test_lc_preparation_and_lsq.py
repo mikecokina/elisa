@@ -11,6 +11,8 @@ from copy import deepcopy
 from typing import Any
 from unittest.mock import patch
 
+from elisa.base.error import ElisaPredictionAlignmentError
+
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
@@ -193,7 +195,7 @@ def test_dynamic_malformed_real_synthesis_output_is_rejected(science_settings: N
         raw[V] = raw[V][:-1] if defect == "short" else raw[V][:, None]
         return raw
 
-    with validation_calls() as calls, pytest.raises(lc_prediction.PredictionAlignmentError):
+    with validation_calls() as calls, pytest.raises(ElisaPredictionAlignmentError):
         fit.predict_light_curves(physical(fit), synthesis=malformed)
     assert not calls
 
@@ -288,7 +290,7 @@ def test_residual_order_scalar_uncertainty_and_broadcasting_guard() -> None:
     model = {"a": np.array([5.0]), "b": np.array([1.0, 1.0])}
     errors = {"a": np.array([0.5]), "b": np.array(2.0)}
     assert_array_equal(cost_fns.standardized_residuals(observed, errors, model), [1.0, 2.0, 4.0])
-    with pytest.raises(lc_prediction.PredictionAlignmentError, match="prediction shape"):
+    with pytest.raises(ElisaPredictionAlignmentError, match="prediction shape"):
         cost_fns.standardized_residuals(observed, errors, {**model, "a": np.ones(3)})
 
 

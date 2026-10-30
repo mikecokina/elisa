@@ -127,7 +127,7 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
         :return: One-dimensional residual vector of fixed observation length.
             Invalid physical synthesis returns a finite vector whose squared norm
             is MAX_USABLE_FLOAT, preserving that constant as the chi² penalty.
-        :raises PredictionAlignmentError: If dynamic synthesis alignment fails.
+        :raises ElisaPredictionAlignmentError: If dynamic synthesis alignment fails.
         """
         try:
             xn_list = parameters.vector_renormalizer(xn, self.fitable.keys(), self.normalization)
@@ -350,7 +350,7 @@ class CentralRadialVelocity(AbstractRVFit):
         :param xn: Normalized free-parameter vector.
         :return: Concatenated (observed - predicted) / uncertainty, in observation
             dictionary insertion order. Its squared norm is the actual chi².
-        :raises PredictionAlignmentError: If raw RV components or shapes do not match the synthesis grid.
+        :raises ElisaPredictionAlignmentError: If raw RV components or shapes do not match the synthesis grid.
         """
         try:
             synthetic: dict[str, NDArray] = self.prepare_synthetic(xn)

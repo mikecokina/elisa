@@ -31,7 +31,8 @@ from elisa.base.error import (
     MaxIterationError,
     MorphologyError,
     PhysicalStateError,
-    PredictionAlignmentError,
+    ElisaPredictionAlignmentError,
+    raise_elisa_prediction_alignment_error,
     SpotError,
     TemperatureError,
 )
@@ -175,12 +176,12 @@ def test_lc_malformed_output_propagates_through_callbacks(
     normalized_values = normalized(lc_fit)
     with use_lc_synthesis(lc_fit, lambda *args, **kwargs: raw):
         if isinstance(lc_fit, mcmc.MCMCFit):
-            with pytest.raises(PredictionAlignmentError):
+            with pytest.raises(ElisaPredictionAlignmentError):
                 lc_fit.likelihood(normalized_values)
-            with pytest.raises(PredictionAlignmentError):
+            with pytest.raises(ElisaPredictionAlignmentError):
                 lc_fit.ln_probability(normalized_values)
         else:
-            with pytest.raises(PredictionAlignmentError):
+            with pytest.raises(ElisaPredictionAlignmentError):
                 lc_fit.model_to_fit(normalized_values)
 
 
@@ -215,12 +216,12 @@ def test_rv_malformed_output_propagates_through_callbacks(
     normalized_values = normalized(rv_fit)
     with patch.object(rv, "central_rv_synthetic", return_value=raw):
         if isinstance(rv_fit, mcmc.MCMCFit):
-            with pytest.raises(PredictionAlignmentError):
+            with pytest.raises(ElisaPredictionAlignmentError):
                 rv_fit.likelihood(normalized_values)
-            with pytest.raises(PredictionAlignmentError):
+            with pytest.raises(ElisaPredictionAlignmentError):
                 rv_fit.ln_probability(normalized_values)
         else:
-            with pytest.raises(PredictionAlignmentError):
+            with pytest.raises(ElisaPredictionAlignmentError):
                 rv_fit.central_rv_model_to_fit(normalized_values)
 
 
@@ -228,7 +229,7 @@ def test_rv_truncated_output_is_checked_before_reducer_indexing() -> None:
     coordinates = np.array([0.0, 0.1, 0.2, 0.3])
     reducers = {"primary": np.array([3, 0, 3]), "secondary": np.array([1])}
     raw = {"primary": np.ones(3), "secondary": np.ones(4)}
-    with pytest.raises(PredictionAlignmentError, match="primary.*coordinate grid"):
+    with pytest.raises(ElisaPredictionAlignmentError, match="primary.*coordinate grid"):
         shared.map_rv_predictions(raw, coordinates, reducers)
 
 
@@ -237,7 +238,7 @@ def test_rv_r_squared_rejects_malformed_output(
     rv_fit: least_squares.CentralRadialVelocity | mcmc.CentralRadialVelocity, defect: str
 ) -> None:
     raw = malformed_rv_curves(defect, len(rv_fit.x_data_reduced))
-    with pytest.raises(PredictionAlignmentError):
+    with pytest.raises(ElisaPredictionAlignmentError):
         shared.rv_r_squared(
             lambda *args, **kwargs: raw,
             rv_fit.x_data_reduced,
@@ -251,23 +252,23 @@ def test_rv_r_squared_rejects_malformed_output(
 def test_lc_synthesis_alignment_error_is_not_a_penalty_or_rejection(
     lc_fit: least_squares.DetachedLightCurveFit | mcmc.DetachedLightCurveFit,
 ) -> None:
-    error = PredictionAlignmentError("broken synthesis integration")
+    error = ElisaPredictionAlignmentError("broken synthesis integration")
 
     def broken_synthesis(*args, **kwargs):
         raise error
 
-    with use_lc_synthesis(lc_fit, broken_synthesis), pytest.raises(PredictionAlignmentError) as raised:
+    with use_lc_synthesis(lc_fit, broken_synthesis), pytest.raises(ElisaPredictionAlignmentError) as raised:
         evaluate_fit(lc_fit)
     assert raised.value is error
 
 
 def test_adaptive_sampling_preserves_synthesis_alignment_error() -> None:
     fit = least_squares.DetachedLightCurveFit()
-    error = PredictionAlignmentError("broken adaptive synthesis")
+    error = ElisaPredictionAlignmentError("broken adaptive synthesis")
     lc_setup(fit, {V: make_lc(errors=[0.1, 0.1, 0.1])})
     with (
         patch("elisa.analytics.models.lc.synthetic_binary", side_effect=error),
-        pytest.raises(PredictionAlignmentError) as raised,
+        pytest.raises(ElisaPredictionAlignmentError) as raised,
     ):
         fit.adaptive_sampling()
     assert raised.value is error
@@ -312,7 +313,7 @@ def test_rv_valid_predictions_preserve_coordinate_order_and_duplicates(
 
 @pytest.mark.parametrize("predicted", [{}, {"v": np.ones((2, 1))}, {"v": np.ones(3)}])
 def test_standalone_residuals_report_prediction_alignment(predicted: dict[str, NDArray]) -> None:
-    with pytest.raises(PredictionAlignmentError):
+    with pytest.raises(ElisaPredictionAlignmentError):
         cost_fns.standardized_residuals({"v": np.ones(2)}, {"v": np.ones(2)}, predicted)
 
 
@@ -324,16 +325,15 @@ def test_standalone_residuals_report_prediction_alignment(predicted: dict[str, N
         ({"v": np.ones((2, 1))}, {"v": np.ones(2)}),
     ],
 )
-def test_standalone_residuals_keep_observation_and_uncertainty_value_errors(observed, errors) -> None:
-    with pytest.raises(ValueError) as raised:
+def test_standalone_residuals_report_observation_and_uncertainty_alignment(observed, errors) -> None:
+    with pytest.raises(ElisaPredictionAlignmentError) as raised:
         cost_fns.standardized_residuals(observed, errors, {"v": np.ones(2)})
-    assert type(raised.value) is ValueError
+    assert type(raised.value) is ElisaPredictionAlignmentError
 
 
-def test_alignment_error_keeps_legacy_import_and_value_error_compatibility() -> None:
-    assert lc_prediction.PredictionAlignmentError is PredictionAlignmentError
-    assert issubclass(PredictionAlignmentError, ValueError)
-    assert not issubclass(PredictionAlignmentError, PhysicalStateError)
+def test_alignment_error_keeps_value_error_compatibility() -> None:
+    assert issubclass(ElisaPredictionAlignmentError, ValueError)
+    assert not issubclass(ElisaPredictionAlignmentError, PhysicalStateError)
 
 
 @pytest.mark.parametrize("error_type", [ValueError, RuntimeError, TypeError, FloatingPointError,
@@ -644,3 +644,10 @@ def test_rv_nonfinite_output_is_numerical_rejection(rv_fit, defect):
             with pytest.raises(ElisaFloatingPointError):
                 rv_fit.likelihood(normalized(rv_fit))
         assert_rejected(rv_fit)
+
+
+def test_prediction_alignment_helper_preserves_cause():
+    cause = ValueError("original shape mismatch")
+    with pytest.raises(ElisaPredictionAlignmentError, match="alignment failed") as caught:
+        raise_elisa_prediction_alignment_error("alignment failed", cause)
+    assert caught.value.__cause__ is cause

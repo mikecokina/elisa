@@ -13,7 +13,7 @@ optimizers cannot silently treat malformed data as an improbable binary system.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, NoReturn
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from scipy.interpolate import interp1d
@@ -21,7 +21,7 @@ from scipy.interpolate import interp1d
 from elisa.analytics.models import lc
 from elisa.analytics.params import parameters
 from elisa.analytics.tools.utils import time_layer_resolver
-from elisa.base.error import ElisaFloatingPointError, PredictionAlignmentError
+from elisa.base.error import ElisaFloatingPointError, raise_elisa_prediction_alignment_error
 from elisa.observer.utils import normalize_light_curve
 
 if TYPE_CHECKING:
@@ -32,15 +32,6 @@ if TYPE_CHECKING:
     from elisa.observer.observer import Observer
 
 _MIN_CUBIC_SUPPORT = 4
-
-
-def _fail(message: str) -> NoReturn:
-    """Raise a structural prediction error with the supplied diagnostic.
-
-    :param message: Description of the incompatible data or sampling support.
-    :raises PredictionAlignmentError: Always; this function never returns.
-    """
-    raise PredictionAlignmentError(message)
 
 
 def _validate_band(
@@ -66,21 +57,21 @@ def _validate_band(
         coordinate correspondence check.
     :param y_err: Uncertainties by band, or None to omit their shape check.
     :return: Validated reducer as a NumPy array, without reordering its entries.
-    :raises PredictionAlignmentError: If lengths, indices, coordinate order or
+    :raises ElisaPredictionAlignmentError: If lengths, indices, coordinate order or
         uncertainty shape are incompatible.
     """
     observed, reducer = np.asarray(observed), np.asarray(reducer)
     if observed.ndim != 1 or observed.size == 0 or reducer.shape != observed.shape:
-        _fail(f"LC observation/reducer lengths differ for {band}")
+        raise_elisa_prediction_alignment_error(f"LC observation/reducer lengths differ for {band}")
     if reducer.dtype.kind not in "iu":
-        _fail(f"Invalid LC observation reducer for {band}")
+        raise_elisa_prediction_alignment_error(f"Invalid LC observation reducer for {band}")
     if np.any((reducer < 0) | (reducer >= xs.size)):
-        _fail(f"Invalid LC observation reducer for {band}")
+        raise_elisa_prediction_alignment_error(f"Invalid LC observation reducer for {band}")
     if x_data is not None and not np.array_equal(xs[reducer], x_data[band]):
-        _fail(f"LC observation coordinates do not match reducer for {band}")
+        raise_elisa_prediction_alignment_error(f"LC observation coordinates do not match reducer for {band}")
     # Missing-error estimation supplies a scalar shared by the band's data.
     if y_err is not None and np.shape(y_err[band]) not in ((), observed.shape):
-        _fail(f"LC uncertainty length differs from observations for {band}")
+        raise_elisa_prediction_alignment_error(f"LC uncertainty length differs from observations for {band}")
     return reducer
 
 
@@ -99,18 +90,18 @@ def validate_observations(
     :param x_data: Optional original coordinates for exact reducer validation.
     :param y_err: Optional uncertainties for per-band shape validation.
     :return: Dictionary of validated NumPy reducer arrays.
-    :raises PredictionAlignmentError: If the coordinate vector, passband keys
+    :raises ElisaPredictionAlignmentError: If the coordinate vector, passband keys
         or any band's observation/reducer alignment is invalid.
     """
     if xs.ndim != 1 or xs.size == 0 or not np.all(np.isfinite(xs)):
-        _fail("LC observation coordinates must be a nonempty finite vector")
+        raise_elisa_prediction_alignment_error("LC observation coordinates must be a nonempty finite vector")
     bands = set(y_data)
     if not bands or set(x_data_reducer) != bands:
-        _fail("LC observation and reducer passbands differ")
+        raise_elisa_prediction_alignment_error("LC observation and reducer passbands differ")
     if x_data is not None and set(x_data) != bands:
-        _fail("LC coordinate and flux passbands differ")
+        raise_elisa_prediction_alignment_error("LC coordinate and flux passbands differ")
     if y_err is not None and set(y_err) != bands:
-        _fail("LC uncertainty and flux passbands differ")
+        raise_elisa_prediction_alignment_error("LC uncertainty and flux passbands differ")
     return {band: _validate_band(band, xs, y_data[band], x_data_reducer[band], x_data, y_err) for band in y_data}
 
 
@@ -131,7 +122,7 @@ def _synthesis_support(
     :param interp_treshold: Positive sampling threshold T from fitting setup.
     :param fit_xs: Prepared phase support, or None to select the fallback grid.
     :return: Nonempty, finite, one-dimensional synthesis support array.
-    :raises PredictionAlignmentError: If the selected support is malformed.
+    :raises ElisaPredictionAlignmentError: If the selected support is malformed.
     """
     if fit_xs is None:
         if phases.size >= interp_treshold:
@@ -141,7 +132,7 @@ def _synthesis_support(
             fit_xs = phases
     support = np.asarray(fit_xs)
     if support.ndim != 1 or support.size == 0 or not np.all(np.isfinite(support)):
-        _fail("LC synthesis support must be a nonempty finite vector")
+        raise_elisa_prediction_alignment_error("LC synthesis support must be a nonempty finite vector")
     return support
 
 
@@ -202,7 +193,7 @@ def predict_light_curves(
         calls omit it and validate their inputs on every call. Manual changes to
         prepared observations require fitter.validate_observations() or set_up().
     :return: Per-band mean-normalized predictions at the observation points.
-    :raises PredictionAlignmentError: If observations, reducers, interpolation
+    :raises ElisaPredictionAlignmentError: If observations, reducers, interpolation
         support or returned synthesis arrays do not align or contain nonfinite
         values. Callers must let this structural error escape physical-state
         penalty handlers.
@@ -219,9 +210,9 @@ def predict_light_curves(
     interpolate = not np.array_equal(support, phases)
     if interpolate:
         if support.size < _MIN_CUBIC_SUPPORT or np.unique(support).size != support.size:
-            _fail("Cubic LC interpolation needs at least four distinct support phases")
+            raise_elisa_prediction_alignment_error("Cubic LC interpolation needs at least four distinct support phases")
         if np.min(phases) < np.min(support) or np.max(phases) > np.max(support):
-            _fail("LC synthesis support does not cover observation phases")
+            raise_elisa_prediction_alignment_error("LC synthesis support does not cover observation phases")
 
     kwargs = parameters.extend_json_with_atm_params(
         kwargs,
@@ -230,12 +221,12 @@ def predict_light_curves(
     )
     raw = synthesis(support, discretization, observer, **kwargs)
     if raw.keys() != y_data.keys():
-        _fail("LC synthesis and observation passbands differ")
+        raise_elisa_prediction_alignment_error("LC synthesis and observation passbands differ")
     predictions = {}
     for band, raw_curve in raw.items():
         curve = np.asarray(raw_curve)
         if curve.shape != support.shape:
-            _fail(f"LC synthetic length differs from support for {band}")
+            raise_elisa_prediction_alignment_error(f"LC synthetic length differs from support for {band}")
         if not np.all(np.isfinite(curve)):
             msg = f"LC synthetic values are nonfinite for {band}"
             raise ElisaFloatingPointError(msg)
@@ -243,6 +234,6 @@ def predict_light_curves(
             interp1d(support, curve, kind="cubic")(phases[reducers[band]]) if interpolate else curve[reducers[band]]
         )
         if predictions[band].shape != np.shape(y_data[band]):
-            _fail(f"LC prediction length differs from observations for {band}")
+            raise_elisa_prediction_alignment_error(f"LC prediction length differs from observations for {band}")
     predictions, _ = normalize_light_curve(predictions, kind="average")
     return predictions

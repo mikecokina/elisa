@@ -597,7 +597,7 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
         :type xn: NDArray[Float]
         :return: Likelihood value.
         :rtype: Float
-        :raises PredictionAlignmentError: If raw RV components or shapes do not match the synthesis grid.
+        :raises ElisaPredictionAlignmentError: If raw RV components or shapes do not match the synthesis grid.
         """
         xn_renorm, kwargs = self._prepare_likelihood_parameters(xn)
         synthetic: dict[str, NDArray[Float]] = rv_model.central_rv_synthetic(

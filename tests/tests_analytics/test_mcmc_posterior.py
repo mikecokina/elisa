@@ -12,7 +12,7 @@ from numpy.testing import assert_allclose, assert_array_equal
 from numpy.typing import NDArray
 
 from elisa import settings
-from elisa.analytics.binary_fit.lc_prediction import PredictionAlignmentError
+from elisa.base.error import ElisaPredictionAlignmentError
 from elisa.analytics.binary_fit.mcmc import CentralRadialVelocity, DetachedLightCurveFit, MCMCFit
 from elisa.analytics.params import parameters as p
 from elisa.base.error import ElisaError, ElisaMonteCarloError, ElisaParametersError, MorphologyError, PhysicalStateError
@@ -66,7 +66,7 @@ def test_physical_rejection_is_independent_of_previous_proposals() -> None:
         ElisaError("unexpected"),
         RuntimeError("solver"),
         FloatingPointError("numerics"),
-        PredictionAlignmentError("alignment"),
+        ElisaPredictionAlignmentError("alignment"),
     ],
 )
 def test_unexpected_errors_escape(error) -> None:

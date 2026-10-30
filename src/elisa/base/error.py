@@ -25,7 +25,7 @@ class ElisaNotImplementedError(NotImplementedError):
     """An ELISA feature or abstract operation has no implementation."""
 
 
-class PredictionAlignmentError(ValueError):
+class ElisaPredictionAlignmentError(ValueError):
     """Synthetic prediction keys or shapes do not align with observations.
 
     Direct prediction calls expose these errors. Fitting callbacks reject the
@@ -185,6 +185,16 @@ def raise_value_error(message: str, exc: Exception | None = None) -> NoReturn:
     :raises ValueError: Always raises a ValueError with the provided message.
     """
     _raise_error(ValueError, message, exc)
+
+
+def raise_elisa_prediction_alignment_error(message: str, exc: Exception | None = None) -> NoReturn:
+    """Raise ElisaPredictionAlignmentError, preserving an optional original cause.
+
+    :param message: Description of incompatible dataset keys, shapes or coordinates.
+    :param exc: Original exception, if any.
+    :raises ElisaPredictionAlignmentError: Always raised with the provided message.
+    """
+    _raise_error(ElisaPredictionAlignmentError, message, exc)
 
 
 def raise_attribute_error(message: str, exc: Exception | None = None) -> NoReturn:
