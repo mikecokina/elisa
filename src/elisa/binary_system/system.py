@@ -17,6 +17,7 @@ from elisa.base.error import (
     MorphologyError,
     raise_elisa_max_iteration_error,
     raise_elisa_numeric_error,
+    raise_elisa_operation_input_error,
 )
 from elisa.base.star import Star
 from elisa.base.system import System
@@ -522,14 +523,14 @@ class BinarySystem(System[Star]):
         :type build_pulsations: bool
         :return: Fully built orbital-position container.
         :rtype: OrbitalPositionContainer
-        :raises ValueError: If both ``phase`` and ``time`` are supplied.
+        :raises ElisaOperationInputError: If both ``phase`` and ``time`` are supplied.
         """
         if phase is not None and time is not None:
             message = (
                 "Please specify whether you want to build your container either at given "
                 "photometric `phase` or at given `time`."
             )
-            raise ElisaValueError(message)
+            raise_elisa_operation_input_error(message)
 
         resolved_phase = phase if time is None else utils.jd_to_phase(time, period=self.period, t0=self.t0)
         position = self.calculate_orbital_motion(
@@ -1055,7 +1056,7 @@ class BinarySystem(System[Star]):
         :return: Tuple ``(points_primary, points_secondary)`` with 2-D Cartesian
             coordinates.
         :rtype: tuple[NDArray[numpy.float64], NDArray[numpy.float64]]
-        :raises ValueError: If ``plane`` is invalid.
+        :raises ElisaOperationInputError: If ``plane`` is invalid.
         """
         components = ["primary", "secondary"]
         points_primary: list[list[Float]] = []
@@ -1079,7 +1080,7 @@ class BinarySystem(System[Star]):
                     args = (synchronicity, self.mass_ratio, components_distance, 0.0, angle)
                 else:
                     message = "Invalid choice of crossection plane, use only: `xy`, `yz`, `zx`."
-                    raise ElisaValueError(message)
+                    raise_elisa_operation_input_error(message)
 
                 scipy_solver_init_value = np.array([components_distance / 10000.0])
                 aux_args = (self.mass_ratio, *fn_map[component][1](*args))

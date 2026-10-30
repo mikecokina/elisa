@@ -43,6 +43,14 @@ class ElisaError(Exception):
     """
 
 
+class ElisaOperationInputError(ElisaError):
+    """Invalid argument values or combinations for a public model operation.
+
+    This concerns invoking an operation on an existing model, rather than
+    defining physical model parameters or rejecting a synthetic candidate.
+    """
+
+
 class ElisaDownloadError(ElisaError):
     """Failed to download or extract ELISa assets."""
 
@@ -188,6 +196,16 @@ def raise_value_error(message: str, exc: Exception | None = None) -> NoReturn:
     :raises ValueError: Always raises a ValueError with the provided message.
     """
     _raise_error(ValueError, message, exc)
+
+
+def raise_elisa_operation_input_error(message: str, exc: Exception | None = None) -> NoReturn:
+    """Raise an invalid-operation-input error with an optional original cause.
+
+    :param message: Description of invalid operation arguments.
+    :param exc: Original exception, if any.
+    :raises ElisaOperationInputError: Always raised with the provided message.
+    """
+    _raise_error(ElisaOperationInputError, message, exc)
 
 
 def raise_elisa_numeric_error(message: str, exc: Exception | None = None) -> NoReturn:

@@ -10,8 +10,9 @@ from elisa import const, units, utils
 from elisa import umpy as up
 from elisa.base.curves import utils as rv_utils
 from elisa.base.error import (
-    raise_elisa_numeric_error,
     raise_elisa_max_iteration_error,
+    raise_elisa_numeric_error,
+    raise_elisa_operation_input_error,
 )
 from elisa.base.star import Star
 from elisa.base.system import System
@@ -378,14 +379,14 @@ class SingleSystem(System[Star]):
         :returns: Built :class:`SinglePositionContainer` for the requested
             phase or time.
         :rtype: elisa.single_system.container.SinglePositionContainer
-        :raises ValueError: If both ``phase`` and ``time`` are supplied.
+        :raises ElisaOperationInputError: If both ``phase`` and ``time`` are supplied.
         """
         if phase is not None and time is not None:
             msg = (
                 "Please specify whether you want to build your container EITHER at given photometric "
                 "`phase` or at given `time`."
             )
-            raise ValueError(msg)
+            raise_elisa_operation_input_error(msg)
 
         phase = phase if time is None else utils.jd_to_phase(
             time,
