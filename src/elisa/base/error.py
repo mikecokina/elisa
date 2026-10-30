@@ -39,6 +39,10 @@ class ElisaError(Exception):
     Catch this when you want to handle all errors produced by ELISa.
     """
 
+
+class ElisaDownloadError(ElisaError):
+    """Failed to download or extract ELISa assets."""
+
 # ###
 
 class ElisaInputKwargsError(ElisaError):
@@ -207,6 +211,16 @@ def raise_elisa_not_implemented_error(message: str, exc: Exception | None = None
     :raises ElisaNotImplementedError: Always raised with the provided message.
     """
     _raise_error(ElisaNotImplementedError, message, exc)
+
+
+def raise_elisa_download_error(message: str, exc: Exception | None = None) -> NoReturn:
+    """Raise ElisaDownloadError, preserving an optional original cause.
+
+    :param message: Description of the download or extraction failure.
+    :param exc: Original exception, if any.
+    :raises ElisaDownloadError: Always raised with the provided message.
+    """
+    _raise_error(ElisaDownloadError, message, exc)
 
 
 def raise_elisa_graphics_error(message: str, exc: Exception | None = None) -> NoReturn:
