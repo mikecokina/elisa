@@ -25,11 +25,17 @@ from elisa.analytics.tools.utils import (
     time_layer_resolver,
 )
 from elisa.base.error import (
+    ElisaNumericError,
+    ElisaParametersError,
     ElisaPassbandError,
     ElisaPredictionAlignmentError,
+    ElisaSettingsError,
+    ElisaSynthesisError,
     ElisaUnexpectedError,
+    MaxIterationError,
     raise_elisa_analytics_data_error,
     raise_elisa_analytics_task_error,
+    raise_elisa_initial_parameters_error,
     raise_elisa_numeric_error,
     raise_elisa_passband_error,
     raise_elisa_prediction_alignment_error,
@@ -745,8 +751,9 @@ class AbstractLCFit(AbstractFit):
 
         :return: Photometric phases.
         :rtype: NDArray[Float]
-        :raises RuntimeError: When initial parameters are invalid.
+        :raises ElisaInitialParametersError: If the initial model cannot be evaluated for sampling.
         :raises ElisaPredictionAlignmentError: If synthesis reports a structural alignment error.
+        :raises ElisaUnexpectedError: If an unclassified evaluation or normalization failure occurs.
         """
         n = 3 * settings.MAX_CURVE_DATAPOINTS
         diff = 1.0 / n
@@ -770,11 +777,19 @@ class AbstractLCFit(AbstractFit):
         try:
             synthetic = lc_model.synthetic_binary(x, self.discretization, observer, **kwargs)
             synthetic, _ = normalize_light_curve(synthetic, kind="average")
-        except (ElisaPredictionAlignmentError, ElisaPassbandError, ElisaUnexpectedError):
+        except (
+                ElisaParametersError,
+                ElisaSynthesisError,
+                MaxIterationError,
+                ElisaNumericError,
+        ) as exc:
+            msg = "The initial model could not be evaluated to generate adaptive phase sampling."
+            raise_elisa_initial_parameters_error(msg, exc)
+        except (ElisaPassbandError, ElisaPredictionAlignmentError, ElisaSettingsError, ElisaUnexpectedError):
             raise
-        except Exception as e:
-            error_msg = "Your initial parameters are invalid and phase sampling could not be generated."
-            raise RuntimeError(error_msg) from e
+        except Exception as exc:  # noqa: BLE001 - preserve context for otherwise unclassified setup failures
+            msg = "Adaptive phase sampling failed while evaluating or normalizing the initial model."
+            raise_elisa_unexpected_error(msg, exc)
 
         curve = np.column_stack((x, synthetic["bolometric"]))
         lengths = np.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
