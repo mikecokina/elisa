@@ -377,5 +377,5 @@ def test_real_overcontact_spot_neck_intersection_rejected():
     container = testutils.prepare_orbital_position_container(binary)
     with pytest.raises(error.SpotError, match='neck') as caught:
         container.build_mesh(components_distance=1.)
-    assert isinstance(caught.value.__cause__, (error.MaxIterationError, error.ElisaFloatingPointError))
+    assert isinstance(caught.value.__cause__, (error.MaxIterationError, error.ElisaNumericError))
     assert container.primary.spots

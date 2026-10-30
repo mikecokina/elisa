@@ -21,7 +21,10 @@ from scipy.interpolate import interp1d
 from elisa.analytics.models import lc
 from elisa.analytics.params import parameters
 from elisa.analytics.tools.utils import time_layer_resolver
-from elisa.base.error import ElisaFloatingPointError, raise_elisa_prediction_alignment_error
+from elisa.base.error import (
+    raise_elisa_numeric_error,
+    raise_elisa_prediction_alignment_error,
+)
 from elisa.observer.utils import normalize_light_curve
 
 if TYPE_CHECKING:
@@ -229,7 +232,7 @@ def predict_light_curves(
             raise_elisa_prediction_alignment_error(f"LC synthetic length differs from support for {band}")
         if not np.all(np.isfinite(curve)):
             msg = f"LC synthetic values are nonfinite for {band}"
-            raise ElisaFloatingPointError(msg)
+            raise_elisa_numeric_error(msg)
         predictions[band] = (
             interp1d(support, curve, kind="cubic")(phases[reducers[band]]) if interpolate else curve[reducers[band]]
         )

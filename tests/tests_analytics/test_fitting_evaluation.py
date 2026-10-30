@@ -22,7 +22,7 @@ from elisa.analytics.params import parameters
 from elisa.base.error import (
     AtmosphereError,
     ElisaError,
-    ElisaFloatingPointError,
+    ElisaNumericError,
     ElisaMaxIterationError,
     ElisaRuntimeError,
     ElisaValueError,
@@ -56,7 +56,7 @@ EXPECTED_FAILURES = [
     MorphologyError,
     MaxIterationError,
     ElisaMaxIterationError,
-    ElisaFloatingPointError,
+    ElisaNumericError,
     SpotError,
     AtmosphereError,
     LimbDarkeningError,
@@ -475,16 +475,16 @@ def kepler_solver(request: pytest.FixtureRequest) -> Iterator[None]:
         yield
 
 
-def orbital_failure(failure_kind: str) -> ElisaMaxIterationError | ElisaFloatingPointError:
+def orbital_failure(failure_kind: str) -> ElisaMaxIterationError | ElisaNumericError:
     """Create the numerical failure injected at the orbital synthesis boundary."""
     if failure_kind == "convergence":
         return ElisaMaxIterationError("Kepler solver failed to converge")
-    return ElisaFloatingPointError(f"Kepler solver returned a nonfinite anomaly: {failure_kind}")
+    return ElisaNumericError(f"Kepler solver returned a nonfinite anomaly: {failure_kind}")
 
 
 def assert_orbital_failure_rejects_and_recovers(
     fit: AbstractFit,
-    injected_error: ElisaMaxIterationError | ElisaFloatingPointError,
+    injected_error: ElisaMaxIterationError | ElisaNumericError,
 ) -> None:
     """Exercise real synthesis, fitting rejection and recovery after a failure."""
     valid_output = evaluate_fit(fit)
@@ -599,7 +599,7 @@ def test_unrelated_ld_file_errors_propagate_through_synthesis(lc_fit, science_se
     assert caught.value is error
 
 
-@pytest.mark.parametrize("error_type", [ElisaFloatingPointError, MaxIterationError, ValueError, TypeError, RuntimeError])
+@pytest.mark.parametrize("error_type", [ElisaNumericError, MaxIterationError, ValueError, TypeError, RuntimeError])
 def test_binary_spot_wrapper_preserves_failure_classification(lc_fit, error_type):
     from elisa.binary_system.container import OrbitalPositionContainer
     from elisa.binary_system.surface import mesh
@@ -615,7 +615,7 @@ def test_binary_spot_wrapper_preserves_failure_classification(lc_fit, error_type
         raise AssertionError("spot failure should propagate")
 
     with patch.object(mesh, "get_surface_points", side_effect=error), use_lc_synthesis(lc_fit, spot_synthesis):
-        if error_type in (ElisaFloatingPointError, MaxIterationError):
+        if error_type in (ElisaNumericError, MaxIterationError):
             with pytest.raises(SpotError) as caught:
                 spot_synthesis()
             assert caught.value.__cause__ is error
@@ -631,7 +631,7 @@ def test_lc_nonfinite_output_is_numerical_rejection(lc_fit, value):
     raw = {V: np.array([1.0, 1.0, value])}
     with use_lc_synthesis(lc_fit, lambda *args, **kwargs: raw):
         if isinstance(lc_fit, mcmc.MCMCFit):
-            with pytest.raises(ElisaFloatingPointError):
+            with pytest.raises(ElisaNumericError):
                 lc_fit.likelihood(normalized(lc_fit))
         assert_rejected(lc_fit)
 
@@ -641,7 +641,7 @@ def test_rv_nonfinite_output_is_numerical_rejection(rv_fit, defect):
     raw = malformed_rv_curves(defect, len(rv_fit.x_data_reduced))
     with patch.object(rv, "central_rv_synthetic", return_value=raw):
         if isinstance(rv_fit, mcmc.MCMCFit):
-            with pytest.raises(ElisaFloatingPointError):
+            with pytest.raises(ElisaNumericError):
                 rv_fit.likelihood(normalized(rv_fit))
         assert_rejected(rv_fit)
 

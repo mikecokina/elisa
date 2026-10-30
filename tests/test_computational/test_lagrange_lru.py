@@ -5,7 +5,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from elisa.base.error import ElisaFloatingPointError
+from elisa.base.error import ElisaNumericError
 from elisa.binary_system import system
 
 
@@ -47,7 +47,7 @@ def test_distinct_exact_inputs_have_independent_results(isolated_cache, distance
 def test_exhausted_solver_does_not_poison_cache(isolated_cache):
     with patch.object(system, 'fsolve', return_value=(np.array([np.nan]), {}, 4, 'no root')) as solver:
         for _ in range(2):
-            with pytest.raises(ElisaFloatingPointError, match='Lagrange solver'):
+            with pytest.raises(ElisaNumericError, match='Lagrange solver'):
                 system.BinarySystem.lagrangian_points_static(1., .7)
         assert solver.call_count > 100
     assert isolated_cache.cache_info().currsize == 0
@@ -60,7 +60,7 @@ def test_failure_injection_after_a_cached_calculation(isolated_cache):
     isolated_cache.cache_clear()
     failure = RuntimeError('failed guess')
     with patch.object(system, 'fsolve', side_effect=failure) as solver:
-        with pytest.raises(ElisaFloatingPointError, match='Lagrange solver'):
+        with pytest.raises(ElisaNumericError, match='Lagrange solver'):
             system.BinarySystem.lagrangian_points_static(1., .7)
         assert solver.call_count > 1
     assert isolated_cache.cache_info().currsize == 0
@@ -71,7 +71,7 @@ def test_changed_error_policy_executes_solver_with_policy_restored(isolated_cach
     with np.errstate(all='raise'):
         policy = np.geterr()
         with patch.object(system, 'fsolve', side_effect=FloatingPointError('failed guess')) as solver:
-            with pytest.raises(ElisaFloatingPointError, match='Lagrange solver'):
+            with pytest.raises(ElisaNumericError, match='Lagrange solver'):
                 system.BinarySystem.lagrangian_points_static(1., .7)
             assert solver.call_count > 1
         assert np.geterr() == policy
@@ -104,6 +104,6 @@ def test_scalar_precision_is_preserved_in_cache_keys(isolated_cache):
 @pytest.mark.parametrize('distance,ratio', [(10**100, .7), (1., 10**100)])
 @pytest.mark.filterwarnings('ignore:invalid value encountered in divide:RuntimeWarning')
 def test_large_integer_inputs_retain_solver_failure(isolated_cache, distance, ratio):
-    with pytest.raises(ElisaFloatingPointError, match='Lagrange solver'):
+    with pytest.raises(ElisaNumericError, match='Lagrange solver'):
         system.BinarySystem.lagrangian_points_static(distance, ratio)
     assert isolated_cache.cache_info().currsize == 0

@@ -8,6 +8,7 @@ from numpy.testing import assert_allclose, assert_array_equal
 from scipy.stats import norm
 
 from elisa.analytics.models import cost_fns
+from elisa.base.error import ElisaAnalyticsDataError
 
 
 @pytest.mark.parametrize("ln_f", [-1000.0, -3.0, 0.0, 3.0, 1000.0])
@@ -93,7 +94,7 @@ def test_representable_densities_survive_intermediate_overflow(observed, error, 
 
 @pytest.mark.parametrize("error", [0.0, -1.0, np.nan, np.inf])
 def test_standalone_rejects_invalid_uncertainties(error: float) -> None:
-    with pytest.raises(ValueError, match="strictly positive"):
+    with pytest.raises(ElisaAnalyticsDataError, match="strictly positive"):
         cost_fns.likelihood_fn({"V": np.zeros(1)}, {"V": np.array([error])}, {"V": np.zeros(1)}, 0.0)
 
 

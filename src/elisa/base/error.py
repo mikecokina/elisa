@@ -6,7 +6,10 @@ rest of the codebase.
 """
 from __future__ import annotations
 
-from typing import NoReturn
+from typing import TYPE_CHECKING, NoReturn
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class ElisaValueError(ValueError):
@@ -102,8 +105,8 @@ class ElisaMaxIterationError(MaxIterationError):
     """Convergence failure explicitly identified by ELISA."""
 
 
-class ElisaFloatingPointError(FloatingPointError):
-    """Floating-point failure explicitly identified by ELISA."""
+class ElisaNumericError(FloatingPointError):
+    """Recognized numerical failure while evaluating an ELISA model or candidate."""
 
 
 class AtmosphereError(ElisaSynthesisError):
@@ -185,6 +188,26 @@ def raise_value_error(message: str, exc: Exception | None = None) -> NoReturn:
     :raises ValueError: Always raises a ValueError with the provided message.
     """
     _raise_error(ValueError, message, exc)
+
+
+def raise_elisa_numeric_error(message: str, exc: Exception | None = None) -> NoReturn:
+    """Raise a recognized numerical failure, preserving an optional original cause.
+
+    :param message: Description of the nonfinite or unusable numerical result.
+    :param exc: Original exception, if any.
+    :raises ElisaNumericError: Always raised with the provided message.
+    """
+    _raise_error(ElisaNumericError, message, exc)
+
+
+def raise_elisa_max_iteration_error(message: str, exc: Exception | None = None) -> NoReturn:
+    """Raise a recognized solver convergence failure with an optional cause.
+
+    :param message: Description of the failed iteration.
+    :param exc: Original exception, if any.
+    :raises ElisaMaxIterationError: Always raised with the provided message.
+    """
+    _raise_error(ElisaMaxIterationError, message, exc)
 
 
 def raise_elisa_prediction_alignment_error(message: str, exc: Exception | None = None) -> NoReturn:
@@ -375,3 +398,25 @@ def raise_elisa_atmosphere_error(message: str, exc: Exception | None = None) -> 
     :raises AtmosphereError: Always raises an AtmosphereError with the provided message.
     """
     _raise_error(AtmosphereError, message, exc)
+
+
+def _register_numba_error_helpers() -> None:
+    """Register numerical raises for compiled kernels when Numba is already needed.
+
+    Compiled code supplies only a message; Python callers retain cause chaining
+    through the ordinary helper. Importing the exception module alone stays light.
+    """
+    from numba import types  # noqa: PLC0415
+    from numba.extending import overload  # noqa: PLC0415
+
+    @overload(raise_elisa_numeric_error)
+    def _numeric_error_overload(
+        message: object, exc: object = None,  # noqa: ARG001 - matching helper signature
+    ) -> Callable[..., NoReturn] | None:
+        if exc is not None and not isinstance(exc, types.NoneType):
+            return None
+
+        def implementation(message: object, exc: object = None) -> NoReturn:  # noqa: ARG001 - matching helper signature
+            raise ElisaNumericError(message)
+
+        return implementation

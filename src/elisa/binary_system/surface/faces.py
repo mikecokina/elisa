@@ -10,7 +10,7 @@ from elisa import const
 from elisa import umpy as up
 from elisa import units as u
 from elisa.base import spot
-from elisa.base.error import ElisaFloatingPointError, ElisaValueError
+from elisa.base.error import ElisaValueError, raise_elisa_numeric_error
 from elisa.base.surface.faces import (
     calculate_normals,
     initialize_model_container,
@@ -358,7 +358,7 @@ def detached_system_surface(
             f"{component_instance.name} do not contain any valid surface "
             "point to triangulate"
         )
-        raise ElisaFloatingPointError(msg)
+        raise_elisa_numeric_error(msg)
 
     # there is a problem with triangulation of near over-contact system, delaunay is not good with pointy surfaces
     critical_pot = (
@@ -376,7 +376,7 @@ def detached_system_surface(
         try:
             triangulation = Delaunay(points)
         except QhullError as exc:
-            raise ElisaFloatingPointError(str(exc)) from exc
+            raise_elisa_numeric_error(str(exc), exc)
         triangles_indices = triangulation.convex_hull
     else:
         logger.debug(
@@ -402,7 +402,7 @@ def detached_system_surface(
         try:
             triangulation = Delaunay(projected_points)
         except QhullError as exc:
-            raise ElisaFloatingPointError(str(exc)) from exc
+            raise_elisa_numeric_error(str(exc), exc)
         triangles_indices = triangulation.convex_hull
 
     return triangles_indices
@@ -442,7 +442,7 @@ def over_contact_system_surface(
             f"{component} component, with class instance name "
             f"{component_instance.name} contain any valid point to triangulate"
         )
-        raise ElisaFloatingPointError(msg)
+        raise_elisa_numeric_error(msg)
 
     # calculating position of the neck
     neck_x = np.max(points[:, 0]) if component == "primary" else np.min(points[:, 0])
@@ -454,7 +454,7 @@ def over_contact_system_surface(
     try:
         triangulation = Delaunay(projected_points)
     except QhullError as exc:
-        raise ElisaFloatingPointError(str(exc)) from exc
+        raise_elisa_numeric_error(str(exc), exc)
     triangles_indices = triangulation.convex_hull
 
     # removal of faces on top of the neck

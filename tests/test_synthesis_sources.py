@@ -125,7 +125,7 @@ def test_lagrange_terminal_failure_after_all_attempts(monkeypatch):
         return np.array([np.nan]), {}, 4, 'no root'
 
     monkeypatch.setattr(system, 'fsolve', no_root)
-    with pytest.raises(error.ElisaFloatingPointError, match='Lagrange solver'):
+    with pytest.raises(error.ElisaNumericError, match='Lagrange solver'):
         system.BinarySystem.lagrangian_points_static(1., .7)
     assert calls > 1
 
@@ -133,7 +133,7 @@ def test_lagrange_terminal_failure_after_all_attempts(monkeypatch):
 @pytest.mark.parametrize('kind', ['single', 'detached', 'over-contact'])
 def test_real_degenerate_triangulation_has_numerical_type_and_cause(kind):
     points = np.array([[x, 0., 0.] for x in range(1, 6)])
-    with pytest.raises(error.ElisaFloatingPointError) as caught:
+    with pytest.raises(error.ElisaNumericError) as caught:
         if kind == 'single':
             single_surface(points=points)
         else:
@@ -171,10 +171,10 @@ def test_temperature_explicit_zero_flux_failures():
     star = SimpleNamespace(areas=np.ones(3), potential_gradient_magnitudes=np.zeros(3),
                            polar_potential_gradient_magnitude=1., gravity_darkening=.32,
                            has_spots=lambda: False)
-    with pytest.raises(error.ElisaFloatingPointError, match='polar effective temperature'):
+    with pytest.raises(error.ElisaNumericError, match='polar effective temperature'):
         temperature.calculate_polar_effective_temperature(star)
     star.spots, star.temperatures, star.t_eff = {}, np.zeros(3), 6000.
-    with pytest.raises(error.ElisaFloatingPointError, match='bolometric flux'):
+    with pytest.raises(error.ElisaNumericError, match='bolometric flux'):
         temperature.renormalize_temperatures(star)
 
 

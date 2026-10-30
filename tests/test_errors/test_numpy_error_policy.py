@@ -10,7 +10,7 @@ import pytest
 from numpy.testing import assert_allclose
 
 from elisa import utils
-from elisa.base.error import ElisaFloatingPointError
+from elisa.base.error import ElisaNumericError
 from elisa.binary_system import system as binary_system
 
 if TYPE_CHECKING:
@@ -117,7 +117,7 @@ def test_lagrangian_points_restores_policy_before_logging_and_continue(caller_po
         patch.object(binary_system, "fsolve", side_effect=record_solver_policy) as solver,
         patch.object(binary_system.logger, "debug", side_effect=record_log),
     ):
-        with pytest.raises(ElisaFloatingPointError, match="Lagrange solver"):
+        with pytest.raises(ElisaNumericError, match="Lagrange solver"):
             binary_system.BinarySystem.lagrangian_points_static(1.0, 0.5)
     assert np.geterr() == caller_policy
     assert [call.args[1] for call in solver.call_args_list] == expected_solver_inputs

@@ -10,9 +10,9 @@ import numpy as np
 from elisa import settings
 from elisa import umpy as up
 from elisa.base.error import (
-    ElisaFloatingPointError,
     ElisaRuntimeError,
     TemperatureError,
+    raise_elisa_numeric_error,
 )
 from elisa.logger import getLogger
 
@@ -89,7 +89,7 @@ def calculate_polar_effective_temperature(star_container: StarContainer) -> Floa
     # avoid division by zero
     if denominator == 0:
         msg = "Division by zero encountered while computing polar effective temperature"
-        raise ElisaFloatingPointError(msg)
+        raise_elisa_numeric_error(msg)
 
     # noinspection PyUnresolvedReferences
     return sc.t_eff * up.power(numerator / denominator, 0.25)
@@ -124,7 +124,7 @@ def renormalize_temperatures(star: StarContainer) -> None:
     # avoid division by zero
     if current_flux == 0:
         msg = "Current bolometric flux is zero, cannot renormalize temperatures"
-        raise ElisaFloatingPointError(msg)
+        raise_elisa_numeric_error(msg)
 
     coefficient = up.power(desired_flux_value / current_flux, 0.25)
     logger.debug("surface temperature map renormalized by a factor %s", coefficient)

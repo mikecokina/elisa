@@ -23,10 +23,10 @@ from elisa.analytics.tools.utils import (
     time_layer_resolver,
 )
 from elisa.base.error import (
-    ElisaFloatingPointError,
     ElisaPredictionAlignmentError,
     raise_elisa_analytics_data_error,
     raise_elisa_analytics_task_error,
+    raise_elisa_numeric_error,
     raise_elisa_prediction_alignment_error,
 )
 from elisa.base.transform import StarProperties
@@ -888,7 +888,7 @@ def map_rv_predictions(
             raise_elisa_prediction_alignment_error(msg)
         if not np.all(np.isfinite(curve)):
             msg = f"RV synthetic values are nonfinite for {component}"
-            raise ElisaFloatingPointError(msg)
+            raise_elisa_numeric_error(msg)
         predictions[component] = curve[reducer]
     return predictions
 

@@ -12,7 +12,12 @@ from elisa import umpy as up
 from elisa import units as u
 from elisa.base.container import SystemPropertiesContainer
 from elisa.base.curves import utils as rv_utils
-from elisa.base.error import ElisaFloatingPointError, ElisaValueError, MorphologyError
+from elisa.base.error import (
+    ElisaValueError,
+    MorphologyError,
+    raise_elisa_max_iteration_error,
+    raise_elisa_numeric_error,
+)
 from elisa.base.star import Star
 from elisa.base.system import System
 from elisa.base.types import FLOAT
@@ -834,7 +839,8 @@ class BinarySystem(System[Star]):
         :return: Critical potential.
         :rtype: Float
         :raises ValueError: If ``component`` is invalid.
-        :raises ElisaFloatingPointError: If the solver returns NaN.
+        :raises ElisaNumericError: If the solver returns a nonfinite solution.
+        :raises ElisaMaxIterationError: If the solver does not converge.
         """
         args1 = (synchronicity, mass_ratio, components_distance)
         args2 = (*args1, 0.0, const.HALF_PI)
@@ -842,7 +848,6 @@ class BinarySystem(System[Star]):
             "Iteration process to solve critical potential seems to lead nowhere "
             "(critical potential solver has failed)."
         )
-        solver_err = ElisaFloatingPointError(solver_message)
 
         if component == "primary":
             solution, result = optimize.newton(
@@ -853,7 +858,10 @@ class BinarySystem(System[Star]):
                 precalc_args = model.pre_calculate_for_potential_value_primary(*args2)
                 args = (mass_ratio, *precalc_args)
                 return abs(model.potential_value_primary(solution, *args))
-            raise solver_err
+
+            if not result.converged:
+                raise_elisa_max_iteration_error(solver_message)
+            raise_elisa_numeric_error(solver_message)
 
         if component == "secondary":
             solution, result = optimize.newton(
@@ -864,7 +872,10 @@ class BinarySystem(System[Star]):
                 precalc_args = model.pre_calculate_for_potential_value_secondary(*args2)
                 args = (mass_ratio, *precalc_args)
                 return abs(model.potential_value_secondary(components_distance - solution, *args))
-            raise solver_err
+
+            if not result.converged:
+                raise_elisa_max_iteration_error(solver_message)
+            raise_elisa_numeric_error(solver_message)
 
         message = "Parameter `component` has incorrect value. Use `primary` or `secondary`."
         raise ElisaValueError(message)
@@ -941,7 +952,6 @@ class BinarySystem(System[Star]):
         :return: X values of libration points ``[L3, L1, L2]`` respectively.
         :rtype: list[Float]
         """
-
         calculate = BinarySystem._lagrangian_points_static
         # Exceptional inputs and caller-selected error policies retain the original
         # arithmetic/error path, even when a normal-policy result is already cached.
@@ -992,7 +1002,7 @@ class BinarySystem(System[Star]):
             try:
                 with np.errstate(divide="raise", invalid="raise"):
                     _potential_dx(round(x_val, round_to), periastron_distance)
-            except Exception as exc:  # noqa: BLE001
+            except (FloatingPointError, ZeroDivisionError) as exc:
                 logger.debug("invalid value passed to potential, exception: %s", str(exc))
                 continue
 
@@ -1010,7 +1020,7 @@ class BinarySystem(System[Star]):
                         try:
                             value_dx = abs(round(_potential_dx(solution[0], periastron_distance), 4))
                             use_solution = value_dx == 0
-                        except Exception as exc:  # noqa: BLE001
+                        except (FloatingPointError, ZeroDivisionError) as exc:
                             logger.debug("skipping solution for x: %s due to exception: %s", x_val, str(exc))
                             use_solution = False
 
@@ -1019,13 +1029,13 @@ class BinarySystem(System[Star]):
                             lagrange.append(solution[0])
                             if len(lagrange) == NUM_LAGRANGE_POINTS - 2:
                                 break
-            except Exception as exc:  # noqa: BLE001
+            except (FloatingPointError, ZeroDivisionError) as exc:
                 logger.debug("solution for x: %s lead to nowhere, exception: %s", x_val, str(exc))
                 continue
 
         if len(lagrange) != NUM_LAGRANGE_POINTS - 2:
             message = "Lagrange solver could not find all required collinear points."
-            raise ElisaFloatingPointError(message)
+            raise_elisa_max_iteration_error(message)
         return tuple(sorted(lagrange) if mass_ratio < 1.0 else sorted(lagrange, reverse=True))
 
     def compute_equipotential_boundary(  # noqa: C901, PLR0912

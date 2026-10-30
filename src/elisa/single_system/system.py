@@ -9,7 +9,10 @@ from scipy import optimize
 from elisa import const, units, utils
 from elisa import umpy as up
 from elisa.base.curves import utils as rv_utils
-from elisa.base.error import ElisaFloatingPointError
+from elisa.base.error import (
+    raise_elisa_numeric_error,
+    raise_elisa_max_iteration_error,
+)
 from elisa.base.star import Star
 from elisa.base.system import System
 from elisa.base.types import INT
@@ -606,8 +609,8 @@ class SingleSystem(System[Star]):
 
         :returns: Critical surface potential.
         :rtype: elisa.types.Float
-        :raises ElisaFloatingPointError: If the root-finding iteration does not converge to
-            a valid solution.
+        :raises ElisaMaxIterationError: If the root-finding iteration does not converge.
+        :raises ElisaNumericError: If the solver returns a nonfinite solution.
         """
         precalc_args = self.star.mass, self.angular_velocity, c.HALF_PI
         args = (model.pre_calculate_for_potential_value(*precalc_args), 0.0)
@@ -621,12 +624,15 @@ class SingleSystem(System[Star]):
             full_output=True,
             disp=False,
         )
-        if not result.converged or not np.isfinite(solution):
+        if not result.converged:
             msg = (
                 "Iteration process to solve critical potential seems to lead nowhere "
                 "(critical potential solver has failed)."
             )
-            raise ElisaFloatingPointError(msg)
+            raise_elisa_max_iteration_error(msg)
+        if not np.isfinite(solution):
+            msg = "Critical potential solver returned a nonfinite radius."
+            raise_elisa_numeric_error(msg)
 
         return model.potential_fn(solution, *args)
 

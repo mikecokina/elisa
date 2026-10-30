@@ -7,7 +7,10 @@ import scipy.optimize as _sci_opt
 
 from elisa import const, settings, utils
 from elisa import umpy as up
-from elisa.base.error import ElisaFloatingPointError, ElisaMaxIterationError
+from elisa.base.error import (
+    raise_elisa_numeric_error,
+    raise_elisa_max_iteration_error,
+)
 from elisa.base.orbit.orbit import AbstractOrbit
 from elisa.base.types import FLOAT, INT
 from elisa.binary_system.orbit.transform import OrbitProperties
@@ -309,7 +312,7 @@ class Orbit(AbstractOrbit):
         :returns: Eccentric anomaly.
         :rtype: elisa.types.Float
         :raises ElisaMaxIterationError: If the solver does not converge.
-        :raises ElisaFloatingPointError: If the solver returns a nonfinite anomaly.
+        :raises ElisaNumericError: If the solver returns a nonfinite anomaly.
         """
         solution, result = _sci_opt.newton(
             self.mean_anomaly_fn,
@@ -324,14 +327,14 @@ class Orbit(AbstractOrbit):
                 f"Kepler solver failed to converge for eccentricity={self.eccentricity}, "
                 f"mean_anomaly={mean_anomaly}."
             )
-            raise ElisaMaxIterationError(msg)
+            raise_elisa_max_iteration_error(msg)
 
         if not np.isfinite(solution):
             msg = (
                 f"Kepler solver returned a nonfinite anomaly for eccentricity={self.eccentricity}, "
                 f"mean_anomaly={mean_anomaly}."
             )
-            raise ElisaFloatingPointError(msg)
+            raise_elisa_numeric_error(msg)
         if solution < 0:
             solution += const.FULL_ARC
         return solution

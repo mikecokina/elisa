@@ -11,7 +11,7 @@ import pytest
 from numpy.testing import assert_array_equal
 from numpy.typing import DTypeLike, NDArray
 
-from elisa.base.error import ElisaFloatingPointError, ElisaMaxIterationError
+from elisa.base.error import ElisaNumericError, ElisaMaxIterationError
 from elisa.binary_system.orbit.orbit import Orbit
 from elisa.types import Float
 from tests.kepler_helpers import scalar_orbital_motion
@@ -133,7 +133,7 @@ def test_nonfinite_root_preserves_scalar_exception_and_warnings(
     monkeypatch.setattr(orbit, "mean_anomaly_fn", overflowing_residual)
     mean_anomalies = np.array([0.2, 0.7])
     error_policy = np.errstate(all="raise") if strict_errors else np.errstate()
-    expected_error_type = FloatingPointError if strict_errors else ElisaFloatingPointError
+    expected_error_type = FloatingPointError if strict_errors else ElisaNumericError
 
     with error_policy:
         original_policy = np.geterr()

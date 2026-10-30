@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 
 from elisa import settings
 from elisa.base.error import (
-    ElisaFloatingPointError,
+    ElisaNumericError,
     ElisaParametersError,
     ElisaSynthesisError,
     MaxIterationError,
@@ -29,7 +29,7 @@ SYNTHESIS_FAILURES = (
     ElisaParametersError,
     ElisaSynthesisError,
     MaxIterationError,
-    ElisaFloatingPointError,
+    ElisaNumericError,
 )
 
 

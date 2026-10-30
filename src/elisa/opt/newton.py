@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from elisa import umpy as up
-from elisa.base import error
+from elisa.base.error import raise_elisa_max_iteration_error
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -48,7 +48,7 @@ def newton(
         Relative tolerance for convergence.
     :returns: NDArray[Float] | Float
         Computed root. The return type follows the shape of ``x0``.
-    :raises error.MaxIterationError:
+    :raises ElisaMaxIterationError:
         If the solver does not converge within ``maxiter`` iterations.
     """
     x_n = np.copy(x0) if isinstance(x0, np.ndarray) else x0
@@ -63,4 +63,4 @@ def newton(
         x_n = x_m
 
     msg = f"Max iteration limit - {maxiter} - exceeded"
-    raise error.MaxIterationError(msg)
+    return raise_elisa_max_iteration_error(msg)

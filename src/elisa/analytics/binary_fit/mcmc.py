@@ -24,7 +24,10 @@ from elisa.analytics.models import cost_fns
 from elisa.analytics.models import rv as rv_model
 from elisa.analytics.params import parameters
 from elisa.analytics.params.conf import NUISANCE_PARSER, PARAM_PARSER
-from elisa.base.error import raise_elisa_monte_carlo_error
+from elisa.base.error import (
+    raise_elisa_numeric_error,
+    raise_elisa_monte_carlo_error,
+)
 from elisa.base.types import FLOAT
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
@@ -174,15 +177,15 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
             if prior == -np.inf:
                 return -np.inf
             if not np.isfinite(prior):
-                raise FloatingPointError(f"Nonfinite prior: {prior}")
+                raise_elisa_numeric_error(f"Nonfinite prior: {prior}")
             stage = "likelihood"
             likelihood = self.likelihood(xn)
             if not np.isfinite(likelihood):
-                raise FloatingPointError(f"Nonfinite likelihood: {likelihood}")
+                raise_elisa_numeric_error(f"Nonfinite likelihood: {likelihood}")
             stage = "posterior"
             posterior = prior + likelihood
             if not np.isfinite(posterior):
-                raise FloatingPointError(f"Nonfinite posterior: {posterior}")
+                raise_elisa_numeric_error(f"Nonfinite posterior: {posterior}")
             return posterior
         except Exception as exc:
             record_candidate_failure(self, xn, exc, stage=stage)

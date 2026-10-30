@@ -10,7 +10,7 @@ import pytest
 from elisa import settings
 from elisa.base import error
 from elisa.base.error import (
-    ElisaError, ElisaFloatingPointError, ElisaMaxIterationError,
+    ElisaError, ElisaNumericError, ElisaMaxIterationError,
     ElisaRuntimeError, ElisaValueError, MaxIterationError, PhysicalStateError,
     ElisaPredictionAlignmentError,
 )
@@ -24,7 +24,7 @@ from elisa.binary_system.transform import BinarySystemProperties
 MARKERS = [
     (ElisaValueError, ValueError),
     (ElisaRuntimeError, RuntimeError),
-    (ElisaFloatingPointError, FloatingPointError),
+    (ElisaNumericError, FloatingPointError),
     (ElisaMaxIterationError, MaxIterationError),
 ]
 
@@ -70,18 +70,18 @@ def test_static_physical_range_check_retains_message():
 
 def test_radius_domain_failure_retains_message(monkeypatch):
     monkeypatch.setattr(radius, 'fsolve', lambda *a, **k: (np.array([-0.5]), {}, 1, 'unused'))
-    with pytest.raises(ElisaFloatingPointError, match=r'Invalid value of radius \[-0.5\] was calculated\.') as caught:
+    with pytest.raises(ElisaNumericError, match=r'Invalid value of radius \[-0.5\] was calculated\.') as caught:
         radius.calculate_radius(1.0, 1.0, 4.0, 'primary', 1.0, 0.0, 0.0)
-    assert type(caught.value) is ElisaFloatingPointError
+    assert type(caught.value) is ElisaNumericError
 
 
 @pytest.mark.parametrize('component', ['primary', 'secondary'])
 def test_critical_potential_nan_is_explicit_elisa_failure(monkeypatch, component):
     monkeypatch.setattr('elisa.binary_system.system.optimize.newton', lambda *a, **k: (np.nan, SimpleNamespace(converged=True)))
-    with pytest.raises(ElisaFloatingPointError, match='critical potential solver has failed') as caught:
+    with pytest.raises(ElisaNumericError, match='critical potential solver has failed') as caught:
         # noinspection PyTypeChecker
         BinarySystem.critical_potential_static(component, 1.0, 1.0, 1.0)
-    assert type(caught.value) is ElisaFloatingPointError
+    assert type(caught.value) is ElisaNumericError
 
 
 @pytest.mark.parametrize('error_type', [ValueError, RuntimeError, FloatingPointError])
@@ -121,7 +121,7 @@ def test_clipping_overflow_retains_floating_point_catch(kernel):
     with np.errstate(over='ignore', invalid='ignore'):
         with pytest.raises(FloatingPointError, match='Triangle determinant overflow') as caught:
             kernel(polygon, triangle)
-    assert type(caught.value) is ElisaFloatingPointError
+    assert type(caught.value) is ElisaNumericError
 
 
 def test_lagrange_solver_still_skips_isolated_failed_guesses(monkeypatch):
@@ -134,7 +134,7 @@ def test_lagrange_solver_still_skips_isolated_failed_guesses(monkeypatch):
         nonlocal attempts
         attempts += 1
         if attempts == 1:
-            raise RuntimeError('isolated Lagrange guess failure')
+            raise ElisaNumericError('isolated Lagrange guess failure')
         return original(*args, **kwargs)
 
     BinarySystem._lagrangian_points_static.cache_clear()

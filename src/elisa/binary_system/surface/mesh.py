@@ -7,7 +7,13 @@ import numpy as np
 
 from elisa import const, opt, settings, utils
 from elisa import umpy as up
-from elisa.base.error import ElisaFloatingPointError, ElisaRuntimeError, MaxIterationError, SpotError
+from elisa.base.error import (
+    ElisaNumericError,
+    ElisaRuntimeError,
+    MaxIterationError,
+    SpotError,
+    raise_elisa_numeric_error,
+)
 from elisa.base.spot import incorporate_spots_mesh
 from elisa.base.surface.mesh import correct_component_mesh
 from elisa.base.types import FLOAT
@@ -738,7 +744,7 @@ def get_surface_points(
     radius = opt.newton.newton(potential_fn, x0_arr, **radius_kwargs)
     if (radius < 0.0).any():
         msg = "Solver found at least one point in the opposite direction. Check your points."
-        raise ElisaFloatingPointError(msg)
+        raise_elisa_numeric_error(msg)
     return utils.spherical_to_cartesian(np.column_stack((radius, phi_arr, theta_arr)))
 
 
@@ -1353,7 +1359,7 @@ def mesh_spots(  # noqa: C901, PLR0912, PLR0915
             )
             try:
                 spot_points = get_surface_points(*args)
-            except (MaxIterationError, ElisaFloatingPointError) as exc:
+            except (MaxIterationError, ElisaNumericError) as exc:
                 msg = (
                     "Solver could not find at least some surface points of spot "
                     f"{spot_instance.kwargs_serializer()}. Probable reason is that your "

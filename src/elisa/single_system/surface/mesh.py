@@ -7,7 +7,7 @@ import numpy as np
 
 import elisa.umpy as up
 from elisa import const, opt, settings, utils
-from elisa.base.error import ElisaFloatingPointError, MaxIterationError, SpotError
+from elisa.base.error import ElisaNumericError, MaxIterationError, SpotError
 from elisa.base.spot import incorporate_spots_mesh
 from elisa.base.surface.mesh import correct_component_mesh
 from elisa.base.types import FLOAT, INT
@@ -581,7 +581,7 @@ def mesh_spots(system_container: SinglePositionContainer) -> None:  # noqa: C901
                 star_container.surface_potential,
                 *args,
             )
-        except ElisaFloatingPointError as exc:
+        except (MaxIterationError, ElisaNumericError) as exc:
             msg = f"Solver could not find a surface root of spot {spot_instance.kwargs_serializer()}."
             raise SpotError(msg) from exc
 
@@ -601,7 +601,7 @@ def mesh_spots(system_container: SinglePositionContainer) -> None:  # noqa: C901
                 star_container.surface_potential,
                 *args,
             )
-        except ElisaFloatingPointError as exc:
+        except (MaxIterationError, ElisaNumericError) as exc:
             msg = f"Solver could not find a surface root of spot {spot_instance.kwargs_serializer()}."
             raise SpotError(msg) from exc
 
@@ -652,7 +652,7 @@ def mesh_spots(system_container: SinglePositionContainer) -> None:  # noqa: C901
         )
         try:
             spot_points_radii = get_surface_points_radii(*args)
-        except (MaxIterationError, ElisaFloatingPointError) as exc:
+        except (MaxIterationError, ElisaNumericError) as exc:
             msg = f"Solver could not find surface points of spot {spot_instance.kwargs_serializer()}."
             raise SpotError(msg) from exc
 

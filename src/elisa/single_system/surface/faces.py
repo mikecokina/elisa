@@ -6,7 +6,7 @@ import numpy as np
 from scipy.spatial import Delaunay, QhullError
 
 from elisa.base import spot
-from elisa.base.error import ElisaFloatingPointError
+from elisa.base.error import raise_elisa_numeric_error
 from elisa.base.surface import faces as bfaces
 from elisa.base.surface.faces import mirror_triangulation, set_all_surface_centres
 from elisa.base.types import INT
@@ -90,7 +90,7 @@ def single_surface(
     try:
         triangulation = Delaunay(points)
     except QhullError as exc:
-        raise ElisaFloatingPointError(str(exc)) from exc
+        raise_elisa_numeric_error(str(exc), exc)
     return triangulation.convex_hull
 
 

@@ -12,7 +12,7 @@ from numpy.testing import assert_allclose, assert_array_equal
 
 import elisa.const as c
 
-from elisa.base.error import ElisaFloatingPointError, ElisaMaxIterationError, MaxIterationError
+from elisa.base.error import ElisaNumericError, ElisaMaxIterationError, MaxIterationError
 from elisa.binary_system.orbit import orbit as bin_orbit
 from elisa.single_system.orbit import orbit as single_orbit
 from tests.utils import ElisaTestCase
@@ -180,7 +180,7 @@ def test_kepler_nonfinite_result_raises(result):
     orbit = bin_orbit.Orbit.__new__(bin_orbit.Orbit)
     orbit.eccentricity = 0.8
     with patch.object(bin_orbit._sci_opt, "newton", return_value=(result, SimpleNamespace(converged=True))):
-        with pytest.raises(ElisaFloatingPointError, match="nonfinite anomaly") as caught:
+        with pytest.raises(ElisaNumericError, match="nonfinite anomaly") as caught:
             orbit.mean_anomaly_to_eccentric_anomaly(0.5)
     assert isinstance(caught.value, FloatingPointError)
 

@@ -5,7 +5,10 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from elisa import const
-from elisa.base.error import ElisaFloatingPointError
+from elisa.base.error import (
+    raise_elisa_numeric_error,
+    raise_elisa_max_iteration_error,
+)
 from elisa.base.types import FLOAT
 from elisa.opt.fsolver import fsolve
 from elisa.single_system import model
@@ -32,7 +35,8 @@ def calculate_radius(mass: Float, angular_velocity: Float, surface_potential: Fl
     :type args: tuple[elisa.types.Float, ...]
     :returns: Computed radius value.
     :rtype: elisa.types.Float
-    :raises ValueError: When solver returns an invalid radius.
+    :raises ElisaMaxIterationError: If the radius solver does not converge.
+    :raises ElisaNumericError: When the solver returns an invalid radius.
     """
     fn = model.potential_fn
     precalc = model.pre_calculate_for_potential_value
@@ -43,16 +47,17 @@ def calculate_radius(mass: Float, angular_velocity: Float, surface_potential: Fl
     argss = (precalc(*precalc_args), surface_potential)
     solution, _, ier, _ = fsolve(fn, scipy_solver_init_value, full_output=True, args=argss, xtol=1e-10)
 
-    # check for regular solution
-    if ier == 1 and not np.isnan(solution[0]) and 5 * init_val >= solution[0] >= 0:
-        return FLOAT(solution[0])
-
-    # assign message before raising as per project convention
-    if not (0 < solution[0] < 5 * init_val):
+    radius = solution[0]
+    if not np.isfinite(radius):
         msg = f"Invalid value of radius {solution} was calculated."
-        raise ElisaFloatingPointError(msg)
-
-    return FLOAT(solution[0])
+        raise_elisa_numeric_error(msg)
+    if ier != 1:
+        msg = "Radius solver failed to converge."
+        raise_elisa_max_iteration_error(msg)
+    if not (0 <= radius <= 5 * init_val):
+        msg = f"Invalid value of radius {solution} was calculated."
+        raise_elisa_numeric_error(msg)
+    return FLOAT(radius)
 
 
 def calculate_polar_radius(mass: Float, angular_velocity: Float, surface_potential: Float) -> Float:

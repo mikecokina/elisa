@@ -5,8 +5,11 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from elisa import const
-from elisa import umpy as up
-from elisa.base.error import ElisaFloatingPointError, ElisaValueError
+from elisa.base.error import (
+    ElisaValueError,
+    raise_elisa_numeric_error,
+    raise_elisa_max_iteration_error,
+)
 from elisa.base.types import FLOAT
 from elisa.binary_system import model
 from elisa.opt.fsolver import fsolve
@@ -61,7 +64,8 @@ def calculate_radius(
     :return: Radius in the requested direction.
     :rtype: Float
     :raises ValueError: If ``component`` is invalid.
-    :raises ElisaFloatingPointError: If the computed radius is outside the accepted range.
+    :raises ElisaMaxIterationError: If the radius solver does not converge.
+    :raises ElisaNumericError: If the computed radius is outside the accepted range.
     """
     if component == "primary":
         potential_fn = model.potential_primary_fn
@@ -97,13 +101,15 @@ def calculate_radius(
 
     radius = solution[0]
 
-    if ier == 1 and not up.isnan(radius) and MAXIMAL_RADIUS_BOUNDARY >= radius >= 0.0:
-        return radius
-
-    if not (0.0 < radius < 1.0):
+    if not np.isfinite(radius):
         message = f"Invalid value of radius {solution} was calculated."
-        raise ElisaFloatingPointError(message)
-
+        raise_elisa_numeric_error(message)
+    if ier != 1:
+        message = "Radius solver failed to converge."
+        raise_elisa_max_iteration_error(message)
+    if not (0.0 <= radius <= MAXIMAL_RADIUS_BOUNDARY):
+        message = f"Invalid value of radius {solution} was calculated."
+        raise_elisa_numeric_error(message)
     return radius
 
 

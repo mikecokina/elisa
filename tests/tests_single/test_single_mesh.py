@@ -201,6 +201,6 @@ def test_single_spot_invalid_radius_source_keeps_spot_type_and_cause(monkeypatch
     with pytest.raises(error.SpotError, match='surface root') as caught:
         single_mesh.mesh_spots(container)
     assert injected
-    assert isinstance(caught.value.__cause__, error.ElisaFloatingPointError)
+    assert isinstance(caught.value.__cause__, error.ElisaNumericError)
     assert 'Invalid value of radius' in str(caught.value.__cause__)
     assert container.star.spots
