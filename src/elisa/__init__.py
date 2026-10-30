@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from elisa import units  # re-export
+from elisa.base.error import raise_attribute_error
 
 # prepare units as u for simpler import
 u = units
@@ -151,20 +152,20 @@ def __getattr__(name: str) -> Any:
     Imports the requested object from the corresponding submodule on first access
     and caches it in the package globals to avoid repeated imports.
     """
-    if name in _PUBLIC_OBJECTS:
-        module_name, attr_name = _PUBLIC_OBJECTS[name]
-        if name == "download_manager":
-            val = _make_download_manager_instance()
-            globals()[name] = val
-            return val
+    if name not in _PUBLIC_OBJECTS:
+        msg = f"module {__name__!r} has no attribute {name!r}"
+        raise_attribute_error(msg)
 
-        module = importlib.import_module(__name__ + "." + module_name)
-        val = getattr(module, attr_name)
+    module_name, attr_name = _PUBLIC_OBJECTS[name]
+    if name == "download_manager":
+        val = _make_download_manager_instance()
         globals()[name] = val
         return val
 
-    msg = f"module {__name__!r} has no attribute {name!r}"
-    raise AttributeError(msg)
+    module = importlib.import_module(__name__ + "." + module_name)
+    val = getattr(module, attr_name)
+    globals()[name] = val
+    return val
 
 
 def __dir__() -> list[str]:
