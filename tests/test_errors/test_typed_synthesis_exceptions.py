@@ -144,8 +144,8 @@ def test_lagrange_solver_still_skips_isolated_failed_guesses(monkeypatch):
 
 
 @pytest.mark.parametrize('cls', [error.PhysicalStateError, error.MorphologyError, error.SpotError,
-                                error.PulsationModeError, error.AtmosphereError, error.LimbDarkeningError,
-                                error.LimbDarkeningSourceError, error.TemperatureError])
+                                 error.PulsationModeError, error.ElisaAtmosphereError, error.LimbDarkeningError,
+                                 error.LimbDarkeningSourceError, error.TemperatureError])
 def test_synthesis_hierarchy_and_pickle(cls):
     assert issubclass(cls, error.ElisaSynthesisError)
     assert issubclass(cls, error.ElisaError)

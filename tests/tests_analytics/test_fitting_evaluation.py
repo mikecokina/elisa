@@ -20,7 +20,7 @@ from elisa.analytics.binary_fit.shared import AbstractFit
 from elisa.analytics.models import cost_fns, rv
 from elisa.analytics.params import parameters
 from elisa.base.error import (
-    AtmosphereError,
+    ElisaAtmosphereError,
     ElisaError,
     ElisaNumericError,
     ElisaMaxIterationError,
@@ -58,7 +58,7 @@ EXPECTED_FAILURES = [
     ElisaMaxIterationError,
     ElisaNumericError,
     SpotError,
-    AtmosphereError,
+    ElisaAtmosphereError,
     LimbDarkeningError,
     LimbDarkeningSourceError,
     TemperatureError,

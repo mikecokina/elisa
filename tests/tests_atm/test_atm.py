@@ -682,7 +682,7 @@ def test_missing_atmosphere_source_boundary_is_domain_error(tmp_path):
     previous = settings.settings_serializer()
     try:
         settings.configure(CK04_ATM_TABLES=str(tmp_path))
-        with pytest.raises(error.AtmosphereError, match='There is no file like'):
+        with pytest.raises(error.ElisaAtmosphereError, match='There is no file like'):
             atm.get_atm_table(5000., 4., 0., 'ck04')
     finally:
         settings.configure(**previous)

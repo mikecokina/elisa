@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from elisa import atm, ld
-from elisa.base.error import AtmosphereError
+from elisa.base.error import ElisaAtmosphereError
 from tests.scientific_requirements import (
     atmosphere_unavailability_reason,
     ld_unavailability_reason,
@@ -189,7 +189,7 @@ def test_missing_model_after_successful_preflight_raises(tmp_path: Path) -> None
     assert reason is None
 
     missing_model = tmp_path / "ckp00_5000_g40.csv"
-    with pytest.raises(AtmosphereError, match="doesn't exist") as raised:
+    with pytest.raises(ElisaAtmosphereError, match="doesn't exist") as raised:
         atm.read_unique_atm_tables([str(missing_model)])
 
     assert isinstance(raised.value.__cause__, FileNotFoundError)

@@ -18,7 +18,7 @@ def rounded_boundary_extension(container, left, right):
     interpolator = Akima1DInterpolator(model.wavelength, model.flux)
     flux = interpolator([left, right])
     if np.isnan(flux).any():
-        raise atm.AtmosphereError("Interpolation on bandwidth boundaries resulted in NaN value.")
+        raise atm.ElisaAtmosphereError("Interpolation on bandwidth boundaries resulted in NaN value.")
     model.wavelength[np.array([0, -1])] = [left, right]
     model.flux[np.array([0, -1])] = flux
     model.flux = np.round(model.flux, 10)
@@ -70,7 +70,7 @@ def test_nan_boundary_errors_leave_input_untouched(left, right):
     original = make_spectrum()
     before = deepcopy(original)
     for extend in (rounded_boundary_extension, atm.extend_atm_container_on_bandwidth_boundary):
-        with pytest.raises(atm.AtmosphereError, match="Interpolation on bandwidth boundaries resulted in NaN value."):
+        with pytest.raises(atm.ElisaAtmosphereError, match="Interpolation on bandwidth boundaries resulted in NaN value."):
             extend(original, left, right)
         np.testing.assert_array_equal(original.model.flux, before.model.flux)
         np.testing.assert_array_equal(original.model.wavelength, before.model.wavelength)

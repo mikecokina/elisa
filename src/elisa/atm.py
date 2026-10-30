@@ -26,7 +26,7 @@ from elisa import (
     umpy as up,
 )
 from elisa.base.error import (
-    AtmosphereError,
+    ElisaAtmosphereError,
     ElisaValueError,
 )
 from elisa.base.types import FLOAT
@@ -716,7 +716,7 @@ def _wrap_grid_lookup_errors(func: Callable[P, R]) -> Callable[P, R]:
             return func(*args, **kwargs)
         except (ValueError, IndexError) as e:
             msg = f"Atmosphere grid lookup `{func.__name__}` failed for arguments {args!r}: {e}"
-            raise AtmosphereError(msg) from e
+            raise ElisaAtmosphereError(msg) from e
 
     return wrapper
 
@@ -1124,7 +1124,7 @@ def extend_atm_container_on_bandwidth_boundary(
     on_border_flux: NDArray[Float] = interpolator([left_bandwidth, right_bandwidth])
     if np.isnan(on_border_flux).any():
         msg = "Interpolation on bandwidth boundaries resulted in NaN value."
-        raise AtmosphereError(msg)
+        raise ElisaAtmosphereError(msg)
 
     atm_model: AtmModel = atm_container.model
     atm_model.wavelength[np.array([0, -1])] = [left_bandwidth, right_bandwidth]
@@ -1372,7 +1372,7 @@ def get_atm_table(
 
     if not path.is_file():
         msg = f"There is no file like {path}"
-        raise AtmosphereError(msg)
+        raise ElisaAtmosphereError(msg)
 
     # noinspection PyArgumentList
     return pd.read_csv(path, dtype=settings.ATM_MODEL_DATAFARME_DTYPES)
@@ -1461,7 +1461,7 @@ def multithread_atm_tables_reader_runner(fpaths: list[str] | tuple[str]) -> Queu
                     f"of your stellar model are not covered by the currently "
                     f"used table."
                 )
-                raise AtmosphereError(msg)
+                raise ElisaAtmosphereError(msg)
             path_queue.put((index, fpath))
 
         for _ in range(n_threads):
@@ -1695,7 +1695,7 @@ def read_unique_atm_tables(
                 "of your stellar model are not covered by the currently "
                 "used table."
             )
-            raise AtmosphereError(msg) from exc
+            raise ElisaAtmosphereError(msg) from exc
         key = (source, Path(fpath).name, settings.ATM_MODEL_DATAFRAME_FLUX, settings.ATM_MODEL_DATAFRAME_WAVE)
         source_keys[fpath] = key
         if key in buffer.ATMOSPHERE_TABLES:
@@ -1760,7 +1760,7 @@ def find_atm_defined_wavelength(
     for atm_container in atm_containers:
         return atm_container.model.wavelength
     msg = "No valid atmospheric container has been supplied to method."
-    raise AtmosphereError(msg)
+    raise ElisaAtmosphereError(msg)
 
 
 def remap_passbanded_unique_atms_to_matrix(

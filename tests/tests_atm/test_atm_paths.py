@@ -161,7 +161,7 @@ def test_base_directory_changes_and_missing_files(atlas, monkeypatch, tmp_path):
     assert first != second
     # Path selection never checks existence; loading retains its existing exception.
     for paths in (original_atm_files(*args), second):
-        with pytest.raises(atm.AtmosphereError) as error:
+        with pytest.raises(atm.ElisaAtmosphereError) as error:
             atm.read_unique_atm_tables(paths)
         assert str(error.value) == (
             f"file {second[0]} doesn't exist. Your atmosphere tables are "

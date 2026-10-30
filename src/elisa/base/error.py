@@ -128,7 +128,7 @@ class ElisaNumericError(FloatingPointError):
     """Recognized numerical failure while evaluating an ELISA model or candidate."""
 
 
-class AtmosphereError(ElisaSynthesisError):
+class ElisaAtmosphereError(ElisaSynthesisError):
     """Raised for errors related to atmosphere model handling."""
 
 
@@ -456,7 +456,7 @@ def raise_elisa_atmosphere_error(message: str, exc: Exception | None = None) -> 
     :type exc: Exception | None
     :raises AtmosphereError: Always raises an AtmosphereError with the provided message.
     """
-    _raise_error(AtmosphereError, message, exc)
+    _raise_error(ElisaAtmosphereError, message, exc)
 
 
 def _register_numba_error_helpers() -> None:

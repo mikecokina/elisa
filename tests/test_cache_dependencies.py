@@ -199,7 +199,7 @@ def test_atmosphere_column_interpretation_and_source_deletion(tmp_path, monkeypa
         model = atm.read_unique_atm_tables([str(path)])[0][0]
         np.testing.assert_array_equal(model.model.flux, [value] * 3)
     path.unlink()
-    with pytest.raises(atm.AtmosphereError, match="doesn't exist"):
+    with pytest.raises(atm.ElisaAtmosphereError, match="doesn't exist"):
         atm.read_unique_atm_tables([str(path)])
 
 
