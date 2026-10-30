@@ -9,13 +9,109 @@ import pandas as pd
 from scipy import interpolate
 
 from elisa import settings
-from elisa.base.error import ElisaValueError
+from elisa.base.error import raise_elisa_passband_error
 from elisa.observer.plot import PassbandPlot
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from elisa.types import Float
+
+
+_MIN_PASSBAND_SAMPLES = 2
+_NANOMETERS_TO_ANGSTROMS = 10.0
+
+
+def _validated_passband_interval(interval: object) -> tuple[float, float]:
+    """Validate finite, ordered wavelength bounds of a fixed passband."""
+    try:
+        bounds = np.asarray(interval, dtype=float)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise_elisa_passband_error(f"Invalid passband wavelength interval: {interval!r}", exc)
+
+    has_two_bounds = bounds.shape == (2,)
+    bounds_are_finite = np.all(np.isfinite(bounds))
+    if not (has_two_bounds and bounds_are_finite):
+        raise_elisa_passband_error(f"Passband wavelength interval must contain two finite bounds: {interval!r}")
+
+    left, right = bounds
+    left_is_nonnegative = left >= 0
+    bounds_are_increasing = left < right
+    if not (left_is_nonnegative and bounds_are_increasing):
+        raise_elisa_passband_error(f"Passband wavelength bounds must satisfy 0 <= left < right: {interval!r}")
+
+    return float(left), float(right)
+
+
+def _validated_passband_table(df: pd.DataFrame, passband: str) -> tuple[NDArray, NDArray]:
+    """Validate fixed response samples before constructing an interpolator."""
+    if not isinstance(df, pd.DataFrame):
+        raise_elisa_passband_error(f"Passband {passband!r} requires a DataFrame response table")
+
+    try:
+        raw_wavelengths = df[settings.PASSBAND_DATAFRAME_WAVE].to_numpy()
+        raw_throughput = df[settings.PASSBAND_DATAFRAME_THROUGHPUT].to_numpy()
+        wavelengths_are_complex = np.iscomplexobj(raw_wavelengths)
+        throughput_is_complex = np.iscomplexobj(raw_throughput)
+        if wavelengths_are_complex or throughput_is_complex:
+            raise_elisa_passband_error(f"Passband {passband!r} samples must be real numbers")
+
+        wavelengths = np.asarray(raw_wavelengths, dtype=float)
+        throughput = np.asarray(raw_throughput, dtype=float)
+    except (KeyError, TypeError, ValueError, OverflowError) as exc:
+        raise_elisa_passband_error(f"Invalid wavelength/throughput columns for passband {passband!r}: {exc}", exc)
+
+    wavelengths_are_vector = wavelengths.ndim == 1
+    throughput_is_vector = throughput.ndim == 1
+    has_enough_samples = wavelengths.size >= _MIN_PASSBAND_SAMPLES
+    sample_shapes_match = wavelengths.shape == throughput.shape
+    valid_sample_shape = (
+        wavelengths_are_vector
+        and throughput_is_vector
+        and has_enough_samples
+        and sample_shapes_match
+    )
+    if not valid_sample_shape:
+        msg = f"Passband {passband!r} requires at least two matching wavelength/throughput samples"
+        raise_elisa_passband_error(msg)
+
+    wavelengths_are_finite = np.all(np.isfinite(wavelengths))
+    throughput_is_finite = np.all(np.isfinite(throughput))
+    if not (wavelengths_are_finite and throughput_is_finite):
+        raise_elisa_passband_error(f"Passband {passband!r} wavelength/throughput samples must be finite")
+
+    first_wavelength_is_nonnegative = wavelengths[0] >= 0
+    wavelengths_are_increasing = np.all(wavelengths[1:] > wavelengths[:-1])
+    if not (first_wavelength_is_nonnegative and wavelengths_are_increasing):
+        raise_elisa_passband_error(f"Passband {passband!r} wavelengths must be nonnegative and strictly increasing")
+
+    has_nonzero_throughput = np.any(throughput != 0)
+    if not has_nonzero_throughput:
+        raise_elisa_passband_error(f"Passband {passband!r} throughput must not be identically zero")
+
+    return wavelengths, throughput
+
+
+def _read_passband_csv(file_path: Path) -> pd.DataFrame:
+    """Read response samples, preserving source errors as passband errors."""
+    try:
+        # noinspection PyArgumentList
+        table = pd.read_csv(file_path)
+    except (OSError, UnicodeError, pd.errors.ParserError, pd.errors.EmptyDataError) as exc:
+        msg = f"Cannot read passband table {file_path}: {exc}"
+        raise_elisa_passband_error(msg, exc)
+    return table
+
+
+def _wavelengths_to_angstroms(wavelengths: NDArray, source: Path) -> NDArray:
+    """Convert validated nanometer samples without allowing numerical overflow."""
+    try:
+        with np.errstate(over="raise", invalid="raise"):
+            converted = wavelengths * _NANOMETERS_TO_ANGSTROMS
+    except FloatingPointError as exc:
+        msg = f"Invalid wavelength scale in passband table {source}"
+        raise_elisa_passband_error(msg, exc)
+    return converted
 
 
 def init_bolometric_passband() -> tuple[PassbandContainer, Float, Float]:
@@ -62,8 +158,11 @@ def init_rv_passband(
     :returns: Tuple containing the radial velocity passband container,
         right bandwidth (interval[1]), and left bandwidth (interval[0]).
     :rtype: tuple[PassbandContainer, Float, Float]
+    :raises ElisaPassbandError: If the wavelength interval is invalid.
     """
-    interval = settings.RV_LAMBDA_INTERVAL if wavelength_interval is None else wavelength_interval
+    interval = _validated_passband_interval(
+        settings.RV_LAMBDA_INTERVAL if wavelength_interval is None else wavelength_interval,
+    )
     wave_column = settings.PASSBAND_DATAFRAME_WAVE if wave_column is None else wave_column
     throughput_column = (
         settings.PASSBAND_DATAFRAME_THROUGHPUT
@@ -135,6 +234,8 @@ class PassbandContainer:
         :param passband: Name identifier of the passband.
         :type passband: str
         """
+        if not isinstance(passband, str) or not passband:
+            raise_elisa_passband_error(f"Invalid passband identifier: {passband!r}")
         self.left_bandwidth = np.nan
         self.right_bandwidth = np.nan
         self.akima = None
@@ -170,18 +271,20 @@ class PassbandContainer:
 
         :param df: DataFrame containing wavelength and throughput columns.
         :type df: pd.DataFrame
+        :raises ElisaPassbandError: If response columns, samples or wavelength bounds are invalid.
         """
+        wave, throughput = _validated_passband_table(df, self.passband)
+        if self.passband.lower() in ("bolometric", "rv_band"):
+            akima = bolometric
+        else:
+            try:
+                akima = interpolate.Akima1DInterpolator(wave, throughput)
+            except (ValueError, TypeError, FloatingPointError, OverflowError) as exc:
+                raise_elisa_passband_error(f"Cannot interpolate passband {self.passband!r}: {exc}", exc)
         self._table = df
-        self.akima = (
-            bolometric
-            if self.passband.lower() in ["bolometric", "rv_band"]
-            else interpolate.Akima1DInterpolator(
-                df[settings.PASSBAND_DATAFRAME_WAVE],
-                df[settings.PASSBAND_DATAFRAME_THROUGHPUT],
-            )
-        )
-        self.left_bandwidth = df[settings.PASSBAND_DATAFRAME_WAVE].min()
-        self.right_bandwidth = df[settings.PASSBAND_DATAFRAME_WAVE].max()
+        self.akima = akima
+        self.left_bandwidth = wave[0]
+        self.right_bandwidth = wave[-1]
 
     @staticmethod
     def get_passband_df(passband: str) -> pd.DataFrame:
@@ -194,16 +297,19 @@ class PassbandContainer:
         :type passband: str
         :returns: DataFrame containing wavelength and throughput columns for the passband.
         :rtype: pd.DataFrame
-        :raises ValueError: If the passband name is not valid or unsupported.
+        :raises ElisaPassbandError: If the name, source table or response samples are invalid.
         """
-        if passband not in settings.PASSBANDS:
+        passband_is_string = isinstance(passband, str)
+        passband_is_supported = passband_is_string and passband in settings.PASSBANDS
+        if not passband_is_supported:
             msg = f"Invalid or unsupported passband function: {passband}"
-            raise ElisaValueError(msg)
+            raise_elisa_passband_error(msg)
+
         file_path = Path(settings.PASSBAND_TABLES) / f"{passband}.csv"
-        # noinspection PyArgumentList
-        df = pd.read_csv(file_path)
-        df[settings.PASSBAND_DATAFRAME_WAVE] *= 10.0
-        return df
+        table = _read_passband_csv(file_path)
+        wavelengths, _ = _validated_passband_table(table, passband)
+        table[settings.PASSBAND_DATAFRAME_WAVE] = _wavelengths_to_angstroms(wavelengths, file_path)
+        return table
 
     def get_bandwidth(self) -> tuple[Float, Float]:
         """Get the passband wavelength boundaries.

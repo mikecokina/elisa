@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from elisa import settings
-from elisa.base.error import raise_elisa_analytics_task_error
+from elisa.base.error import raise_elisa_analytics_task_error, raise_elisa_passband_error
 from elisa.base.transform import TransformProperties
 
 if TYPE_CHECKING:
@@ -75,7 +75,7 @@ class LCBinaryAnalyticsProperties(TransformProperties):
         :return: Validated light curve data dictionary
         :rtype: dict[str, LCData]
         :raises ElisaAnalyticsTaskError: If value is not a dict or contains non-LCData values
-        :raises ElisaAnalyticsTaskError: If dict keys are not valid passband designations
+        :raises ElisaPassbandError: If dict keys are not valid passband designations
         """
         if not isinstance(value, dict):
             error_msg: str = "`light_curves` are not of type `dict`"
@@ -90,7 +90,7 @@ class LCBinaryAnalyticsProperties(TransformProperties):
                     f"{key} is invalid passband. Please choose from available "
                     f"passbands:\n{available_passbands}"
                 )
-                raise_elisa_analytics_task_error(error_msg)
+                raise_elisa_passband_error(error_msg)
 
             # Import here to avoid circular imports
             from elisa.analytics.dataset.base import LCData  # noqa: PLC0415

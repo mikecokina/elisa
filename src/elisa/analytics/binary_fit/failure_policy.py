@@ -2,7 +2,8 @@
 
 LSQ converts only SYNTHESIS_FAILURES into penalty residuals. Other errors
 propagate out of its callback. MCMC records ordinary exceptions during prior
-or likelihood evaluation and rejects the candidate with -inf. Setup errors
+or likelihood evaluation and rejects the candidate with -inf. Fixed passband
+input/source errors propagate instead of rejecting a candidate. Setup errors
 and process-control exceptions (such as KeyboardInterrupt) still propagate.
 """
 

@@ -51,6 +51,13 @@ class ElisaOperationInputError(ElisaError):
     """
 
 
+class ElisaPassbandError(ElisaError):
+    """Invalid fixed passband definition or unavailable passband source.
+
+    This is an input/source failure, never a reason to reject a model candidate.
+    """
+
+
 class ElisaSettingsError(ElisaError):
     """Invalid ELISA configuration or failure while preparing its supporting assets."""
 
@@ -262,6 +269,16 @@ def raise_elisa_not_implemented_error(message: str, exc: Exception | None = None
     :raises ElisaNotImplementedError: Always raised with the provided message.
     """
     _raise_error(ElisaNotImplementedError, message, exc)
+
+
+def raise_elisa_passband_error(message: str, exc: Exception | None = None) -> NoReturn:
+    """Raise a passband input/source error, preserving an optional cause.
+
+    :param message: Description of the invalid passband or unavailable source.
+    :param exc: Original exception, if any.
+    :raises ElisaPassbandError: Always raised with the provided message.
+    """
+    _raise_error(ElisaPassbandError, message, exc)
 
 
 def raise_elisa_settings_error(message: str, exc: Exception | None = None) -> NoReturn:

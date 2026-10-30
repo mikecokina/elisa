@@ -25,10 +25,12 @@ from elisa.analytics.tools.utils import (
     time_layer_resolver,
 )
 from elisa.base.error import (
+    ElisaPassbandError,
     ElisaPredictionAlignmentError,
     raise_elisa_analytics_data_error,
     raise_elisa_analytics_task_error,
     raise_elisa_numeric_error,
+    raise_elisa_passband_error,
     raise_elisa_prediction_alignment_error,
 )
 from elisa.base.transform import StarProperties
@@ -56,11 +58,14 @@ def _fit_passbands(passband: Iterable[str] | None, data: Mapping[str, DataSet]) 
     :param passband: Requested LC passbands, or None for RV fitting.
     :param data: Observations keyed by passband or RV component.
     :returns: Observer passbands, using bolometric for RV fitting.
+    :raises ElisaPassbandError: If a requested filter name is invalid.
     :raises ElisaAnalyticsTaskError: If requested LC passbands differ from the dataset keys.
     """
     if passband is None:
         return "bolometric"
     bands = list(passband)
+    if any(not isinstance(band, str) or band not in settings.PASSBANDS for band in bands):
+        raise_elisa_passband_error(f"Invalid or unsupported fitting passbands: {bands!r}")
     if set(bands) != set(data):
         msg = "Fitting passbands must match observation dataset identifiers"
         raise_elisa_analytics_task_error(msg)
@@ -759,7 +764,7 @@ class AbstractLCFit(AbstractFit):
         try:
             synthetic = lc_model.synthetic_binary(x, self.discretization, observer, **kwargs)
             synthetic, _ = normalize_light_curve(synthetic, kind="average")
-        except ElisaPredictionAlignmentError:
+        except (ElisaPredictionAlignmentError, ElisaPassbandError):
             raise
         except Exception as e:
             error_msg = "Your initial parameters are invalid and phase sampling could not be generated."

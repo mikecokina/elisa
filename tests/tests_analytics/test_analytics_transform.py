@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from unittest import mock
 
 from elisa import settings
-from elisa.base.error import ElisaAnalyticsTaskError
+from elisa.base.error import ElisaAnalyticsTaskError, ElisaPassbandError
 from elisa.analytics.transform import (
     LCBinaryAnalyticsProperties,
     RVBinaryAnalyticsTask,
@@ -193,19 +193,19 @@ class TestLCBinaryAnalyticsProperties(ElisaTestCase):
             self.assertIn("`light_curves`", str(context.exception))
 
     def test_data_invalid_passband_key(self) -> None:
-        """Test that invalid passband key raises ElisaAnalyticsTaskError.
+        """Test that invalid passband key raises ElisaPassbandError.
 
         Verifies that dictionary keys that are not valid passband
-        designations raise a ElisaAnalyticsTaskError with helpful error message listing
+        designations raise a ElisaPassbandError with helpful error message listing
         available passbands.
 
         :return: None
-        :raises ElisaAnalyticsTaskError: When dict key is invalid passband designation
+        :raises ElisaPassbandError: When dict key is invalid passband designation
         """
         mock_data = mock.MagicMock(spec=self.LCData)
         invalid_data: dict = {"invalid_passband": mock_data}
 
-        with self.assertRaises(ElisaAnalyticsTaskError) as context:
+        with self.assertRaises(ElisaPassbandError) as context:
             LCBinaryAnalyticsProperties.data(invalid_data)
 
         error_msg: str = str(context.exception)
@@ -335,13 +335,13 @@ class TestLCBinaryAnalyticsPropertiesEdgeCases(ElisaTestCase):
         self.LCData = LCData
 
     def test_data_mixed_valid_and_invalid_passbands(self) -> None:
-        """Test dict with both valid and invalid passbands raises ElisaAnalyticsTaskError.
+        """Test dict with both valid and invalid passbands raises ElisaPassbandError.
 
         Verifies that even if most passbands are valid, presence of a single
         invalid passband causes the validation to fail.
 
         :return: None
-        :raises ElisaAnalyticsTaskError: When any dict key is invalid passband
+        :raises ElisaPassbandError: When any dict key is invalid passband
         """
         mock_data = mock.MagicMock(spec=self.LCData)
         valid_passband: str = list(settings.PASSBANDS)[0]
@@ -351,7 +351,7 @@ class TestLCBinaryAnalyticsPropertiesEdgeCases(ElisaTestCase):
             "invalid_passband": mock_data,
         }
 
-        with self.assertRaises(ElisaAnalyticsTaskError):
+        with self.assertRaises(ElisaPassbandError):
             LCBinaryAnalyticsProperties.data(mixed_data)
 
     def test_data_none_value_in_dict(self) -> None:
@@ -380,7 +380,7 @@ class TestLCBinaryAnalyticsPropertiesEdgeCases(ElisaTestCase):
         mock_data = mock.MagicMock(spec=self.LCData)
         invalid_data: dict = {"invalid_passband": mock_data}
 
-        with self.assertRaises(ElisaAnalyticsTaskError) as context:
+        with self.assertRaises(ElisaPassbandError) as context:
             LCBinaryAnalyticsProperties.data(invalid_data)
 
         error_msg: str = str(context.exception)

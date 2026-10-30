@@ -6,14 +6,16 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from elisa.base.error import ElisaValueError
 from elisa import settings
 from elisa import umpy as up
 from elisa import units as u
+from elisa.base.error import ElisaValueError, raise_elisa_passband_error
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.logger import getLogger
 from elisa.observer import utils as outils
-from elisa.observer.passband import PassbandContainer, init_bolometric_passband
+
+# noinspection PyProtectedMember
+from elisa.observer.passband import PassbandContainer, _validated_passband_interval, init_bolometric_passband
 from elisa.observer.plot import Plot
 from elisa.photometric_standards.standards_handlers import load_standard
 from elisa.utils import file_source_identity, is_empty, jd_to_phase
@@ -229,7 +231,13 @@ class Observer:
         :type passband: str | list[str]
         """
         passband = [passband] if isinstance(passband, str) else passband
-        for band in passband:
+        try:
+            bands = iter(passband)
+        except TypeError as exc:
+            raise_elisa_passband_error("Passbands must be supplied as a name or iterable of names", exc)
+        for band in bands:
+            if not isinstance(band, str) or not band:
+                raise_elisa_passband_error(f"Invalid passband identifier: {band!r}")
             if band == "bolometric":
                 psbnd, right_bandwidth, left_bandwidth = init_bolometric_passband()
             else:
@@ -251,6 +259,7 @@ class Observer:
         :param right_bandwidth: Right (maximum) wavelength boundary of the passband.
         :type right_bandwidth: float
         """
+        left_bandwidth, right_bandwidth = _validated_passband_interval((left_bandwidth, right_bandwidth))
         self.left_bandwidth = min(self.left_bandwidth, left_bandwidth)
         self.right_bandwidth = max(self.right_bandwidth, right_bandwidth)
 
