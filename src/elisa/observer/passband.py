@@ -9,7 +9,7 @@ import pandas as pd
 from scipy import interpolate
 
 from elisa import settings
-from elisa.base.error import raise_elisa_passband_error
+from elisa.base.error import raise_elisa_passband_error, raise_elisa_unexpected_error
 from elisa.observer.plot import PassbandPlot
 
 if TYPE_CHECKING:
@@ -203,8 +203,12 @@ def bolometric(x: Float | list | NDArray) -> Float | list | NDArray:
         return [1.0] * len(x)
     if isinstance(x, np.ndarray):
         return np.ones(len(x))
-    msg = f"Unexpected type for x: {type(x)}"
-    raise TypeError(msg)
+    # This interpolator is an internal synthesis callback. Its caller must supply
+    # supported wavelength values; parameter drift cannot change their Python type.
+    # A different type is a programming contract failure, not a bad fixed passband
+    # or a candidate model that fitting should penalize.
+    msg = f"Bolometric passband interpolation received unsupported wavelength type: {type(x)}"
+    return raise_elisa_unexpected_error(msg)
 
 
 class PassbandContainer:
