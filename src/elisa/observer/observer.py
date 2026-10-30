@@ -9,7 +9,7 @@ import numpy as np
 from elisa import settings
 from elisa import umpy as up
 from elisa import units as u
-from elisa.base.error import ElisaValueError, raise_elisa_passband_error
+from elisa.base.error import ElisaValueError, raise_elisa_not_implemented_error, raise_elisa_passband_error
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.logger import getLogger
 from elisa.observer import utils as outils
@@ -490,7 +490,7 @@ class Observer:
 
         return self.phases, self.radial_velocities
 
-    def phase_interval_reduce(
+    def phase_interval_reduce(  # noqa: PLR0911 - system-specific returns plus a NoReturn helper fallback
         self,
         phases: NDArray,
     ) -> tuple[NDArray, NDArray]:
@@ -548,8 +548,8 @@ class Observer:
         ):
             return phases, up.arange(phases.shape[0], dtype=int)
 
-        msg = "Not implemented."
-        raise NotImplementedError(msg)
+        msg = f"Observer.phase_interval_reduce is not implemented for system class {self._system_cls!r}."
+        return raise_elisa_not_implemented_error(msg)
 
     def manage_time_series(
             self,
