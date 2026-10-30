@@ -11,6 +11,8 @@ from unittest.mock import patch
 
 import pytest
 
+from elisa.base.error import ElisaSettingsError
+
 from elisa import settings
 from elisa.conf import logconfig
 from elisa.conf.enums import LoggingProfile
@@ -152,7 +154,7 @@ def test_invalid_selectors_and_malformed_json_leave_selector_unchanged(tmp_path)
     broken.write_text('{broken')
     with settings.logging_context(LoggingProfile.DEFAULT.value):
         for profile in ('unknown-profile', str(tmp_path / 'missing.json'), str(broken)):
-            with pytest.raises(ValueError):
+            with pytest.raises(ElisaSettingsError):
                 settings.configure_logging(profile)
             assert settings.LOG_CONFIG == LoggingProfile.DEFAULT.value
         settings.configure(LOG_CONFIG=LoggingProfile.FIT.value)
@@ -194,7 +196,7 @@ def test_custom_deletion_during_context_reports_restoration_failure(tmp_path):
     path = custom_file(tmp_path)
     with settings.logging_context(LoggingProfile.DEFAULT.value):
         settings.configure_logging(str(path))
-        with pytest.raises(ValueError, match='missing JSON configuration'):
+        with pytest.raises(ElisaSettingsError, match='missing JSON configuration'):
             with settings.logging_context(LoggingProfile.FIT.value):
                 path.unlink()
         assert settings.LOG_CONFIG == LoggingProfile.FIT.value

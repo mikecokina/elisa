@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-from elisa.base.error import raise_value_error
+from elisa.base.error import raise_elisa_settings_error
 
 if TYPE_CHECKING:
     from elisa.types import Number
@@ -51,20 +51,25 @@ def parse_tuple_interval(
     :type require_ordered: bool
     :returns: Tuple of two numbers (int or float).
     :rtype: tuple[int | float, int | float]
-    :raises ValueError: If the input is missing, not in the correct format, or not ordered when required.
+    :raises ElisaSettingsError: If the input is missing, not in the correct format, or not ordered when required.
     """
     if raw is None:
-        raise_value_error(f"{name}: missing value")
+        raise_elisa_settings_error(f"{name}: missing value")
 
+    if not isinstance(raw, str):
+        raise_elisa_settings_error(f"{name}: invalid format {raw!r}. Expected '(a, b)' with numbers.")
     m = _TUPLE_RE.match(raw)
     if not m:
-        raise_value_error(f"{name}: invalid format {raw!r}. Expected '(a, b)' with numbers.")
+        raise_elisa_settings_error(f"{name}: invalid format {raw!r}. Expected '(a, b)' with numbers.")
 
     a_token, b_token = m.group(1), m.group(2)
-    low = _parse_number(a_token)
-    high = _parse_number(b_token)
+    try:
+        low = _parse_number(a_token)
+        high = _parse_number(b_token)
+    except (ValueError, OverflowError) as exc:
+        raise_elisa_settings_error(f"{name}: invalid numbers in {raw!r}", exc)
 
     if require_ordered and low > high:
-        raise_value_error(f"{name}: low > high in {raw!r} ({low} > {high})")
+        raise_elisa_settings_error(f"{name}: low > high in {raw!r} ({low} > {high})")
 
     return low, high

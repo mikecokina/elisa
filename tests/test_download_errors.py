@@ -1,4 +1,4 @@
-"""Download and extraction failures use their own ELISA exception category."""
+"""Download and extraction failures use the ELISA settings exception category."""
 
 import io
 import tarfile
@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 import pytest
 import requests
 
-from elisa.base.error import ElisaDownloadError, ElisaError, raise_elisa_download_error
+from elisa.base.error import ElisaSettingsError, ElisaError, raise_elisa_settings_error
 from elisa.managers.download_manager import DownloadManager
 
 
@@ -23,10 +23,10 @@ def archive(tmp_path, member_name):
 
 
 def test_download_error_inheritance_and_helper_cause():
-    assert ElisaDownloadError.__bases__ == (ElisaError,)
+    assert ElisaSettingsError.__bases__ == (ElisaError,)
     cause = OSError("original failure")
-    with pytest.raises(ElisaDownloadError, match="download failed") as caught:
-        raise_elisa_download_error("download failed", cause)
+    with pytest.raises(ElisaSettingsError, match="download failed") as caught:
+        raise_elisa_settings_error("download failed", cause)
     assert caught.value.__cause__ is cause
 
 
@@ -34,7 +34,7 @@ def test_download_error_inheritance_and_helper_cause():
 def test_failed_head_has_download_category(status, tmp_path):
     with patch("elisa.managers.download_manager.requests.head", return_value=Mock(status_code=status)):
         with patch.object(DownloadManager, "handler") as handler:
-            with pytest.raises(ElisaDownloadError, match=f"Status Code: {status}"):
+            with pytest.raises(ElisaSettingsError, match=f"Status Code: {status}"):
                 DownloadManager.download_file("https://example.com/assets.tar", str(tmp_path / "download"))
     handler.assert_not_called()
 
@@ -43,14 +43,14 @@ def test_failed_head_has_download_category(status, tmp_path):
 def test_failed_get_has_download_category(status, tmp_path):
     destination = tmp_path / "download"
     with patch("elisa.managers.download_manager.requests.get", return_value=Mock(status_code=status)):
-        with pytest.raises(ElisaDownloadError, match=f"Status Code: {status}"):
+        with pytest.raises(ElisaSettingsError, match=f"Status Code: {status}"):
             DownloadManager.handler(None, "https://example.com/assets.tar", str(destination))
     assert not destination.exists()
 
 
 def test_unsafe_archive_has_download_category(tmp_path):
     path = archive(tmp_path, "../outside.txt")
-    with pytest.raises(ElisaDownloadError, match="Path Traversal"):
+    with pytest.raises(ElisaSettingsError, match="Path Traversal"):
         DownloadManager.extract(path, str(tmp_path / "destination"))
     assert not (tmp_path / "outside.txt").exists()
 
@@ -59,7 +59,7 @@ def test_invalid_archive_path_retains_the_original_cause(tmp_path):
     path = archive(tmp_path, "table.dat")
     cause = OSError("cannot resolve path")
     with patch.object(Path, "resolve", side_effect=cause):
-        with pytest.raises(ElisaDownloadError, match="Invalid member path table.dat") as caught:
+        with pytest.raises(ElisaSettingsError, match="Invalid member path table.dat") as caught:
             DownloadManager.extract(path, str(tmp_path / "destination"))
     assert caught.value.__cause__ is cause
 

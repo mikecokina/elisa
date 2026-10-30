@@ -51,8 +51,8 @@ class ElisaOperationInputError(ElisaError):
     """
 
 
-class ElisaDownloadError(ElisaError):
-    """Failed to download or extract ELISa assets."""
+class ElisaSettingsError(ElisaError):
+    """Invalid ELISA configuration or failure while preparing its supporting assets."""
 
 # ###
 
@@ -264,14 +264,14 @@ def raise_elisa_not_implemented_error(message: str, exc: Exception | None = None
     _raise_error(ElisaNotImplementedError, message, exc)
 
 
-def raise_elisa_download_error(message: str, exc: Exception | None = None) -> NoReturn:
-    """Raise ElisaDownloadError, preserving an optional original cause.
+def raise_elisa_settings_error(message: str, exc: Exception | None = None) -> NoReturn:
+    """Raise a settings or asset-setup failure, preserving an optional original cause.
 
-    :param message: Description of the download or extraction failure.
+    :param message: Description of the configuration or asset-setup failure.
     :param exc: Original exception, if any.
-    :raises ElisaDownloadError: Always raised with the provided message.
+    :raises ElisaSettingsError: Always raised with the provided message.
     """
-    _raise_error(ElisaDownloadError, message, exc)
+    _raise_error(ElisaSettingsError, message, exc)
 
 
 def raise_elisa_graphics_error(message: str, exc: Exception | None = None) -> NoReturn:

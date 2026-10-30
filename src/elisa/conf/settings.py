@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import warnings
 from configparser import ConfigParser
+from configparser import Error as ConfigParserError
 from contextlib import contextmanager
 from numbers import Integral, Real
 from pathlib import Path
@@ -11,7 +12,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 
-from elisa.base.error import raise_attribute_error, raise_value_error
+from elisa.base.error import raise_elisa_settings_error
 from elisa.conf.enums import IntersectionBackend, LoggingProfile, MeanAnomalySolver
 from elisa.conf.logconfig import configure_logging
 from elisa.conf.parsers import parse_tuple_interval
@@ -39,6 +40,14 @@ else:
     config_file = str(default_config)
     first_time_user = True
     SettingsManager.run()
+
+
+def _create_settings_directory(path: str | os.PathLike) -> None:
+    """Create a settings directory or expose an actionable configuration error."""
+    try:
+        Path(path).mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise_elisa_settings_error(f"Cannot create settings directory {path!s}: {exc}", exc)
 
 
 class _Const:
@@ -271,11 +280,11 @@ class Settings(_Const):
     def __setattr__(self, name: str, value: object) -> None:
         """Route public writes through the same transaction as configure()."""
         if name not in self._fields:
-            raise_attribute_error(f"{name} is not a mutable setting")
+            raise_elisa_settings_error(f"{name} is not a mutable setting")
         self.configure(**{name: value})
 
     def __delattr__(self, name: str) -> None:
-        raise_attribute_error(f"Settings attributes cannot be deleted: {name}")
+        raise_elisa_settings_error(f"Settings attributes cannot be deleted: {name}")
 
     def settings_serializer(self) -> dict:
         """Return an independent dictionary of the effective user settings."""
@@ -309,7 +318,7 @@ class Settings(_Const):
         """Configure logging independently of other Settings mutations.
 
         :param profile: ``default``, ``fit`` or a trusted custom JSON file path.
-        :raises ValueError: If the profile or logging policy is invalid.
+        :raises ElisaSettingsError: If the profile or logging policy is invalid.
         :returns: None.
         """
         self.configure(LOG_CONFIG=profile)
@@ -350,7 +359,10 @@ class Settings(_Const):
             return
 
         parser = ConfigParser()
-        parser.read(conf_path)
+        try:
+            parser.read(conf_path)
+        except (ConfigParserError, OSError, UnicodeError) as exc:
+            raise_elisa_settings_error(f"Cannot read settings file {conf_path!s}: {exc}", exc)
         self.update_config(parser)
 
     @contextmanager
@@ -377,13 +389,13 @@ class Settings(_Const):
         """
         unknown = kwargs.keys() - self._fields
         if unknown:
-            raise_value_error(f"Unknown or read-only setting(s): {', '.join(sorted(unknown))}")
+            raise_elisa_settings_error(f"Unknown or read-only setting(s): {', '.join(sorted(unknown))}")
         candidate = self.settings_serializer()
         candidate.update(kwargs)
         self._validate_candidate(candidate)
         candidate["ATLAS_TO_BASE_DIR"] = self._atlas_to_base_dir(candidate)
         if "HOME" in kwargs:
-            Path(candidate["HOME"]).mkdir(parents=True, exist_ok=True)
+            _create_settings_directory(candidate["HOME"])
         if "LOG_CONFIG" in kwargs:
             profile = candidate["LOG_CONFIG"]
             if profile == DefaultSettings.LOG_CONFIG and not Path(profile).is_file():
@@ -432,20 +444,20 @@ class Settings(_Const):
             elif isinstance(default, str):
                 valid = isinstance(value, str)
             if not valid:
-                raise_value_error(f"Invalid value for {name}: {value!r}")
+                raise_elisa_settings_error(f"Invalid value for {name}: {value!r}")
         if values["LIMB_DARKENING_LAW"] not in _Const.AVAILABLE_LD_LAWS:
-            raise_value_error(
+            raise_elisa_settings_error(
                 f"{values['LIMB_DARKENING_LAW']} is not valid name of limb darkening law. "
-                f"Available limb darkening laws are: {_Const.AVAILABLE_LD_LAWS}"
+                f"Available limb darkening laws are: {_Const.AVAILABLE_LD_LAWS}",
             )
         backends = tuple(backend.value for backend in IntersectionBackend)
         if values["INTERSECTION_BACKEND"] not in backends:
-            raise_value_error(f"INTERSECTION_BACKEND must be one of: {', '.join(backends)}")
+            raise_elisa_settings_error(f"INTERSECTION_BACKEND must be one of: {', '.join(backends)}")
         solvers = tuple(solver.value for solver in MeanAnomalySolver)
         if values["MEAN_ANOMALY_SOLVER"] not in solvers:
-            raise_value_error(f"MEAN_ANOMALY_SOLVER must be one of: {', '.join(solvers)}")
+            raise_elisa_settings_error(f"MEAN_ANOMALY_SOLVER must be one of: {', '.join(solvers)}")
         if values["NUMBER_OF_THREADS"] <= 0:
-            raise_value_error("Invalid value for `number_of_threads`, allowed >= 1")
+            raise_elisa_settings_error("Invalid value for `number_of_threads`, allowed >= 1")
         for name in ("NUMBER_OF_PROCESSES", "NUMBER_OF_MCMC_PROCESSES"):
             cores = os.cpu_count() or 1
             if values[name] > cores:
@@ -461,9 +473,9 @@ class Settings(_Const):
         :returns: None
         :rtype: None
         """
-        Path(self.HOME).mkdir(parents=True, exist_ok=True)
+        _create_settings_directory(self.HOME)
 
-    def update_config(self, parser: ConfigParser | None = None) -> None:  # noqa: C901, PLR0912, PLR0915
+    def update_config(self, parser: ConfigParser | None = None) -> None:
         """Update settings from the parsed configuration file.
 
         Reads all configuration sections (general, physics, computational, support)
@@ -472,6 +484,13 @@ class Settings(_Const):
         :returns: None
         :rtype: None
         """
+        try:
+            self._update_config(parser)
+        except (ConfigParserError, ValueError, TypeError) as exc:
+            raise_elisa_settings_error(f"Invalid INI settings: {exc}", exc)
+
+    def _update_config(self, parser: ConfigParser | None) -> None:  # noqa: C901, PLR0912, PLR0915
+        """Prepare INI values before publishing them in one transaction."""
         parser = c_parse if parser is None else parser
         candidate = SimpleNamespace(**self.settings_serializer())
         candidate.CUDA = False

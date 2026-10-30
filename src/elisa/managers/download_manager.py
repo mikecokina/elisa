@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import requests
 from tqdm import tqdm
 
-from elisa.base.error import raise_elisa_download_error
+from elisa.base.error import raise_elisa_settings_error
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -69,7 +69,7 @@ class DownloadManager:
         :type truncate_tarfile_path: str
         :returns: None
         :rtype: None
-        :raises ElisaDownloadError: If an archive member path is invalid or escapes the destination.
+        :raises ElisaSettingsError: If an archive member path is invalid or escapes the destination.
         """
 
         def truncate_members(_archive: tarfile.TarFile) -> Iterable[tarfile.TarInfo]:
@@ -94,11 +94,11 @@ class DownloadManager:
                     target_resolved = target.resolve()
                 except Exception as err:  # noqa: BLE001 - helper preserves the original cause
                     msg = f"Invalid member path {member.name}: {err}"
-                    raise_elisa_download_error(msg, err)
+                    raise_elisa_settings_error(msg, err)
 
                 if dest_path.resolve() not in target_resolved.parents and dest_path.resolve() != target_resolved:
                     msg = "Attempted Path Traversal in Tar File"
-                    raise_elisa_download_error(msg)
+                    raise_elisa_settings_error(msg)
 
                 if member.isdir():
                     target.mkdir(parents=True, exist_ok=True)
@@ -160,7 +160,7 @@ class DownloadManager:
         :type path: str
         :returns: None
         :rtype: None
-        :raises ElisaDownloadError: On HTTP errors during GET.
+        :raises ElisaSettingsError: On HTTP errors during GET.
         """
         headers = {}
         if file_size is not None and file_size > 0:
@@ -172,7 +172,7 @@ class DownloadManager:
 
         if r.status_code >= HTTP_ERROR_STATUS:
             msg = f"Failed to download file: {url} (Status Code: {r.status_code})"
-            raise_elisa_download_error(msg)
+            raise_elisa_settings_error(msg)
 
         # Handle decompression if needed
         r.raw.read = functools.partial(r.raw.read, decode_content=True)
@@ -202,14 +202,14 @@ class DownloadManager:
         :type path: str
         :returns: None
         :rtype: None
-        :raises ElisaDownloadError: When HEAD request fails or GET fails.
+        :raises ElisaSettingsError: When HEAD request fails or GET fails.
         """
         # Issue a HEAD request to resolve redirects and attempt to read content-length
         r = requests.head(url, allow_redirects=True, timeout=30)
 
         if r.status_code >= HTTP_ERROR_STATUS:
             msg = f"Failed to access URL: {url} (Status Code: {r.status_code})"
-            raise_elisa_download_error(msg)
+            raise_elisa_settings_error(msg)
 
         # Get the final URL after redirections
         final_url = r.url
