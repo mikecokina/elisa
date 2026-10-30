@@ -1,6 +1,6 @@
 """Named configuration, fitting and computation choices for ELISA."""
 
-from enum import Enum
+from enum import Enum, StrEnum
 
 
 class CurveType(Enum):
@@ -8,6 +8,13 @@ class CurveType(Enum):
 
     LC = "lc"
     RV = "rv"
+
+
+class RVMethod(StrEnum):
+    """Select RV computation while accepting existing string configuration values."""
+
+    KINEMATIC = "kinematic"
+    RADIOMETRIC = "radiometric"
 
 
 class MeanAnomalySolver(str, Enum):

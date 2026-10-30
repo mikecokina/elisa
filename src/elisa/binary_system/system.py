@@ -31,7 +31,7 @@ from elisa.binary_system.orbit import orbit
 from elisa.binary_system.surface import mesh
 from elisa.binary_system.surface.temperature import interpolate_albedo
 from elisa.binary_system.transform import BinarySystemProperties
-from elisa.conf.enums import CurveType
+from elisa.conf.enums import CurveType, RVMethod
 from elisa.logger import getLogger
 from elisa.opt.fsolver import fsolve
 
@@ -1584,10 +1584,10 @@ class BinarySystem(System[Star]):
         :rtype: dict[str, NDArray[numpy.float64]]
         :raises ValueError: If ``method`` is unknown.
         """
-        if kwargs["method"] == "kinematic":
+        if kwargs["method"] == RVMethod.KINEMATIC:
             return rv.kinematic_radial_velocity(self, **kwargs)
 
-        if kwargs["method"] == "radiometric":
+        if kwargs["method"] == RVMethod.RADIOMETRIC:
             curve_fn = c_router.resolve_curve_method(self, curve=CurveType.RV)
             rv_kwargs = rv_utils.include_passband_data_to_kwargs(**kwargs)
             return curve_fn(**rv_kwargs)

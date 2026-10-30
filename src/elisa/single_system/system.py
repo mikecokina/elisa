@@ -19,6 +19,7 @@ from elisa.base.error import (
 from elisa.base.star import Star
 from elisa.base.system import System
 from elisa.base.types import INT
+from elisa.conf.enums import RVMethod
 from elisa.logger import getLogger
 from elisa.opt.fsolver import fsolve
 from elisa.single_system import graphic, model
@@ -758,10 +759,10 @@ class SingleSystem(System[Star]):
             ``None`` when the requested ``method`` is not recognised.
         :rtype: dict[str, numpy.typing.NDArray[elisa.types.Float]] | None
         """
-        if kwargs["method"] == "kinematic":
+        if kwargs["method"] == RVMethod.KINEMATIC:
             return rv.com_radial_velocity(self, **kwargs)
 
-        if kwargs["method"] == "radiometric":
+        if kwargs["method"] == RVMethod.RADIOMETRIC:
             fn_arr = (
                 self._compute_rv_curve_without_pulsations,
                 self._compute_rv_curve_with_pulsations,
