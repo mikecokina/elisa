@@ -3,6 +3,13 @@
 from enum import Enum
 
 
+class CurveType(Enum):
+    """Select the observable routed by binary curve synthesis."""
+
+    LC = "lc"
+    RV = "rv"
+
+
 class MeanAnomalySolver(str, Enum):
     """Select the secant algorithm used for orbital mean anomalies."""
 

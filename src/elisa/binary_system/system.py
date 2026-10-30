@@ -31,6 +31,7 @@ from elisa.binary_system.orbit import orbit
 from elisa.binary_system.surface import mesh
 from elisa.binary_system.surface.temperature import interpolate_albedo
 from elisa.binary_system.transform import BinarySystemProperties
+from elisa.conf.enums import CurveType
 from elisa.logger import getLogger
 from elisa.opt.fsolver import fsolve
 
@@ -1550,7 +1551,7 @@ class BinarySystem(System[Star]):
         :return: Generated light curve data by passband.
         :rtype: dict[str, NDArray[numpy.float64]]
         """
-        curve_fn = c_router.resolve_curve_method(self, curve="lc")
+        curve_fn = c_router.resolve_curve_method(self, curve=CurveType.LC)
         return curve_fn(**kwargs)
 
     def _compute_circular_synchronous_lightcurve(self, **kwargs: Any) -> dict[str, NDArray[np.float64]]:
@@ -1587,7 +1588,7 @@ class BinarySystem(System[Star]):
             return rv.kinematic_radial_velocity(self, **kwargs)
 
         if kwargs["method"] == "radiometric":
-            curve_fn = c_router.resolve_curve_method(self, curve="rv")
+            curve_fn = c_router.resolve_curve_method(self, curve=CurveType.RV)
             rv_kwargs = rv_utils.include_passband_data_to_kwargs(**kwargs)
             return curve_fn(**rv_kwargs)
 
