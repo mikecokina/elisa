@@ -77,16 +77,12 @@ class OrbitProperties(TransformProperties):
             ``Float`` form.
         :rtype: Float
         """
-        value = quantity_transform(
+        return quantity_transform(
             value,
             u.DefaultBinarySystemUnits.system.argument_of_periastron,
             WHEN_FLOAT64,
             parameter="argument_of_periastron",
         )
-        if not np.isfinite(value):
-            message = "Nonfinite argument_of_periastron."
-            raise_elisa_parameters_error(message)
-        return value
 
     @staticmethod
     def inclination(value: Float) -> Float:
@@ -106,9 +102,6 @@ class OrbitProperties(TransformProperties):
             WHEN_FLOAT64,
             parameter="inclination",
         )
-        if not np.isfinite(value):
-            message = "Nonfinite inclination."
-            raise_elisa_parameters_error(message)
         if not 0 <= value <= const.PI:
             message = f"Inclination value of {value} is out of bounds (0, pi)."
             raise_elisa_parameters_error(message)

@@ -87,7 +87,6 @@ def test_mcmc_sampling_with_real_emcee(workers: int) -> None:
         fitable={"x": SimpleNamespace(sigma=None)},
         fixed={},
         normalization={"x": (0.0, 10.0)},
-        validate_physical_parameters=MCMCFit.validate_physical_parameters,
         generate_initial_states=MCMCFit.generate_initial_states,
         ln_probability=_probability,
         worker=MCMCMixin.worker,

@@ -49,9 +49,6 @@ class BinarySystemProperties(SystemProperties):
             DefaultBinarySystemInputUnits.system.argument_of_periastron,
             parameter="argument_of_periastron",
         )
-        if not np.isfinite(value):
-            msg = "Nonfinite argument_of_periastron."
-            raise_elisa_parameters_error(msg)
         if not 0 <= value <= const.FULL_ARC:
             value %= const.FULL_ARC
         return float(value)
@@ -80,17 +77,13 @@ class BinarySystemProperties(SystemProperties):
         :param value: Numeric value or astropy Quantity.
         :returns: Time of primary minimum as float.
         """
-        value = quantity_transform(
+        return quantity_transform(
             value,
             units.DefaultBinarySystemUnits.system.primary_minimum_time,
             WHEN_FLOAT64,
             units.DefaultBinarySystemInputUnits.system.primary_minimum_time,
             parameter="primary_minimum_time",
         )
-        if not np.isfinite(value):
-            msg = "Nonfinite primary_minimum_time."
-            raise_elisa_parameters_error(msg)
-        return value
 
     @classmethod
     def t0(cls, value: Any) -> float:
@@ -133,9 +126,6 @@ class RadialVelocityObserverProperties(SystemProperties):
         :returns: asini value as float.
         """
         value = quantity_transform(value, units.solRad, WHEN_FLOAT64, parameter="asini")
-        if not np.isfinite(value):
-            msg = "Nonfinite asini."
-            raise_elisa_parameters_error(msg)
         if value < 0:
             msg = "Value of `asini` cannot be negative."
             raise_elisa_parameters_error(msg)

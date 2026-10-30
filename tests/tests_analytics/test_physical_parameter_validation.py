@@ -1,44 +1,58 @@
-"""Shared physical scales at LC/RV setup and proposal rejection boundaries."""
+"""Candidate models own physical validation; fitters do not rescan their inputs."""
 
 from __future__ import annotations
 
-from collections.abc import Iterator
-from typing import Any
 from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
-from numpy.typing import NDArray
 
 from elisa import const
 from elisa.analytics.binary_fit import least_squares, mcmc
-from elisa.analytics.binary_fit.shared import AbstractFit, AbstractLCFit
-from elisa.analytics.models import rv
+from elisa.analytics.binary_fit.shared import AbstractLCFit
+from elisa.analytics.models import lc, rv
 from elisa.analytics.params import parameters as p
-from elisa.base.error import PhysicalStateError
+from elisa.base.error import ElisaInitialParametersError, ElisaParametersError
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
+from elisa.binary_system.transform import RadialVelocityObserverProperties
 from tests.tests_analytics.fitting_helpers import V, lc_parameters, make_lc, normalized, rv_problem
 
 
 @pytest.fixture(params=[
-    least_squares.DetachedLightCurveFit,
-    mcmc.DetachedLightCurveFit,
-    least_squares.CentralRadialVelocity,
-    mcmc.CentralRadialVelocity,
+    least_squares.DetachedLightCurveFit, mcmc.DetachedLightCurveFit,
+    least_squares.CentralRadialVelocity, mcmc.CentralRadialVelocity,
 ])
-def fitting_problem(request: pytest.FixtureRequest) -> tuple[AbstractFit, dict[str, Any], dict[str, Any]]:
+def fitting_problem(request, monkeypatch):
     fit = request.param()
     if isinstance(fit, AbstractLCFit):
         config, _ = lc_parameters()
         data = {V: make_lc(errors=np.full(3, 0.1))}
+
+        def synthesis(phases, discretization, observer, **kwargs):
+            # Keep real serialization, community conversion, constructors and
+            # property validation; only skip the surface/table curve calculation.
+            lc.prepare_binary(discretization=discretization, **kwargs)
+            return {V: np.ones(len(phases))}
+
+        spy = Mock(side_effect=synthesis)
+        monkeypatch.setattr(lc, "synthetic_binary", spy)
+        original_predict = AbstractLCFit.predict_light_curves
+
+        def predict(self, model_parameters, **kwargs):
+            kwargs.setdefault("synthesis", spy)
+            return original_predict(self, model_parameters, **kwargs)
+
+        monkeypatch.setattr(AbstractLCFit, "predict_light_curves", predict)
     else:
         config, data = rv_problem()
-    return fit, config, data
+        spy = Mock(wraps=rv.central_rv_synthetic)
+        monkeypatch.setattr(rv, "central_rv_synthetic", spy)
+    return fit, config, data, spy
 
 
-def prepare_fit(fit: AbstractFit, config: dict[str, Any], data: dict[str, Any]) -> None:
+def prepare_fit(fit, config, data):
     initial = p.BinaryInitialParameters(**config)
     if isinstance(fit, AbstractLCFit):
         fit.set_up(
@@ -51,35 +65,21 @@ def prepare_fit(fit: AbstractFit, config: dict[str, Any], data: dict[str, Any]) 
         fit.prepare_priors()
 
 
-def evaluate(fit: AbstractFit, vector: NDArray[np.float64]) -> float | NDArray[np.float64]:
+def evaluate(fit, vector):
     if isinstance(fit, mcmc.MCMCFit):
-        return float(fit.ln_probability(vector))
+        return fit.ln_probability(vector)
     if isinstance(fit, least_squares.LightCurveFit):
         return fit.model_to_fit(vector)
-    assert isinstance(fit, least_squares.CentralRadialVelocity)
     return fit.central_rv_model_to_fit(vector)
 
 
-@pytest.fixture
-def synthesis_spy(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[Mock, Mock]]:
-    # Track real RV synthesis; LC predictions avoid mesh/table work.
-    with patch.object(rv, "central_rv_synthetic", wraps=rv.central_rv_synthetic) as rv_spy:
-        lc_spy = Mock(return_value={V: np.ones(3)})
-        monkeypatch.setattr(AbstractLCFit, "predict_light_curves", lc_spy)
-        yield rv_spy, lc_spy
-
-
-def assert_evaluation(fit: AbstractFit, vector: NDArray[np.float64], *, valid: bool) -> None:
+def assert_evaluation(fit, vector, *, valid):
     actual = evaluate(fit, vector)
     if isinstance(fit, mcmc.MCMCFit):
-        if valid:
-            assert np.isfinite(actual)
-        else:
-            assert actual == -np.inf
+        assert np.isfinite(actual) if valid else actual == -np.inf
     else:
         count = sum(fit.num_of_points.values())
         penalty = np.full(count, np.sqrt(const.MAX_USABLE_FLOAT / count))
-        assert isinstance(actual, np.ndarray)
         assert actual.shape == (count,)
         assert np.all(np.isfinite(actual))
         if valid:
@@ -90,104 +90,98 @@ def assert_evaluation(fit: AbstractFit, vector: NDArray[np.float64], *, valid: b
 
 
 @pytest.mark.parametrize("period", [-3.0, 0.0, np.nan, np.inf, -np.inf])
-def test_invalid_fixed_period_aborts_before_optimizer(fitting_problem, period: float) -> None:
-    fit, config, data = fitting_problem
-    initial = p.BinaryInitialParameters(**config)
-    # Bypass property conversion to retain coverage of the fitting setup guard.
-    initial.period.value = period
-    error_type = PhysicalStateError if np.isfinite(period) else FloatingPointError
-    solver = (
-        patch.object(fit, "_fit") if isinstance(fit, mcmc.MCMCFit)
-        else patch.object(least_squares, "least_squares")
-    )
-    with solver as optimizer, pytest.raises(error_type, match="period"):
-        fit.fit(data=data, x0=initial)
-    optimizer.assert_not_called()
+def test_invalid_fixed_period_is_rejected_in_the_initial_definition(fitting_problem, period):
+    _, config, _, synthesis = fitting_problem
+    config["system"]["period"] = {"value": period, "fixed": True}
+    with pytest.raises(ElisaInitialParametersError, match="period"):
+        p.BinaryInitialParameters(**config)
+    synthesis.assert_not_called()
 
 
-def test_free_period_candidates_reject_and_recover(fitting_problem, synthesis_spy) -> None:
-    fit, config, data = fitting_problem
+def test_free_period_candidates_reject_and_recover_at_the_model_boundary(fitting_problem):
+    fit, config, data, synthesis = fitting_problem
     config["system"]["period"] = {"value": 3.0, "fixed": False, "min": 1.0, "max": 4.0}
     prepare_fit(fit, config, data)
-    # Invalid bounds are rejected by Properties; widen only this internal map
-    # to exercise the callbacks' independent physical validation boundary.
+    # Widen the internal normalization only to exercise invalid optimizer values.
     fit.normalization["system@period"] = (-4.0, 4.0)
     if isinstance(fit, mcmc.MCMCFit):
         fit.prepare_priors()
     vector = normalized(fit)
     index = list(fit.fitable).index("system@period")
-    synthesis = synthesis_spy[1 if isinstance(fit, AbstractLCFit) else 0]
     for period in (3.0, -3.0, 0.0, 2.0):
         vector[index] = p.normalize_value(period, *fit.normalization["system@period"])
         synthesis.reset_mock()
         assert_evaluation(fit, vector, valid=period > 0)
-        assert synthesis.call_count == int(period > 0)
+        # Synthesis enters the real model constructor; there is no fitter precheck.
+        synthesis.assert_called_once()
 
 
-def test_constrained_period_candidates_reject_and_recover(fitting_problem, synthesis_spy) -> None:
-    fit, config, data = fitting_problem
-    is_lc = isinstance(fit, AbstractLCFit)
-    dependency, centre = ("inclination", 85.0) if is_lc else ("asini", 9.0)
-    config["system"]["period"] = {"constraint": f"system@{dependency} - {centre}"}
+@pytest.mark.parametrize("expression", ["-1", "0", "1e309", "-1e309", "log(-1)", "3"])
+def test_constrained_period_is_validated_by_the_candidate_model(fitting_problem, expression):
+    fit, config, data, synthesis = fitting_problem
+    config["system"]["period"] = {"constraint": expression}
+    with np.errstate(invalid="ignore"):
+        prepare_fit(fit, config, data)
+    with np.errstate(invalid="ignore"):
+        assert_evaluation(fit, normalized(fit), valid=expression == "3")
+    synthesis.assert_called_once()
+
+
+def test_unexpected_constraint_arithmetic_keeps_the_fitter_failure_policy(fitting_problem):
+    fit, config, data, synthesis = fitting_problem
+    config["system"]["period"] = {"constraint": "3"}
     prepare_fit(fit, config, data)
-    vector = normalized(fit)
-    key = f"system@{dependency}"
-    index = list(fit.fitable).index(key)
-    synthesis = synthesis_spy[1 if is_lc else 0]
-    for period in (0.5, -0.5, 0.0, 1.0):
-        vector[index] = p.normalize_value(centre + period, *fit.normalization[key])
-        synthesis.reset_mock()
-        assert_evaluation(fit, vector, valid=period > 0)
-        assert synthesis.call_count == int(period > 0)
-        if period > 0:
-            supplied = synthesis.call_args.args[0] if is_lc else synthesis.call_args.kwargs
-            assert supplied["system@period"] == period
-
-
-@pytest.mark.parametrize("expression", ["1e309", "-1e309", "log(-1)"])
-def test_nonfinite_constrained_period_propagates(fitting_problem, synthesis_spy, expression: str) -> None:
-    fit, config, data = fitting_problem
-    config["system"]["period"] = {"constraint": "3.0"}
-    prepare_fit(fit, config, data)
-    fit.constrained["system@period"].constraint = expression
-    synthesis = synthesis_spy[1 if isinstance(fit, AbstractLCFit) else 0]
-    with np.errstate(invalid="ignore"), pytest.raises(FloatingPointError, match="Nonfinite physical parameter"):
-        evaluate(fit, normalized(fit))
+    fit.constrained["system@period"].constraint = "1/0"
+    if isinstance(fit, mcmc.MCMCFit):
+        assert fit.ln_probability(normalized(fit)) == -np.inf
+    else:
+        with pytest.raises(ZeroDivisionError):
+            evaluate(fit, normalized(fit))
     synthesis.assert_not_called()
 
 
-def test_unexpected_constraint_arithmetic_propagates(fitting_problem, synthesis_spy) -> None:
-    fit, config, data = fitting_problem
-    config["system"]["period"] = {"constraint": "3.0"}
+@pytest.mark.parametrize("fit_class", [least_squares.CentralRadialVelocity, mcmc.CentralRadialVelocity])
+@pytest.mark.parametrize("constrained", [False, True])
+def test_asini_is_validated_once_per_rv_candidate(fit_class, constrained):
+    config, data = rv_problem()
+    if constrained:
+        config["system"]["asini"] = {"constraint": "system@gamma / 1000"}
+    fit = fit_class()
     prepare_fit(fit, config, data)
-    fit.constrained["system@period"].constraint = "1/0"
-    with pytest.raises(ZeroDivisionError):
-        evaluate(fit, normalized(fit))
-    for synthesis in synthesis_spy:
-        synthesis.assert_not_called()
+    with patch.object(RadialVelocityObserverProperties, "asini", wraps=RadialVelocityObserverProperties.asini) as validator:
+        assert_evaluation(fit, normalized(fit), valid=True)
+    validator.assert_called_once()
 
 
-@pytest.mark.parametrize("key", [
-    "system@period", "system@mass_ratio", "system@semi_major_axis",
-    "primary@mass", "secondary@mass", "primary@t_eff", "secondary@t_eff",
+@pytest.mark.parametrize("fit_class", [least_squares.CentralRadialVelocity, mcmc.CentralRadialVelocity])
+@pytest.mark.parametrize("parameter,expression", [
+    ("asini", "-1"), ("asini", "1e309"),
+    ("mass_ratio", "-1"), ("mass_ratio", "1e309"),
+    ("eccentricity", "1"), ("eccentricity", "-1e309"),
 ])
-def test_shared_positive_scale_boundaries(key: str) -> None:
-    for value in (-1.0, 0.0):
-        with pytest.raises(PhysicalStateError):
-            AbstractFit.validate_physical_parameters({key: value})
-    AbstractFit.validate_physical_parameters({key: np.nextafter(0.0, 1.0)})
-    for value in (np.nan, np.inf, -np.inf):
-        with pytest.raises(FloatingPointError) as caught:
-            AbstractFit.validate_physical_parameters({key: value})
-        assert type(caught.value) is FloatingPointError
+def test_invalid_community_constraints_are_rejected_without_a_fitter_scan(fit_class, parameter, expression):
+    config, data = rv_problem()
+    config["system"][parameter] = {"constraint": expression}
+    fit = fit_class()
+    prepare_fit(fit, config, data)
+    assert_evaluation(fit, normalized(fit), valid=False)
+    # Direct synthesis still exposes the model's own exception category.
+    physical = p.prepare_properties_set(fit.initial_vector, fit.fitable, fit.constrained, fit.fixed)
+    with pytest.raises(ElisaParametersError, match=parameter):
+        rv.central_rv_synthetic(fit.x_data_reduced, fit.observer, **physical)
 
 
-def test_shared_eccentricity_and_unrelated_parameters_keep_existing_rules() -> None:
-    for value in (0.0, np.nextafter(1.0, 0.0)):
-        AbstractFit.validate_physical_parameters({"system@eccentricity": value})
-    for value in (-np.finfo(float).eps, 1.0):
-        with pytest.raises(PhysicalStateError):
-            AbstractFit.validate_physical_parameters({"system@eccentricity": value})
-    AbstractFit.validate_physical_parameters({
-        "primary@surface_potential": -1.0, "primary@synchronicity": 0.0, "system@gamma": np.nan,
-    })
+@pytest.mark.parametrize("fitting_problem", [
+    least_squares.DetachedLightCurveFit, mcmc.DetachedLightCurveFit,
+], indirect=True)
+@pytest.mark.parametrize("parameter,expression", [
+    ("t_eff", "-1"), ("t_eff", "1e309"), ("t_eff", "log(-1)"),
+    ("surface_potential", "-1"), ("surface_potential", "1e309"),
+])
+def test_invalid_component_constraints_are_rejected_by_star_properties(fitting_problem, parameter, expression):
+    fit, config, data, synthesis = fitting_problem
+    config["secondary"][parameter] = {"constraint": expression}
+    with np.errstate(invalid="ignore"):
+        prepare_fit(fit, config, data)
+        assert_evaluation(fit, normalized(fit), valid=False)
+    synthesis.assert_called_once()

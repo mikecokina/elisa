@@ -16,13 +16,17 @@ from typing import TYPE_CHECKING
 from elisa import settings
 from elisa.base.error import (
     ElisaFloatingPointError,
+    ElisaParametersError,
     ElisaSynthesisError,
     MaxIterationError,
 )
 from elisa.logger import getPersistentLogger
 
+# Candidate models validate their own parameters. Those domain failures
+# reject LSQ proposals just like synthesis failures; setup remains outside callbacks.
 # Numerical markers retain their legacy inheritance and remain explicit here.
 SYNTHESIS_FAILURES = (
+    ElisaParametersError,
     ElisaSynthesisError,
     MaxIterationError,
     ElisaFloatingPointError,

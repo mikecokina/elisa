@@ -4,11 +4,9 @@ from __future__ import annotations
 
 from copy import deepcopy
 from typing import Any
-from unittest.mock import Mock
 
 import numpy as np
 import pytest
-from jsonschema import ValidationError
 from numpy.testing import assert_array_equal
 from numpy.typing import NDArray
 
@@ -18,9 +16,10 @@ from elisa.analytics.binary_fit import least_squares, mcmc
 from elisa.analytics.binary_fit.shared import AbstractFit, AbstractLCFit, AbstractRVFit
 from elisa.analytics.models import lc, rv
 from elisa.analytics.params.parameters import BinaryInitialParameters
-from elisa.base.error import PhysicalStateError
+from elisa.base.error import ElisaInitialParametersError, ElisaParametersError
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
+from elisa.binary_system.transform import RadialVelocityObserverProperties
 from elisa.observer.observer import Observer
 from tests.tests_analytics.fitting_helpers import V, lc_parameters, normalized, physical, rv_problem
 
@@ -39,10 +38,10 @@ NONFINITE_CONSTRAINTS = [
     pytest.param("period", "1e309", id="infinite-period"),
 ]
 INVALID_ASINI = [
-    pytest.param(-1.0, PhysicalStateError, id="negative-asini"),
-    pytest.param(np.nan, FloatingPointError, id="nan-asini"),
-    pytest.param(np.inf, FloatingPointError, id="positive-infinite-asini"),
-    pytest.param(-np.inf, FloatingPointError, id="negative-infinite-asini"),
+    pytest.param(-1.0, ElisaParametersError, id="negative-asini"),
+    pytest.param(np.nan, ElisaParametersError, id="nan-asini"),
+    pytest.param(np.inf, ElisaParametersError, id="positive-infinite-asini"),
+    pytest.param(-np.inf, ElisaParametersError, id="negative-infinite-asini"),
 ]
 
 
@@ -130,8 +129,6 @@ def lc_model_fit(
     config, data = lc_inputs
     prepare_lc_fit(lc_fit, config, data)
     monkeypatch.setattr(lc, "synthetic_binary", construct_binary_without_surface_synthesis)
-    # Isolate the model checks: the fitting guard must not hide a broken constructor.
-    monkeypatch.setattr(lc_fit, "validate_current_physical_parameters", Mock(return_value=None))
     return lc_fit
 
 
@@ -149,8 +146,6 @@ def rv_model_fit(
         dataset.x_data = 2450000.0 + 3 * dataset.x_data
         dataset.x_unit = u.d
     prepare_rv_fit(rv_fit, config, data)
-    # RV synthesis stays real; only its duplicate fitting guard is bypassed.
-    monkeypatch.setattr(rv_fit, "validate_current_physical_parameters", Mock(return_value=None))
     return rv_fit
 
 
@@ -194,27 +189,23 @@ def test_rv_model_physical_failure_preserves_candidate_rejection(
 
 
 @pytest.mark.parametrize(("parameter", "constraint"), NONFINITE_CONSTRAINTS)
-def test_lc_model_numerical_failure_propagates(
+def test_lc_model_nonfinite_parameter_rejects_candidate(
     lc_model_fit: AbstractLCFit, parameter: str, constraint: str,
 ) -> None:
     lc_model_fit.constrained[f"system@{parameter}"].constraint = constraint
 
-    with np.errstate(invalid="ignore"), pytest.raises(FloatingPointError) as caught:
-        evaluate_candidate(lc_model_fit)
-
-    assert type(caught.value) is FloatingPointError
+    with np.errstate(invalid="ignore"):
+        assert_physical_rejection(lc_model_fit)
 
 
 @pytest.mark.parametrize(("parameter", "constraint"), NONFINITE_CONSTRAINTS)
-def test_rv_model_numerical_failure_propagates(
+def test_rv_model_nonfinite_parameter_rejects_candidate(
     rv_model_fit: AbstractRVFit, parameter: str, constraint: str,
 ) -> None:
     rv_model_fit.constrained[f"system@{parameter}"].constraint = constraint
 
-    with np.errstate(invalid="ignore"), pytest.raises(FloatingPointError) as caught:
-        evaluate_candidate(rv_model_fit)
-
-    assert type(caught.value) is FloatingPointError
+    with np.errstate(invalid="ignore"):
+        assert_physical_rejection(rv_model_fit)
 
 
 @pytest.mark.parametrize(
@@ -250,7 +241,7 @@ def test_zero_asini_is_accepted_and_produces_constant_systemic_velocities(
 
 @pytest.mark.parametrize("fixed", [True, False], ids=["fixed", "free"])
 @pytest.mark.parametrize(("asini", "expected_error"), INVALID_ASINI)
-def test_invalid_asini_metadata_uses_the_model_exception_type(
+def test_invalid_asini_metadata_uses_the_initial_exception_type(
     rv_inputs: tuple[dict[str, Any], dict[str, RVData]],
     fixed: bool,
     asini: float,
@@ -259,24 +250,24 @@ def test_invalid_asini_metadata_uses_the_model_exception_type(
     config, _ = rv_inputs
     config["system"]["asini"] = {"value": asini, "fixed": fixed, "min": 0.0, "max": 10.0}
 
-    with pytest.raises(expected_error) as caught:
+    with pytest.raises(ElisaInitialParametersError) as caught:
         BinaryInitialParameters(**config)
 
-    assert type(caught.value) is expected_error
+    assert type(caught.value.__cause__) is expected_error
 
 
 @pytest.mark.parametrize(("asini", "expected_error"), INVALID_ASINI)
-def test_fitting_asini_guard_preserves_physical_and_numerical_error_types(
+def test_model_asini_validator_exposes_the_model_exception_type(
     asini: float, expected_error: type[Exception],
 ) -> None:
     with pytest.raises(expected_error) as caught:
-        AbstractFit.validate_physical_parameters({"system@asini": asini})
+        RadialVelocityObserverProperties.asini(asini)
 
     assert type(caught.value) is expected_error
 
 
-def test_fitting_asini_guard_accepts_zero() -> None:
-    AbstractFit.validate_physical_parameters({"system@asini": 0.0})
+def test_model_asini_validator_accepts_zero() -> None:
+    assert RadialVelocityObserverProperties.asini(0.0) == 0.0
 
 
 def test_negative_constrained_asini_is_a_physical_rejection(
@@ -297,17 +288,15 @@ def test_negative_constrained_asini_is_a_physical_rejection(
         pytest.param("log(-1)", id="nan-asini"),
     ],
 )
-def test_nonfinite_constrained_asini_propagates_a_native_numerical_error(
+def test_nonfinite_constrained_asini_rejects_candidate(
     rv_fit: AbstractRVFit, rv_inputs: tuple[dict[str, Any], dict[str, RVData]], constraint: str,
 ) -> None:
     config, data = rv_inputs
     config["system"]["asini"] = {"constraint": constraint}
     prepare_rv_fit(rv_fit, config, data)
 
-    with np.errstate(invalid="ignore"), pytest.raises(FloatingPointError) as caught:
-        evaluate_candidate(rv_fit)
-
-    assert type(caught.value) is FloatingPointError
+    with np.errstate(invalid="ignore"):
+        assert_physical_rejection(rv_fit)
 
 
 def test_lc_input_validation_rejects_a_constrained_mass_that_conversion_would_overwrite(
@@ -315,5 +304,5 @@ def test_lc_input_validation_rejects_a_constrained_mass_that_conversion_would_ov
 ) -> None:
     config, data = lc_inputs
     config["primary"]["mass"] = {"constraint": "-1"}
-    with pytest.raises(ValidationError, match="LC parameters must use either"):
+    with pytest.raises(ElisaInitialParametersError, match="LC parameters must use either"):
         prepare_lc_fit(lc_fit, config, data)

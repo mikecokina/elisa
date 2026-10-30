@@ -269,7 +269,6 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
             self.constrained,
             self.fixed,
         )
-        self.validate_current_physical_parameters(kwargs)
         return xn_renorm, kwargs
 
     def _fit(

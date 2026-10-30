@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import numpy as np
-
 from elisa import const as c
 from elisa import units as u
 from elisa.base.error import raise_elisa_parameters_error
@@ -79,7 +77,7 @@ class PulsationModeProperties(SystemProperties):
         retval = quantity_transform(
             value, u.VELOCITY_UNIT, (int, INT, float, FLOAT), parameter="amplitude",
         )
-        if not np.isfinite(retval) or retval < 0:
+        if retval < 0:
             error_msg = "Temperature amplitude of mode has to be non-negative number."
             raise_elisa_parameters_error(error_msg)
 
@@ -106,7 +104,7 @@ class PulsationModeProperties(SystemProperties):
             u.DefaultPulsationsInputUnits.frequency,
             parameter="frequency",
         )
-        if not np.isfinite(retval) or retval < 0:
+        if retval < 0:
             error_msg = "Frequency of the mode has to be non-negative number."
             raise_elisa_parameters_error(error_msg)
 
@@ -171,17 +169,13 @@ class PulsationModeProperties(SystemProperties):
         :returns: Validated azimuthal angle in radians.
         :rtype: float
         """
-        retval = deg_transform(
+        return deg_transform(
             value,
             u.DefaultPulsationsUnits.mode_axis_phi,
             WHEN_FLOAT64,
             u.DefaultPulsationsInputUnits.mode_axis_phi,
             parameter="mode_axis_phi",
         )
-        if not np.isfinite(retval):
-            error_msg = "Value of `mode_axis_phi` must be finite."
-            raise_elisa_parameters_error(error_msg)
-        return retval
 
     @staticmethod
     def temperature_perturbation_phase_shift(

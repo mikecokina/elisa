@@ -2,11 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import numpy as np
-
 from elisa import const
 from elisa import units as u
-from elisa.base.error import ElisaValidationError
+from elisa.base.error import raise_elisa_parameters_error
 from elisa.base.transform import WHEN_FLOAT64, SystemProperties, TransformProperties, quantity_transform
 
 if TYPE_CHECKING:
@@ -50,7 +48,5 @@ class OrbitProperties(TransformProperties):
         )
         if not 0 <= value <= const.PI:
             msg = f"Inclination value of {value} is out of bounds (0, pi)."
-            raise ElisaValidationError(msg)
-        if not np.isfinite(value):
-            raise ElisaValidationError("Nonfinite inclination.")
+            raise_elisa_parameters_error(msg)
         return value

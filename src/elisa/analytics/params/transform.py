@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from functools import partial
+from math import isfinite
 from typing import TYPE_CHECKING, Any, TypeVar
 
 import numpy as np
@@ -40,7 +41,7 @@ def _convert_initial_parameter_value(value: Any, unit: Any, parameter: str) -> F
 
     Quantities and quantity strings are converted to ``unit``; bare numbers
     are already expressed in the initial-parameter unit and are only cast to
-    float64. Conversion failures raise ElisaInitialParametersError with the
+    finite float64. Conversion failures raise ElisaInitialParametersError with the
     original cause. Candidate model validation uses model validators.
     """
     if not isinstance(value, (u.Quantity, str, *WHEN_FLOAT64)):
@@ -52,13 +53,20 @@ def _convert_initial_parameter_value(value: Any, unit: Any, parameter: str) -> F
     try:
         if isinstance(value, (u.Quantity, str)):
             quantity = u.Quantity(value) if isinstance(value, str) else value
-            converted = np.float64(quantity.to(unit))
+            if not quantity.isscalar:
+                message = f"Initial parameter `{parameter}` must be a scalar quantity."
+                raise_elisa_initial_parameters_error(message)
+            converted = quantity.to_value(unit)
         else:
             converted = np.float64(value)
-        return np.float64(float(converted))
+        converted = np.float64(float(converted))
     except (TypeError, ValueError, ArithmeticError) as exc:
         message = f"Cannot convert initial parameter `{parameter}` to unit `{unit}`."
         raise_elisa_initial_parameters_error(message, exc)
+    if not isfinite(converted):
+        message = f"Nonfinite initial parameter `{parameter}` after conversion to unit `{unit}`."
+        raise_elisa_initial_parameters_error(message)
+    return converted
 
 
 def angular(value: Float | Quantity | str, *, parameter: str = "angle") -> Float:
@@ -99,9 +107,6 @@ class BinaryInitialProperties(TransformProperties):
         :raises ElisaInitialParametersError: If the converted value is nonfinite.
         """
         value = _convert_initial_parameter_value(value, u.solRad, "semi_major_axis")
-        if not np.isfinite(value):
-            error_msg = "Nonfinite semi_major_axis."
-            raise_elisa_initial_parameters_error(error_msg)
         if value <= 0:
             error_msg = "Invalid value of semi_major_axis, use value > 0!"
             raise_elisa_initial_parameters_error(error_msg)
@@ -120,9 +125,6 @@ class BinaryInitialProperties(TransformProperties):
         :raises ElisaInitialParametersError: If the converted value is nonfinite.
         """
         value = _convert_initial_parameter_value(value, conf.DEFAULT_FLOAT_MASS_UNIT, "mass")
-        if not np.isfinite(value):
-            error_msg = "Nonfinite mass."
-            raise_elisa_initial_parameters_error(error_msg)
         if value <= 0:
             error_msg = "Invalid mass, use value > 0!"
             raise_elisa_initial_parameters_error(error_msg)
@@ -173,15 +175,9 @@ class NuisanceInitialProperties(TransformProperties):
     """Handler for unit conversion of nuisance fit parameters."""
 
     @staticmethod
-    def ln_f(value: Float) -> Float:
-        """Identity transformation for ln_f nuisance parameter.
-
-        :param value: Nuisance parameter value.
-        :type value: float
-        :returns: Unchanged parameter value.
-        :rtype: float
-        """
-        return value
+    def ln_f(value: Float | Quantity | str) -> Float:
+        """Validate a finite dimensionless noise parameter without imposing bounds."""
+        return _convert_initial_parameter_value(value, u.dimensionless_unscaled, "ln_f")
 
 
 class PulsationModeInitialProperties(PulsationModeProperties):

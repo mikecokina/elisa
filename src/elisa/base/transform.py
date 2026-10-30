@@ -144,9 +144,9 @@ def quantity_transform(
     *,
     parameter: str = "value",
 ) -> Float:
-    """Transform a value into a floating-point value expressed in ``unit``.
+    """Transform a scalar into a finite floating-point value expressed in ``unit``.
 
-    Accepts plain numbers, numpy scalars/arrays, astropy.Quantity or a
+    Accepts plain numbers, supported NumPy scalars, scalar astropy.Quantity or a
     string representation of a quantity. If the input has no attached
     units and ``default_input_unit`` is provided, the numeric value is
     interpreted using that unit before conversion.
@@ -159,12 +159,15 @@ def quantity_transform(
     :param parameter: Parameter name included in conversion errors.
     :returns: Value converted to ``unit`` as Python float.
     :rtype: float
-    :raises ElisaParametersError: If parsing, scalar conversion or unit conversion fails.
+    :raises ElisaParametersError: If the shape, parsing, unit conversion or finite representation is invalid.
     """
     try:
         if isinstance(value, (u.Quantity, str)):
             value = u.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(unit))
+            if not value.isscalar:
+                message = f"Parameter `{parameter}` must be a scalar quantity."
+                raise_elisa_parameters_error(message)
+            value = value.to_value(unit)
         elif isinstance(value, when_float64):
             if default_input_unit is None:
                 value = np.float64(value)
@@ -177,10 +180,15 @@ def quantity_transform(
                 "astropy.unit.quantity.Quantity instance (or its string representation)."
             )
             raise_elisa_parameters_error(msg)
-        return float(value)
+        value = float(value)
     except (TypeError, ValueError, ArithmeticError) as exc:
         message = f"Cannot convert parameter `{parameter}` to unit `{unit}`."
         raise_elisa_parameters_error(message, exc)
+    # Every caller receives a finite scalar; physical ranges stay in properties.
+    if not isfinite(value):
+        message = f"Nonfinite {parameter} after conversion to unit `{unit}`."
+        raise_elisa_parameters_error(message)
+    return value
 
 
 def deg_transform(
@@ -191,7 +199,7 @@ def deg_transform(
     *,
     parameter: str = "value",
 ) -> Float:
-    """Transform an angular value into ``unit`` and return as float.
+    """Transform a scalar angle into ``unit`` and return a finite float.
 
     Similar to :func:`quantity_transform` but uses multiplicative
     conversion for plain numeric inputs.
@@ -203,12 +211,15 @@ def deg_transform(
     :param parameter: Parameter name included in conversion errors.
     :returns: Converted value in ``unit`` as float.
     :rtype: float
-    :raises ElisaParametersError: If parsing, scalar conversion or unit conversion fails.
+    :raises ElisaParametersError: If the shape, parsing, unit conversion or finite representation is invalid.
     """
     try:
         if isinstance(value, (u.Quantity, str)):
             value = u.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(unit))
+            if not value.isscalar:
+                message = f"Parameter `{parameter}` must be a scalar quantity."
+                raise_elisa_parameters_error(message)
+            value = value.to_value(unit)
         elif isinstance(value, when_float64):
             value = np.float64(value) * default_input_unit.to(unit)
         else:
@@ -217,10 +228,15 @@ def deg_transform(
                 "nor astropy.unit.quantity.Quantity instance (or its string representation)."
             )
             raise_elisa_parameters_error(msg)
-        return float(value)
+        value = float(value)
     except (TypeError, ValueError, ArithmeticError) as exc:
         message = f"Cannot convert parameter `{parameter}` to unit `{unit}`."
         raise_elisa_parameters_error(message, exc)
+    # Every caller receives a finite scalar; physical ranges stay in properties.
+    if not isfinite(value):
+        message = f"Nonfinite {parameter} after conversion to unit `{unit}`."
+        raise_elisa_parameters_error(message)
+    return value
 
 
 class TransformProperties:
@@ -260,9 +276,6 @@ class SystemProperties(TransformProperties):
             parameter="inclination",
         )
 
-        if not np.isfinite(value):
-            msg = "Nonfinite inclination."
-            raise_elisa_parameters_error(msg)
         if not 0 <= value <= const.PI:
             msg = f"Inclination value of {value} is out of bounds (0, pi)."
             raise_elisa_parameters_error(msg)
@@ -284,9 +297,6 @@ class SystemProperties(TransformProperties):
             u.DefaultSystemInputUnits.period,
             parameter="period",
         )
-        if not np.isfinite(value):
-            msg = "Nonfinite orbital period."
-            raise_elisa_parameters_error(msg)
         if value <= 0:
             msg = "Invalid orbital period, use value > 0!"
             raise_elisa_parameters_error(msg)
@@ -298,17 +308,13 @@ class SystemProperties(TransformProperties):
 
         Accepts numeric values or :class:`astropy.units.Quantity` instances.
         """
-        value = quantity_transform(
+        return quantity_transform(
             value,
             u.DefaultSystemUnits.gamma,
             WHEN_FLOAT64,
             u.DefaultSystemInputUnits.gamma,
             parameter="gamma",
         )
-        if not np.isfinite(value):
-            msg = "Nonfinite systemic velocity (gamma)."
-            raise_elisa_parameters_error(msg)
-        return value
 
     @staticmethod
     def additional_light(value: Any) -> Float:
@@ -332,9 +338,6 @@ class SystemProperties(TransformProperties):
             DefaultBinarySystemInputUnits.system.semi_major_axis,
             parameter="semi_major_axis",
         )
-        if not np.isfinite(value):
-            msg = "Nonfinite semi_major_axis."
-            raise_elisa_parameters_error(msg)
         if value <= 0:
             msg = "Invalid value of semi_major_axis, use value > 0!"
             raise_elisa_parameters_error(msg)
@@ -353,9 +356,6 @@ class SystemProperties(TransformProperties):
             DefaultBinarySystemInputUnits.system.distance,
             parameter="distance",
         )
-        if not np.isfinite(value):
-            msg = "Nonfinite system distance."
-            raise_elisa_parameters_error(msg)
         if value <= 0:
             msg = "Invalid value of system's distance, use value > 0!"
             raise_elisa_parameters_error(msg)
@@ -399,9 +399,6 @@ class BodyProperties(TransformProperties):
             u.DefaultStarInputUnits.discretization_factor,
             parameter="discretization_factor",
         )
-        if not np.isfinite(value):
-            msg = "Nonfinite discretization factor."
-            raise_elisa_parameters_error(msg)
         if value < 0 or value > const.HALF_PI:
             msg = "Invalid value of alpha parameter. Use value between 0 and 90 degrees."
             raise_elisa_parameters_error(msg)
@@ -420,9 +417,6 @@ class BodyProperties(TransformProperties):
             u.DefaultStarInputUnits.t_eff,
             parameter="t_eff",
         )
-        if not np.isfinite(value):
-            msg = "Nonfinite effective temperature."
-            raise_elisa_parameters_error(msg)
         if value <= 0:
             msg = "Invalid effective temperature, use value > 0!"
             raise_elisa_parameters_error(msg)
@@ -443,9 +437,6 @@ class StarProperties(BodyProperties):
             DefaultStarInputUnits.equivalent_radius,
             parameter="equivalent_radius",
         )
-        if not np.isfinite(value):
-            msg = "Nonfinite equivalent_radius."
-            raise_elisa_parameters_error(msg)
         if value <= 0:
             msg = "Invalid value of equivalent_radius, use value > 0!"
             raise_elisa_parameters_error(msg)
@@ -465,9 +456,6 @@ class StarProperties(BodyProperties):
             DefaultStarInputUnits.mass,
             parameter="mass",
         )
-        if not np.isfinite(value):
-            msg = "Nonfinite mass."
-            raise_elisa_parameters_error(msg)
         if value <= 0:
             msg = "Invalid mass, use value > 0!"
             raise_elisa_parameters_error(msg)

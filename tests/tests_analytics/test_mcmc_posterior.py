@@ -15,9 +15,11 @@ from elisa import settings
 from elisa.analytics.binary_fit.lc_prediction import PredictionAlignmentError
 from elisa.analytics.binary_fit.mcmc import CentralRadialVelocity, DetachedLightCurveFit, MCMCFit
 from elisa.analytics.params import parameters as p
-from elisa.base.error import ElisaError, ElisaMonteCarloError, MorphologyError, PhysicalStateError
+from elisa.base.error import ElisaError, ElisaMonteCarloError, ElisaParametersError, MorphologyError, PhysicalStateError
+from elisa.base.transform import StarProperties, SystemProperties
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
+from elisa.binary_system.transform import RadialVelocityObserverProperties
 from tests.tests_analytics.fitting_helpers import BINARY_PARAMETERS, V, lc_setup, make_lc, rv_problem
 
 
@@ -251,13 +253,15 @@ def test_real_roche_boundaries_through_lc_posterior() -> None:
         assert fit.ln_probability(fit.norm_init_vector) == -np.inf
 
 
-@pytest.mark.parametrize("key", ["system@period", "system@mass_ratio", "primary@t_eff"])
-def test_explicit_physical_scales(key) -> None:
-    with pytest.raises(PhysicalStateError):
-        MCMCFit.validate_physical_parameters({key: 0.0})
-    MCMCFit.validate_physical_parameters({key: np.nextafter(0.0, 1.0)})
-    with pytest.raises(FloatingPointError):
-        MCMCFit.validate_physical_parameters({key: np.nan})
+@pytest.mark.parametrize("validator", [
+    SystemProperties.period, RadialVelocityObserverProperties.mass_ratio, StarProperties.t_eff,
+])
+def test_explicit_physical_scales(validator) -> None:
+    with pytest.raises(ElisaParametersError):
+        validator(0.0)
+    validator(np.nextafter(0.0, 1.0))
+    with pytest.raises(ElisaParametersError):
+        validator(np.nan)
 
 
 @pytest.mark.parametrize(("sigma", "bounds"), [(np.nextafter(0.0, 1.0), (0.0, 1e100)), (1e308, (0.0, 1e-100))])

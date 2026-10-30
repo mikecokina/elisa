@@ -15,18 +15,17 @@ from elisa.analytics.models import cost_fns
 from elisa.analytics.models import lc as lc_model
 from elisa.analytics.models import rv as rv_model
 from elisa.analytics.params import parameters
-from elisa.analytics.params.conf import JOINT_POSTERIOR_PERCENTILES_ESTIMATE, PARAM_PARSER
+from elisa.analytics.params.conf import JOINT_POSTERIOR_PERCENTILES_ESTIMATE
 from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.analytics.tools.utils import (
     lightcurves_mean_error,
     radialcurves_mean_error,
     time_layer_resolver,
 )
-from elisa.base.error import ElisaFloatingPointError, ElisaValidationError, PredictionAlignmentError
+from elisa.base.error import ElisaFloatingPointError, PredictionAlignmentError
 from elisa.base.transform import StarProperties
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
-from elisa.binary_system.transform import RadialVelocityObserverProperties
 from elisa.conf.enums import SamplingMethod
 from elisa.logger import getPersistentLogger
 from elisa.observer.observer import Observer
@@ -241,12 +240,13 @@ class AbstractFit(metaclass=ABCMeta):
         :param kwargs: Class dependent content (see inheritor classes).
         :type kwargs: Any
         """
+        # InitialParameter validated input metadata on construction. Candidate
+        # values are validated by model properties before physical calculations.
         x0.constraint_validator()
         self.atmosphere_model = getattr(self, "atmosphere_model", None)
         self.limb_darkening_coefficients = getattr(self, "limb_darkening_coefficients", None)
         self._check_data_param_consistency(x0, data)
         self.fixed = x0.get_fixed(jsonify=False)
-        self.validate_physical_parameters({key: parameter.value for key, parameter in self.fixed.items()})
         self.constrained = x0.get_constrained(jsonify=False)
         self.fitable = x0.get_fitable(jsonify=False)
         self.normalization = x0.get_normalization_map()
@@ -272,32 +272,6 @@ class AbstractFit(metaclass=ABCMeta):
         self.flat_result = {}
 
         self._validate_atmosphere_parameters()
-
-    @staticmethod
-    def validate_physical_parameters(model_parameters: dict[str, Any]) -> None:
-        """Reject invalid physical scales before parameterization conversion."""
-        positive = {"period", "mass_ratio", "semi_major_axis", "mass", "t_eff"}
-        for key, value in model_parameters.items():
-            name = key.rsplit(PARAM_PARSER, 1)[-1]
-            if name == "asini":
-                RadialVelocityObserverProperties.asini(value)
-                continue
-            if name not in positive and name != "eccentricity":
-                continue
-            if not np.isfinite(value):
-                msg = f"Nonfinite physical parameter: {key}"
-                raise ElisaValidationError(msg)
-            if name in positive and value <= 0:
-                msg = f"Physical parameter {key} must be strictly positive"
-                raise ElisaValidationError(msg)
-            if name == "eccentricity" and not 0 <= value < 1:
-                msg = "Physical eccentricity must satisfy 0 <= e < 1"
-                raise ElisaValidationError(msg)
-
-    def validate_current_physical_parameters(self, model_parameters: dict[str, Any]) -> None:
-        """Check current free and evaluated constrained values, excluding fixed metadata."""
-        current = {key: value for key, value in model_parameters.items() if key not in self.fixed}
-        self.validate_physical_parameters(current)
 
     def _prepare_observation_errors(self, data: Mapping[str, DataSet]) -> dict[str, NDArray[np.float64]]:
         """Validate observations and prepare supplied or estimated errors once.
@@ -346,11 +320,13 @@ class AbstractFit(metaclass=ABCMeta):
 
         for component, atlas in (self.atmosphere_model or {}).items():
             if component not in settings.BINARY_COUNTERPARTS:
-                raise ValueError(f"Unknown atmosphere component: {component}")
+                msg = f"Unknown atmosphere component: {component}"
+                raise ValueError(msg)
             atm.validated_atlas(atlas)
         for component, coefficients in (self.limb_darkening_coefficients or {}).items():
             if component not in settings.BINARY_COUNTERPARTS:
-                raise ValueError(f"Unknown limb-darkening component: {component}")
+                msg_0 = f"Unknown limb-darkening component: {component}"
+                raise ValueError(msg_0)
             StarProperties.limb_darkening_coefficients(coefficients)
 
     @staticmethod
@@ -480,7 +456,7 @@ class AbstractRVFit(AbstractFit):
               evaluate synthetic observations.
         :type kwargs: Any
         """
-        x0.validate_rv_parameterization()
+        x0.validate_rv_parameters()
         if kwargs.get("observer_system_cls") is RadialVelocitySystem and settings.RV_METHOD != "kinematic":
             msg = "Community RV fitting supports only the kinematic RV method."
             raise ValueError(msg)

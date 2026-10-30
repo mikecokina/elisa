@@ -10,7 +10,7 @@ import pytest
 from numpy.testing import assert_allclose
 
 from elisa import units as u
-from elisa.base.error import PhysicalStateError
+from elisa.base.error import ElisaParametersError
 from elisa.binary_system.system import BinarySystem
 from elisa.binary_system.utils import transform_json_community_to_std
 from tests.tests_analytics.fitting_helpers import BINARY_PARAMETERS
@@ -32,13 +32,13 @@ def community_binary_config() -> dict[str, Any]:
         pytest.param(-0.5, id="negative-ratio"),
     ],
 )
-def test_nonpositive_ratio_raises_physical_error_before_mass_arithmetic(
+def test_nonpositive_ratio_raises_model_error_before_mass_arithmetic(
     community_binary_config: dict[str, Any], mass_ratio: float,
 ) -> None:
     community_binary_config["system"]["mass_ratio"] = mass_ratio
 
     # q = -1 must be rejected before the mass formula divides by 1 + q.
-    with np.errstate(all="raise"), pytest.raises(PhysicalStateError, match="mass_ratio"):
+    with np.errstate(all="raise"), pytest.raises(ElisaParametersError, match="mass_ratio"):
         BinarySystem.from_json(community_binary_config, _verify=False)
 
 
@@ -50,15 +50,15 @@ def test_nonpositive_ratio_raises_physical_error_before_mass_arithmetic(
         pytest.param(-np.inf, id="negative-infinite-ratio"),
     ],
 )
-def test_nonfinite_ratio_raises_native_numerical_error(
+def test_nonfinite_ratio_raises_model_error(
     community_binary_config: dict[str, Any], mass_ratio: float,
 ) -> None:
     community_binary_config["system"]["mass_ratio"] = mass_ratio
 
-    with np.errstate(all="raise"), pytest.raises(FloatingPointError, match="mass_ratio") as caught:
+    with np.errstate(all="raise"), pytest.raises(ElisaParametersError, match="mass_ratio") as caught:
         BinarySystem.from_json(community_binary_config, _verify=False)
 
-    assert type(caught.value) is FloatingPointError
+    assert type(caught.value) is ElisaParametersError
 
 
 def test_positive_ratio_conversion_preserves_masses_and_input_units(
