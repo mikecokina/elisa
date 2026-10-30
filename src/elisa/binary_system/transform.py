@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+from numbers import Number
 from typing import Any
 
 import numpy as np
 
 from elisa import const, units
 from elisa.base.error import raise_elisa_parameters_error
-from elisa.base.transform import WHEN_FLOAT64, SystemProperties, quantity_transform
+from elisa.base.transform import (
+    WHEN_FLOAT64,
+    SystemProperties,
+    quantity_transform,
+    scalar_transform,
+)
 from elisa.base.types import FLOAT, INT
 from elisa.units import DefaultBinarySystemInputUnits
 
@@ -19,12 +25,9 @@ class BinarySystemProperties(SystemProperties):
         :param value: Numeric eccentricity value.
         :returns: Eccentricity as float.
         """
-        if not isinstance(value, (int, INT, float, FLOAT)):
-            msg = "Input of variable `eccentricity` is not (numpy.)int or (numpy.)float."
-            raise_elisa_parameters_error(msg)
-        if not np.isfinite(value):
-            msg = "Nonfinite eccentricity."
-            raise_elisa_parameters_error(msg)
+        value = scalar_transform(
+            value, parameter="eccentricity", accepted_types=(int, INT, float, FLOAT),
+        )
         if value < 0 or value >= 1:
             msg = "Input of variable `eccentricity` is out of boundaries [0, 1)."
             raise_elisa_parameters_error(msg)
@@ -63,11 +66,12 @@ class BinarySystemProperties(SystemProperties):
         :param value: Phase shift value.
         :returns: Phase shift as float.
         """
-        value = float(np.float64(value))
-        if not np.isfinite(value):
-            msg = "Nonfinite phase_shift."
-            raise_elisa_parameters_error(msg)
-        return value
+        value = scalar_transform(
+            value,
+            parameter="phase_shift",
+            accepted_types=(Number, str, bytes, np.bool_, np.ndarray, units.Quantity),
+        )
+        return float(value)
 
     @staticmethod
     def primary_minimum_time(value: Any) -> float:
@@ -113,9 +117,7 @@ class RadialVelocityObserverProperties(SystemProperties):
         :param value: Mass ratio value (must be > 0).
         :returns: Mass ratio as float.
         """
-        if not np.isfinite(value):
-            msg = "Nonfinite mass_ratio."
-            raise_elisa_parameters_error(msg)
+        value = scalar_transform(value, parameter="mass_ratio")
         if not value > 0:
             msg = f"Invalid value of property `mass_ratio`. Expected > 0, given {value}."
             raise_elisa_parameters_error(msg)

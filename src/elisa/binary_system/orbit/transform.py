@@ -12,6 +12,7 @@ from elisa.base.transform import (
     SystemProperties,
     TransformProperties,
     quantity_transform,
+    scalar_transform,
 )
 from elisa.base.types import FLOAT, INT
 
@@ -38,16 +39,9 @@ class OrbitProperties(TransformProperties):
             ``[0, 1)``.
         :raises ElisaParametersError: If ``value`` is nonfinite.
         """
-        if not isinstance(value, (int, INT, float, FLOAT)):
-            message = (
-                "Input of variable `eccentricity` is not "
-                "(numpy.)int or (numpy.)float."
-            )
-            raise_elisa_parameters_error(message)
-
-        if not np.isfinite(value):
-            message = "Nonfinite eccentricity."
-            raise_elisa_parameters_error(message)
+        value = scalar_transform(
+            value, parameter="eccentricity", accepted_types=(int, INT, float, FLOAT),
+        )
         if value < 0 or value >= 1:
             message = (
                 "Input of variable `eccentricity` is invalid or out of "

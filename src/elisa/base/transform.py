@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from math import isfinite
+from numbers import Number
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -18,7 +20,7 @@ from elisa.units import (
 )
 
 if TYPE_CHECKING:
-    from elisa.types import Float
+    from elisa.types import Float, Int, NumpyBool
 
 WHEN_FLOAT64: tuple[type, ...] = (
     int,
@@ -33,6 +35,97 @@ if version.parse(np.__version__) < version.parse("1.20.0"):
     WHEN_FLOAT64 += (int, float)
 
 WHEN_ARRAY = (list, np.ndarray, tuple)
+
+
+def scalar_transform(
+    value: Any,
+    *,
+    parameter: str,
+    accepted_types: tuple[type, ...] = (
+        int, float, np.integer, np.floating, np.bool_, np.ndarray, u.Quantity,
+    ),
+) -> Float | Int | NumpyBool:
+    """Validate a real scalar and its finite float representation before range checks.
+
+    Numeric-only validators share this boundary; their physical limits remain
+    with the owning property. Zero-dimensional numeric arrays and dimensionless
+    scalar quantities are supported by default. A property with a narrower input
+    contract can supply its existing accepted types. Strings are accepted only
+    when explicitly listed, as required by phase_shift's existing API. Numeric
+    input precision is retained for the property's range checks; casting to its
+    output type remains the property's responsibility.
+
+    :raises ElisaParametersError: If the type, shape or finite representation is invalid.
+    """
+    # Keep each property's existing input contract: being convertible with float()
+    # does not automatically make an input valid (e.g. numeric strings).
+    if not isinstance(value, accepted_types):
+        message = f"Input of variable `{parameter}` is not a supported real scalar."
+        raise_elisa_parameters_error(message)
+    try:
+        # These properties represent dimensionless numbers. Convert compatible
+        # quantities to a plain value, including their scale (e.g. 50% -> 0.5).
+        # A physical unit such as metres fails here and keeps its original cause.
+        if isinstance(value, u.Quantity):
+            value = value.to_value(u.dimensionless_unscaled)
+
+        # Quantity conversion may also produce an array, so this is a separate
+        # check, not an elif. Accept only a numeric 0-D array such as np.array(0.5);
+        # even a one-element vector is not a scalar. The dtype kinds are boolean,
+        # signed integer, unsigned integer and floating point (b, i, u, f).
+        if isinstance(value, np.ndarray):
+            if value.ndim != 0 or value.dtype.kind not in "biuf":
+                message = f"Parameter `{parameter}` must be a real scalar."
+                raise_elisa_parameters_error(message)
+            # Extract the NumPy scalar without first converting it to float.
+            value = value[()]
+
+        # A caller can allow broader types (e.g. Number for integer validation).
+        # Reject complex numbers explicitly; some NumPy conversions would merely
+        # warn and discard their imaginary part.
+        if isinstance(value, (complex, np.complexfloating)):
+            message = f"Parameter `{parameter}` must be a real scalar."
+            raise_elisa_parameters_error(message)
+
+        # Probe float representability before the caller performs range checks.
+        # This catches failed parsing and overflowing integers such as 10**400.
+        # The temporary float is not necessarily the value we return below.
+        converted = float(value)
+    except (TypeError, ValueError, ArithmeticError) as exc:
+        # Translate conversion failures at their source and retain their cause.
+        message = f"Cannot convert parameter `{parameter}` to a real scalar."
+        raise_elisa_parameters_error(message, exc)
+
+    # Successful float conversion still permits NaN and infinity. Reject both,
+    # including finite inputs too large to have a finite Python float value.
+    if not isfinite(converted):
+        message = f"Nonfinite {parameter}."
+        raise_elisa_parameters_error(message)
+
+    # Preserve numeric precision for the property's own range checks. Returning
+    # the temporary float could round a longdouble just above 1 down to 1 and
+    # incorrectly accept it. The property applies its final output cast later.
+    if isinstance(value, (int, float, np.integer, np.floating, np.bool_)):
+        return value
+
+    # Other explicitly allowed inputs (e.g. phase_shift's strings) have passed
+    # conversion and finiteness checks; return their parsed numeric value.
+    return converted
+
+
+def integer_transform(value: Any, *, parameter: str) -> int:
+    """Validate an integral numeric scalar without rounding its original value."""
+    scalar_transform(value, parameter=parameter, accepted_types=(Number,))
+    try:
+        converted = int(value)
+        integral = converted - value == 0
+    except (TypeError, ValueError, ArithmeticError) as exc:
+        message = f"Cannot convert parameter `{parameter}` to an integer."
+        raise_elisa_parameters_error(message, exc)
+    if not integral:
+        message = f"Parameter `{parameter}` must be an integer."
+        raise_elisa_parameters_error(message)
+    return converted
 
 
 def normalize_morphology(morphology: str) -> str:
@@ -220,9 +313,7 @@ class SystemProperties(TransformProperties):
     @staticmethod
     def additional_light(value: Any) -> Float:
         """Validate additional (third) light fraction in range [0, 1]."""
-        if not np.isfinite(value):
-            msg = "Nonfinite additional light."
-            raise_elisa_parameters_error(msg)
+        value = scalar_transform(value, parameter="additional_light")
         if not 0.0 <= value <= 1.0:
             msg = "Invalid value of additional light. Valid values are between 0 and 1."
             raise_elisa_parameters_error(msg)
@@ -279,9 +370,7 @@ class BodyProperties(TransformProperties):
 
         Expects a positive numeric value.
         """
-        if not np.isfinite(value):
-            msg = "Nonfinite synchronicity."
-            raise_elisa_parameters_error(msg)
+        value = scalar_transform(value, parameter="synchronicity")
         if value <= 0:
             msg = "Invalid synchronicity, use value > 0!"
             raise_elisa_parameters_error(msg)
@@ -290,9 +379,7 @@ class BodyProperties(TransformProperties):
     @staticmethod
     def albedo(value: Any) -> Float:
         """Validate and transform bolometric albedo (range 0..1)."""
-        if not np.isfinite(value):
-            msg = "Nonfinite albedo."
-            raise_elisa_parameters_error(msg)
+        value = scalar_transform(value, parameter="albedo")
         if value < 0 or value > 1:
             msg = f"Parameter albedo = {value} is out of range <0, 1>"
             raise_elisa_parameters_error(msg)
@@ -393,9 +480,7 @@ class StarProperties(BodyProperties):
         :param value: Numeric surface potential.
         :returns: Surface potential as float.
         """
-        if not np.isfinite(value):
-            msg = "Nonfinite surface potential."
-            raise_elisa_parameters_error(msg)
+        value = scalar_transform(value, parameter="surface_potential")
         if value < 0:
             msg = "Invalid surface potential, use value >= 0!"
             raise_elisa_parameters_error(msg)
@@ -408,12 +493,7 @@ class StarProperties(BodyProperties):
         :param value: Numeric metallicity value.
         :returns: Metallicty as float.
         """
-        if not isinstance(value, WHEN_FLOAT64):
-            msg = "Input of variable `metallicity` is not (np.)int or (np.)float instance."
-            raise_elisa_parameters_error(msg)
-        if not np.isfinite(value):
-            msg = "Nonfinite metallicity."
-            raise_elisa_parameters_error(msg)
+        value = scalar_transform(value, parameter="metallicity", accepted_types=WHEN_FLOAT64)
         return float(value)
 
     @staticmethod
@@ -449,9 +529,7 @@ class StarProperties(BodyProperties):
     @staticmethod
     def gravity_darkening(value: Any) -> Float:
         """Validate gravity darkening parameter in range [0, 1]."""
-        if not np.isfinite(value):
-            msg = "Nonfinite gravity darkening."
-            raise_elisa_parameters_error(msg)
+        value = scalar_transform(value, parameter="gravity_darkening")
         if value > 1 or value < 0:
             msg = f"Parameter gravity darkening = {value} is out of range <0, 1>"
             raise_elisa_parameters_error(msg)
@@ -544,10 +622,8 @@ class SpotProperties(BodyProperties):
 
     @staticmethod
     def temperature_factor(value: Any) -> Float:
-        """Validate temperature factor is numeric."""
-        if not isinstance(value, (int, INT, float, FLOAT)):
-            msg = "Input of variable `temperature_factor` is not (numpy.)int or (numpy.)float."
-            raise_elisa_parameters_error(msg)
+        """Validate temperature factor is a finite numeric scalar."""
+        value = scalar_transform(value, parameter="temperature_factor", accepted_types=(int, INT, float, FLOAT))
         return float(value)
 
     @staticmethod

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from math import isfinite
-from numbers import Number
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -15,7 +13,9 @@ from elisa.base.transform import (
     WHEN_FLOAT64,
     SystemProperties,
     deg_transform,
+    integer_transform,
     quantity_transform,
+    scalar_transform,
 )
 from elisa.base.types import FLOAT, INT
 
@@ -40,15 +40,11 @@ class PulsationModeProperties(SystemProperties):
         :raises ElisaParametersError: If value has an incompatible object type.
         :raises ElisaParametersError: If the degree is negative, nonintegral or nonfinite.
         """
-        error_msg = "Angular degree `l` is not (numpy.)int"
-        if not isinstance(value, Number) or isinstance(value, (complex, np.complexfloating)):
-            raise_elisa_parameters_error(error_msg)
-        if not isfinite(value) or int(value) - value != 0:
-            raise_elisa_parameters_error(error_msg)
+        value = integer_transform(value, parameter="l")
         if value < 0:
             error_msg = "Angular degree `l` must be non-negative."
             raise_elisa_parameters_error(error_msg)
-        return int(value)
+        return value
 
     @staticmethod
     def m(value: float) -> int:
@@ -64,12 +60,7 @@ class PulsationModeProperties(SystemProperties):
         :raises ElisaParametersError: If value has an incompatible object type.
         :raises ElisaParametersError: If a numeric index is nonintegral or nonfinite.
         """
-        error_msg = "Angular degree `m` is not (numpy.)int"
-        if not isinstance(value, Number) or isinstance(value, (complex, np.complexfloating)):
-            raise_elisa_parameters_error(error_msg)
-        if not isfinite(value) or int(value) - value != 0:
-            raise_elisa_parameters_error(error_msg)
-        return int(value)
+        return integer_transform(value, parameter="m")
 
     @staticmethod
     def amplitude(value: float | Quantity | str) -> float:
@@ -226,11 +217,13 @@ class PulsationModeProperties(SystemProperties):
         :type value: float | int
         :returns: Validated amplitude ratio.
         :rtype: float
-        :raises ElisaParametersError: If value is not a numeric type.
+        :raises ElisaParametersError: If value is not a finite numeric scalar.
         """
-        if not isinstance(value, (int, INT, float, FLOAT)):
-            error_msg = "Parameter is not is not (numpy.)int or (numpy.)float"
-            raise_elisa_parameters_error(error_msg)
+        scalar_transform(
+            value,
+            parameter="horizontal_to_radial_amplitude_ratio",
+            accepted_types=(int, INT, float, FLOAT),
+        )
         return value
 
     @staticmethod

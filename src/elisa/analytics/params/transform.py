@@ -136,6 +136,7 @@ class BinaryInitialProperties(TransformProperties):
     mass_ratio = _initial_parameter(RadialVelocityObserverProperties.mass_ratio)
     asini = _initial_parameter(RadialVelocityObserverProperties.asini)
     additional_light = _initial_parameter(BinarySystemProperties.additional_light)
+    phase_shift = _initial_parameter(BinarySystemProperties.phase_shift)
     primary_minimum_time = _initial_parameter(BinarySystemProperties.primary_minimum_time)
 
 
