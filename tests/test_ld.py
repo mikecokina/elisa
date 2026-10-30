@@ -50,48 +50,6 @@ class TestLimbDarkeningModule(ElisaTestCase):
         obtained = [ld.get_ld_table_filename(**param) for param in params]
         assert_array_equal(expected, obtained)
 
-    def expected_ld_tables(self):
-        path = os.path.join(self.base_path, "data", "vh93")
-        # noinspection PyArgumentList
-        return [pd.read_csv(os.path.join(path, file)) for file in sorted(os.listdir(path))]
-
-    def test_get_ld_table(self):
-        settings.configure(LD_TABLES=os.path.join(self.base_path, "data", "vh93"))
-        params = [
-            dict(passband="Generic.Bessell.B", metallicity=-0.2, law="cosine"),
-            dict(passband="Kepler", metallicity=-4, law="logarithmic")
-        ]
-
-        expected = self.expected_ld_tables()
-        obtained = [ld.get_ld_table(**param) for param in params]
-
-        for e, o in zip(expected, obtained):
-            assert_frame_equal(e, o, rtol=1e-5, check_dtype=False, check_exact=True)
-
-    def test_get_ld_table_by_name(self):
-        settings.configure(**{"LD_TABLES": os.path.join(self.base_path, "data", "vh93")})
-        filenames = ["lin.Generic.Bessell.B.m02.csv", "log.Kepler.m40.csv"]
-
-        expected = self.expected_ld_tables()
-        obtained = [ld.get_ld_table_by_name(file) for file in filenames]
-
-        for e, o in zip(expected, obtained):
-            assert_frame_equal(e, o, rtol=1e-5, check_dtype=False, check_exact=True)
-
-    def test_get_ld_table_by_name_same_as_get_ld_table(self):
-        settings.configure(**{"LD_TABLES": os.path.join(self.base_path, "data", "vh93")})
-        params = [
-            dict(passband="Generic.Bessell.B", metallicity=-0.2, law="cosine"),
-            dict(passband="Kepler", metallicity=-4, law="logarithmic")
-        ]
-        filenames = ["lin.Generic.Bessell.B.m02.csv", "log.Kepler.m40.csv"]
-
-        obtained_by_params = [ld.get_ld_table(**param) for param in params]
-        obtained_by_filename = [ld.get_ld_table_by_name(file) for file in filenames]
-
-        for o1, o2 in zip(obtained_by_filename, obtained_by_params):
-            assert_frame_equal(o1, o2)
-
     def test_get_relevant_ld_tables(self):
         params = [
             dict(metallicity=0.0, passband="Kepler", law="cosine"),
@@ -660,14 +618,3 @@ def test_source_error_inherits_existing_fitting_policy():
     assert issubclass(LimbDarkeningSourceError, LimbDarkeningError)
     assert issubclass(LimbDarkeningError, SYNTHESIS_FAILURES)
     assert isinstance(LimbDarkeningSourceError("missing table"), SYNTHESIS_FAILURES)
-
-
-@pytest.mark.parametrize("lookup", [ld.get_ld_table, ld.get_ld_table_by_name])
-def test_standalone_table_loaders_keep_file_not_found_errors(ld_sources, lookup):
-    name = ld.get_ld_table_filename("bolometric", 0.0)
-    (ld_sources / name).unlink()
-    with pytest.raises(FileNotFoundError):
-        if lookup is ld.get_ld_table:
-            lookup("bolometric", 0.0)
-        else:
-            lookup(name)

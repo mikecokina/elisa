@@ -116,41 +116,6 @@ def get_ld_table_filename(passband: str, metallicity: float, law: str | None = N
     return f"{prefix}.{passband}.{m_str}.csv"
 
 
-def get_ld_table(passband: str, metallicity: float, law: str | None = None) -> pd.DataFrame:
-    """Load a Van Hamme limb darkening table from the configured tables' directory.
-
-    :param passband: Passband identifier.
-    :param metallicity: Metallicity value.
-    :param law: Limb darkening law name. If not provided, the configured default is used.
-    :returns: Table content as a :class:`pandas.DataFrame`.
-    :raises FileNotFoundError: If the expected CSV file is not present.
-    """
-    resolved_law = law if not utils.is_empty(law) else settings.LIMB_DARKENING_LAW
-    filename = get_ld_table_filename(passband, metallicity, law=resolved_law)
-    path = Path(settings.LD_TABLES) / filename
-    if not path.is_file():
-        msg = f"There is no file like {path}."
-        raise FileNotFoundError(msg)
-    # noinspection PyArgumentList
-    return pd.read_csv(path)
-
-
-def get_ld_table_by_name(fname: str) -> pd.DataFrame:
-    """Load a Van Hamme limb darkening table by filename from the configured tables' directory.
-
-    :param fname: Filename of the CSV table (no directory).
-    :returns: Table content as a :class:`pandas.DataFrame`.
-    :raises FileNotFoundError: If the file is not present in the configured directory.
-    """
-    logger.debug("accessing limb darkening file %s", fname)
-    path = Path(settings.LD_TABLES) / fname
-    if not path.is_file():
-        msg = f"There is no file like {path}."
-        raise FileNotFoundError(msg)
-    # noinspection PyArgumentList
-    return pd.read_csv(path)
-
-
 def get_relevant_ld_tables(passband: str, metallicity: float, law: str | None = None) -> list[str]:
     """Get filenames of tables surrounding the requested metallicity.
 

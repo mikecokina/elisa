@@ -168,7 +168,7 @@ def test_availability_checks_do_not_parse_or_synthesize(monkeypatch: pytest.Monk
     def forbid_scientific_loading(*_args: object, **_kwargs: object) -> NoReturn:
         pytest.fail("Availability checks must not parse or synthesize scientific data")
 
-    monkeypatch.setattr(ld, "get_ld_table", forbid_scientific_loading)
+    monkeypatch.setattr(ld, "get_ld_source_interpolator", forbid_scientific_loading)
     monkeypatch.setattr(atm, "get_atm_table", forbid_scientific_loading)
     monkeypatch.setattr(atm.NaiveInterpolatedAtm, "atlas_radiance", forbid_scientific_loading)
 

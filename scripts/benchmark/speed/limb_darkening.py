@@ -32,7 +32,7 @@ from scipy.interpolate import _ndgriddata
 
 from elisa import BinarySystem, Observer, SingleSystem, Star, const, ld, settings, utils
 from elisa.base.curves import utils as curve_utils
-from elisa.base.error import LimbDarkeningError
+from elisa.base.error import LimbDarkeningError, LimbDarkeningSourceError
 from elisa.binary_system.curves import utils as binary_utils
 from elisa.buffer import buffer
 from elisa.single_system.curves import utils as single_utils
@@ -79,6 +79,41 @@ def model(case: str) -> BinarySystem | SingleSystem:
                         phase_shift=0.)
 
 
+def get_ld_table(passband: str, metallicity: float, law: str | None = None) -> pd.DataFrame:
+    """Load a Van Hamme limb darkening table from the configured tables' directory.
+
+    :param passband: Passband identifier.
+    :param metallicity: Metallicity value.
+    :param law: Limb darkening law name. If not provided, the configured default is used.
+    :returns: Table content as a :class:`pandas.DataFrame`.
+    :raises FileNotFoundError: If the expected CSV file is not present.
+    """
+    resolved_law = law if not utils.is_empty(law) else settings.LIMB_DARKENING_LAW
+    filename = ld.get_ld_table_filename(passband, metallicity, law=resolved_law)
+    path = Path(settings.LD_TABLES) / filename
+    if not path.is_file():
+        msg = f"There is no file like {path}."
+        raise FileNotFoundError(msg)
+    # noinspection PyArgumentList
+    return pd.read_csv(path)
+
+
+def get_ld_table_by_name(fname: str) -> pd.DataFrame:
+    """Load a Van Hamme limb darkening table by filename from the configured tables' directory.
+
+    :param fname: Filename of the CSV table (no directory).
+    :returns: Table content as a :class:`pandas.DataFrame`.
+    :raises FileNotFoundError: If the file is not present in the configured directory.
+    """
+    ld.logger.debug("accessing limb darkening file %s", fname)
+    path = Path(settings.LD_TABLES) / fname
+    if not path.is_file():
+        msg = f"There is no file like {path}."
+        raise FileNotFoundError(msg)
+    # noinspection PyArgumentList
+    return pd.read_csv(path)
+
+
 def legacy_interpolate(temperature, log_g, metallicity, passband, author=None):
     """Original ordered preparation/griddata, including frame keys and errors.
 
@@ -98,7 +133,7 @@ def legacy_interpolate(temperature, log_g, metallicity, passband, author=None):
         frames = []
         for name in names:
             if name not in buffer.LD_CFS_TABLES:
-                buffer.LD_CFS_TABLES[name] = ld.get_ld_table_by_name(name)[columns]
+                buffer.LD_CFS_TABLES[name] = get_ld_table_by_name(name)[columns]
             frames.append(buffer.LD_CFS_TABLES[name])
         buffer.reduce_buffer(buffer.LD_CFS_TABLES)
         frame = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=columns)
@@ -233,22 +268,29 @@ def check(condition, message):
 
 
 def validate_errors(modes):
-    """All paths must reject hull-exterior/NaN queries with the original error."""
+    """Reject hull-exterior/NaN queries; preserve baseline and current diagnostics."""
     for mode in modes:
         with implementation(mode):
             for temperature in (1., np.nan):
                 try:
                     ld.interpolate_on_ld_grid(np.array([temperature]), np.array([2.]), 0., ["bolometric"])
                 except LimbDarkeningError as error:
-                    check(str(error) == ERROR_MESSAGE, f"{mode}: changed interpolation error message")
+                    if mode == "optimized":
+                        first_line, _, guidance = ERROR_MESSAGE.partition("\n")
+                        check(str(error).startswith(first_line + "\n"), "Changed interpolation error summary")
+                        check(str(error).endswith(guidance), "Changed interpolation error guidance")
+                        check("Passband: bolometric;" in str(error), "Missing interpolation source diagnostic")
+                    else:
+                        check(str(error) == ERROR_MESSAGE, f"{mode}: changed baseline interpolation error message")
                 else:
                     raise AssertionError(f"{mode}: invalid query did not raise LimbDarkeningError")
             try:
                 ld.interpolate_on_ld_grid(np.array([9000.]), np.array([2.]), 0., ["missing.benchmark.passband"])
-            except FileNotFoundError:
-                pass
+            except (FileNotFoundError, LimbDarkeningSourceError) as error:
+                expected_error = LimbDarkeningSourceError if mode == "optimized" else FileNotFoundError
+                check(type(error) is expected_error, f"{mode}: changed source lookup error category")
             else:
-                raise AssertionError(f"{mode}: missing source did not raise FileNotFoundError")
+                raise AssertionError(f"{mode}: missing source did not raise a source lookup error")
     a, b = np.array([5500.1234567891]), np.array([5500.1234567892])
     check(legacy_array_key(a) == legacy_array_key(b), "Legacy keys must merge the original rounding interval")
     check(utils.float64_array_to_cache_key(a) != utils.float64_array_to_cache_key(b), "Exact keys must differ")

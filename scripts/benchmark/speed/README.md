@@ -223,3 +223,8 @@ Results and metadata: `/tmp/elisa-ld-optimization/single-extension-balanced/benc
 directory. The same run also revalidated the circular, eccentric and multiband scientific comparisons and cache counts.
 Unit-test output is `/tmp/elisa-ld-optimization/single-extension-tests.txt`; benchmark output is
 `/tmp/elisa-ld-optimization/single-extension-benchmark.log`. These are generated local artifacts, not required inputs.
+
+The retired production CSV readers `get_ld_table` and `get_ld_table_by_name` are
+preserved locally in this benchmark script. The historical baseline uses the local
+filename reader; both readers raise builtin `FileNotFoundError` directly and are
+independent of ELISA's exception helpers and production source cache.
