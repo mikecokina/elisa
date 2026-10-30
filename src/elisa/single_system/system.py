@@ -10,9 +10,11 @@ from elisa import const, units, utils
 from elisa import umpy as up
 from elisa.base.curves import utils as rv_utils
 from elisa.base.error import (
+    raise_elisa_invalid_kwargs_error,
     raise_elisa_max_iteration_error,
     raise_elisa_numeric_error,
     raise_elisa_operation_input_error,
+    raise_elisa_parameters_error,
 )
 from elisa.base.star import Star
 from elisa.base.system import System
@@ -411,12 +413,12 @@ class SingleSystem(System[Star]):
 
         :param kwargs: Mapping of property names to check.
         :type kwargs: dict[str, object]
-        :raises AttributeError: If any entry in ``kwargs`` is not a valid property.
+        :raises ElisaInvalidKwargsError: If any entry in ``kwargs`` is not a valid property.
         """
         is_not = [f"`{k}`" for k in kwargs if k not in cls.ALL_KWARGS]
         if is_not:
             msg = f"Arguments {', '.join(is_not)} are not valid {cls.__name__} properties."
-            raise AttributeError(msg)
+            raise_elisa_invalid_kwargs_error(msg)
 
     def critical_break_up_radius(self) -> Float:
         """Return the critical break-up equatorial radius for the system.
@@ -486,8 +488,8 @@ class SingleSystem(System[Star]):
 
         :returns: Mapping of component name to calculated radii.
         :rtype: dict[str, dict[str, elisa.types.Float]]
-        :raises ValueError: If one of the radius solvers fails for a
-            non-physical system.
+        :raises ElisaParametersError: If a radius cannot be calculated from the
+            supplied system parameters. The original failure is preserved as its cause.
         """
         fns = [sradius.calculate_polar_radius, sradius.calculate_equatorial_radius]
         radii: dict[str, dict[str, Float]] = {"star": {}}
@@ -505,12 +507,9 @@ class SingleSystem(System[Star]):
             }
             try:
                 radius = fn(**kwargs)
-            except Exception as err:
-                msg = (
-                    f"Function {fn.__name__} was not able to calculate its radius. "
-                    f"Your system is not physical. Exception: {err}"
-                )
-                raise ValueError(msg) from err
+            except Exception as exc:  # noqa: BLE001 - model initialization maps radius failures to invalid parameters
+                msg = f"Cannot calculate {param} from the supplied system parameters: {exc}"
+                raise_elisa_parameters_error(msg, exc)
 
             radii["star"][param] = radius
 
@@ -640,12 +639,12 @@ class SingleSystem(System[Star]):
     def check_stability(self) -> None:
         """Check whether the star is rotationally stable.
 
-        :raises ValueError: If the star rotates above critical break-up
+        :raises ElisaParametersError: If the star rotates above critical break-up
             velocity.
         """
         if self.star.critical_surface_potential < self.star.surface_potential:
             msg = "Non-physical system. Star rotation is above critical break-up velocity."
-            raise ValueError(msg)
+            raise_elisa_parameters_error(msg)
 
     def get_positions_method(self) -> Callable[..., Any]:
         """Return the method used to calculate observer line-of-sight positions.

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from elisa.analytics.tools import utils
+from elisa.base.error import ElisaAnalyticsDataError
 from tests import set_astropy_units
 from tests.utils import ElisaTestCase
 
@@ -93,6 +94,7 @@ class TestLightcurvesMeanError(ElisaTestCase):
         self.assertAlmostEqual(result, expected_error, places=10)
 
 
+# noinspection PyProtectedMember
 class TestRadialcurvesMeanError(ElisaTestCase):
     """RV fallback uses spread independently of the systemic velocity."""
 
@@ -100,12 +102,12 @@ class TestRadialcurvesMeanError(ElisaTestCase):
         values = np.array([-10.0, -5.0, 0.0, 5.0, 10.0])
         expected = 0.05 * 1.482602218505602 * 5.0
         for offset in (0.0, 12000.0, -12000.0):
-            self.assertAlmostEqual(utils.radialcurves_mean_error(values + offset), expected)
+            self.assertAlmostEqual(utils._radialcurves_mean_error(values + offset), expected)
 
     def test_uninformative_data_require_errors(self) -> None:
         for values in ([50.0] * 4, [25.0]):
-            with self.assertRaises(ValueError):
-                utils.radialcurves_mean_error(values)
+            with self.assertRaises(ElisaAnalyticsDataError):
+                utils._radialcurves_mean_error(values)
 
 
 class TestIsTimeDependent(ElisaTestCase):

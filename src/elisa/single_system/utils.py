@@ -139,20 +139,19 @@ def resolve_json_kind(data: dict[str, Any]) -> str:
     :type data: dict[str, Any]
     :returns: ``"std"`` or ``"radius"``.
     :rtype: str
-    :raises LookupError: When required keys are missing and the format cannot
+    :raises ElisaParametersError: When required keys are missing and the format cannot
         be determined.
     """
     star_section = data.get("star", {})
     polar_g = star_section.get("polar_log_g")
     polar_radius = star_section.get("equivalent_radius")
 
+    if polar_g is None and polar_radius is None:
+        msg = "It seems your JSON is invalid."
+        raise_elisa_parameters_error(msg)
     if polar_g is not None:
         return "std"
-    if polar_radius is not None:
-        return "radius"
-
-    msg = "It seems your JSON is invalid."
-    raise LookupError(msg)
+    return "radius"
 
 
 def transform_json_radius_to_std(data: dict[str, Any]) -> dict[str, Any]:

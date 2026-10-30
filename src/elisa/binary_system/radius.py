@@ -7,8 +7,8 @@ import numpy as np
 from elisa import const
 from elisa.base.error import (
     ElisaValueError,
-    raise_elisa_numeric_error,
     raise_elisa_max_iteration_error,
+    raise_elisa_numeric_error,
 )
 from elisa.base.types import FLOAT
 from elisa.binary_system import model

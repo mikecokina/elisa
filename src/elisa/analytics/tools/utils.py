@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from elisa.base.error import raise_elisa_analytics_data_error
 from elisa.base.types import FLOAT
 from elisa.binary_system import t_layer
 
@@ -30,7 +31,7 @@ def lightcurves_mean_error(lc: NDArray) -> Float:
     return FLOAT(np.mean(lc) * 0.05)
 
 
-def radialcurves_mean_error(rv: NDArray | Sequence[Float]) -> Float:
+def _radialcurves_mean_error(rv: NDArray | Sequence[Float]) -> Float:
     """Estimate heuristic RV errors from translation-invariant spread.
 
     Uses 5% of Gaussian-scaled MAD (1.482602218505602 times MAD), falling
@@ -42,7 +43,7 @@ def radialcurves_mean_error(rv: NDArray | Sequence[Float]) -> Float:
 
     :param rv: Finite one-dimensional velocities for a single component.
     :returns: Positive heuristic uncertainty in the input velocity unit.
-    :raises ValueError: If a finite positive scale cannot be estimated.
+    :raises ElisaAnalyticsDataError: If a finite positive scale cannot be estimated.
     """
     scaled, amplitude = _scaled_rv_deviations(rv)
     mad = np.median(np.abs(scaled))
@@ -50,7 +51,7 @@ def radialcurves_mean_error(rv: NDArray | Sequence[Float]) -> Float:
     uncertainty = (0.05 * spread) * amplitude
     if not np.isfinite(uncertainty) or uncertainty <= 0:
         msg = "RV variation cannot produce a finite positive uncertainty; supply explicit positive y_err"
-        raise ValueError(msg)
+        raise_elisa_analytics_data_error(msg)
     return FLOAT(uncertainty)
 
 
@@ -60,20 +61,24 @@ def _scaled_rv_deviations(rv: NDArray | Sequence[Float]) -> tuple[NDArray[np.flo
     :param rv: Velocity observations for one component.
     :returns: Median-centered deviations divided by their positive amplitude,
         together with that amplitude in the original velocity unit.
-    :raises ValueError: If observations cannot resolve a finite positive spread.
+    :raises ElisaAnalyticsDataError: If observations cannot resolve a finite positive spread.
     """
-    velocities = np.asarray(rv, dtype=float)
+    try:
+        velocities = np.asarray(rv, dtype=float)
+    except (TypeError, ValueError, OverflowError) as exc:
+        msg = "Estimating RV y_err requires numeric observations; supply explicit positive y_err"
+        raise_elisa_analytics_data_error(msg, exc)
     minimum_samples = 2
     if velocities.ndim != 1 or velocities.size < minimum_samples or not np.all(np.isfinite(velocities)):
         msg = "Estimating RV y_err requires at least two finite observations; supply explicit positive y_err"
-        raise ValueError(msg)
+        raise_elisa_analytics_data_error(msg)
     with np.errstate(over="ignore", invalid="ignore"):
         centered = velocities - velocities[0]
         deviations = centered - np.median(centered)
         amplitude = np.max(np.abs(deviations))
     if not np.isfinite(amplitude) or amplitude <= 0:
         msg = "RV observations have no resolvable positive velocity scale; supply explicit positive y_err"
-        raise ValueError(msg)
+        raise_elisa_analytics_data_error(msg)
     return deviations / amplitude, amplitude
 
 

@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 from scipy import interpolate
 
-from elisa.base.error import ElisaValueError
 from elisa import settings
+from elisa.base.error import ElisaValueError
 from elisa.observer.plot import PassbandPlot
 
 if TYPE_CHECKING:

@@ -17,9 +17,11 @@ from elisa.analytics.models import rv as rv_model
 from elisa.analytics.params import parameters
 from elisa.analytics.params.conf import JOINT_POSTERIOR_PERCENTILES_ESTIMATE
 from elisa.analytics.params.parameters import BinaryInitialParameters
+
+# noinspection PyProtectedMember
 from elisa.analytics.tools.utils import (
+    _radialcurves_mean_error,
     lightcurves_mean_error,
-    radialcurves_mean_error,
     time_layer_resolver,
 )
 from elisa.base.error import (
@@ -423,7 +425,7 @@ class AbstractFit(metaclass=ABCMeta):
 class AbstractRVFit(AbstractFit):
     """Abstract implementation of the RV fit."""
 
-    MEAN_ERROR_FN = radialcurves_mean_error
+    MEAN_ERROR_FN = _radialcurves_mean_error
 
     # Attributes from parent class (set by set_up method)
     y_err: dict[str, Any]

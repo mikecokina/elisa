@@ -14,7 +14,8 @@ from elisa.analytics import LCData, RVData
 from elisa.analytics.binary_fit import least_squares, mcmc, shared
 from elisa.analytics.dataset.utils import convert_flux_error
 from elisa.analytics.params.parameters import BinaryInitialParameters
-from elisa.analytics.tools.utils import radialcurves_mean_error
+# noinspection PyProtectedMember
+from elisa.analytics.tools.utils import _radialcurves_mean_error
 from elisa.base.error import ElisaAnalyticsDataError, ElisaAnalyticsTaskError
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from tests.tests_analytics.fitting_helpers import (
@@ -115,14 +116,14 @@ def test_rv_component_scales_and_repeated_setup(cls, supplied: bool) -> None:
 
 @pytest.mark.parametrize("values", [[0.0, 0.0], [12000.0] * 3, [1.0], [], [0.0, np.nan], [0.0, np.inf]])
 def test_uninformative_rv_requires_errors(values) -> None:
-    with pytest.raises(ValueError, match="supply explicit positive y_err"):
-        radialcurves_mean_error(values)
+    with pytest.raises(ElisaAnalyticsDataError, match="supply explicit positive y_err"):
+        _radialcurves_mean_error(values)
 
 
 @pytest.mark.parametrize("amplitude", [1e-200, 1e-10, 1e200])
 def test_rv_scales_small_and_large_variations(amplitude: float) -> None:
     assert_allclose(
-        radialcurves_mean_error(amplitude * np.array([-1.0, 0.0, 1.0])),
+        _radialcurves_mean_error(amplitude * np.array([-1.0, 0.0, 1.0])),
         0.05 * 1.482602218505602 * amplitude,
         atol=0.0,
         rtol=2e-14,
@@ -133,14 +134,14 @@ def test_rv_translation_mad_outliers_and_tied_fallback() -> None:
     values = np.array([-300.0, -100.0, 0.0, 100.0, 300.0, 10000.0])
     expected = 0.05 * 1.482602218505602 * np.median(np.abs(values - np.median(values)))
     for offset in (0.0, -1000.0, 1e9):
-        assert_allclose(radialcurves_mean_error(values + offset), expected, rtol=2e-14)
+        assert_allclose(_radialcurves_mean_error(values + offset), expected, rtol=2e-14)
     tied = np.array([0.0, 0.0, 0.0, 0.0, 10.0])
-    assert_allclose(radialcurves_mean_error(tied), 0.05 * np.std(tied, ddof=1))
+    assert_allclose(_radialcurves_mean_error(tied), 0.05 * np.std(tied, ddof=1))
     near_constant = 12000.0 + np.arange(5) * 2.0**-30
-    assert radialcurves_mean_error(near_constant) > 0
-    assert_allclose(radialcurves_mean_error(near_constant), radialcurves_mean_error(near_constant - 12000.0))
+    assert _radialcurves_mean_error(near_constant) > 0
+    assert_allclose(_radialcurves_mean_error(near_constant), _radialcurves_mean_error(near_constant - 12000.0))
     core = [-2.0, -1.0, 0.0, 1.0, 2.0]
-    assert_allclose(radialcurves_mean_error([*core, 100.0]), radialcurves_mean_error([*core, 1e6]))
+    assert_allclose(_radialcurves_mean_error([*core, 100.0]), _radialcurves_mean_error([*core, 1e6]))
 
 
 @pytest.mark.parametrize("cls", RV_CLASSES)
@@ -151,7 +152,7 @@ def test_constant_rv_with_explicit_errors(cls) -> None:
     fit.set_up(BinaryInitialParameters(**cfg), data, observer_system_cls=RadialVelocitySystem)
     assert_allclose(fit.y_err["primary"], 100.0)
     data["primary"].y_err = None
-    with pytest.raises(ValueError, match="supply explicit positive y_err"):
+    with pytest.raises(ElisaAnalyticsDataError, match="supply explicit positive y_err"):
         fit.set_up(BinaryInitialParameters(**cfg), data, observer_system_cls=RadialVelocitySystem)
 
 
