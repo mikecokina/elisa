@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from time import time
 from typing import TYPE_CHECKING, Any
@@ -14,7 +14,6 @@ from elisa.analytics.params.conf import JOINT_POSTERIOR_PERCENTILES_ESTIMATE
 from elisa.base.error import raise_elisa_monte_carlo_error
 from elisa.json_encoder import ElisaJSONEncoder
 from elisa.logger import getPersistentLogger
-from elisa.utc import UTC
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray

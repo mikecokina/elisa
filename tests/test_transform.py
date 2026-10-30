@@ -23,7 +23,7 @@ def generate_test(values, transform, expected, _round=None):
 
 
 def generate_raise_test(self, value, transform, in_exception):
-    with self.assertRaises(Exception) as context:
+    with self.assertRaises(ElisaParametersError) as context:
         transform(value)
     self.assertTrue(in_exception in str(context.exception))
 
@@ -44,7 +44,7 @@ class TransformBinarySystemPropertiesTestCase(ElisaTestCase):
         generate_test(valid_values, BinarySystemProperties.argument_of_periastron, expected, 4)
 
     def test_argument_of_periastron_raise(self):
-        generate_raise_test(self, "9dsg.2", BinarySystemProperties.argument_of_periastron, "did not parse")
+        generate_raise_test(self, "9dsg.2", BinarySystemProperties.argument_of_periastron, "argument_of_periastron")
 
     def test_phase_shift(self):
         self.assertTrue(BinarySystemProperties.phase_shift(9.1234) == 9.1234)
@@ -56,7 +56,7 @@ class TransformBinarySystemPropertiesTestCase(ElisaTestCase):
         generate_test(valid_values, BinarySystemProperties.primary_minimum_time, expected)
 
     def test_primary_minimum_time_raise(self):
-        generate_raise_test(self, "92", BinarySystemProperties.primary_minimum_time, "not convertible")
+        generate_raise_test(self, "92", BinarySystemProperties.primary_minimum_time, "primary_minimum_time")
 
     @staticmethod
     def test_argument_of_periastron_wrap():
@@ -123,7 +123,7 @@ class TransformBinarySystemPropertiesTestCase(ElisaTestCase):
 
     def test_primary_minimum_time_invalid_unit_raise(self):
         """Test primary_minimum_time raises for incompatible units."""
-        generate_raise_test(self, 1.0 * u.kg, BinarySystemProperties.primary_minimum_time, "not convertible")
+        generate_raise_test(self, 1.0 * u.kg, BinarySystemProperties.primary_minimum_time, "primary_minimum_time")
 
 
 class TransformSystemPropertiesTestCase(ElisaTestCase):
@@ -143,7 +143,7 @@ class TransformSystemPropertiesTestCase(ElisaTestCase):
         generate_test(valid_values, SystemProperties.period, expected)
 
     def test_period_raise(self):
-        generate_raise_test(self, "98.2", SystemProperties.period, "not convertible")
+        generate_raise_test(self, "98.2", SystemProperties.period, "period")
 
     @staticmethod
     def test_gamma():
@@ -152,8 +152,8 @@ class TransformSystemPropertiesTestCase(ElisaTestCase):
         generate_test(valid_values, SystemProperties.gamma, expected)
 
     def test_gamma_raise(self):
-        generate_raise_test(self, "98.2", SystemProperties.gamma, "not convertible")
-        generate_raise_test(self, 1.0 * u.km * u.s, SystemProperties.gamma, "are not convertible")
+        generate_raise_test(self, "98.2", SystemProperties.gamma, "gamma")
+        generate_raise_test(self, 1.0 * u.km * u.s, SystemProperties.gamma, "gamma")
 
     @staticmethod
     def test_additional_light():
@@ -196,7 +196,7 @@ class TransformBodyPropertiesTestCase(ElisaTestCase):
         generate_test(valid_values, BodyProperties.t_eff, expected, 4)
 
     def test_t_eff_raise(self):
-        generate_raise_test(self, "hakuna matata", BodyProperties.t_eff, "Cannot parse")
+        generate_raise_test(self, "hakuna matata", BodyProperties.t_eff, "t_eff")
 
     @staticmethod
     def test_radius():

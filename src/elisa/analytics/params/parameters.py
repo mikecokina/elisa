@@ -6,8 +6,9 @@ import abc
 import ast
 import json
 import re
+from collections.abc import Mapping
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Self
 
 import numpy as np
 
@@ -32,7 +33,10 @@ from elisa.analytics.params.transform import (
     SpotInitialProperties,
     StarInitialProperties,
 )
-from elisa.base.error import raise_elisa_initial_parameters_error
+from elisa.base.error import (
+    raise_elisa_initial_parameters_error,
+    raise_elisa_invalid_kwargs_error,
+)
 from elisa.base.transform import normalize_morphology
 from elisa.binary_system.utils import calculate_sma_estimate
 from elisa.json_encoder import ElisaJSONEncoder
@@ -706,7 +710,7 @@ class InitialParameter:
 
     """
 
-    DEFAULT: ClassVar = {
+    DEFAULT: ClassVar[dict[str, Any]] = {
         "param": None,
         "value": None,
         "fixed": None,
@@ -828,6 +832,52 @@ class InitialParameters(metaclass=abc.ABCMeta):
     TRANSFORM_PROPERTIES_CLS: ClassVar[TransformPropertiesType]
     DEFAULT_NORMALIZATION: dict[str, tuple]
 
+    @abc.abstractmethod
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize a concrete parameter section from named definitions."""
+        ...
+
+    @staticmethod
+    def _require_mapping(value: Any, context: str) -> Mapping[str, Any]:
+        """Validate a definition before iterating it or expanding keyword arguments."""
+        if not isinstance(value, Mapping):
+            message = f"`{context}` must be a mapping, got {type(value).__name__}."
+            raise_elisa_initial_parameters_error(message)
+        if any(not isinstance(name, str) for name in value):
+            message = f"`{context}` contains non-string argument names."
+            raise_elisa_invalid_kwargs_error(message)
+        return value
+
+    @classmethod
+    def from_definition(cls, definition: Any, *, context: str) -> Self:
+        """Construct a nested parameter section after checking its structure."""
+        definition = cls._require_mapping(definition, context)
+        return cls(**definition)
+
+    @classmethod
+    def from_definitions(cls, definitions: Any, *, context: str) -> list[Self]:
+        """Construct an optional collection of nested definitions with indexed errors."""
+        if definitions is None:
+            return []
+        message = f"`{context}` must be a collection of parameter definitions."
+        if isinstance(definitions, (str, bytes, Mapping)):
+            raise_elisa_initial_parameters_error(message)
+        try:
+            definitions = iter(definitions)
+        except TypeError as exc:
+            raise_elisa_initial_parameters_error(message, exc)
+        return [
+            cls.from_definition(definition, context=f"{context}[{index}]")
+            for index, definition in enumerate(definitions)
+        ]
+
+    def _init_parameters(self, definition: Any, *, context: str) -> None:
+        """Initialize scalar parameter definitions through the common validation boundary."""
+        definition = self._require_mapping(definition, context)
+        for parameter, items in definition.items():
+            value = self.init_parameter(parameter, items, context=f"{context}.{parameter}")
+            setattr(self, parameter, value)
+
     @property
     def slots_(self) -> list:
         """Get list of attribute slot names for this object.
@@ -869,7 +919,9 @@ class InitialParameters(metaclass=abc.ABCMeta):
                 error_msg = f"It is not allowed for `{prop.param}` to contain both `fixed` and `constraint` parameter."
                 raise_elisa_initial_parameters_error(error_msg)
 
-    def init_parameter(self, parameter: str, items: dict) -> InitialParameter:
+    def init_parameter(
+        self, parameter: str, items: Any, *, context: str | None = None,
+    ) -> InitialParameter:
         """Initialize InitialParameter instance from dictionary definition.
 
         Creates a properly configured InitialParameter object with unit conversion,
@@ -878,12 +930,27 @@ class InitialParameters(metaclass=abc.ABCMeta):
         :param parameter: Name of the fit parameter.
         :type parameter: str
         :param items: Dictionary definition of the fit parameter containing value, unit, fixed, min, max, sigma, etc.
-        :type items: dict
+        :type items: Mapping[str, Any]
+        :param context: Optional definition path for validation errors.
+        :raises ElisaInvalidKwargsError: If the parameter or metadata argument name is invalid.
+        :raises ElisaInitialParametersError: If the parameter definition is not a mapping.
         :returns: Initialized InitialParameter instance.
         :rtype: InitialParameter
         """
-        _kwarg = InitialParameter.DEFAULT.copy()
-        _kwarg.update(dict(param=parameter, **items))
+        context = context or f"{self.__class__.__name__}.{parameter}"
+        if not isinstance(parameter, str):
+            message = f"Invalid non-string parameter name in `{context}`."
+            raise_elisa_invalid_kwargs_error(message)
+        # Validate names before accessing normalization defaults.
+        utils.invalid_param_checker((parameter,), tuple(self.DEFAULT_NORMALIZATION), context)
+        items = self._require_mapping(items, context)
+        # The enclosing key supplies param; accepting it twice would fail at **items.
+        if "param" in items:
+            message = f"Metadata `param` in `{context}` is reserved for the enclosing parameter name."
+            raise_elisa_invalid_kwargs_error(message)
+        _kwarg: dict[str, Any] = InitialParameter.DEFAULT.copy()
+        _kwarg.update(items)
+        _kwarg["param"] = parameter
         _kwarg.update(
             {
                 "min": items.get("min", self.DEFAULT_NORMALIZATION[parameter][0]),
@@ -914,9 +981,7 @@ class SpotInitialParameters(InitialParameters):
         """
         utils.check_missing_kwargs(("label",), kwargs, instance_of=self.__class__)
         self.label = f"spot{conf.PARAM_PARSER}{kwargs.pop('label')}"
-        for parameter, items in kwargs.items():
-            value = self.init_parameter(parameter, items)
-            setattr(self, parameter, value)
+        self._init_parameters(kwargs, context=self.__class__.__name__)
         self.validity_check()
 
 
@@ -944,9 +1009,7 @@ class PulsationInitialParameters(InitialParameters):
         self.mode_axis_phi = 0
         self.mode_axis_theta = 0
 
-        for parameter, items in kwargs.items():
-            value = self.init_parameter(parameter, items)
-            setattr(self, parameter, value)
+        self._init_parameters(kwargs, context=self.__class__.__name__)
         self.validity_check()
 
 
@@ -979,21 +1042,19 @@ class StarInitialParameters(InitialParameters):
         :type kwargs: dict
         """
         self.DEFAULT_NORMALIZATION = conf.get_default_normalization_star()
-        self.label = None
+        self.label: str | None = None
 
         spots = kwargs.pop("spots", [])
         pulsations = kwargs.pop("pulsations", [])
 
-        for parameter, items in kwargs.items():
-            value = self.init_parameter(parameter, items)
-            setattr(self, parameter, value)
+        self._init_parameters(kwargs, context=self.__class__.__name__)
 
-        if not is_empty(spots):
-            spots = [SpotInitialParameters(**spot) for spot in spots]
+        spots = SpotInitialParameters.from_definitions(spots, context="spots")
+        if spots:
             self.spots = spots
 
-        if not is_empty(pulsations):
-            pulsations = [PulsationInitialParameters(**pulsation) for pulsation in pulsations]
+        pulsations = PulsationInitialParameters.from_definitions(pulsations, context="pulsations")
+        if pulsations:
             self.pulsations = pulsations
 
         self.validity_check()
@@ -1017,9 +1078,7 @@ class NuisanceInitialPrameters(InitialParameters):
         :param kwargs: Nuisance parameter definitions.
         :type kwargs: dict
         """
-        for parameter, items in kwargs.items():
-            value = self.init_parameter(parameter, items)
-            setattr(self, parameter, value)
+        self._init_parameters(kwargs, context=self.__class__.__name__)
         self.validity_check()
 
 
@@ -1058,22 +1117,27 @@ class BinaryInitialParameters(InitialParameters):
         :param kwargs: Binary system parameter definitions including system, primary, and secondary components.
         :type kwargs: dict
         :raises elisa.base.error.ElisaMissingKwargsError: If the system section is missing.
+        :raises ElisaInvalidKwargsError: If a section or parameter name is unsupported.
+        :raises ElisaInitialParametersError: If a section or parameter definition has an invalid structure.
         """
         utils.check_missing_kwargs(("system",), kwargs, instance_of=self.__class__)
-        self._primary: dict | None = kwargs.pop("primary", None)
-        self._secondary: dict | None = kwargs.pop("secondary", None)
+        utils.invalid_kwarg_checker(
+            kwargs, ("system", "primary", "secondary", conf.NUISANCE_PARSER), self.__class__,
+        )
+        self._primary: Mapping[str, Any] | None = kwargs.pop("primary", None)
+        self._secondary: Mapping[str, Any] | None = kwargs.pop("secondary", None)
         self._nuisance = kwargs.pop(conf.NUISANCE_PARSER, None)
-        system: dict | None = kwargs.pop("system")
+        system = self._require_mapping(kwargs.pop("system"), "system")
 
         # nuisance params
         if self._nuisance is None:
             self._nuisance = {"ln_f": {"value": -20, "fixed": True}}
-        self.nuisance = NuisanceInitialPrameters(**self._nuisance)
+        self.nuisance = NuisanceInitialPrameters.from_definition(
+            self._nuisance, context=conf.NUISANCE_PARSER,
+        )
 
         # system params
-        for parameter, items in system.items():
-            value = self.init_parameter(parameter, items)
-            setattr(self, parameter, value)
+        self._init_parameters(system, context="system")
 
         # components params
         self.primary: StarInitialParameters | None = None
@@ -1081,9 +1145,12 @@ class BinaryInitialParameters(InitialParameters):
 
         for component in settings.BINARY_COUNTERPARTS:
             props = getattr(self, f"_{component}")
-            if is_empty(props):
+            if props is None:
                 continue
-            star_params = StarInitialParameters(**props)
+            props = self._require_mapping(props, component)
+            if not props:
+                continue
+            star_params = StarInitialParameters.from_definition(props, context=component)
             setattr(self, component, star_params)
             star_params.label = component
 

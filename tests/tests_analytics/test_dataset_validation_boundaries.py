@@ -4,10 +4,12 @@ from unittest.mock import patch
 import numpy as np
 import pandas as pd
 import pytest
+from astropy.units import UnitConversionError
 
 from elisa import units as u
 from elisa.analytics.dataset import utils as dutils
 from elisa.analytics.dataset.base import LCData, RVData
+from elisa.analytics.dataset.transform import LCDataProperties, RVDataProperties
 from elisa.base.error import (
     ElisaAnalyticsDataError,
     ElisaInvalidKwargsError,
@@ -38,12 +40,16 @@ def test_invalid_numeric_fields_report_field_and_original_cause(dataset_case, fi
 
 @pytest.mark.parametrize("field", ["x_unit", "y_unit"])
 @pytest.mark.parametrize("unit", ["invalid", object(), 123])
-def test_invalid_unit_objects_report_property_and_original_cause(dataset_case, field, unit):
+def test_invalid_unit_objects_report_property_and_conversion_cause(dataset_case, field, unit):
     dataset, kwargs = dataset_case
     kwargs[field] = unit
     with pytest.raises(ElisaAnalyticsDataError, match=field) as caught:
         dataset(**kwargs)
-    assert isinstance(caught.value.__cause__, (TypeError, ValueError, AttributeError))
+    if isinstance(unit, str):
+        assert isinstance(caught.value.__cause__, ValueError)
+    else:
+        # Unsupported types are rejected directly, before any library conversion.
+        assert caught.value.__cause__ is None
 
 
 @pytest.mark.parametrize("stage", ["transform_input", "convert_arrays"])
@@ -144,7 +150,7 @@ def test_property_transformation_handles_empty_input_and_first_property_failure(
     assert data.transform_input() == {}
     with pytest.raises(ElisaAnalyticsDataError, match="`x_unit`") as caught:
         data.transform_input(x_unit=object())
-    assert isinstance(caught.value.__cause__, AttributeError)
+    assert caught.value.__cause__ is None
 
 
 @pytest.fixture(params=[None, RVData, LCData], ids=["reader", "RVData", "LCData"])
@@ -291,3 +297,63 @@ def test_original_observations_are_validated_before_downselection(tmp_path, data
     with pytest.raises(ElisaAnalyticsDataError, match="strictly positive"):
         dataset.load_from_file(str(path), x_unit=kwargs["x_unit"], y_unit=kwargs["y_unit"],
                                downselect_ratio=0.5)
+
+
+@pytest.mark.parametrize("properties", [RVDataProperties, LCDataProperties])
+@pytest.mark.parametrize("field", ["x_data", "y_data", "y_err"])
+@pytest.mark.parametrize("value,cause", [
+    (["abc"], ValueError),
+    ([[1], [2, 3]], ValueError),
+    ([10 ** 400], OverflowError),
+])
+def test_direct_array_validators_keep_field_and_conversion_cause(properties, field, value, cause):
+    with pytest.raises(ElisaAnalyticsDataError, match=field) as caught:
+        getattr(properties, field)(value)
+    assert isinstance(caught.value.__cause__, cause)
+
+
+@pytest.mark.parametrize("validator,value,expected", [
+    (RVDataProperties.x_unit, "day", u.d),
+    (RVDataProperties.y_unit, "km / s", u.km / u.s),
+    (LCDataProperties.x_unit, "s", u.s),
+    (LCDataProperties.y_unit, "mag", u.mag),
+    (LCDataProperties.x_unit, "", u.dimensionless_unscaled),
+    (LCDataProperties.x_unit, None, u.dimensionless_unscaled),
+])
+def test_direct_unit_validators_accept_strings_and_optional_dimensionless_units(validator, value, expected):
+    assert validator(value) == expected
+
+
+@pytest.mark.parametrize("field", ["x_unit", "y_unit"])
+@pytest.mark.parametrize("properties", [RVDataProperties, LCDataProperties])
+def test_direct_unit_parsing_failure_preserves_field_and_cause(properties, field):
+    with pytest.raises(ElisaAnalyticsDataError, match=field) as caught:
+        getattr(properties, field)("nonsense")
+    assert isinstance(caught.value.__cause__, ValueError)
+
+
+def test_dataset_constructor_uses_parsed_unit_strings_for_conversion():
+    data = RVData(x_data=[0, 0.5], y_data=[1, 2], x_unit="day", y_unit="km / s")
+    np.testing.assert_array_equal(data.y_data, [1000, 2000])
+    assert data.y_unit == u.m / u.s
+
+
+@pytest.mark.parametrize("value,expected", [
+    (1 * u.mag, 1.0), (1000 * u.mmag, 1.0), (np.float32(2.5), 2.5),
+])
+def test_zero_magnitude_converts_valid_scalar_values(value, expected):
+    actual = LCDataProperties.zero_magnitude(value)
+    assert isinstance(actual, np.float64)
+    assert actual == expected
+
+
+def test_zero_magnitude_incompatible_unit_preserves_original_cause():
+    with pytest.raises(ElisaAnalyticsDataError, match="zero_magnitude") as caught:
+        LCDataProperties.zero_magnitude(1 * u.m)
+    assert isinstance(caught.value.__cause__, UnitConversionError)
+
+
+def test_zero_magnitude_rejects_a_quantity_vector_as_a_scalar():
+    with pytest.raises(ElisaAnalyticsDataError, match="zero_magnitude") as caught:
+        LCDataProperties.zero_magnitude(np.array([1, 2]) * u.mag)
+    assert isinstance(caught.value.__cause__, TypeError)

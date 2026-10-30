@@ -63,6 +63,8 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Changed
 
+- Raised the minimum supported Python version to 3.11; removed Python 3.10
+  dependency branches and adopted standard-library `Self` and `UTC`.
 - Remove the deprecated `[support].atlas` INI option and atmosphere-selection
   prompt from initial configuration. Select stellar atmospheres through
   `atmosphere` or the per-component `atmosphere_model` fitting mapping.

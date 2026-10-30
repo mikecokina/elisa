@@ -1,11 +1,11 @@
 import datetime as dt
+from datetime import UTC
 
 import numpy as np
 
 from elisa import settings
 from elisa import units as u
 from elisa.atm import atm_file_prefix_to_quantity_list, validated_atlas
-from elisa.utc import UTC
 from elisa.utils import jd_from_datetime
 
 PARAM_PARSER = "@"

@@ -3,7 +3,7 @@
 .. |GitHub version| image:: https://img.shields.io/badge/version-0.7.0.dev0-yellow.svg
    :target: https://github.com/mikecokina/elisa/commits/release/0.7.0.dev0
 
-.. |Python version| image:: https://img.shields.io/badge/python-3.6|3.7|3.8|3.9|3.10|3.11|3.12-orange.svg
+.. |Python version| image:: https://img.shields.io/badge/python-3.11|3.12|3.13|3.14-orange.svg
    :target: https://www.python.org/
 
 .. |Licence GPLv3| image:: https://img.shields.io/badge/license-GNU/GPLv3-blue.svg
@@ -28,11 +28,10 @@ ELISa
 Latest version
 ~~~~~~~~~~~~~~
 
-ELISa has been updated to work with the latest Python versions up to v3.12. However, the latest package
-released on PyPI is only compatible with Python versions up to v3.8. If you want to install ELISa with a
-newer Python version, please install it from GitHub:
+ELISa requires Python 3.11 or newer. Supported versions are Python 3.11–3.14.
+Install the current source checkout with::
 
-    pip install git+https://github.com/mikecokina/elisa.git@release/0.6.2
+    python -m pip install .
 
 In case of any installation issues, please do not hesitate to create an issue on GitHub.
 
@@ -63,29 +62,15 @@ We also plan to implement following features:
 Requirements
 ------------
 
-**ELISa** is a python package which requires ``python v3.6+`` and has following dependencies::
+**ELISa** requires Python 3.11 or newer. Package dependencies are declared in
+``pyproject.toml``; ``requirements.txt`` includes the development and UI environment.
+Install the package and its dependencies with::
 
-    astropy>=4.0.1,<=5.3.4
-    corner>=2.2.1
-    emcee>=3.0.1,<=3.1.6
-    jsonschema>=3.2.0
-    matplotlib>=3.3.2,<=3.7.5
-    numpy>=1.16.2,<=1.26.4
-    pandas>=0.24.0,<=1.5.3
-    packaging<=24.2
-    pytest>=3.2.3,<=8.3.4
-    python-dateutil>=2.6.1,<=2.8.1
-    scipy>=1.0.0,<=1.10.1
-    tqdm>4.43.0
-    parameterized>=0.7.4
-    numba>=0.51.2
-    requests>=2.26.0
+    python -m pip install .
 
-and potentially also **python-tk** package or equivalent for matplotlib package to display the figures correctly.
-
-:note: although python distribution and package versions are specified precisely, that does not mean that the package
-       will not work with higher versions, only that the ELISa was not tested using newer versions. However, we highly
-       recommend sticking with the python distribution and package versions listed above.
+The ``python-tk`` package or its platform equivalent may be needed for interactive
+Matplotlib figures. Building the API documentation requires Python 3.12 or newer
+for the pinned Sphinx version; see ``docs/README.rst``.
 
 Installing process
 ------------------
@@ -97,36 +82,12 @@ in dependence on the selected operating system.
 Ubuntu [or similar]
 ~~~~~~~~~~~~~~~~~~~
 
-First, you have to install Python 3.6 or higher. In the latest stable version ``Ubuntu 18.04`` there is already preinstalled
-python `3.6.x`. In older versions, you will have to add the repository and install it manually. Several guides
-on the internet will help you with installation, e.g. Python_3.6_
+Install Python 3.11 or newer and the matching ``venv`` package for your
+operating system. Create and activate a virtual environment::
 
-.. _Python_3.6: http://ubuntuhandbook.org/index.php/2017/07/install-python-3-6-1-in-ubuntu-16-04-lts/
-
-Install ``pip3`` python package manager if is not already installed on your system, usually by execution of the
-command::
-
-    apt install -y python3-pip
-
-or you can also use `raw` python script which provides installation via ``python``::
-
-    curl https://bootstrap.pypa.io/get-pip.py | python3.6
-
-Install virtual environment by command::
-
-    pip3 install virtualenv
-
-
-To create a virtual environment, create a directory where the python virtual environment will be stored,
-e.g. ``/<any>/<path>/elisa/venv``
-and run the following command::
-
-    virtualenv /<any>/<path>/elisa/venv --python=python3.6
-
-After few moments your virtual environment is created and ready for use. In the terminal window, activate virtual
-environment::
-
+    python3.11 -m venv /<any>/<path>/elisa/venv
     . /<any>/<path>/elisa/venv/bin/activate
+    python -m pip install --upgrade pip
 
 When the virtual environment is activated, install the ``elisa`` package in the latest stable version::
 
@@ -155,22 +116,12 @@ Now you should be able to launch jupyter notebooks and run the tutorials stored 
 Windows
 ~~~~~~~
 
-To install python in windows, download the ``python 3.6.x`` installation package from the official Python website.
-The installation package will create all necessary dependencies except the virtual environment package.
-Install virtual environment by execution of following command in the command line::
+Install Python 3.11 or newer from the official Python website. Create and
+activate a virtual environment from the command prompt::
 
-    pip3 install virtualenv
-
-Make sure a correct version of python and pip is used. When done, create a directory where the virtual environment will be
-stored and run::
-
-    virtualenv /<any>/<path>/elisa --python<path>/<to>/python3.6/python.exe
-
-It is common to specify the full path to the ``python.exe`` file under Windows, otherwise, It might not work.
-
-Now, when the virtual environment is prepared, run::
-
-    . /<any>/<path>/elisa/Scripts/activate
+    py -3.11 -m venv C:\path\to\elisa\venv
+    C:\path\to\elisa\venv\Scripts\activate
+    python -m pip install --upgrade pip
 
 And finally install ``ELISa``::
 

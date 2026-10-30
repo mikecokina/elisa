@@ -102,9 +102,11 @@ def test_adapter_does_not_translate_unexpected_errors():
     assert error.value is failure
 
 
-def test_implicit_library_conversion_errors_are_not_globally_wrapped():
-    with pytest.raises(UnitConversionError):
+def test_initial_conversion_error_preserves_model_and_library_causes():
+    with pytest.raises(ElisaInitialParametersError) as caught:
         BinaryInitialProperties.period(1.0 * u.m)
+    assert type(caught.value.__cause__) is ElisaParametersError
+    assert isinstance(caught.value.__cause__.__cause__, UnitConversionError)
 
 
 def test_valid_conversions_are_unchanged():

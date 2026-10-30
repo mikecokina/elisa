@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from unittest import mock
 
 from elisa import settings
+from elisa.base.error import ElisaAnalyticsTaskError
 from elisa.analytics.transform import (
     LCBinaryAnalyticsProperties,
     RVBinaryAnalyticsTask,
@@ -49,14 +50,14 @@ class TestRVBinaryAnalyticsTask(ElisaTestCase):
         self.assertEqual(result, mock_rv_data)
         self.assertIsInstance(result, dict)
 
-    def test_data_not_dict_raises_type_error(self) -> None:
-        """Test that non-dict input raises TypeError.
+    def test_data_not_dict_raises_task_error(self) -> None:
+        """Test that non-dict input raises ElisaAnalyticsTaskError.
 
         Verifies that passing a non-dict value (like list, tuple, or string)
-        raises a TypeError with appropriate message.
+        raises a ElisaAnalyticsTaskError with appropriate message.
 
         :return: None
-        :raises TypeError: When input is not a dict
+        :raises ElisaAnalyticsTaskError: When input is not a dict
         """
         invalid_inputs: list = [
             [],
@@ -68,42 +69,42 @@ class TestRVBinaryAnalyticsTask(ElisaTestCase):
         ]
 
         for invalid_input in invalid_inputs[:5]:  # Skip the dict for now
-            with self.assertRaises(TypeError) as context:
+            with self.assertRaises(ElisaAnalyticsTaskError) as context:
                 RVBinaryAnalyticsTask.data(invalid_input)
             self.assertIn("`radial_velocities`", str(context.exception))
 
     def test_data_invalid_counterpart_key(self) -> None:
-        """Test that invalid binary counterpart key raises ValueError.
+        """Test that invalid binary counterpart key raises ElisaAnalyticsTaskError.
 
         Verifies that dictionary keys that are not valid binary counterpart
-        designations raise a ValueError with helpful error message.
+        designations raise a ElisaAnalyticsTaskError with helpful error message.
 
         :return: None
-        :raises ValueError: When dict key is invalid counterpart designation
+        :raises ElisaAnalyticsTaskError: When dict key is invalid counterpart designation
         """
         mock_data = mock.MagicMock(spec=self.RVData)
         invalid_data: dict = {"invalid_key": mock_data}
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ElisaAnalyticsTaskError) as context:
             RVBinaryAnalyticsTask.data(invalid_data)
 
         error_msg: str = str(context.exception)
         self.assertIn("invalid_key", error_msg)
         self.assertIn("invalid designation", error_msg)
 
-    def test_data_non_rvdata_instance_raises_type_error(self) -> None:
-        """Test that non-RVData values raise TypeError.
+    def test_data_non_rvdata_instance_raises_task_error(self) -> None:
+        """Test that non-RVData values raise ElisaAnalyticsTaskError.
 
         Verifies that dictionary values that are not RVData instances
-        raise a TypeError with appropriate message.
+        raise a ElisaAnalyticsTaskError with appropriate message.
 
         :return: None
-        :raises TypeError: When dict value is not RVData instance
+        :raises ElisaAnalyticsTaskError: When dict value is not RVData instance
         """
         valid_key: str = list(settings.BINARY_COUNTERPARTS.keys())[0]
         invalid_data: dict = {valid_key: "not an RVData instance"}
 
-        with self.assertRaises(TypeError) as context:
+        with self.assertRaises(ElisaAnalyticsTaskError) as context:
             RVBinaryAnalyticsTask.data(invalid_data)
 
         error_msg: str = str(context.exception)
@@ -169,14 +170,14 @@ class TestLCBinaryAnalyticsProperties(ElisaTestCase):
         self.assertEqual(result, mock_lc_data)
         self.assertIsInstance(result, dict)
 
-    def test_data_not_dict_raises_type_error(self) -> None:
-        """Test that non-dict input raises TypeError.
+    def test_data_not_dict_raises_task_error(self) -> None:
+        """Test that non-dict input raises ElisaAnalyticsTaskError.
 
         Verifies that passing a non-dict value (like list, tuple, or string)
-        raises a TypeError with appropriate message for light curves.
+        raises a ElisaAnalyticsTaskError with appropriate message for light curves.
 
         :return: None
-        :raises TypeError: When input is not a dict
+        :raises ElisaAnalyticsTaskError: When input is not a dict
         """
         invalid_inputs: list = [
             [],
@@ -187,43 +188,43 @@ class TestLCBinaryAnalyticsProperties(ElisaTestCase):
         ]
 
         for invalid_input in invalid_inputs:
-            with self.assertRaises(TypeError) as context:
+            with self.assertRaises(ElisaAnalyticsTaskError) as context:
                 LCBinaryAnalyticsProperties.data(invalid_input)
             self.assertIn("`light_curves`", str(context.exception))
 
     def test_data_invalid_passband_key(self) -> None:
-        """Test that invalid passband key raises ValueError.
+        """Test that invalid passband key raises ElisaAnalyticsTaskError.
 
         Verifies that dictionary keys that are not valid passband
-        designations raise a ValueError with helpful error message listing
+        designations raise a ElisaAnalyticsTaskError with helpful error message listing
         available passbands.
 
         :return: None
-        :raises ValueError: When dict key is invalid passband designation
+        :raises ElisaAnalyticsTaskError: When dict key is invalid passband designation
         """
         mock_data = mock.MagicMock(spec=self.LCData)
         invalid_data: dict = {"invalid_passband": mock_data}
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ElisaAnalyticsTaskError) as context:
             LCBinaryAnalyticsProperties.data(invalid_data)
 
         error_msg: str = str(context.exception)
         self.assertIn("invalid_passband", error_msg)
         self.assertIn("invalid passband", error_msg)
 
-    def test_data_non_lcdata_instance_raises_type_error(self) -> None:
-        """Test that non-LCData values raise TypeError.
+    def test_data_non_lcdata_instance_raises_task_error(self) -> None:
+        """Test that non-LCData values raise ElisaAnalyticsTaskError.
 
         Verifies that dictionary values that are not LCData instances
-        raise a TypeError with appropriate message.
+        raise a ElisaAnalyticsTaskError with appropriate message.
 
         :return: None
-        :raises TypeError: When dict value is not LCData instance
+        :raises ElisaAnalyticsTaskError: When dict value is not LCData instance
         """
         valid_passband: str = list(settings.PASSBANDS)[0]
         invalid_data: dict = {valid_passband: "not an LCData instance"}
 
-        with self.assertRaises(TypeError) as context:
+        with self.assertRaises(ElisaAnalyticsTaskError) as context:
             LCBinaryAnalyticsProperties.data(invalid_data)
 
         error_msg: str = str(context.exception)
@@ -288,13 +289,13 @@ class TestRVBinaryAnalyticsTaskEdgeCases(ElisaTestCase):
         self.RVData = RVData
 
     def test_data_mixed_valid_and_invalid_keys(self) -> None:
-        """Test dict with both valid and invalid keys raises ValueError.
+        """Test dict with both valid and invalid keys raises ElisaAnalyticsTaskError.
 
         Verifies that even if most keys are valid, presence of a single
         invalid key causes the validation to fail.
 
         :return: None
-        :raises ValueError: When any dict key is invalid
+        :raises ElisaAnalyticsTaskError: When any dict key is invalid
         """
         mock_data = mock.MagicMock(spec=self.RVData)
         valid_key: str = list(settings.BINARY_COUNTERPARTS.keys())[0]
@@ -304,22 +305,22 @@ class TestRVBinaryAnalyticsTaskEdgeCases(ElisaTestCase):
             "invalid_key": mock_data,
         }
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ElisaAnalyticsTaskError):
             RVBinaryAnalyticsTask.data(mixed_data)
 
     def test_data_none_value_in_dict(self) -> None:
-        """Test that None value in dict raises TypeError.
+        """Test that None value in dict raises ElisaAnalyticsTaskError.
 
         Verifies that None values (even with valid keys) are rejected
         as not being RVData instances.
 
         :return: None
-        :raises TypeError: When dict value is None
+        :raises ElisaAnalyticsTaskError: When dict value is None
         """
         valid_key: str = list(settings.BINARY_COUNTERPARTS.keys())[0]
         invalid_data: dict = {valid_key: None}
 
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ElisaAnalyticsTaskError):
             RVBinaryAnalyticsTask.data(invalid_data)
 
 
@@ -334,13 +335,13 @@ class TestLCBinaryAnalyticsPropertiesEdgeCases(ElisaTestCase):
         self.LCData = LCData
 
     def test_data_mixed_valid_and_invalid_passbands(self) -> None:
-        """Test dict with both valid and invalid passbands raises ValueError.
+        """Test dict with both valid and invalid passbands raises ElisaAnalyticsTaskError.
 
         Verifies that even if most passbands are valid, presence of a single
         invalid passband causes the validation to fail.
 
         :return: None
-        :raises ValueError: When any dict key is invalid passband
+        :raises ElisaAnalyticsTaskError: When any dict key is invalid passband
         """
         mock_data = mock.MagicMock(spec=self.LCData)
         valid_passband: str = list(settings.PASSBANDS)[0]
@@ -350,22 +351,22 @@ class TestLCBinaryAnalyticsPropertiesEdgeCases(ElisaTestCase):
             "invalid_passband": mock_data,
         }
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ElisaAnalyticsTaskError):
             LCBinaryAnalyticsProperties.data(mixed_data)
 
     def test_data_none_value_in_dict(self) -> None:
-        """Test that None value in dict raises TypeError.
+        """Test that None value in dict raises ElisaAnalyticsTaskError.
 
         Verifies that None values (even with valid passband keys) are
         rejected as not being LCData instances.
 
         :return: None
-        :raises TypeError: When dict value is None
+        :raises ElisaAnalyticsTaskError: When dict value is None
         """
         valid_passband: str = list(settings.PASSBANDS)[0]
         invalid_data: dict = {valid_passband: None}
 
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ElisaAnalyticsTaskError):
             LCBinaryAnalyticsProperties.data(invalid_data)
 
     def test_error_message_includes_available_passbands(self) -> None:
@@ -379,7 +380,7 @@ class TestLCBinaryAnalyticsPropertiesEdgeCases(ElisaTestCase):
         mock_data = mock.MagicMock(spec=self.LCData)
         invalid_data: dict = {"invalid_passband": mock_data}
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ElisaAnalyticsTaskError) as context:
             LCBinaryAnalyticsProperties.data(invalid_data)
 
         error_msg: str = str(context.exception)

@@ -6,7 +6,7 @@ from astropy import units as u
 from elisa.analytics.models import lc, serializers
 from elisa.analytics.params import parameters
 from elisa.analytics.params.transform import PulsationModeInitialProperties
-from elisa.base.error import ElisaInitialParametersError
+from elisa.base.error import ElisaInitialParametersError, ElisaParametersError
 from elisa.pulse.mode import PulsationMode
 from tests.utils import ElisaTestCase
 
@@ -138,5 +138,7 @@ class PulsationFrequencyTestCase(ElisaTestCase):
                     PulsationModeInitialProperties.frequency(value)
         with self.assertRaises(ElisaInitialParametersError):
             PulsationModeInitialProperties.frequency(object())
-        with self.assertRaises(u.UnitConversionError):
+        with self.assertRaises(ElisaInitialParametersError) as caught:
             PulsationModeInitialProperties.frequency(1 * u.m)
+        self.assertIs(type(caught.exception.__cause__), ElisaParametersError)
+        self.assertIsInstance(caught.exception.__cause__.__cause__, u.UnitConversionError)

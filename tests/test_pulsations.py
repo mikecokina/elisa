@@ -956,8 +956,8 @@ class TestPulsationModeProperties(ElisaTestCase):
             self.props.amplitude(-10.0)
 
     def test_amplitude_invalid_type(self):
-        """Test amplitude property raises TypeError for invalid type."""
-        with self.assertRaises(TypeError):
+        """Test amplitude property raises ElisaParametersError for invalid type."""
+        with self.assertRaises(ElisaParametersError):
             self.props.amplitude("invalid")
 
     def test_frequency_valid_float(self):
@@ -988,8 +988,8 @@ class TestPulsationModeProperties(ElisaTestCase):
             self.props.frequency(-1.0)
 
     def test_frequency_invalid_type(self):
-        """Test frequency property raises TypeError for invalid type."""
-        with self.assertRaises(TypeError):
+        """Test frequency property raises ElisaParametersError for invalid type."""
+        with self.assertRaises(ElisaParametersError):
             self.props.frequency("invalid_freq")
 
     def test_start_phase_zero(self):

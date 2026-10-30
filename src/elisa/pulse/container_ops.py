@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from elisa.base.error import ElisaValueError
 from elisa import const, utils
+from elisa.base.error import ElisaValueError
 from elisa.base.surface.faces import calculate_normals, set_all_surface_centres
 from elisa.base.types import COMPLEX
 from elisa.pulse import pulsations

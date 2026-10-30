@@ -7,7 +7,7 @@ name = "elisa"
 dynamic = ["version"]
 description = "Eclipsing Binary Modeling Software"
 readme = { file = "README.rst", content-type = "text/x-rst" }
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "GPLv3" }
 authors = [
     { name = "Michal Cokina", email = "mikecokina@gmail.com" },
@@ -20,7 +20,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Topic :: Scientific/Engineering :: Astronomy",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -28,16 +27,11 @@ classifiers = [
 ]
 
 dependencies = [
-    # Python 3.10 compatible floors
-    'astropy>=6.1.7; python_version < "3.11"',
-    'numpy>=2.2.0; python_version < "3.11"',
-    'pandas>=2.2.3; python_version < "3.11"',
-    'scipy>=1.15.0; python_version < "3.11"',
     # Python 3.11+ floors
-    'astropy>=7.2.0; python_version >= "3.11"',
-    'numpy>=2.4.2; python_version >= "3.11"',
-    'pandas>=3.0.1; python_version >= "3.11"',
-    'scipy>=1.17.1; python_version >= "3.11"',
+    'astropy>=7.2.0',
+    'numpy>=2.4.2',
+    'pandas>=3.0.1',
+    'scipy>=1.17.1',
     # Common deps
     "corner>=2.2.1",
     "emcee>=3.0.1",
@@ -71,8 +65,7 @@ ui = [
     # UI runtime dependencies used by the Gradio desktop app
     # pandas and matplotlib are already listed in [project].dependencies but
     # are included here for clarity when installing the `ui` extras.
-    'pandas>=2.2.3; python_version < "3.11"',
-    'pandas>=3.0.1; python_version >= "3.11"',
+    'pandas>=3.0.1',
     "matplotlib>=3.3.2",
     "pillow>=9.0.0",
 ]
@@ -104,7 +97,7 @@ exclude = ["unittests", "tests"]
 force-exclude = true
 
 line-length = 120
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = [

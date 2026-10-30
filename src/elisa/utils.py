@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime  # noqa: ICN001
 import re
-from collections.abc import Iterable, Iterator, Sized
+from collections.abc import Collection, Iterable, Iterator, Mapping, Sized
 from copy import copy, deepcopy
 from pathlib import Path
 from queue import Empty, Queue
@@ -91,11 +91,11 @@ def polar_to_cartesian(radius: Float | NDArray, phi: Float | NDArray) -> tuple[F
     return x, y
 
 
-def invalid_kwarg_checker(kwargs: dict, kwarglist: list | tuple, instance: type) -> None:
+def invalid_kwarg_checker(kwargs: Mapping[str, Any], kwarglist: Collection[str], instance: type) -> None:
     """Check if `kwargs` for `instance` are in allowed kwargs presented in `kwarglist`.
 
-    :param kwargs: dict; kwargs to evaluate if are in kwarg list.
-    :param kwarglist: list | tuple; list of allowed kwargs for given instance.
+    :param kwargs: Mapping whose argument names are checked against the allowed names.
+    :param kwarglist: Collection of allowed argument names.
     :param instance: Any; class/instance with attribute `__name__`
     :raises ElisaInvalidKwargsError: If any supplied argument name is not allowed.
     """
@@ -109,11 +109,11 @@ def invalid_kwarg_checker(kwargs: dict, kwarglist: list | tuple, instance: type)
         raise_elisa_invalid_kwargs_error(msg)
 
 
-def invalid_param_checker(kwargs: dict, kwarglist: list | tuple, message: str) -> None:
+def invalid_param_checker(kwargs: Iterable[str], kwarglist: Collection[str], message: str) -> None:
     """Invalid parameter checker for any class instance or function.
 
-    :param kwargs: dict; kwargs to evaluate if are in kwarg list.
-    :param kwarglist: list | tuple; list of allowed kwargs for given instance
+    :param kwargs: Iterable of parameter names (e.g. a tuple, dictionary or key view).
+    :param kwarglist: Collection of allowed parameter names.
     :param message: Any class
     :raises ElisaInvalidKwargsError: If a supplied parameter name is not allowed.
     """

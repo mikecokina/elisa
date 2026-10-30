@@ -17,6 +17,7 @@ from elisa.analytics.dataset.utils import (
 from tests.utils import ElisaTestCase
 from elisa.analytics import RVData, LCData
 from elisa import units as u
+from elisa.base.error import ElisaAnalyticsDataError
 
 set_astropy_units()
 
@@ -69,16 +70,16 @@ class ConvertFluxTestCase(ElisaTestCase):
         assert_array_equal(result, data)
 
     def test_convert_flux_mag_without_zero_point_raises(self):
-        """Test that converting magnitudes without zero_point raises ValueError."""
+        """Test that converting magnitudes without zero_point raises ElisaAnalyticsDataError."""
         data = np.array([1.0, 2.0, 3.0])
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ElisaAnalyticsDataError) as context:
             convert_flux(data, u.mag)
         self.assertIn("zero point", str(context.exception).lower())
 
     def test_convert_flux_mmag_without_zero_point_raises(self):
-        """Test that converting millimagnitudes without zero_point raises ValueError."""
+        """Test that converting millimagnitudes without zero_point raises ElisaAnalyticsDataError."""
         data = np.array([100.0, 200.0, 300.0])
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ElisaAnalyticsDataError) as context:
             convert_flux(data, u.mmag)
         self.assertIn("zero point", str(context.exception).lower())
 
@@ -107,16 +108,16 @@ class ConvertFluxErrorTestCase(ElisaTestCase):
         assert_array_equal(result, error)
 
     def test_convert_flux_error_mag_without_zero_point_raises(self):
-        """Test that converting magnitude errors without zero_point raises ValueError."""
+        """Test that converting magnitude errors without zero_point raises ElisaAnalyticsDataError."""
         error = np.array([0.01, 0.02, 0.03])
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ElisaAnalyticsDataError) as context:
             convert_flux_error(error, u.mag)
         self.assertIn("zero point", str(context.exception).lower())
 
     def test_convert_flux_error_mmag_without_zero_point_raises(self):
-        """Test that converting millimagnitude errors without zero_point raises ValueError."""
+        """Test that converting millimagnitude errors without zero_point raises ElisaAnalyticsDataError."""
         error = np.array([10.0, 20.0, 30.0])
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ElisaAnalyticsDataError) as context:
             convert_flux_error(error, u.mmag)
         self.assertIn("zero point", str(context.exception).lower())
 

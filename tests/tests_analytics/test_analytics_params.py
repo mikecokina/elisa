@@ -10,6 +10,7 @@ from elisa import units as u
 from elisa.analytics.params import conf, parameters
 from elisa.analytics.params.parameters import xs_reducer
 from elisa import settings
+from elisa.base.error import ElisaInitialParametersError, ElisaMissingKwargsError
 from tests.utils import ElisaTestCase
 
 set_astropy_units()
@@ -1069,7 +1070,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
         mock_value = {"value": 0.25, "min": 0.00, "max": 0.99}
         mock_data = {"system": {p: mock_value for p in mandatory_fit_params if p not in [param]}}
 
-        with self.assertRaises(Exception) as context:
+        with self.assertRaises(ElisaMissingKwargsError) as context:
             parameters.BinaryInitialParameters(**mock_data).validate_rv_parameters()
         self.assertTrue('Missing argument' in str(context.exception))
 
@@ -1078,7 +1079,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
         mock_value = {"value": 0.25, "min": 0.00, "max": 0.99}
         mock_data = {"system": {p: mock_value for p in mandatory_fit_params}}
 
-        with self.assertRaises(Exception) as context:
+        with self.assertRaises(ElisaInitialParametersError) as context:
             parameters.BinaryInitialParameters(**mock_data).validate_rv_parameters()
         self.assertTrue('Input requires at least period' in str(context.exception))
 
@@ -1098,7 +1099,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
         mock_data = {p: mock_value for p in mandatory_fit_params if p not in [param]}
         mock_data = parameters.serialize_result(mock_data)
 
-        with self.assertRaises(Exception) as context:
+        with self.assertRaises(ElisaMissingKwargsError) as context:
             parameters.BinaryInitialParameters(**mock_data).validate_lc_parameters('detached')
         self.assertTrue('Missing argument' in str(context.exception))
 
@@ -1127,6 +1128,6 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
         })
         mock_data = parameters.serialize_result(mock_data)
 
-        with self.assertRaises(Exception) as context:
+        with self.assertRaises(ElisaInitialParametersError) as context:
             parameters.BinaryInitialParameters(**mock_data).validate_lc_parameters('over-contact')
         self.assertTrue(err in str(context.exception))
