@@ -1,7 +1,6 @@
 import os
 import sys
 import tempfile
-from pathlib import Path
 
 
 def set_astropy_units():
@@ -33,39 +32,16 @@ def set_astropy_units():
         physical_constants.set(const_value)
 
 
-# create default elisa confing file for unittests
-CONFIG_FILE = os.path.join(tempfile.gettempdir(), "elisa.ini")
+# Private worker/test INI. Do not replace the user-selected ELISA_CONFIG on import.
+_test_config_directory = tempfile.TemporaryDirectory(prefix="elisa-tests-")
+CONFIG_FILE = os.path.join(_test_config_directory.name, "elisa.ini")
 
 DEFAULT_TEST_CONFIG = "[computational]\nmesh_generator = trapezoidal\nmax_discretization_factor = 12\n"
 
-os.environ["ELISA_CONFIG"] = CONFIG_FILE
 with open(CONFIG_FILE, "w") as f:
     f.write(DEFAULT_TEST_CONFIG)
 
 set_astropy_units()
 
 
-
-def import_fresh_elisa_settings():
-    # Ensure project root (and src/) is on sys.path so `import elisa` works when running tests
-    project_root = Path(__file__).resolve().parent.parent
-    src_path = project_root / "src"
-    if str(src_path) not in sys.path:
-        sys.path.insert(0, str(src_path))
-    if str(project_root) not in sys.path:
-        sys.path.insert(0, str(project_root))
-
-    # Remove ALL elisa-related modules, not just elisa + elisa.settings
-    for name in list(sys.modules.keys()):
-        if name == "elisa" or name.startswith("elisa."):
-            sys.modules.pop(name, None)
-
-    # Now import fresh and return the Settings instance
-    from elisa import settings as settings_instance
-    return settings_instance
-
-
-__all__ = (
-    "set_astropy_units",
-    "import_fresh_elisa_settings",
-)
+__all__ = ("set_astropy_units",)

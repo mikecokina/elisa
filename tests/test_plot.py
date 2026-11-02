@@ -8,6 +8,7 @@ import numpy as np
 from numpy.testing import assert_array_almost_equal
 
 from elisa import const
+from elisa.base.error import ElisaGraphicsError
 from elisa.base.graphics.plot import (
     add_colormap_to_plt_kwargs,
     horizonatal_displacement_cmap,
@@ -123,7 +124,7 @@ class TestAddColormapToPltKwargs(ElisaTestCase):
         error_msg: str = (
             'Attempting to use unknown colormap should raise KeyError'
         )
-        with self.assertRaises(KeyError, msg=error_msg):
+        with self.assertRaises(ElisaGraphicsError, msg=error_msg):
             add_colormap_to_plt_kwargs(*args)
 
     def test_colormap_none_returns_none(self) -> None:
@@ -181,7 +182,7 @@ class TestHorizonatalDisplacementCmap(ElisaTestCase):
             'Horizontal displacement colormap should raise ValueError '
             'for stars without pulsations'
         )
-        with self.assertRaises(ValueError, msg=error_msg):
+        with self.assertRaises(ElisaGraphicsError, msg=error_msg):
             horizonatal_displacement_cmap(mock_star, 'linear', 'default', False, 1.0)
 
 
@@ -212,7 +213,7 @@ class TestVRadPertCmap(ElisaTestCase):
             'Radial velocity perturbation colormap should raise ValueError '
             'for stars without pulsations'
         )
-        with self.assertRaises(ValueError, msg=error_msg):
+        with self.assertRaises(ElisaGraphicsError, msg=error_msg):
             v_rad_pert_cmap(mock_star, 'linear', 'default', False, 1.0)
 
 
@@ -243,7 +244,7 @@ class TestVHorizontalPertCmap(ElisaTestCase):
             'Horizontal velocity perturbation colormap should raise ValueError '
             'for stars without pulsations'
         )
-        with self.assertRaises(ValueError, msg=error_msg):
+        with self.assertRaises(ElisaGraphicsError, msg=error_msg):
             v_horizontal_pert_cmap(mock_star, 'linear', 'default', False, 1.0)
 
 
@@ -274,7 +275,7 @@ class TestHorizontalGPertCmap(ElisaTestCase):
             'Horizontal gravity acceleration perturbation colormap should '
             'raise ValueError for stars without pulsations'
         )
-        with self.assertRaises(ValueError, msg=error_msg):
+        with self.assertRaises(ElisaGraphicsError, msg=error_msg):
             horizontal_g_pert_cmap(mock_star, 'linear', 'default', False, 1.0)
 
 

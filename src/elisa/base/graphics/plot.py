@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from elisa import const, settings, units, utils
+from elisa.base.error import raise_elisa_graphics_error
 from elisa.ld import limb_darkening_factor
 from elisa.pulse import container_ops
 from elisa.pulse import utils as putils
@@ -71,8 +72,8 @@ def add_colormap_to_plt_kwargs(*args, **kwargs) -> NDArray | None:
 
     :return: Colormap array for the requested physical parameter, or None
     :rtype: NDArray | None
-    :raises KeyError: If colormap name is not recognized
-    :raises ValueError: If ``subtract_equilibrium=True`` but star has no pulsations
+    :raises ElisaGraphicsError: If colormap name is not recognized
+    :raises ElisaGraphicsError: If ``subtract_equilibrium=True`` but star has no pulsations
     """
     star: StarContainer
     colormap: Colormap
@@ -105,7 +106,7 @@ def add_colormap_to_plt_kwargs(*args, **kwargs) -> NDArray | None:
 
     if colormap not in colorbar_fn:
         error_msg: str = f"Unknown `colormap` argument {colormap}. Options: {list(colorbar_fn.keys())}"
-        raise KeyError(error_msg)
+        raise_elisa_graphics_error(error_msg)
 
     if subtract_equilibrium and not star.has_pulsations():
         error_msg = (
@@ -113,7 +114,7 @@ def add_colormap_to_plt_kwargs(*args, **kwargs) -> NDArray | None:
             "`subtract_equilibrium=True` but the surface of the star "
             "does not oscillate."
         )
-        raise ValueError(error_msg)
+        raise_elisa_graphics_error(error_msg)
 
     args_colormap: tuple = (
         scale,
@@ -197,7 +198,7 @@ def horizonatal_displacement_cmap(star: StarContainer, *args) -> NDArray:
 
     :return: Horizontal displacement values at surface face centers
     :rtype: NDArray
-    :raises ValueError: If star has no pulsations
+    :raises ElisaGraphicsError: If star has no pulsations
     """
     scale: str
     unit: str
@@ -208,7 +209,7 @@ def horizonatal_displacement_cmap(star: StarContainer, *args) -> NDArray:
 
     if not subtract_equilibrium and not star.has_pulsations():
         error_msg: str = "Horizontal displacement colormap is relevant only for stars with pulsations."
-        raise ValueError(error_msg)
+        raise_elisa_graphics_error(error_msg)
 
     pargs: tuple = (star, 0.0)
     pkwargs: dict = {
@@ -332,7 +333,7 @@ def v_rad_cmap(
 
     if scale in ["log", "logarithmic"]:
         warn_msg: str = "`log` scale is not allowed for radial velocity colormap."
-        raise Warning(warn_msg)
+        raise_elisa_graphics_error(warn_msg)
 
     return value
 
@@ -357,7 +358,7 @@ def v_rad_pert_cmap(star: StarContainer, *args) -> NDArray:
 
     :return: Radial velocity perturbation values at surface points
     :rtype: NDArray
-    :raises ValueError: If star has no pulsations
+    :raises ElisaGraphicsError: If star has no pulsations
     """
     scale: str
     unit: str
@@ -368,7 +369,7 @@ def v_rad_pert_cmap(star: StarContainer, *args) -> NDArray:
 
     if not subtract_equilibrium and not star.has_pulsations():
         error_msg: str = "`v_r_perturbed` is relevant only for stars with pulsations."
-        raise ValueError(error_msg)
+        raise_elisa_graphics_error(error_msg)
 
     pargs: tuple = (star, model_scale)
     pkwargs: dict = {
@@ -403,7 +404,7 @@ def v_horizontal_pert_cmap(star: StarContainer, *args) -> NDArray:
 
     :return: Horizontal velocity perturbation values at surface face centers
     :rtype: NDArray
-    :raises ValueError: If star has no pulsations
+    :raises ElisaGraphicsError: If star has no pulsations
     """
     scale: str
     unit: str
@@ -414,7 +415,7 @@ def v_horizontal_pert_cmap(star: StarContainer, *args) -> NDArray:
 
     if not subtract_equilibrium and not star.has_pulsations():
         error_msg: str = "`v_horizontal_perturbed` colormap is relevant only for stars with pulsations."
-        raise ValueError(error_msg)
+        raise_elisa_graphics_error(error_msg)
 
     pargs: tuple = (star, model_scale)
     pkwargs: dict = {
@@ -455,7 +456,7 @@ def g_cmap(star: StarContainer, *args) -> NDArray:
 
     :return: Gravity acceleration values at surface points
     :rtype: NDArray
-    :raises ValueError: If logarithmic scale is used with ``subtract_equilibrium=True``
+    :raises ElisaGraphicsError: If logarithmic scale is used with ``subtract_equilibrium=True``
     """
     scale: str
     unit: Unit
@@ -467,7 +468,7 @@ def g_cmap(star: StarContainer, *args) -> NDArray:
     if subtract_equilibrium:
         if scale in ["log", "logarithmic"]:
             error_msg: str = "Logarithmic scale is not permitted with the `subtract_equilibrium=True`."
-            raise ValueError(error_msg)
+            raise_elisa_graphics_error(error_msg)
         pargs: tuple = (star, model_scale)
         pkwargs: dict = {
             "update_container": False,
@@ -505,7 +506,7 @@ def horizontal_g_pert_cmap(star: StarContainer, *args) -> NDArray:
 
     :return: Horizontal gravity acceleration perturbation values at surface points
     :rtype: NDArray
-    :raises ValueError: If star has no pulsations
+    :raises ElisaGraphicsError: If star has no pulsations
     """
     scale: str
     unit: str
@@ -516,7 +517,7 @@ def horizontal_g_pert_cmap(star: StarContainer, *args) -> NDArray:
 
     if not subtract_equilibrium and not star.has_pulsations():
         error_msg: str = "`horizontal_acceleration` colormap is relevant only for stars with pulsations."
-        raise ValueError(error_msg)
+        raise_elisa_graphics_error(error_msg)
 
     pargs: tuple = (star, model_scale)
     pkwargs: dict = {
@@ -656,7 +657,7 @@ def radiance_cmap(star: StarContainer, *args) -> NDArray:
 
     if scale in ["log", "logarithmic"]:
         warn_msg: str = "`log` scale is not allowed for radiance colormap."
-        raise Warning(warn_msg)
+        raise_elisa_graphics_error(warn_msg)
 
     return value
 

@@ -9,13 +9,11 @@ from __future__ import annotations
 
 import math
 import tempfile
-from datetime import datetime
+from datetime import UTC, datetime
 from numbers import Integral
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 from uuid import uuid4
-
-from elisa.utc import UTC
 
 if TYPE_CHECKING:
     from typing import SupportsFloat, SupportsIndex

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from elisa.base.error import raise_elisa_graphics_error
 from elisa.base.graphics import plot
 from elisa.const import Position
 from elisa.graphic import graphics
@@ -86,8 +87,7 @@ class Animation:
         anim_kwargs: dict = {}
 
         if stop_phase < start_phase:
-            msg = f"Starting phase {start_phase} is greater than stop phase {stop_phase}"
-            raise ValueError(msg)
+            raise_elisa_graphics_error(f"Starting phase {start_phase} is greater than stop phase {stop_phase}")
 
         n_frames = int((stop_phase - start_phase) / phase_step)
         phases = np.linspace(start_phase, stop_phase, num=n_frames)

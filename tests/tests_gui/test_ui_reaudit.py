@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from elisa.base.error import ElisaInvalidKwargsError, ElisaMissingKwargsError
 from elisa.ui.shared import plotting
 from elisa.ui.shared.logger import CircularBuffer, DualLoggingHandler
 from elisa.ui.shared.utils import opt_int, result_temp_path
@@ -287,3 +288,18 @@ def test_overlapping_fit_logging_restores_profile_only_after_last_exit():
                 with fit_logging():
                     raise RuntimeError('fit failed')
         assert settings.LOG_CONFIG == 'default'
+
+
+@pytest.mark.parametrize('error_type', [ElisaInvalidKwargsError, ElisaMissingKwargsError, ValueError])
+def test_lc_data_loading_displays_kwarg_and_value_errors(fit_apps, monkeypatch, error_type):
+    callback = _named_callback(fit_apps[0], '_unified_lsqrt')
+    values = [component.value for component in callback.inputs]
+    failure = error_type('Invalid dataset arguments')
+
+    def load(*args, **kwargs):
+        raise failure
+
+    monkeypatch.setattr(lc_fit.compute, 'load_lc_dataset', load)
+    with pytest.raises(gr.Error, match='Invalid dataset arguments') as caught:
+        callback.fn(*values)
+    assert caught.value.__cause__ is failure

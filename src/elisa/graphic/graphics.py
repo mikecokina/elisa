@@ -11,6 +11,8 @@ from mpl_toolkits.mplot3d import axes3d
 from elisa import umpy as up
 from elisa import units, utils
 from elisa import units as u
+from elisa.base.error import raise_elisa_operation_input_error
+from elisa.conf.enums import BinaryComponent
 from elisa.graphic import utils as gutils
 
 if TYPE_CHECKING:
@@ -331,7 +333,7 @@ def binary_surface(**kwargs) -> Figure | None:  # noqa: C901, PLR0912, PLR0915
     clr = kwargs["surface_colors"]
 
     plot, plot1, plot2 = None, None, None
-    if kwargs["components_to_plot"] == "primary":
+    if kwargs["components_to_plot"] == BinaryComponent.PRIMARY:
         plot = ax.plot_trisurf(
             kwargs["points_primary"][:, 0],
             kwargs["points_primary"][:, 1],
@@ -354,7 +356,7 @@ def binary_surface(**kwargs) -> Figure | None:  # noqa: C901, PLR0912, PLR0915
                 length=0.05,
             )
 
-    elif kwargs["components_to_plot"] == "secondary":
+    elif kwargs["components_to_plot"] == BinaryComponent.SECONDARY:
         plot = ax.plot_trisurf(
             kwargs["points_secondary"][:, 0],
             kwargs["points_secondary"][:, 1],
@@ -435,11 +437,11 @@ def binary_surface(**kwargs) -> Figure | None:  # noqa: C901, PLR0912, PLR0915
             )
 
     else:
-        msg = (
-            "Invalid value of keyword argument `components_to_plot`. "
-            "Expected values are: `primary`, `secondary` or `both`"
+        # The public plotting operation forwards the user's component selection.
+        raise_elisa_operation_input_error(
+            f"Unsupported plot component selector {kwargs['components_to_plot']!r}; "
+            "expected primary, secondary or both.",
         )
-        raise ValueError(msg)
 
     if kwargs.get("edges", False):
         if kwargs["separate_colormaps"]:
@@ -456,7 +458,7 @@ def binary_surface(**kwargs) -> Figure | None:  # noqa: C901, PLR0912, PLR0915
         else:
             plot.set_cmap(cmap=cmap)
 
-        if kwargs["components_to_plot"] == "primary":
+        if kwargs["components_to_plot"] == BinaryComponent.PRIMARY:
             plot.set_array(kwargs["primary_cmap"])
             if kwargs["colorbar"]:
                 colorbar = fig.colorbar(
@@ -471,7 +473,7 @@ def binary_surface(**kwargs) -> Figure | None:  # noqa: C901, PLR0912, PLR0915
                     kwargs["unit"], kwargs["scale"],
                     extra="primary",
                 )
-        elif kwargs["components_to_plot"] == "secondary":
+        elif kwargs["components_to_plot"] == BinaryComponent.SECONDARY:
             plot.set_array(kwargs["secondary_cmap"])
             if kwargs["colorbar"]:
                 colorbar = fig.colorbar(
@@ -641,13 +643,13 @@ def binary_wireframe(**kwargs) -> Figure | None:
     ax.elev = 90 - kwargs["inclination"]
     ax.azim = kwargs["azimuth"]
 
-    if kwargs["components_to_plot"] == "primary":
+    if kwargs["components_to_plot"] == BinaryComponent.PRIMARY:
         plot = ax.plot_trisurf(
             kwargs["points_primary"][:, 0], kwargs["points_primary"][:, 1],
             kwargs["points_primary"][:, 2], triangles=kwargs["primary_triangles"],
             antialiased=True, shade=False, color="none")
 
-    elif kwargs["components_to_plot"] == "secondary":
+    elif kwargs["components_to_plot"] == BinaryComponent.SECONDARY:
         plot = ax.plot_trisurf(
             kwargs["points_secondary"][:, 0],
             kwargs["points_secondary"][:, 1],
@@ -670,11 +672,11 @@ def binary_wireframe(**kwargs) -> Figure | None:
                                shade=False, color="none")
 
     else:
-        msg = (
-            "Invalid value of keyword argument `components_to_plot`. "
-            "Expected values are: `primary`, `secondary` or `both`"
+        # The public plotting operation forwards the user's component selection.
+        raise_elisa_operation_input_error(
+            f"Unsupported plot component selector {kwargs['components_to_plot']!r}; "
+            "expected primary, secondary or both.",
         )
-        raise ValueError(msg)
 
     plot.set_edgecolor("black")
 
@@ -682,10 +684,10 @@ def binary_wireframe(**kwargs) -> Figure | None:
     if kwargs["components_to_plot"] == "both":
         x_min = np.min(kwargs["points_primary"][:, 0])
         x_max = np.max(kwargs["points_secondary"][:, 0])
-    elif kwargs["components_to_plot"] == "primary":
+    elif kwargs["components_to_plot"] == BinaryComponent.PRIMARY:
         x_min = np.min(kwargs["points_primary"][:, 0])
         x_max = np.max(kwargs["points_primary"][:, 0])
-    elif kwargs["components_to_plot"] == "secondary":
+    elif kwargs["components_to_plot"] == BinaryComponent.SECONDARY:
         x_min = np.min(kwargs["points_secondary"][:, 0])
         x_max = np.max(kwargs["points_secondary"][:, 0])
 

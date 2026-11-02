@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import pytest
+
+from elisa.base.error import ElisaGraphicsError
 from elisa.single_system.graphic.animation import Animation
 from tests import utils as testutils
 from tests.utils import ElisaTestCase, prepare_single_system
@@ -13,6 +16,8 @@ class AnimationTestCase(ElisaTestCase):
     executed but the runtime stays fast and deterministic.
     """
 
+    @pytest.mark.requires_ld(passbands=("bolometric",), laws=("cosine",))
+    @pytest.mark.requires_atmosphere
     def test_rotational_motion_runs_minimal(self):
         """Run a minimal (single-frame) animation and ensure it completes.
 
@@ -60,7 +65,7 @@ class AnimationTestCase(ElisaTestCase):
             plt.close("all")
 
     def test_rotational_motion_invalid_range_raises(self):
-        """Providing start_phase > stop_phase must raise ValueError.
+        """Providing start_phase > stop_phase must raise ElisaGraphicsError.
 
         :returns: None
         :rtype: None
@@ -70,5 +75,5 @@ class AnimationTestCase(ElisaTestCase):
 
         anim = Animation(single)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ElisaGraphicsError):
             anim.rotational_motion(start_phase=0.5, stop_phase=-0.5, phase_step=0.01)

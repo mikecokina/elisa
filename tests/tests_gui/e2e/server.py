@@ -12,12 +12,15 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / 'src'))
+from elisa import settings
 from elisa.analytics.tasks import AnalyticsTask
 from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.analytics.binary_fit.plot import LCPlot, RVPlot
 from elisa.ui.app import build_app
 from elisa.ui.tabs.lc_fitting.components.param_inputs import FIELD_ORDER as LC_FIELDS
 from elisa.ui.tabs.rv_fitting.components.param_inputs import FIELD_ORDER as RV_FIELDS
+
+settings.configure(NUMBER_OF_PROCESSES=1, NUMBER_OF_MCMC_PROCESSES=1)
 
 OUT = Path(os.environ['E2E_WORK'])
 original_fit = AnalyticsTask.fit

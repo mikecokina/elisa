@@ -8,6 +8,7 @@ from elisa import const, utils
 from elisa import umpy as up
 from elisa import units as u
 from elisa.base import transform
+from elisa.base.error import raise_elisa_graphics_error
 from elisa.base.graphics import plot
 from elisa.base.surface.faces import correct_face_orientation
 from elisa.binary_system import dynamic
@@ -147,9 +148,9 @@ class Plot:
             components_distance = self.binary.orbit.orbital_motion(phase=phase)[0][0]
             points_primary, points_secondary = self.binary.compute_equipotential_boundary(components_distance, plane)
         else:
-            msg = "Invalid choice of crossection plane, use only: `xy`, `yz`, `zx`."
-            raise ValueError(msg)
+            raise_elisa_graphics_error("Invalid choice of crossection plane, use only: `xy`, `yz`, `zx`.")
 
+        # noinspection PyUnboundLocalVariable
         equipotential_kwargs.update(
             {
                 "return_figure_instance": return_figure_instance,

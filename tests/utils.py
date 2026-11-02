@@ -1,5 +1,4 @@
-# keep it first
-# due to stupid astropy units/constants implementation
+# Select the Astropy constants before importing ELISA.
 from tests import CONFIG_FILE, DEFAULT_TEST_CONFIG, set_astropy_units
 
 from fractions import Fraction as F
@@ -9,6 +8,7 @@ import json
 import logging
 import os
 import os.path as op
+from pathlib import Path
 import unittest
 import numpy as np
 from numpy.typing import NDArray
@@ -347,40 +347,58 @@ def exact_area(
     return float(abs(signed_double_area(clipped_vertices)) / 2)
 
 
+# Keep the selected installation even when resetting numerical test settings.
+_ORIGINAL_ELISA_CONFIG = os.environ.get("ELISA_CONFIG")
+_SCIENTIFIC_SETTINGS = {
+    "LD_TABLES": settings.LD_TABLES,
+    "CK04_ATM_TABLES": settings.CK04_ATM_TABLES,
+    "K93_ATM_TABLES": settings.K93_ATM_TABLES,
+    "ATM_ATLAS": settings.ATM_ATLAS,
+}
+
+
 class ElisaTestCase(unittest.TestCase):
     CONFIG_FILE = CONFIG_FILE
 
-    def touch_default_config(self):
-        with open(self.CONFIG_FILE, "w") as f:
-            f.write(DEFAULT_TEST_CONFIG)
+    def touch_default_config(self) -> None:
+        """Recreate the numerical settings used to isolate unittest cases."""
+        Path(self.CONFIG_FILE).write_text(DEFAULT_TEST_CONFIG, encoding="utf-8")
 
-    def write_default_support(self, ld_tables, atm_tables):
-        # because of stupid windows MP implementation
-        content = f'[support]\n' \
-                  f'ld_tables={ld_tables}\n' \
-                  f'castelli_kurucz_04_atm_tables={atm_tables}\n\n'
-        with open(self.CONFIG_FILE, "w") as f:
-            f.write(content)
+    def write_default_support(self, ld_tables: str, atm_tables: str) -> None:
+        """Pass the selected installation paths to separately imported workers."""
+        os.environ["ELISA_CONFIG"] = self.CONFIG_FILE
+        content = (
+            "[support]\n"
+            f"ld_tables={ld_tables}\n"
+            f"castelli_kurucz_04_atm_tables={atm_tables}\n\n"
+        )
+        Path(self.CONFIG_FILE).write_text(content, encoding="utf-8")
 
-    def setUpClass(*args, **kwargs):
+    @classmethod
+    def setUpClass(cls):
+        previous_disable = logging.root.manager.disable
+        cls.addClassCleanup(logging.disable, previous_disable)
         logging.disable(logging.CRITICAL)
-        # logging.disable(logging.NOTSET)
-        pass
 
-    def reset_test_settings(self):
+    def reset_test_settings(self) -> None:
         """Reload the canonical test INI over all built-in defaults."""
-        os.environ["ELISA_CONFIG"] = ElisaTestCase.CONFIG_FILE
+        if _ORIGINAL_ELISA_CONFIG is None:
+            os.environ.pop("ELISA_CONFIG", None)
+        else:
+            os.environ["ELISA_CONFIG"] = _ORIGINAL_ELISA_CONFIG
         # Tests may rewrite/remove this file for worker imports. Recreate the
         # designated test configuration, never a snapshot of live settings.
         self.touch_default_config()
         defaults = dict(settings.DEFAULT_SETTINGS)
+        defaults.update(_SCIENTIFIC_SETTINGS)
         defaults["CONFIG_FILE"] = ElisaTestCase.CONFIG_FILE
         settings.configure(**defaults)
         settings.read_and_update_config(conf_path=ElisaTestCase.CONFIG_FILE)
 
         # Mocks can populate caches with synthetic scientific results. Clearing
         # these is test isolation policy, not a production configure side effect.
-        from elisa import atm, ld
+        from elisa import ld
+        from elisa.atm import atm
         from elisa.buffer import buffer
         from elisa.base.curves.utils import _get_rv_passband
         from elisa.binary_system.surface.mesh import _load_correction_factors

@@ -25,8 +25,8 @@ from elisa import units as u
 from elisa.analytics import RVBinaryAnalyticsTask, RVData
 from elisa.analytics.binary_fit.shared import extend_observations_to_desired_interval
 from elisa.ui.shared.plotting import figure_to_pil, serialized_plot
-from elisa.ui.shared.validators import mcmc_integer
 from elisa.ui.shared.utils import collect_param_values
+from elisa.ui.shared.validators import mcmc_integer
 from elisa.ui.tabs.rv_fitting.components import data_inputs, param_inputs
 from elisa.ui.tabs.rv_fitting.logic import compute
 

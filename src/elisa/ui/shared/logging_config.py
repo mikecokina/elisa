@@ -11,7 +11,7 @@ import contextlib
 from threading import RLock
 from typing import TYPE_CHECKING, Any
 
-from elisa.conf.logconfig import LoggingProfile
+from elisa.conf.enums import LoggingProfile
 from elisa.conf.settings import Settings
 
 if TYPE_CHECKING:
@@ -41,7 +41,7 @@ def fit_logging() -> Generator[None, Any, None]:
     :yields: None
     :rtype: contextlib.AbstractContextManager[None]
     """
-    global _active_fits, _previous_profile
+    global _active_fits, _previous_profile  # noqa: PLW0603
     settings = Settings()
     with _fit_log_lock:
         if _active_fits == 0:
@@ -56,6 +56,8 @@ def fit_logging() -> Generator[None, Any, None]:
             _active_fits -= 1
             if _active_fits == 0:
                 previous = _previous_profile
-                assert previous is not None  # Set when the first fit enters.
+                if previous is None:
+                    msg = "Previous logging profile is missing when the last fit exits."
+                    raise RuntimeError(msg)
                 _previous_profile = None
                 settings.configure_logging(previous)

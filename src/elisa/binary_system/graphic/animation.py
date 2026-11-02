@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from elisa.base.error import raise_elisa_graphics_error
 from elisa.base.graphics import plot
 from elisa.binary_system import dynamic
 from elisa.binary_system import utils as butils
@@ -110,11 +111,10 @@ class Animation:
         del units
 
         if stop_phase < start_phase:
-            message = (
+            raise_elisa_graphics_error(
                 f"Starting phase {start_phase} is greater than stop phase "
-                f"{stop_phase}."
+                f"{stop_phase}.",
             )
-            raise ValueError(message)
 
         components = butils.component_to_list("both")
 
