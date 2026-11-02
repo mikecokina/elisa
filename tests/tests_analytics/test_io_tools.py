@@ -250,14 +250,14 @@ class TestUpdateSolution:
         return mock_cls
 
     @patch("elisa.analytics.binary_fit.io_tools.MCMCMixin.resolve_constrained_result")
-    @patch("elisa.analytics.binary_fit.io_tools.BinaryInitialParameters")
+    @patch("elisa.analytics.binary_fit.io_tools._result_initial_parameters")
     @patch("elisa.analytics.binary_fit.io_tools.parameters.serialize_result")
     @patch("elisa.analytics.binary_fit.io_tools.MCMCMixin.resolve_mcmc_result")
     def test_update_solution_with_result(
         self,
         mock_resolve,
         mock_serialize,
-        mock_binary_params,
+        mock_initial_parameters,
         mock_eval,
         mock_mcmc_fit_cls: Mock,
     ) -> None:
@@ -265,8 +265,11 @@ class TestUpdateSolution:
         mock_resolve.return_value = {"param1": {"value": 0.15}, "param2": {"value": 0.25}}
         mock_serialize.side_effect = lambda x: x
         mock_constrained = Mock()
-        mock_constrained.get_constrained.return_value = {}
-        mock_binary_params.return_value = mock_constrained
+        constrained = {"param2": Mock(constraint="param1 * 2")}
+        fixed = {"param3": Mock(value=0.5)}
+        mock_constrained.get_constrained.return_value = constrained
+        mock_constrained.get_fixed.return_value = fixed
+        mock_initial_parameters.return_value = mock_constrained
         mock_eval.return_value = {"param1": {"value": 0.15}, "param2": {"value": 0.25}}
 
         io_tools._update_solution(
@@ -276,8 +279,20 @@ class TestUpdateSolution:
         )
 
         assert mock_resolve.called
-        assert mock_binary_params.called
-        assert mock_eval.called
+        mock_initial_parameters.assert_called_once_with(mock_resolve.return_value)
+        fitable = mock_resolve.call_args.args[1]
+        assert {key: meta.value for key, meta in fitable.items()} == {"param1": 0.1, "param2": 0.2}
+        assert mock_serialize.call_count == 2
+        mock_eval.assert_called_once_with(
+            mock_mcmc_fit_cls.flat_chain,
+            mock_resolve.call_args.args[1],
+            mock_mcmc_fit_cls.normalization,
+            constrained,
+            fixed,
+            [16, 50, 84],
+        )
+        assert mock_mcmc_fit_cls.flat_result == mock_eval.return_value
+        assert mock_mcmc_fit_cls.result == mock_eval.return_value
 
     def test_update_solution_no_result_raises_error(self, mock_mcmc_fit_cls: Mock) -> None:
         """Test update_solution raises ValueError when result is None."""
@@ -300,8 +315,8 @@ class TestUpdateSolution:
         """Test update_solution passes percentiles to resolve_mcmc_result."""
         mock_resolve.return_value = {}
 
-        with patch("elisa.analytics.binary_fit.io_tools.BinaryInitialParameters"):
-            with patch("elisa.analytics.binary_fit.io_tools.MCMCMixin.resolve_constrained_result"):
+        with patch("elisa.analytics.binary_fit.io_tools._result_initial_parameters") as mock_initial_parameters:
+            with patch("elisa.analytics.binary_fit.io_tools.MCMCMixin.resolve_constrained_result") as mock_eval:
                 with patch("elisa.analytics.binary_fit.io_tools.parameters.serialize_result") as mock_ser:
                     mock_ser.side_effect = lambda x: x
 
@@ -315,6 +330,8 @@ class TestUpdateSolution:
                     # Check resolve was called with correct percentiles
                     call_kwargs = mock_resolve.call_args[1]
                     assert call_kwargs["percentiles"] == percentiles
+                    mock_initial_parameters.assert_called_once_with(mock_mcmc_fit_cls.flat_result)
+                    assert mock_eval.call_args.args[-1] == percentiles
 
 
 class TestWriteLn:
@@ -688,14 +705,14 @@ class TestIntegration:
 
     @patch("elisa.analytics.binary_fit.io_tools.MCMCMixin.load_flat_chain")
     @patch("elisa.analytics.binary_fit.io_tools.MCMCMixin.resolve_mcmc_result")
-    @patch("elisa.analytics.binary_fit.io_tools.BinaryInitialParameters")
+    @patch("elisa.analytics.binary_fit.io_tools._result_initial_parameters")
     @patch("elisa.analytics.binary_fit.io_tools.MCMCMixin.resolve_constrained_result")
     @patch("elisa.analytics.binary_fit.io_tools.parameters.serialize_result")
     def test_load_chain_and_update_solution(
         self,
         mock_serialize,
         mock_eval,
-        mock_binary,
+        mock_initial_parameters,
         mock_resolve,
         mock_load,
     ) -> None:
@@ -711,8 +728,11 @@ class TestIntegration:
         mock_resolve.return_value = {"param1": {"value": 0.15}, "param2": {"value": 0.25}}
         mock_serialize.side_effect = lambda x: x
         mock_constrained = Mock()
-        mock_constrained.get_constrained.return_value = {}
-        mock_binary.return_value = mock_constrained
+        constrained = {"param2": Mock(constraint="param1 * 2")}
+        fixed = {"param3": Mock(value=0.5)}
+        mock_constrained.get_constrained.return_value = constrained
+        mock_constrained.get_fixed.return_value = fixed
+        mock_initial_parameters.return_value = mock_constrained
         mock_eval.return_value = {"param1": {"value": 0.15}, "param2": {"value": 0.25}}
 
         # Create mock fit class
@@ -727,6 +747,23 @@ class TestIntegration:
         assert result[0].shape == (3, 2)
         assert result[1] == ["param1", "param2"]
         assert mock_resolve.called
+        np.testing.assert_array_equal(result[0], chain_data)
+        assert result[2] == mock_load.return_value["normalization"]
+        mock_initial_parameters.assert_called_once_with(mock_resolve.return_value)
+        fitable = mock_resolve.call_args.args[1]
+        assert {key: meta.value for key, meta in fitable.items()} == {"param1": 0.1, "param2": 0.2}
+        assert mock_serialize.call_count == 2
+        mock_eval.assert_called_once_with(
+            mock_fit_cls.flat_chain,
+            mock_resolve.call_args.args[1],
+            mock_fit_cls.normalization,
+            constrained,
+            fixed,
+            [16, 50, 84],
+        )
+        assert mock_resolve.call_args.kwargs["percentiles"] == [16, 50, 84]
+        assert mock_fit_cls.flat_result == mock_eval.return_value
+        assert mock_fit_cls.result == mock_eval.return_value
 
     def test_write_functions_output_integration(self) -> None:
         """Test write functions produce properly formatted output."""
