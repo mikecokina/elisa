@@ -6,7 +6,6 @@ import numpy as np
 import pytest
 
 from elisa import const, settings, units as u
-from elisa.analytics import RVData
 from elisa.analytics.binary_fit import least_squares, mcmc
 from elisa.analytics.models import lc
 from elisa.analytics.params import parameters
@@ -16,7 +15,19 @@ from tests.tests_analytics.fitting_helpers import V, lc_parameters, make_lc, nor
 
 
 @pytest.fixture(autouse=True)
-def synthesis_settings():
+def synthesis_settings(monkeypatch):
+    from elisa.analytics.models import rv
+    original = rv.prepare_central_rv_binary
+
+    def configured_binary(**kwargs):
+        binary = original(**kwargs)
+        for component in (binary.primary, binary.secondary):
+            component.atmosphere = "bb"
+            component.limb_darkening_coefficients = {"rv_band": [.1], "bolometric": [.1]}
+            component.discretization_factor = np.radians(10.)
+        return binary
+
+    monkeypatch.setattr(rv, "prepare_central_rv_binary", configured_binary)
     previous = settings.settings_serializer()
     settings.configure(ATM_ATLAS='bb', LIMB_DARKENING_LAW='linear', NUMBER_OF_PROCESSES=1,
                        REFLECTION_EFFECT=True, MESH_GENERATOR='auto', RV_METHOD='kinematic')
@@ -24,10 +35,8 @@ def synthesis_settings():
     settings.configure(**previous)
 
 
-def make_fit(kind, method, phenomenon, invalid_case='axis'):
-    cfg, _ = lc_parameters(standard=kind == 'rv')
-    if kind == 'rv':
-        cfg['system']['gamma'] = dict(value=0., fixed=True)
+def make_fit(method, phenomenon, invalid_case='axis'):
+    cfg, _ = lc_parameters()
     if phenomenon == 'pulsation':
         values = dict(l=1, m=1, frequency=16., amplitude=50., start_phase=0.,
                       mode_axis_phi=0., mode_axis_theta=30.)
@@ -51,18 +60,12 @@ def make_fit(kind, method, phenomenon, invalid_case='axis'):
         metadata['angular_radius'] = dict(value=25., fixed=False, min=0., max=40.)
         cfg['primary']['spots'] = [dict(label='spot', **metadata)]
         proposal_key, invalid = 'primary@spot@spot@angular_radius', 0.
-    if kind == 'lc':
-        fit = (least_squares.DetachedLightCurveFit if method == 'lsq' else mcmc.DetachedLightCurveFit)()
-        fit.atmosphere_model = dict(primary='bb', secondary='bb')
-        fit.limb_darkening_coefficients = {c: {V: [.1], 'bolometric': [.1]} for c in ('primary', 'secondary')}
-        fit.set_up(parameters.BinaryInitialParameters(**cfg), {V: make_lc([1., .9, 1.], [.01] * 3)},
-                   passband=[V], discretization=10., interp_treshold=100, samples='uniform',
-                   observer_system_cls=BinarySystem)
-    else:
-        fit = (least_squares.CentralRadialVelocity if method == 'lsq' else mcmc.CentralRadialVelocity)()
-        data = {c: RVData(x_data=np.array([0., .25, .5]), y_data=np.zeros(3), y_err=np.ones(3) * 100.,
-                          x_unit=u.dimensionless_unscaled, y_unit=u.m / u.s) for c in ('primary', 'secondary')}
-        fit.set_up(parameters.BinaryInitialParameters(**cfg), data, observer_system_cls=BinarySystem)
+    fit = (least_squares.DetachedLightCurveFit if method == 'lsq' else mcmc.DetachedLightCurveFit)()
+    fit.atmosphere_model = dict(primary='bb', secondary='bb')
+    fit.limb_darkening_coefficients = {c: {V: [.1], 'bolometric': [.1]} for c in ('primary', 'secondary')}
+    fit.set_up(parameters.BinaryInitialParameters(**cfg), {V: make_lc([1., .9, 1.], [.01] * 3)},
+               passband=[V], discretization=10., interp_treshold=100, samples='uniform',
+               observer_system_cls=BinarySystem)
     if method == 'mcmc':
         fit.prepare_priors()
     xn = normalized(fit)
@@ -74,9 +77,7 @@ def make_fit(kind, method, phenomenon, invalid_case='axis'):
 def evaluate(fit, xn):
     if isinstance(fit, mcmc.MCMCFit):
         return fit.ln_probability(xn)
-    if isinstance(fit, least_squares.LightCurveFit):
-        return fit.model_to_fit(xn)
-    return fit.central_rv_model_to_fit(xn)
+    return fit.model_to_fit(xn)
 
 
 def assert_rejected(fit, value):
@@ -89,11 +90,10 @@ def assert_rejected(fit, value):
         assert np.isfinite(value).all()
 
 
-@pytest.mark.parametrize('kind', ['lc', 'rv'])
 @pytest.mark.parametrize('method', ['lsq', 'mcmc'])
 @pytest.mark.parametrize('invalid_case', ['axis', 'fractional_l', 'm', 'amplitude', 'frequency'])
-def test_real_pulsation_proposal_valid_invalid_valid(kind, method, invalid_case):
-    fit, xn, bad = make_fit(kind, method, 'pulsation', invalid_case)
+def test_real_pulsation_proposal_valid_invalid_valid(method, invalid_case):
+    fit, xn, bad = make_fit(method, 'pulsation', invalid_case)
     before = evaluate(fit, xn)
     assert np.isfinite(before).all()
     assert_rejected(fit, evaluate(fit, bad))
@@ -102,18 +102,17 @@ def test_real_pulsation_proposal_valid_invalid_valid(kind, method, invalid_case)
 
 @pytest.mark.parametrize('method', ['lsq', 'mcmc'])
 def test_real_spot_mesh_proposal_valid_invalid_valid(method):
-    fit, xn, bad = make_fit('lc', method, 'spot')
+    fit, xn, bad = make_fit(method, 'spot')
     before = evaluate(fit, xn)
     assert np.isfinite(before).all()
     assert_rejected(fit, evaluate(fit, bad))
     np.testing.assert_array_equal(evaluate(fit, xn), before)
 
 
-@pytest.mark.parametrize('kind', ['lc', 'rv'])
 @pytest.mark.parametrize('method', ['lsq', 'mcmc'])
 @pytest.mark.parametrize('error_type', [ValueError, RuntimeError, TypeError, IndexError])
-def test_unexpected_error_in_real_mode_constructor_terminates_fit(monkeypatch, kind, method, error_type):
-    fit, xn, _ = make_fit(kind, method, 'pulsation')
+def test_unexpected_error_in_real_mode_constructor_terminates_fit(monkeypatch, method, error_type):
+    fit, xn, _ = make_fit(method, 'pulsation')
 
     def broken(*args, **kwargs):
         raise error_type('mode implementation defect')
@@ -138,7 +137,7 @@ def _worker_recovery_sequence(fit, xn, bad):
 @pytest.mark.parametrize('method', ['lsq', 'mcmc'])
 def test_real_fitting_rejection_through_process_pool(method):
     """A worker transports rejection and recovers on the same deserialized fit."""
-    fit, xn, bad = make_fit('lc', method, 'pulsation', 'm')
+    fit, xn, bad = make_fit(method, 'pulsation', 'm')
     expected = evaluate(fit, xn)
     assert np.isfinite(expected).all()
     with multiprocessing.get_context('fork').Pool(1) as pool:
@@ -152,40 +151,51 @@ def test_real_fitting_rejection_through_process_pool(method):
 
 @pytest.mark.parametrize('phenomenon,error_type', [('pulsation', ElisaParametersError), ('spot', ElisaParametersError)])
 def test_direct_synthesis_keeps_meaningful_domain_error(phenomenon, error_type):
-    fit, _, bad = make_fit('lc', 'lsq', phenomenon)
+    fit, _, bad = make_fit('lsq', phenomenon)
     kwargs = parameters.prepare_properties_set(
         parameters.vector_renormalizer(bad, fit.fitable, fit.normalization), fit.fitable, fit.constrained, fit.fixed)
     with pytest.raises(error_type):
         lc.synthetic_binary(fit.x_data_reduced, fit.discretization, fit.observer, **kwargs)
 
 
-@pytest.mark.parametrize('method', ['lsq', 'mcmc'])
-def test_radiometric_rv_rejects_real_spot_mesh_failure(monkeypatch, method):
+def test_radiometric_rv_rejects_real_spot_mesh_failure():
     from elisa.analytics.models import rv
+    from elisa.observer.observer import Observer
+
+    fit, xn, bad = make_fit('lsq', 'spot')
+
+    def synthesize(vector):
+        kwargs = parameters.prepare_properties_set(
+            parameters.vector_renormalizer(vector, fit.fitable, fit.normalization),
+            fit.fitable, fit.constrained, fit.fixed)
+        # LC fixture uses q/a; direct radiometric RV takes physical component masses.
+        binary = lc.prepare_binary(**kwargs)
+        kwargs.pop('system@mass_ratio')
+        kwargs.pop('system@semi_major_axis')
+        kwargs.update({'primary@mass': binary.primary.mass * u.kg,
+                       'secondary@mass': binary.secondary.mass * u.kg})
+        observer = Observer(system=None)
+        curves = rv.central_rv_synthetic(fit.x_data_reduced, observer, **kwargs)
+        for component in ('primary', 'secondary'):
+            star = getattr(observer._system, component)
+            assert star.t_eff == kwargs[f'{component}@t_eff']
+            assert star.surface_potential == kwargs[f'{component}@surface_potential']
+            assert star.metallicity == kwargs[f'{component}@metallicity']
+        return curves
+
     settings.configure(RV_METHOD='radiometric', USE_SINGLE_LD_COEFFICIENTS=False)
-    fit, xn, bad = make_fit('rv', method, 'spot')
-    # Supply trusted physical/table metadata at the existing construction boundary;
-    # the RV helper's placeholder metallicity has no scientific table coverage.
-    original = rv.prepare_central_rv_binary
-
-    def configured_binary(**kwargs):
-        binary = original(**kwargs)
-        for component in (binary.primary, binary.secondary):
-            component.atmosphere = 'bb'
-            component.limb_darkening_coefficients = {'rv_band': [.1], 'bolometric': [.1]}
-            component.discretization_factor = np.radians(10.)
-        return binary
-
-    monkeypatch.setattr(rv, 'prepare_central_rv_binary', configured_binary)
-    before = evaluate(fit, xn)
-    assert np.isfinite(before).all()
-    assert_rejected(fit, evaluate(fit, bad))
-    np.testing.assert_array_equal(evaluate(fit, xn), before)
+    before = synthesize(xn)
+    assert all(np.isfinite(values).all() for values in before.values())
+    with pytest.raises(ElisaParametersError):
+        synthesize(bad)
+    after = synthesize(xn)
+    for component in before:
+        np.testing.assert_array_equal(after[component], before[component])
 
 
 @pytest.mark.parametrize('method', ['lsq', 'mcmc'])
 def test_unexpected_constructor_error_crosses_fitting_process_boundary(monkeypatch, method):
-    fit, xn, _ = make_fit('lc', method, 'pulsation')
+    fit, xn, _ = make_fit(method, 'pulsation')
 
     def broken(*args, **kwargs):
         raise RuntimeError('remote mode implementation defect')

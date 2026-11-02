@@ -10,6 +10,13 @@ class BinaryComponent(StrEnum):
     SECONDARY = "secondary"
 
 
+class BinarySystemKind(StrEnum):
+    """Select binary input parameterization, preserving serialized kind values."""
+
+    STANDARD = "std"
+    COMMUNITY = "community"
+
+
 class BinaryMorphology(StrEnum):
     """Name the binary surface geometries supported by synthesis."""
 

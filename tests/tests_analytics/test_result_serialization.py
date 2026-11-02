@@ -240,3 +240,45 @@ def test_reload_rejects_duplicate_phenomenon_paths(lsq_result):
     invalid.setdefault('primary', {})['spots'] = [spot, deepcopy(spot)]
     with pytest.raises(ElisaInitialParametersError, match='multiple spots with same label'):
         fit.set_result(invalid)
+
+
+def test_constraint_recalculation_updates_returned_result_but_preserves_posterior_summary():
+    from elisa.analytics.binary_fit.shared import eval_constraint_in_dict
+
+    original = {
+        "system": {
+            "gamma": {"value": 2.0, "fixed": False, "min": -4.0, "max": 4.0},
+            "mass_ratio": {"value": 999.0, "constraint": "system@gamma**2", "unit": None},
+            "asini": {
+                "value": 7.0,
+                "constraint": "system@gamma**2",
+                "unit": "solRad",
+                "confidence_interval": {"min": 3.0, "max": 11.0},
+                "estimate": JOINT_POSTERIOR_PERCENTILES_ESTIMATE,
+            },
+        },
+        "r_squared": {"value": 0.9, "unit": None},
+    }
+    before = deepcopy(original)
+
+    result = eval_constraint_in_dict(original)
+
+    assert result["system"]["mass_ratio"]["value"] == 4.0
+    assert result["system"]["mass_ratio"]["constraint"] == "system@gamma**2"
+    assert result["system"]["asini"] == before["system"]["asini"]
+    assert result["system"]["asini"]["value"] != 4.0
+    assert result["system"]["gamma"] == before["system"]["gamma"]
+    assert result["r_squared"] == before["r_squared"]
+    assert original == before
+
+
+@pytest.mark.parametrize("section,name", [("primary", "tefff"), ("secondary", "tefff"), ("nuisance", "ln_ff")])
+def test_reload_rejects_invalid_names_in_other_model_sections(lsq_result, section, name):
+    from elisa.base.error import ElisaInvalidKwargsError
+
+    fit, _ = lsq_result
+    invalid = deepcopy(fit.result)
+    invalid.setdefault(section, {})[name] = {"value": 1.0, "fixed": True}
+
+    with pytest.raises(ElisaInvalidKwargsError, match=name):
+        fit.set_result(invalid)
