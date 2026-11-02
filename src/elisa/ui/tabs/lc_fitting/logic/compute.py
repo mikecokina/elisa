@@ -608,6 +608,7 @@ def detect_approach_from_json(path: str) -> str:
     :raises ValueError: If the file cannot be read or the approach cannot be determined.
     """
     from elisa.binary_system.utils import resolve_json_kind  # noqa: PLC0415
+    from elisa.conf.enums import BinarySystemKind  # noqa: PLC0415
 
     try:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
@@ -634,7 +635,7 @@ def detect_approach_from_json(path: str) -> str:
         msg = f"Cannot determine fitting approach from JSON: {exc}"
         raise ValueError(msg) from exc
 
-    return "Community" if kind == "community" else "Standard"
+    return "Community" if kind == BinarySystemKind.COMMUNITY else "Standard"
 
 
 def load_params_from_json(path: str) -> dict[str, object]:  # noqa: C901

@@ -31,7 +31,7 @@ from elisa.binary_system.orbit import orbit
 from elisa.binary_system.surface import mesh
 from elisa.binary_system.surface.temperature import interpolate_albedo
 from elisa.binary_system.transform import BinarySystemProperties
-from elisa.conf.enums import BinaryComponent, BinaryMorphology, CurveType, RVMethod
+from elisa.conf.enums import BinaryComponent, BinaryMorphology, BinarySystemKind, CurveType, RVMethod
 from elisa.logger import getLogger
 from elisa.opt.fsolver import fsolve
 
@@ -440,7 +440,7 @@ class BinarySystem(System[Star]):
             bsutils.validate_binary_json(data_cp)
 
         kind_of = _kind_of or bsutils.resolve_json_kind(data_cp)
-        if kind_of == "community":
+        if kind_of == BinarySystemKind.COMMUNITY:
             data_cp = bsutils.transform_json_community_to_std(data_cp)
 
         primary = Star(**data_cp["primary"])

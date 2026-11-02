@@ -1,4 +1,7 @@
+import json
+
 from tests.utils import ElisaTestCase
+from elisa.conf.enums import BinarySystemKind
 
 from elisa.binary_system import utils as bsutils
 from elisa.base.error import ElisaOperationInputError, ElisaUnexpectedError
@@ -23,6 +26,23 @@ class TestComponentToList(ElisaTestCase):
 
 
 class TestJsonKindContract(ElisaTestCase):
+    def test_complete_parameter_pairs_return_string_compatible_enum(self):
+        cases = [
+            ({"primary": {"mass": 1.0}, "secondary": {"mass": 0.7}},
+             False, BinarySystemKind.STANDARD),
+            ({"system": {"mass_ratio": 0.7, "semi_major_axis": 10.0}},
+             False, BinarySystemKind.COMMUNITY),
+            ({"system": {"mass_ratio": 0.7, "asini": 10.0}},
+             True, BinarySystemKind.COMMUNITY),
+        ]
+        for data, use_asini, expected in cases:
+            with self.subTest(kind=expected, use_asini=use_asini):
+                kind = bsutils.resolve_json_kind(data, _sin=use_asini)
+                self.assertIs(kind, expected)
+                self.assertEqual(kind, expected.value)
+                self.assertEqual(json.loads(json.dumps({"kind": kind})), {"kind": expected.value})
+
+
     def test_incomplete_parameter_pair_is_unexpected(self):
         for use_asini, separation in [(False, "semi_major_axis"), (True, "asini")]:
             with self.subTest(separation=separation):

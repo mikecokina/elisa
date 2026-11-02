@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from copy import copy
-from typing import TYPE_CHECKING, Literal, TypeAlias
+from typing import TYPE_CHECKING, TypeAlias
 
 import numpy as np
 from jsonschema import ValidationError, validate
@@ -17,7 +17,7 @@ from elisa.base.transform import SystemProperties
 from elisa.binary_system import model
 from elisa.binary_system.radius import calculate_side_radius
 from elisa.binary_system.transform import RadialVelocityObserverProperties
-from elisa.conf.enums import BinaryComponent
+from elisa.conf.enums import BinaryComponent, BinarySystemKind
 from elisa.pypex.poly2d.polygon import Polygon
 from elisa.types import ComponentName, ComponentSelection, Float
 from elisa.units import DefaultBinarySystemUnits
@@ -452,7 +452,7 @@ def _build_missing_parts_msg(
     return " OR ".join(missing_parts)
 
 
-def resolve_json_kind(data: JSONDict, *, _sin: bool = False) -> Literal["std", "community"]:
+def resolve_json_kind(data: JSONDict, *, _sin: bool = False) -> BinarySystemKind:
     """Resolve whether the input JSON uses ``std`` or ``community`` format.
 
     ``std`` corresponds to standard physical parameters ``(M1, M2)``.
@@ -467,7 +467,7 @@ def resolve_json_kind(data: JSONDict, *, _sin: bool = False) -> Literal["std", "
         inspect ``asini`` instead.
     :type _sin: bool
     :return: Resolved JSON kind, either ``"std"`` or ``"community"``.
-    :rtype: Literal["std", "community"]
+    :rtype: BinarySystemKind
     :raises ElisaUnexpectedError: If neither required parameter pair is available.
     """
     lookup = "asini" if _sin else "semi_major_axis"
@@ -482,10 +482,10 @@ def resolve_json_kind(data: JSONDict, *, _sin: bool = False) -> Literal["std", "
     a = system_section.get(lookup) if isinstance(system_section, dict) else None
 
     if m1 is not None and m2 is not None:
-        return "std"
+        return BinarySystemKind.STANDARD
 
     if q is not None and a is not None:
-        return "community"
+        return BinarySystemKind.COMMUNITY
 
     # Callers must supply a complete parameterization. Candidate drift changes
     # values, not the required keys. This also applies to from_json(): its caller

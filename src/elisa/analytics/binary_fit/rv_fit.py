@@ -17,6 +17,7 @@ from elisa.analytics.binary_fit.summary import (
 from elisa.analytics.params import parameters
 from elisa.analytics.params.result_handler import FitResultHandler
 from elisa.binary_system.utils import resolve_json_kind
+from elisa.conf.enums import BinarySystemKind
 from elisa.logger import getLogger
 
 if TYPE_CHECKING:
@@ -201,13 +202,13 @@ class RVFitMCMC(RVFit):
 
         kind_of = resolve_json_kind(data=self.result, _sin=True)
         if not propagate_errors:
-            if kind_of == "community":
+            if kind_of == BinarySystemKind.COMMUNITY:
                 simple_rv_fit_summary(self, filename)
             else:
                 simple_lc_fit_summary(self, filename, dimensionless_radii=True)
             return
 
-        if kind_of == "community":
+        if kind_of == BinarySystemKind.COMMUNITY:
             fit_rv_summary_with_error_propagation(self, filename, percentiles)
         else:
             fit_lc_summary_with_error_propagation(
