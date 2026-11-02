@@ -6,8 +6,9 @@ import numpy as np
 
 from elisa.analytics.binary_fit.chain_tools import prepare_chain_samples
 from elisa.analytics.binary_fit.mixins import MCMCMixin
+from elisa.analytics.binary_fit.shared import _result_initial_parameters
 from elisa.analytics.params import parameters
-from elisa.analytics.params.parameters import BinaryInitialParameters, ParameterMeta
+from elisa.analytics.params.parameters import ParameterMeta
 from elisa.base.error import raise_elisa_monte_carlo_error
 
 if TYPE_CHECKING:
@@ -178,7 +179,7 @@ def _update_solution(
 
         # evaluating constraints
         fit_params = parameters.serialize_result(mcmc_fit_cls.flat_result)
-        initial = BinaryInitialParameters(**fit_params)
+        initial = _result_initial_parameters(fit_params)
         flat_result_update = MCMCMixin.resolve_constrained_result(
             mcmc_fit_cls.flat_chain,
             fitable,

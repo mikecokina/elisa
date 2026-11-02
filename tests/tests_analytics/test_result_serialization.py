@@ -176,3 +176,67 @@ def test_mcmc_constrained_summary_survives_json_roundtrips(
         mcmc_result.load_result(path)
         assert mcmc_result.flat_result["system@mass_ratio"] == expected
         assert mcmc_result.result == expected_result
+
+
+def test_reload_preserves_metadata_without_exposing_it_to_initial_validation(lsq_result, monkeypatch):
+    from elisa.analytics.binary_fit import shared
+
+    fit, constrained = lsq_result
+    original = deepcopy(fit.result)
+    original['provenance'] = {'engine': 'LSQ', 'iterations': 12}
+    flat = parameters.deserialize_result(original)
+    flat[constrained]['confidence_interval'] = {'min': 0.1, 'max': 0.9}
+    flat[constrained]['diagnostic'] = {'source': 'saved fit'}
+    before = deepcopy(original)
+    validated = []
+
+    def validate_projection(**kwargs):
+        validated.append(deepcopy(kwargs))
+        return BinaryInitialParameters(**kwargs)
+
+    monkeypatch.setattr(shared, 'BinaryInitialParameters', validate_projection)
+    fit.set_result(original)
+    assert original == before
+    assert json.loads(json.dumps(fit.result, cls=ElisaJSONEncoder)) == before
+    assert 'provenance' not in validated[0]
+    for metadata in parameters.deserialize_result(validated[0]).values():
+        assert set(metadata) <= InitialParameter.DEFAULT.keys()
+
+
+def test_reload_rejects_unknown_model_parameter_without_changing_previous_result(lsq_result):
+    from elisa.base.error import ElisaInvalidKwargsError
+
+    fit, _ = lsq_result
+    before = deepcopy(fit.result)
+    invalid = deepcopy(before)
+    invalid['system']['peroid'] = {'value': 2.0, 'fixed': True}
+    with pytest.raises(ElisaInvalidKwargsError, match='peroid'):
+        fit.set_result(invalid)
+    assert fit.result == before
+
+
+def test_reload_preserves_nested_spot_and_pulsation_metadata():
+    from elisa.analytics.binary_fit.shared import eval_constraint_in_dict
+
+    result = {
+        'system': {'period': {'value': 2.0, 'fixed': False, 'min': 1., 'max': 3.}},
+        'primary': {
+            'spots': [{'label': 'cool', 'longitude': {'value': 30., 'fixed': True,
+                                                    'confidence_interval': {'min': 29., 'max': 31.}}}],
+            'pulsations': [{'label': 'mode', 'l': {'value': 1, 'fixed': True, 'diagnostic': 'saved'}}],
+        },
+    }
+    before = deepcopy(result)
+    assert eval_constraint_in_dict(result) == before
+    assert result == before
+
+
+def test_reload_rejects_duplicate_phenomenon_paths(lsq_result):
+    from elisa.base.error import ElisaInitialParametersError
+
+    fit, _ = lsq_result
+    invalid = deepcopy(fit.result)
+    spot = {'label': 'duplicate', 'longitude': {'value': 30., 'fixed': True}}
+    invalid.setdefault('primary', {})['spots'] = [spot, deepcopy(spot)]
+    with pytest.raises(ElisaInitialParametersError, match='multiple spots with same label'):
+        fit.set_result(invalid)

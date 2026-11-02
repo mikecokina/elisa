@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -1125,6 +1126,51 @@ def check_for_boundary_surface_potentials(
     return result_dict
 
 
+def _initial_parameter_definitions(definitions: Any) -> Any:
+    """Remove result metadata from scalar parameters in one section.
+
+    InitialParameter.DEFAULT defines the accepted input fields. Parameter names
+    and malformed definitions stay intact for BinaryInitialParameters to validate.
+    """
+    if not isinstance(definitions, dict):
+        return definitions
+
+    inputs = {}
+    for name, metadata in definitions.items():
+        if isinstance(metadata, dict):
+            inputs[name] = {
+                field: value for field, value in metadata.items() if field in parameters.InitialParameter.DEFAULT
+            }
+        else:
+            inputs[name] = metadata
+    return inputs
+
+
+def _result_initial_parameters(result: dict[str, Any]) -> BinaryInitialParameters:
+    """Convert saved model parameters to validated fit inputs.
+
+    Work on a copy: result fields such as R² and confidence intervals must remain
+    in the saved result, but must not be passed to initial-parameter constructors.
+    """
+    sections = ("system", *settings.BINARY_COUNTERPARTS, parameters.conf.NUISANCE_PARSER)
+    inputs = deepcopy({name: result[name] for name in sections if name in result})
+
+    for name, section in inputs.items():
+        inputs[name] = _initial_parameter_definitions(section)
+        if name not in settings.BINARY_COUNTERPARTS or not isinstance(section, dict):
+            continue
+
+        # Spots and pulsations contain labeled parameter sets, rather than
+        # scalar parameter metadata. Keep their labels and collection structure.
+        for collection_name in ("spots", "pulsations"):
+            collection = section.get(collection_name)
+            if isinstance(collection, list):
+                inputs[name][collection_name] = [_initial_parameter_definitions(item) for item in collection]
+
+    # The existing validator checks names, structure, bounds and unique labels.
+    return BinaryInitialParameters(**inputs)
+
+
 def eval_constraint_in_dict(input_dict: dict[str, Any]) -> dict[str, Any]:
     """Evaluate constraints and update parameter dictionary.
 
@@ -1136,34 +1182,21 @@ def eval_constraint_in_dict(input_dict: dict[str, Any]) -> dict[str, Any]:
     :return: Same as ``input_dict`` but with values added/updated for constrained parameters.
     :rtype: dict[str, Any]
     """
-    input_dict1 = parameters.deserialize_result(input_dict)
-    result_dict: dict[str, dict[str, Any]] = {key: val for key, val in input_dict1.items() if "fixed" in val}
+    b_parameters = _result_initial_parameters(input_dict)
+    result = deepcopy(input_dict)
+    input_dict1 = parameters.deserialize_result(result)
 
-    reduced_dict: dict[str, Any] = {key: val["value"] for key, val in result_dict.items()}
-
-    b_parameters = BinaryInitialParameters(**input_dict)
+    result_dict = {key: val for key, val in input_dict1.items() if "fixed" in val}
+    reduced_dict = {key: val["value"] for key, val in result_dict.items()}
     constraints = b_parameters.get_constrained(jsonify=False)
 
     # A marginal constrained median need not equal the constraint at marginal free medians.
     for key in list(constraints):
         previous = input_dict1[key]
         if previous.get("estimate") == JOINT_POSTERIOR_PERCENTILES_ESTIMATE:
-            result_dict[key] = previous
             del constraints[key]
 
     constrained_values = parameters.constraints_evaluator(reduced_dict, constraints, raise_initial=False)
-    result_dict.update(
-        {
-            key: {
-                "value": val,
-                "constraint": constraints[key].constraint,
-                "unit": constraints[key].unit,
-            }
-            for key, val in constrained_values.items()
-        },
-    )
-
-    result = parameters.serialize_result(result_dict)
-    if "r_squared" in input_dict:
-        result["r_squared"] = input_dict["r_squared"]
+    for key, value in constrained_values.items():
+        input_dict1[key].update(value=value, unit=constraints[key].unit)
     return result

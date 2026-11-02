@@ -14,6 +14,7 @@ from elisa.analytics.binary_fit.plot import (
     RVPlotLsqr,
     RVPlotMCMC,
 )
+from elisa.analytics.binary_fit.shared import _result_initial_parameters
 from elisa.analytics.params import bonds, parameters
 from elisa.base.error import raise_elisa_analytics_task_error, raise_elisa_operation_input_error
 from elisa.base.transform import normalize_morphology
@@ -24,6 +25,17 @@ if TYPE_CHECKING:
     from elisa.types import Float
 
 logger = getLogger(__name__)
+
+
+def _has_result_metadata(value: Any) -> bool:
+    """Recognize fit outputs while retaining strict validation for initial inputs."""
+    if isinstance(value, dict):
+        return bool({"r_squared", "confidence_interval", "estimate"} & value.keys()) or any(
+            _has_result_metadata(item) for item in value.values()
+        )
+    if isinstance(value, list):
+        return any(_has_result_metadata(item) for item in value)
+    return False
 
 
 class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
@@ -330,7 +342,12 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
           on curve), or a manual phase list/array. Legacy string values are accepted.
         """
         if isinstance(x0, dict):
-            x0 = parameters.BinaryInitialParameters(**x0)
+            # Fit outputs are valid seeds for another fit, but their result-only
+            # metadata is not part of the strict initial-parameter representation.
+            if _has_result_metadata(x0):
+                x0 = _result_initial_parameters(x0)
+            else:
+                x0 = parameters.BinaryInitialParameters(**x0)
         return self.fit_cls.fit(x0, data=self.data, **kwargs)
 
     def coefficient_of_determination(
