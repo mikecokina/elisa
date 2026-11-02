@@ -8,9 +8,8 @@ from tests import utils
 from elisa import settings
 from elisa.binary_system import system
 from elisa.observer import observer
-from importlib import reload
 from elisa.analytics.tools.bvi import pogsons_formula
-from unittest import skip
+import pytest
 
 set_astropy_units()
 
@@ -50,7 +49,9 @@ passband = ['Generic.Bessell.U', 'Generic.Bessell.B', 'Generic.Bessell.V', 'Gene
 expected = np.array([0.164, 0.629, 0.387, 0.712])
 
 
-@skip("Skipped...run it only localy with sets atmosphere and limb darkening")
+# @pytest.mark.skip(reason="Manual diagnostic writes cosine.sun.dat and has no automated assertions")
+@pytest.mark.requires_ld(passbands=("Generic.Bessell.B", "Generic.Bessell.V", "bolometric"))
+@pytest.mark.requires_atmosphere
 class SunTestCase(utils.ElisaTestCase):
 
     @staticmethod
@@ -60,8 +61,6 @@ class SunTestCase(utils.ElisaTestCase):
 
 #         for ld in ['logarithmic', 'square_root']:
         settings.configure(REFLECTION_EFFECT=False)
-        reload(observer)
-        reload(system)
 
         res = []
 

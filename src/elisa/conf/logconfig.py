@@ -5,17 +5,11 @@ import json
 import logging
 import logging.config
 import sys
-from enum import Enum
 from pathlib import Path
 from typing import Any, TextIO
 
-
-class LoggingProfile(str, Enum):
-    """Built-in logging policy selectors; custom paths remain plain strings."""
-
-    DEFAULT = "default"
-    FIT = "fit"
-
+from elisa.base.error import raise_elisa_settings_error
+from elisa.conf.enums import LoggingProfile
 
 _console_handler: logging.StreamHandler | None = None
 
@@ -27,14 +21,21 @@ def configure_logging(selector: str) -> None:
     Custom files use dictConfig and can replace/close handlers globally.
 
     :param selector: ``default``, ``fit``, or a trusted JSON configuration path.
-    :raises ValueError: If the selector is unknown or the file does not exist.
+    :raises ElisaSettingsError: If the selector is unknown or the file does not exist.
     """
+    try:
+        _configure_logging(selector)
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        raise_elisa_settings_error(f"Invalid logging configuration {selector!r}: {exc}", exc)
+
+
+def _configure_logging(selector: str) -> None:
+    """Apply the selected policy after entering the settings error boundary."""
     global _console_handler  # noqa: PLW0603
     builtin = selector in tuple(profile.value for profile in LoggingProfile)
     path = Path(__file__).parent / "logging_schemas" / f"{selector}.json" if builtin else Path(selector)
     if not path.is_file():
-        msg = f"Unknown logging profile or missing JSON configuration file: {selector}"
-        raise ValueError(msg)
+        raise_elisa_settings_error(f"Unknown logging profile or missing JSON configuration file: {selector}")
     config = json.loads(path.read_text())
     if not builtin:
         # Standard dictConfig may close our console too, even on failure. Do not

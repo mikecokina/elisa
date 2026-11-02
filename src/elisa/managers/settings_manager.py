@@ -34,6 +34,8 @@ class DefaultSettings:
     RV_LAMBDA_INTERVAL: tuple = (5500, 5600)
 
     # computational
+    PENALIZE_ALL_EXCEPTIONS: bool = False
+    MEAN_ANOMALY_SOLVER: str = "vectorized"
     INTERSECTION_BACKEND: str = "sutherland_hodgman"
     MAX_DISCRETIZATION_FACTOR: int = 8
     MIN_DISCRETIZATION_FACTOR: int = 3
@@ -50,6 +52,7 @@ class DefaultSettings:
     MESH_GENERATOR: str = "auto"
     DEFORMATION_TOL: float = 0.05
     MCMC_SAVE_INTERVAL: int = 1800
+    MCMC_AUTOCORR_TOL: int = 0
     USE_SINGLE_LD_COEFFICIENTS: bool = False
     USE_INTERPOLATION_APPROXIMATION: bool = True
     USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION: bool = True
@@ -158,19 +161,6 @@ class SettingsManager:
         ld_tables = input(ld_prompt) or DefaultSettings.LD_TABLES
         _create_configuration_path_input(ld_tables)
         config.set(section_support, "ld_tables", ld_tables)
-
-        # atlas
-        atlas_prompt = (
-            f"Choose default atmosphere model to use \n"
-            f"\t type ck04 for castelli-kurucz 2004\n"
-            f"\t type k93 for kurucz 1993\n"
-            f"[ default  {DefaultSettings.ATM_ATLAS} ]: "
-        )
-        atm_atlas = input(atlas_prompt) or DefaultSettings.ATM_ATLAS
-        if atm_atlas not in ["ck04", "k93"]:
-            msg = "Invalid input for atmosphere atlas. Type option ck04 or k93."
-            raise ValueError(msg)
-        config.set(section_support, "atlas", atm_atlas)
 
         # castelli_kurucz_04_atm_tables
         ck04_prompt = (

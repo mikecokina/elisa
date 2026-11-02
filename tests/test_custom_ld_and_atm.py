@@ -1,9 +1,9 @@
 import os.path as op
 import pickle
 from copy import copy, deepcopy
-from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 import numpy as np
 from numpy.testing import assert_array_equal
 
@@ -18,10 +18,21 @@ from elisa.base.curves.utils import get_component_limbdarkening_cfs
 from elisa.base.curves import utils as curves_utils
 from elisa import ld
 from elisa.base.container import StarContainer
-from elisa.base.error import LimbDarkeningError
+from elisa.base.error import ElisaInitialParametersError
 from elisa.base.star import Star
 from elisa.base.transform import StarProperties
 from tests.utils import ElisaTestCase, prepare_single_system, SOLAR_MODEL
+
+
+@pytest.mark.parametrize("law,coefficients", [
+    ("linear", "not a coefficient mapping"),
+    ("logarithmic", {"bolometric": 0.5}),
+    ("square_root", {"bolometric": [0.5]}),
+])
+def test_invalid_custom_coefficient_definition_is_initial_configuration_error(law, coefficients):
+    with settings.override(LIMB_DARKENING_LAW=law):
+        with pytest.raises(ElisaInitialParametersError):
+            StarProperties.limb_darkening_coefficients(coefficients)
 
 
 class DummyComponent:
@@ -69,7 +80,7 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
         definition["secondary"].update({**definition["secondary"], "atmosphere": "ck04"})
         binary = BinarySystem.from_json(definition)
         assert binary.primary.atmosphere == "bb"
-        assert binary.secondary.atmosphere == "ck04"
+        assert binary.secondary.atmosphere == "ck"
 
     @staticmethod
     def test_custom_lds_linear():
@@ -103,19 +114,18 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
         definition = get_default_binary_definition()
         definition["primary"].update({**definition["primary"],
                                       "limb_darkening_coefficients": {'bolometric': [0.5, ]}})
-        with self.assertRaises(Exception) as context:
+        with self.assertRaises(ElisaInitialParametersError) as context:
             BinarySystem.from_json(definition)
 
         length = len(definition['primary']['limb_darkening_coefficients']['bolometric'])
         self.assertTrue(f"You provided a vector with {length}" in str(context.exception))
 
     def test_raise_missing_passband_lds(self):
+        # Isolated LD fixture for reflection before the specific custom-coefficient assertion.
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
         settings.configure(**{
             "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
-            "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
         })
-        self.write_default_support(ld_tables=settings.LD_TABLES, atm_tables=settings.CK04_ATM_TABLES)
 
         definition = get_default_binary_definition()
         definition["primary"].update({**definition["primary"],
@@ -123,11 +133,13 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
 
         bs = BinarySystem.from_json(definition)
         o = Observer(passband=["TESS"], system=bs)
-        with self.assertRaises(Exception) as context:
+        with self.assertRaises(ElisaInitialParametersError) as context:
             o.lc(phases=[0.0, ])
 
-        self.assertTrue('Please supply limb-darkening factors for [\'TESS\'] '
-                        'pasband(s) as well.' in str(context.exception))
+        self.assertIn('TESS', str(context.exception))
+        self.assertIn('limb-darkening factors', str(context.exception))
+        self.assertIsInstance(context.exception.__cause__, KeyError)
+        self.assertEqual(context.exception.__cause__.args, ('TESS',))
 
     def test_raise_missing_bolometric_passband_lds(self):
         definition = get_default_binary_definition()
@@ -138,7 +150,7 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
         bs = BinarySystem.from_json(definition)
         o = Observer(passband=["TESS"], system=bs)
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ElisaInitialParametersError) as context:
             o.lc(phases=[0.0])
 
         self.assertIn(
@@ -149,12 +161,11 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
 
     # noinspection PyMethodMayBeStatic
     def test_custom_ld_coeff_distribution(self):
+        # Isolated LD fixture for reflection before the specific custom-coefficient assertion.
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
         settings.configure(**{
             "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
-            "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
         })
-        self.write_default_support(ld_tables=settings.LD_TABLES, atm_tables=settings.CK04_ATM_TABLES)
 
         expected_ldc = [0.5, 0.4]
         passband = 'bolometric'
@@ -211,8 +222,14 @@ class TestCurvesUtilsCachingAndBroadcast(ElisaTestCase):
         settings.USE_SINGLE_LD_COEFFICIENTS = False
         try:
             # Patch the underlying interpolation to a synthetic deterministic value
-            with patch.object(curves_utils.ld, "interpolate_on_ld_grid",
-                              return_value={"bolometric": np.array([[0.1, 0.2]])}) as mock_interp:
+            with (
+                patch.object(curves_utils.ld, "get_ld_source_identities", return_value=()),
+                patch.object(
+                    curves_utils.ld,
+                    "interpolate_on_ld_grid",
+                    return_value={"bolometric": np.array([[0.1, 0.2]])},
+                ) as mock_interp,
+            ):
                 # First call should invoke the interpolation
                 # noinspection PyTypeChecker
                 _ = curves_utils.get_component_limbdarkening_cfs(comp, passbands=["bolometric"], symmetry_test=False)
@@ -265,9 +282,9 @@ class CustomLDLawSafetyTestCase(ElisaTestCase):
                     self.assert_curves_equal(rv, observer.rv(phases=BINARY_PHASES, method="radiometric"))
                     settings.configure(LIMB_DARKENING_LAW=changed)
                     for _ in range(2):
-                        with self.assertRaisesRegex(LimbDarkeningError, f"defined for '{original}'.*'{changed}'"):
+                        with self.assertRaisesRegex(ElisaInitialParametersError, f"defined for '{original}'.*'{changed}'"):
                             observer.lc(phases=BINARY_PHASES)
-                        with self.assertRaisesRegex(LimbDarkeningError, "Supply new coefficients"):
+                        with self.assertRaisesRegex(ElisaInitialParametersError, "Supply new coefficients"):
                             observer.rv(phases=BINARY_PHASES, method="radiometric")
                     # Kinematic RV does not consume LD coefficients.
                     observer.rv(phases=BINARY_PHASES, method="kinematic")
@@ -289,9 +306,9 @@ class CustomLDLawSafetyTestCase(ElisaTestCase):
             np.testing.assert_array_equal(ld.get_bolometric_ld_coefficients(
                 container.temperatures, np.array([4.0, 4.0]), 0, coefficients), [[0.5, 0.5], [0.2, 0.2]])
             settings.configure(LIMB_DARKENING_LAW=changed)
-            with self.assertRaises(LimbDarkeningError):
+            with self.assertRaises(ElisaInitialParametersError):
                 get_component_limbdarkening_cfs(container, ["bolometric"], symmetry_test=False)
-            with self.assertRaises(LimbDarkeningError):
+            with self.assertRaises(ElisaInitialParametersError):
                 ld.get_bolometric_ld_coefficients(container.temperatures, np.array([4.0, 4.0]), 0, coefficients)
 
     def test_copy_pickle_and_reconstruction_preserve_provenance(self):
@@ -300,18 +317,21 @@ class CustomLDLawSafetyTestCase(ElisaTestCase):
         copies = [star.limb_darkening_coefficients.copy(), copy(star.limb_darkening_coefficients),
                   deepcopy(star.limb_darkening_coefficients),
                   pickle.loads(pickle.dumps(star.limb_darkening_coefficients))]
-        kwargs = star.kwargs_serializer()
+        kwargs = star.reinitialization_kwargs()
+        self.assertNotIn("polar_log_g", kwargs)
+        reconstructed = Star(**kwargs)
+        self.assertEqual(reconstructed.limb_darkening_coefficients.law, "logarithmic")
         definition = model.to_json()
         settings.configure(LIMB_DARKENING_LAW="square_root")
         for coefficients in copies:
             self.assertEqual(coefficients.law, "logarithmic")
-            with self.assertRaises(LimbDarkeningError):
+            with self.assertRaises(ElisaInitialParametersError):
                 StarProperties.limb_darkening_coefficients(coefficients)
-        with self.assertRaises(LimbDarkeningError):
+        with self.assertRaises(ElisaInitialParametersError):
             Star(**kwargs)
-        with self.assertRaises(LimbDarkeningError):
+        with self.assertRaises(ElisaInitialParametersError):
             BinarySystem.from_json(definition)
-        with self.assertRaises(LimbDarkeningError):
+        with self.assertRaises(ElisaInitialParametersError):
             star.init()
 
     def test_explicit_replacement_and_none_are_supported(self):
@@ -339,7 +359,7 @@ class CustomLDLawSafetyTestCase(ElisaTestCase):
             star.init()
             self.assertEqual(star.limb_darkening_coefficients.law, "linear")
         settings.configure(LIMB_DARKENING_LAW="logarithmic")
-        with self.assertRaises(LimbDarkeningError):
+        with self.assertRaises(ElisaInitialParametersError):
             observer.lc(phases=SINGLE_PHASE)
 
     def test_single_system_repeated_reuse(self):
@@ -352,15 +372,15 @@ class CustomLDLawSafetyTestCase(ElisaTestCase):
             first = observer.lc(phases=SINGLE_PHASE)
             self.assert_curves_equal(first, observer.lc(phases=SINGLE_PHASE))
             settings.configure(LIMB_DARKENING_LAW=changed)
-            with self.assertRaises(LimbDarkeningError):
+            with self.assertRaises(ElisaInitialParametersError):
                 observer.lc(phases=SINGLE_PHASE)
-            with self.assertRaises(LimbDarkeningError):
+            with self.assertRaises(ElisaInitialParametersError):
                 observer.rv(phases=SINGLE_PHASE, method="radiometric")
             settings.configure(LIMB_DARKENING_LAW=original)
             self.assert_curves_equal(first, observer.lc(phases=SINGLE_PHASE))
 
+    @pytest.mark.requires_ld(laws=("logarithmic", "square_root"))
     def test_automatic_interpolation_switches_laws_on_same_model(self):
-        settings.configure(LD_TABLES=str(Path(__file__).parent / "data/light_curves/limbdarkening"))
         model = self.binary("logarithmic", custom=False)
         observer = Observer(system=model, passband=["bolometric"])
         curves = []

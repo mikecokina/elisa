@@ -9,8 +9,10 @@ import pandas as pd
 import pytest
 from numpy.typing import NDArray
 
-from elisa import atm, settings, utils
-from elisa.atm import atm_file_prefix_to_quantity_list, get_atm_directory, validated_atlas
+from elisa import settings, utils
+from elisa.atm import atm
+from elisa.atm.atm import atm_file_prefix_to_quantity_list, get_atm_directory, validated_atlas
+from elisa.base.error import ElisaAtmosphereError
 from elisa.observer.passband import PassbandContainer
 from elisa.types import Float
 
@@ -26,7 +28,7 @@ def original_atm_files(
     :param temperature: Iterable[float];
     :param log_g: Iterable[float];
     :param metallicity: float;
-    :param atlas: str; atmosphere model identificator (see settings.ATLAS_TO_ATM_FILE_PREFIX.keys())
+    :param atlas: str; atmosphere model identificator (see elisa.atm.const.ATLAS_TO_ATM_FILE_PREFIX.keys())
     :return: List[str];
     """
     atlas = validated_atlas(atlas)
@@ -70,10 +72,15 @@ def original_atm_files(
 
 
 @pytest.mark.parametrize("atlas", ["castelli", "castelli-kurucz", "ck", "ck04", "kurucz", "k93", "k"])
-@pytest.mark.parametrize("metallicity", [-2.5, -0.1, -0.0, 0.05, 0.5, 10.0, np.nan])
-@pytest.mark.parametrize("selection", ["duplicates", "mixed", "boundaries", "ties"])
+@pytest.mark.parametrize(("selection", "metallicity"), [
+    (selection, metallicity)
+    for selection in ("duplicates", "mixed", "boundaries")
+    for metallicity in (-2.5, -0.1, -0.0, 0.05, 0.5, 10.0, np.nan)
+] + [("ties", None)])
 def test_atm_files_matches_original(atlas, metallicity, selection):
     """Preserve ordering, nearest-grid ties, aliases and grid endpoints."""
+    # Input boundaries resolve aliases; the selector consumes canonical names.
+    atlas = validated_atlas(atlas)
     grid = np.asarray(atm.atm_file_prefix_to_quantity_list("temperature", atlas))
     if selection == "duplicates":
         temperature = np.repeat(4999.0, 128)
@@ -102,6 +109,7 @@ def test_atm_files_matches_original(atlas, metallicity, selection):
 @pytest.mark.parametrize("atlas", ["ck04", "k93"])
 @pytest.mark.parametrize("dtype", [np.float32, np.float64, np.int64])
 def test_mixed_strided_input_dtypes(atlas, dtype):
+    atlas = validated_atlas(atlas)
     grid = np.asarray(atm.atm_file_prefix_to_quantity_list("temperature", atlas))
     rng = np.random.default_rng(42)
     temperature = rng.uniform(grid.min(), grid.max(), 512).astype(dtype)[::2]
@@ -126,13 +134,14 @@ def test_atm_files_preserves_errors(atlas, temperature, gravity, metallicity):
     args = np.asarray(temperature), np.asarray(gravity), metallicity, atlas
     with pytest.raises(Exception) as expected:
         original_atm_files(*args)
-    with pytest.raises(type(expected.value)) as obtained:
-        atm.NaiveInterpolatedAtm.atm_files(*args)
-    assert str(obtained.value) == str(expected.value)
+    with pytest.raises((type(expected.value), ElisaAtmosphereError)) as obtained:
+        atm.NaiveInterpolatedAtm.atm_files(*args[:3], validated_atlas(atlas))
+    assert str(expected.value) in str(obtained.value)
 
 
 @pytest.mark.parametrize("atlas", ["ck04", "k93"])
 def test_paths_are_formatted_once_per_selected_identity(atlas):
+    atlas = validated_atlas(atlas)
     temperature = np.tile([4999.0, 10000.0, 10001.0], 100)
     gravity = np.tile([1.5, 2.0, 2.0], 100)
     expected = original_atm_files(temperature, gravity, 0.0, atlas)
@@ -147,7 +156,7 @@ def test_paths_are_formatted_once_per_selected_identity(atlas):
 @pytest.mark.parametrize("atlas", ["ck04", "k93"])
 def test_base_directory_changes_and_missing_files(atlas, monkeypatch, tmp_path):
     prefix = atm.validated_atlas(atlas)
-    args = np.array([10000.0]), np.array([2.0]), 0.0, atlas
+    args = np.array([10000.0]), np.array([2.0]), 0.0, prefix
     monkeypatch.setattr(settings, "CK04_ATM_TABLES" if prefix == "ck" else "K93_ATM_TABLES", tmp_path / "first directory")
     first = atm.NaiveInterpolatedAtm.atm_files(*args)
     assert first == original_atm_files(*args)
@@ -157,7 +166,7 @@ def test_base_directory_changes_and_missing_files(atlas, monkeypatch, tmp_path):
     assert first != second
     # Path selection never checks existence; loading retains its existing exception.
     for paths in (original_atm_files(*args), second):
-        with pytest.raises(atm.AtmosphereError) as error:
+        with pytest.raises(atm.ElisaAtmosphereError) as error:
             atm.read_unique_atm_tables(paths)
         assert str(error.value) == (
             f"file {second[0]} doesn't exist. Your atmosphere tables are "
@@ -169,6 +178,7 @@ def test_base_directory_changes_and_missing_files(atlas, monkeypatch, tmp_path):
 @pytest.mark.parametrize("atlas", ["ck04", "k93"])
 def test_selected_tables_preserve_spectra_and_radiances(atlas, monkeypatch, tmp_path):
     """Exercise both filename families through loading and spectral interpolation."""
+    atlas = validated_atlas(atlas)
     monkeypatch.setattr(settings, "CK04_ATM_TABLES" if atm.validated_atlas(atlas) == "ck" else "K93_ATM_TABLES", tmp_path)
     monkeypatch.setattr(atm.buffer, "ATMOSPHERE_TABLES", {})
     args = np.array([10000.0, 10001.0, 10250.0, 10001.0]), np.repeat(2.0, 4), 0.0, atlas

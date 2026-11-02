@@ -1,16 +1,16 @@
 from __future__ import annotations
 
+import functools
 import hashlib
 import itertools
 import json
 import warnings
 from collections import OrderedDict
-from collections.abc import Iterable
 from copy import copy, deepcopy
 from pathlib import Path
 from queue import Queue
 from threading import Lock, Thread
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NoReturn, ParamSpec, TypeVar
 
 import numpy as np
 import pandas as pd
@@ -25,12 +25,13 @@ from elisa import (
 from elisa import (
     umpy as up,
 )
+from elisa.atm.const import ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX, normalize_atlas
 from elisa.base.error import (
-    AtmosphereError,
-    ElisaError,
-    GravityError,
-    MetallicityError,
-    TemperatureError,
+    ElisaAtmosphereError,
+    ElisaLookupError,
+    ElisaUnexpectedError,
+    raise_elisa_atmosphere_error,
+    raise_elisa_unexpected_error,
 )
 from elisa.base.types import FLOAT
 from elisa.buffer import buffer
@@ -41,12 +42,17 @@ from elisa.tensor.etensor import Tensor
 # names visible to static analysis tools and IDEs. These imports are evaluated
 # only during type checking and therefore do not affect runtime import order.
 if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
+
     from numpy.typing import NDArray
 
     from elisa.observer.passband import PassbandContainer
     from elisa.types import Float, Int
 
 logger = getLogger(__name__)
+
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
 # * 1e-7 * 1e4 * 1e10 * (1.0/const.PI)
@@ -313,7 +319,7 @@ class NaiveInterpolatedAtm:
         :param temperature: numpy.array;
         :param log_g: numpy.array;
         :param metallicity: float;
-        :param atlas: str;
+        :param atlas: Canonical atlas name, resolved at the Star/settings input boundary.
         :param kwargs:
         :**kwargs options**:
             * **left_bandwidth** * -- float; maximal allowed wavelength from left (Angstrom)
@@ -321,7 +327,8 @@ class NaiveInterpolatedAtm:
             * **passband** * -- dict[str, elisa.observer.observer.PassbandContainer]
         :return: List;
         """
-        if validated_atlas(atlas) == "bb":
+        # Star construction / fit setup already resolved this fixed configuration.
+        if atlas == "bb":
             return NaiveInterpolatedAtm.black_body_radiance(temperature, **kwargs)
         return NaiveInterpolatedAtm.atlas_radiance(
             temperature,
@@ -429,7 +436,7 @@ class NaiveInterpolatedAtm:
         :param temperature: Iterable[float];
         :param log_g: Iterable[float];
         :param metallicity: float;
-        :param atlas: str; atmosphere model identificator (see settings.ATLAS_TO_ATM_FILE_PREFIX.keys())
+        :param atlas: Canonical atlas name, already validated by the input boundary.
         :param kwargs: dict;
         :return: Tuple[dict, numpy.float, numpy.float]; atmosphere profiles for each passband, flux multiplicator,
                                                         wave multiplicator;
@@ -496,7 +503,7 @@ class NaiveInterpolatedAtm:
         :param metallicity: Metallicity [Fe/H].
         :type metallicity: Float
         :param atlas: Atlas identifier (see
-            :data:`settings.ATLAS_TO_ATM_FILE_PREFIX`).
+            :data:`elisa.atm.const.ATLAS_TO_ATM_FILE_PREFIX`).
         :type atlas: str
         :param kwargs: Additional parameters forwarded to
             :meth:`NaiveInterpolatedAtm.get_atm_profiles` (e.g. passband,
@@ -526,8 +533,8 @@ class NaiveInterpolatedAtm:
         1.0 is choosen to fit interpolation method and return correct atmosphere.
 
         :param temperatures: numpy.array[float];
-        :param top_atm_containers: numpy.ndarray[elisa.atm.AtmDataContainer];
-        :param bottom_atm_containers: numpy.ndarray[elisa.atm.AtmDataContainer];
+        :param top_atm_containers: numpy.ndarray[elisa.atm.atm.AtmDataContainer];
+        :param bottom_atm_containers: numpy.ndarray[elisa.atm.atm.AtmDataContainer];
         :return: numpy.ndarray[float];
         """
         with np.errstate(divide="ignore", invalid="ignore"):
@@ -554,8 +561,8 @@ class NaiveInterpolatedAtm:
         ! Top and bottom atmosphere model are have to be defined in same wavelengths !
 
         :param weight: Iterable[float];
-        :param top_atm_container: elisa.atm.AtmDataContainer;
-        :param bottom_atm_container: elisa.atm.AtmDataContainer;
+        :param top_atm_container: elisa.atm.atm.AtmDataContainer;
+        :param bottom_atm_container: elisa.atm.atm.AtmDataContainer;
         :return: Tuple[numpy.array, numpy.ndarray]; (flux, wave);
         """
         if bottom_atm_container is None:
@@ -595,7 +602,7 @@ class NaiveInterpolatedAtm:
     ) -> dict[str, dict[str, NDArray[Float]]]:
         """Interpolate spectra for given temperature based on surounded spectra related to upper and lower temperatures.
 
-        From supplied elisa.atm.AtmDataContainer's, `flux_matrices` and `temeprature`.
+        From supplied elisa.atm.atm.AtmDataContainer's, `flux_matrices` and `temeprature`.
         Interpolation is computed in vector form::
 
             (weights * (top_flux_matrix.T - bottom_flux_matrix.T) + bottom_flux_matrix.T).T
@@ -609,7 +616,7 @@ class NaiveInterpolatedAtm:
 
             {"passband": numpy.ndarray (matrix)}
 
-        :param passbanded_atm_containers: dict[str, elisa.atm.AtmDataContainers];
+        :param passbanded_atm_containers: dict[str, elisa.atm.atm.AtmDataContainers];
         :param temperature: numpy.ndarray[float];
         :return: dict[str, numpy.ndarray];
         """
@@ -651,20 +658,18 @@ class NaiveInterpolatedAtm:
         :param temperature: Iterable[float];
         :param log_g: Iterable[float];
         :param metallicity: float;
-        :param atlas: str; atmosphere model identificator (see settings.ATLAS_TO_ATM_FILE_PREFIX.keys())
+        :param atlas: str; atmosphere model identificator (see elisa.atm.const.ATLAS_TO_ATM_FILE_PREFIX.keys())
         :return: List[str]; lower-temperature paths followed by upper-temperature paths.
         """
-        atlas = validated_atlas(atlas)
         log_g = utils.convert_gravity_acceleration_array(log_g, "log_cgs")
 
         g_array = np.array(atm_file_prefix_to_quantity_list("gravity", atlas))
-
         m_array = np.array(atm_file_prefix_to_quantity_list("metallicity", atlas))
         t_array = np.array(atm_file_prefix_to_quantity_list("temperature", atlas))
 
-        g = utils.find_nearest_value_as_matrix(g_array, log_g)[0]
-        m = utils.find_nearest_value_as_matrix(m_array, metallicity)[0][0]
-        t = utils.find_surrounded_as_matrix(t_array, temperature)
+        g = _find_nearest_gravity(g_array, log_g)
+        m = _find_nearest_metallicity(m_array, metallicity)
+        t = _find_nearest_temperature(t_array, temperature)
 
         domain_df = pd.DataFrame(
             {
@@ -696,6 +701,70 @@ class NaiveInterpolatedAtm:
         base_directory = Path(settings.ATLAS_TO_BASE_DIR[atlas]) / directory
         paths = [str(base_directory / (fname + ".csv")) for fname in fnames]
         return np.asarray(paths, dtype=object)[inverse].tolist()
+
+
+def _wrap_grid_lookup_errors(func: Callable[P, R]) -> Callable[P, R]:
+    """Convert failures of an atmosphere grid lookup into :class:`AtmosphereError`.
+
+    The signature and return type of the wrapped function are preserved.
+
+    :param func: function performing the grid lookup;
+    :type func: Callable[P, R]
+    :returns: wrapped function translating numeric lookup failures to AtmosphereError;
+    :rtype: Callable[P, R]
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return func(*args, **kwargs)
+        except (ElisaLookupError, ValueError, IndexError) as e:
+            msg = f"Atmosphere grid lookup `{func.__name__}` failed for arguments {args!r}: {e}"
+            raise_elisa_atmosphere_error(msg, e)
+
+    return wrapper
+
+
+@_wrap_grid_lookup_errors
+def _find_nearest_temperature(array: NDArray[Float], value: Float | NDArray[Float]) -> NDArray[Float]:
+    """Find the pair of grid temperatures surrounding each requested temperature.
+
+    :param array: available grid temperatures;
+    :type array: NDArray[Float]
+    :param value: requested temperature(s);
+    :type value: Float | NDArray[Float]
+    :returns: matrix of shape (n, 2) with lower and upper surrounding grid temperatures;
+    :rtype: NDArray[Float]
+    """
+    return utils.find_surrounded_as_matrix(array, np.atleast_1d(value))
+
+
+@_wrap_grid_lookup_errors
+def _find_nearest_gravity(array: NDArray[Float], value: Float | NDArray[Float]) -> NDArray[Float]:
+    """Find the nearest grid surface gravity (log g) for each requested value.
+
+    :param array: available grid log g values;
+    :type array: NDArray[Float]
+    :param value: requested log g value(s);
+    :type value: Float | NDArray[Float]
+    :returns: nearest grid log g values, one per requested value;
+    :rtype: NDArray[Float]
+    """
+    return utils.find_nearest_value_as_matrix(array, value)[0]
+
+
+@_wrap_grid_lookup_errors
+def _find_nearest_metallicity(array: NDArray[Float], value: Float | NDArray[Float]) -> Float:
+    """Find the nearest grid metallicity for the requested value.
+
+    :param array: available grid metallicities;
+    :type array: NDArray[Float]
+    :param value: requested metallicity;
+    :type value: Float | NDArray[Float]
+    :returns: nearest grid metallicity;
+    :rtype: Float
+    """
+    return utils.find_nearest_value_as_matrix(array, value)[0][0]
 
 
 def arange_atm_to_same_wavelength(
@@ -769,6 +838,12 @@ def strip_atm_containers_by_bandwidth(
     ]
 
 
+def _require_nonempty_atm_container(atm_container: AtmDataContainer) -> None:
+    """Require an initialized atmosphere model before bandwidth processing."""
+    if atm_container.is_empty():
+        raise_elisa_unexpected_error("Atmosphere container is empty.")
+
+
 def strip_atm_container_by_bandwidth(
     atm_container: AtmDataContainer,
     left_bandwidth: Float,
@@ -800,9 +875,7 @@ def strip_atm_container_by_bandwidth(
       otherwise return a copy.
     """
     inplace = kwargs.get("inplace", False)
-    if atm_container.is_empty():
-        msg = "Atmosphere container is empty."
-        raise ValueError(msg)
+    _require_nonempty_atm_container(atm_container)
 
     # evaluate whether you use argument bandwidth or global bandwidth
     # use case when use global bandwidth is in case of bolometric `filter`, where bandwidth in observer
@@ -1059,7 +1132,7 @@ def extend_atm_container_on_bandwidth_boundary(
     on_border_flux: NDArray[Float] = interpolator([left_bandwidth, right_bandwidth])
     if np.isnan(on_border_flux).any():
         msg = "Interpolation on bandwidth boundaries resulted in NaN value."
-        raise AtmosphereError(msg)
+        raise_elisa_atmosphere_error(msg)
 
     atm_model: AtmModel = atm_container.model
     atm_model.wavelength[np.array([0, -1])] = [left_bandwidth, right_bandwidth]
@@ -1125,216 +1198,6 @@ def apply_passband(
     return passbanded_atm_containers
 
 
-def build_atm_validation_hypertable(atlas: str) -> dict:
-    """Build a validation table for atmosphere model parameter bounds.
-
-    Creates a nested dictionary mapping temperature → gravity values for
-    each temperature in the atlas. Used to validate that log_g values are
-    valid for their corresponding temperatures.
-
-    :param atlas: Atmosphere atlas name (e.g., 'ck04', 'k93').
-    :type atlas: str
-    :returns: Dictionary with temperatures as keys and dicts of gravity and
-        metallicity allowable values.
-    :rtype: dict
-    """
-    atlas = validated_atlas(atlas)
-    all_files = get_list_of_all_atm_tables(atlas)
-    filenames = (Path(f).name for f in all_files)
-    quantities = sorted(
-        [parse_domain_quantities_from_atm_table_filename(f) for f in filenames],
-        key=lambda x: x[0],
-    )
-    temp_qroups = itertools.groupby(quantities, key=lambda x: x[0])
-    return {
-        str(int(temp_qroup[0])): {
-            "gravity": sorted(set(np.array(list(temp_qroup[1])).T[1])),
-            "metallicity": atm_file_prefix_to_quantity_list("metallicity", atlas),
-        }
-        for temp_qroup in temp_qroups
-    }
-
-
-def is_out_of_bound(
-    in_arr: NDArray | list,
-    values: Float | Iterable,
-    tolerance: Float,
-) -> list[bool]:
-    """Check if values are outside the bounds of an array with tolerance.
-
-    :param in_arr: Reference array defining valid range.
-    :type in_arr: NDArray | list
-    :param values: Value(s) to check.
-    :type values: Float | Iterable
-    :param tolerance: Tolerance for out-of-bounds check.
-    :type tolerance: Float
-    :returns: List of booleans; True where value is out of bounds.
-    :rtype: list[bool]
-    """
-    values = [values] if not isinstance(values, Iterable) else values
-    top, bottom = max(in_arr) + tolerance, min(in_arr) - tolerance
-    return [not bottom <= val <= top for val in values]
-
-
-# pay attention to those methods below
-# in the future for different atm model might happen that function won't be valid anymore
-
-
-def validate_temperature(
-    temperature: NDArray,
-    atlas: str,
-    *,
-    _raise: bool = True,
-) -> bool:
-    """Validate that temperatures are within atlas bounds.
-
-    :param temperature: Temperature values to validate in K.
-    :type temperature: NDArray
-    :param atlas: Atmosphere atlas name (e.g., 'ck04', 'k93').
-    :type atlas: str
-    :param _raise: If True, raise TemperatureError on invalid values;
-        otherwise return False.
-    :type _raise: bool
-    :returns: True if all temperatures are valid, False otherwise.
-    :rtype: bool
-    :raises TemperatureError: If temperatures are out of bounds and _raise=True.
-    """
-    atlas = validated_atlas(atlas)
-    allowed = sorted(atm_file_prefix_to_quantity_list("temperature", atlas))
-    invalid = any(bool(allowed[-1] < t or t < allowed[0]) for t in temperature)
-    if invalid:
-        if _raise:
-            msg = "Any temperature in system atmosphere is out of bound; it is usually caused by invalid physical model"
-            raise TemperatureError(msg)
-        return False
-    return True
-
-
-def validate_metallicity(
-    metallicity: Float | Iterable,
-    atlas: str,
-    *,
-    _raise: bool = True,
-) -> bool:
-    """Validate that metallicity is within atlas bounds.
-
-    :param metallicity: Metallicity value(s) [Fe/H] to validate.
-    :type metallicity: Float | Iterable
-    :param atlas: Atmosphere atlas name (e.g., 'ck04', 'k93').
-    :type atlas: str
-    :param _raise: If True, raise MetallicityError on invalid values;
-        otherwise return False.
-    :type _raise: bool
-    :returns: True if metallicity is valid, False otherwise.
-    :rtype: bool
-    :raises MetallicityError: If metallicity is out of bounds and _raise=True.
-    """
-    out_of_bound_tol = 0.1  # Tolerance for out-of-bounds values
-    atlas = validated_atlas(atlas)
-    allowed = sorted(atm_file_prefix_to_quantity_list("metallicity", atlas))
-    out_of_bound = is_out_of_bound(allowed, metallicity, out_of_bound_tol)
-    if any(out_of_bound):
-        if _raise:
-            min_allowed = min(allowed) - out_of_bound_tol
-            max_allowed = max(allowed) + out_of_bound_tol
-            msg = (
-                f"Any metallicity in system atmosphere is out of bound, "
-                f"allowed values are in range <{min_allowed}, {max_allowed}>; "
-                f"it is usually caused by invalid physical model"
-            )
-            raise MetallicityError(msg)
-        return False
-    return True
-
-
-def validate_logg_temperature_constraint(
-    temperature: NDArray,
-    log_g: NDArray,
-    atlas: str,
-    *,
-    _raise: bool = True,
-) -> bool:
-    """Validate that log_g values are consistent with temperature in atlas.
-
-    Checks that each log_g value is valid for its corresponding temperature
-    according to the atmosphere atlas bounds.
-
-    :param temperature: Temperature values in K.
-    :type temperature: NDArray
-    :param log_g: Surface gravity values in log10(cm/s²).
-    :type log_g: NDArray
-    :param atlas: Atmosphere atlas name (e.g., 'ck04', 'k93').
-    :type atlas: str
-    :param _raise: If True, raise GravityError on invalid values;
-        otherwise return False.
-    :type _raise: bool
-    :returns: True if all log_g values are valid, False otherwise.
-    :rtype: bool
-    :raises GravityError: If log_g is out of bounds and _raise=True.
-    """
-    validation_hypertable = build_atm_validation_hypertable(atlas)
-    allowed = sorted(atm_file_prefix_to_quantity_list("temperature", atlas))
-
-    invalid = [
-        is_out_of_bound(
-            validation_hypertable[str(int(utils.find_nearest_value(allowed, t)[0]))]["gravity"],
-            [g],
-            0.1,
-        )[0]
-        for t, g in zip(temperature, log_g, strict=True)
-    ]
-    if np.any(invalid):
-        if _raise:
-            msg = (
-                "Any gravity (log_g) in system atmosphere is out of bound; "
-                "it is usually caused by invalid physical model"
-            )
-            raise GravityError(msg)
-        return False
-    return True
-
-
-def validate_atm(
-    temperature: NDArray,
-    log_g: NDArray,
-    metallicity: Float | Iterable,
-    atlas: str,
-    *,
-    _raise: bool = True,
-) -> bool:
-    """Validate atmosphere parameters against atlas bounds.
-
-    Runs validate_temperature, validate_metallicity, and
-    validate_logg_temperature_constraint in sequence.
-
-    :param temperature: Temperature values in K.
-    :type temperature: NDArray
-    :param log_g: Surface gravity in log10(cm/s²).
-    :type log_g: NDArray
-    :param metallicity: Metallicity value(s) [Fe/H].
-    :type metallicity: Float | Iterable
-    :param atlas: Atmosphere atlas name (e.g., 'ck04', 'k93').
-    :type atlas: str
-    :param _raise: If True, raise error on invalid values;
-        otherwise return False.
-    :type _raise: bool
-    :returns: True if all atmosphere parameters are valid, False otherwise.
-    :rtype: bool
-    :raises TemperatureError, MetallicityError, GravityError: If
-        respective parameters are out of bounds and _raise=True.
-    """
-    try:
-        metallicity = [metallicity] * len(temperature) if not isinstance(metallicity, Iterable) else metallicity
-        validate_temperature(temperature, atlas)
-        validate_metallicity(metallicity, atlas)
-        validate_logg_temperature_constraint(temperature, log_g, atlas)
-    except (ElisaError, ValueError):
-        if not _raise:
-            return False
-        raise
-    return True
-
-
 def atm_file_prefix_to_quantity_list(qname: str, atlas: str) -> list:
     """Get list of available values for atmosphere domain quantity.
 
@@ -1348,10 +1211,9 @@ def atm_file_prefix_to_quantity_list(qname: str, atlas: str) -> list:
     :returns: List of available values for the quantity in the atlas.
     :rtype: list
     """
-    atlas = validated_atlas(atlas)
     return getattr(
         const,
-        f"{str(atlas).upper()}_{settings.ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX[qname]!s}",
+        f"{str(atlas).upper()}_{ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX[qname]!s}",
     )
 
 
@@ -1366,14 +1228,9 @@ def validated_atlas(atlas: str) -> str:
     :type atlas: str
     :returns: Canonical atlas identifier.
     :rtype: str
-    :raises KeyError: If atlas is not in the supported list.
+    :raises ElisaInitialParametersError: If atlas is not in the supported list.
     """
-    try:
-        return settings.ATM_ATLAS_NORMALIZER[atlas]
-    except KeyError as exc:
-        allowed = ", ".join(settings.ATM_ATLAS_NORMALIZER.keys())
-        msg = f"Incorrect atlas: {atlas}. Following are allowed: {allowed}"
-        raise KeyError(msg) from exc
+    return normalize_atlas(atlas)
 
 
 def parse_domain_quantities_from_atm_table_filename(filename: str) -> tuple[Float, Float, Float]:
@@ -1463,7 +1320,7 @@ def get_atm_table_filename(
     :returns: Filename for the atmosphere table.
     :rtype: str
     """
-    prefix = validated_atlas(atlas)
+    prefix = atlas
     return (
         f"{prefix}{utils.numeric_metallicity_to_string(metallicity)}_"
         f"{int(temperature)}_{utils.numeric_logg_to_string(log_g)}.csv"
@@ -1483,8 +1340,25 @@ def get_atm_directory(metallicity: Float, atlas: str) -> str:
     :returns: Directory name for the atmosphere table.
     :rtype: str
     """
-    prefix = validated_atlas(atlas)
+    prefix = atlas
     return f"{prefix}{utils.numeric_metallicity_to_string(metallicity)}"
+
+
+def _read_atm_csv(path: str | Path, dtype: dict) -> pd.DataFrame:
+    """Read a selected table, preserving failures outside candidate physics."""
+    try:
+        # noinspection PyArgumentList
+        return pd.read_csv(path, dtype=dtype)
+    except FileNotFoundError as exc:
+        raise_elisa_atmosphere_error(f"There is no file like {path}", exc)
+    except OSError as exc:
+        # Access rights, device failures and resource exhaustion are outside the
+        # model's control. Never turn them into candidate rejection penalties.
+        raise_elisa_unexpected_error(f"Cannot read atmosphere table {path}: {exc}", exc)
+    except Exception as exc:  # noqa: BLE001 - fixed table contents are not candidate parameters
+        # An installed table must be readable numeric CSV. Malformed contents,
+        # resource failures and reader bugs must abort rather than reject proposals.
+        raise_elisa_unexpected_error(f"Cannot decode atmosphere table {path}: {exc}", exc)
 
 
 def get_atm_table(
@@ -1508,19 +1382,15 @@ def get_atm_table(
     :type atlas: str
     :returns: DataFrame with flux and wavelength columns.
     :rtype: pd.DataFrame
-    :raises FileNotFoundError: If the atmosphere table file is not found.
+    :raises AtmosphereError: If the atmosphere table file is not found.
     """
+    atlas = validated_atlas(atlas)
     source = settings.ATLAS_TO_BASE_DIR[atlas]
     directory = get_atm_directory(metallicity, atlas)
     filename = get_atm_table_filename(temperature, log_g, metallicity, atlas)
     path = Path(source) / directory / filename if directory is not None else Path(source) / filename
 
-    if not path.is_file():
-        msg = f"There is no file like {path}"
-        raise FileNotFoundError(msg)
-
-    # noinspection PyArgumentList
-    return pd.read_csv(path, dtype=settings.ATM_MODEL_DATAFARME_DTYPES)
+    return _read_atm_csv(path, settings.ATM_MODEL_DATAFARME_DTYPES)
 
 
 def get_list_of_all_atm_tables(atlas: str) -> list[str]:
@@ -1535,6 +1405,28 @@ def get_list_of_all_atm_tables(atlas: str) -> list[str]:
     """
     source = settings.ATLAS_TO_BASE_DIR[validated_atlas(atlas)]
     return [str(path) for path in Path(source).rglob("*.csv") if path.is_file()]
+
+
+def _load_atm_container(file_path: str | Path) -> AtmDataContainer:
+    """Load one selected model without hiding source/contract failures as penalties."""
+    try:
+        dtype_map = {"flux": FLOAT, "wave": FLOAT}
+        t, log_g, m = parse_domain_quantities_from_atm_table_filename(Path(file_path).name)
+        return AtmDataContainer(_read_atm_csv(file_path, dtype_map), t, log_g, m, fpath=file_path)
+    except (ElisaAtmosphereError, ElisaUnexpectedError):
+        raise
+    except Exception as exc:  # noqa: BLE001 - classify failures at the fixed source loading boundary
+        # Grid selection already succeeded. Filename syntax, required columns and
+        # nonempty model data are contracts of the installed source and our loader,
+        # not quantities changed by fitting. Keep the original failure for diagnosis.
+        raise_elisa_unexpected_error(f"Cannot construct atmosphere model from {file_path}: {exc}", exc)
+
+
+def _raise_atm_reader_error(error: Exception | KeyboardInterrupt) -> NoReturn:
+    """Restore classified worker failures without penalizing unknown exceptions."""
+    if isinstance(error, (ElisaAtmosphereError, ElisaUnexpectedError, KeyboardInterrupt)):
+        raise error
+    raise_elisa_unexpected_error(f"Atmosphere table reader failed: {error}", error)
 
 
 def multithread_atm_tables_reader(
@@ -1555,25 +1447,40 @@ def multithread_atm_tables_reader(
     :param result_queue: Queue for (index, AtmDataContainer) results.
     :type result_queue: Queue;
     """
-    while True:
-        args = path_queue.get(timeout=1)
-        if args == "TERMINATOR":
-            break
-        if not error_queue.empty():
-            break
-        index, file_path = args
-        if file_path is None:
-            result_queue.put((index, None))
-            continue
-        try:
-            dtype_map = {"flux": FLOAT, "wave": FLOAT}
-            t, l, m = parse_domain_quantities_from_atm_table_filename(Path(file_path).name)  # noqa: E741
-            # noinspection PyArgumentList
-            atm_container = AtmDataContainer(pd.read_csv(file_path, dtype=dtype_map), t, l, m, fpath=file_path)
+    try:
+        while True:
+            args = path_queue.get(timeout=1)
+            if args == "TERMINATOR":
+                break
+            if not error_queue.empty():
+                break
+            index, file_path = args
+            if file_path is None:
+                result_queue.put((index, None))
+                continue
+            atm_container = _load_atm_container(file_path)
             result_queue.put((index, atm_container))
-        except Exception as we:  # noqa: BLE001
-            error_queue.put(we)
-            break
+    except (Exception, KeyboardInterrupt) as exc:  # noqa: BLE001 - transport to the main thread
+        # A thread-local interrupt must reach the caller just like a main-thread
+        # interrupt. Unknown queue/worker failures are classified by the runner.
+        error_queue.put(exc)
+
+
+def _require_atm_table_file(fpath: str | Path) -> None:
+    """Distinguish a missing candidate table from an operating-system failure."""
+    try:
+        Path(fpath).stat()
+    except FileNotFoundError as exc:
+        logger.debug("accessing atmosphere file %s", fpath)
+        msg = (
+            f"file {fpath} doesn't exist. Your atmosphere tables are "
+            f"either not properly installed or atmosphere parameters "
+            f"of your stellar model are not covered by the currently "
+            f"used table."
+        )
+        raise_elisa_atmosphere_error(msg, exc)
+    except OSError as exc:
+        raise_elisa_unexpected_error(f"Cannot access atmosphere table {fpath}: {exc}", exc)
 
 
 def multithread_atm_tables_reader_runner(fpaths: list[str] | tuple[str]) -> Queue:
@@ -1586,8 +1493,9 @@ def multithread_atm_tables_reader_runner(fpaths: list[str] | tuple[str]) -> Queu
     :type fpaths: Iterable[str]
     :returns: Queue containing (index, AtmDataContainer) tuples.
     :rtype: Queue
-    :raises AtmosphereError: If any file path does not exist or
-        if a worker thread encounters an error.
+    :raises ElisaAtmosphereError: If a required model table is missing.
+    :raises ElisaUnexpectedError: If source, system or worker contracts fail.
+    :raises KeyboardInterrupt: If interrupted in the runner or a worker.
     """
     n_threads = settings.NUMBER_OF_THREADS
 
@@ -1598,15 +1506,7 @@ def multithread_atm_tables_reader_runner(fpaths: list[str] | tuple[str]) -> Queu
     threads = []
     try:
         for index, fpath in enumerate(fpaths):
-            if not Path(fpath).is_file():
-                logger.debug("accessing atmosphere file %s", fpath)
-                msg = (
-                    f"file {fpath} doesn't exist. Your atmosphere tables are "
-                    f"either not properly installed or atmosphere parameters "
-                    f"of your stellar model are not covered by the currently "
-                    f"used table."
-                )
-                raise AtmosphereError(msg)
+            _require_atm_table_file(fpath)
             path_queue.put((index, fpath))
 
         for _ in range(n_threads):
@@ -1626,11 +1526,17 @@ def multithread_atm_tables_reader_runner(fpaths: list[str] | tuple[str]) -> Queu
             t.join()
         logger.debug("atm multithread reader finished all jobs")
     except KeyboardInterrupt:
-        logger.info("Keyboard interrupt received, terminating atmosphere table reader threads.")
+        logger.info("Keyboard interrupt received while reading atmosphere tables.")
         raise
-    finally:
-        if not error_queue.empty():
-            raise error_queue.get()
+    except (ElisaAtmosphereError, ElisaUnexpectedError):
+        raise
+    except Exception as exc:  # noqa: BLE001 - reader infrastructure must never become a proposal penalty
+        raise_elisa_unexpected_error(f"Atmosphere table reader failed: {exc}", exc)
+
+    # Inspect worker failures only after successful joins. Raising from finally
+    # could replace a main-thread KeyboardInterrupt with a queued model failure.
+    if not error_queue.empty():
+        _raise_atm_reader_error(error_queue.get())
     return result_queue
 
 
@@ -1840,7 +1746,9 @@ def read_unique_atm_tables(
                 "of your stellar model are not covered by the currently "
                 "used table."
             )
-            raise AtmosphereError(msg) from exc
+            raise_elisa_atmosphere_error(msg, exc)
+        except OSError as exc:
+            raise_elisa_unexpected_error(f"Cannot identify atmosphere table {fpath}: {exc}", exc)
         key = (source, Path(fpath).name, settings.ATM_MODEL_DATAFRAME_FLUX, settings.ATM_MODEL_DATAFRAME_WAVE)
         source_keys[fpath] = key
         if key in buffer.ATMOSPHERE_TABLES:
@@ -1881,12 +1789,17 @@ def find_atm_si_multiplicators(
     :type atm_containers: Iterable[AtmDataContainer]
     :returns: Tuple of (flux_multiplicator, wavelength_multiplicator).
     :rtype: tuple[Float, Float]
-    :raises ValueError: If no valid container is supplied.
+    :raises ElisaUnexpectedError: If the required atmosphere containers are missing.
     """
     for atm_container in atm_containers:
         return atm_container.flux_to_si_mult, atm_container.wave_to_si_mult
     msg = "No valid atmospheric container has been supplied to method."
-    raise ValueError(msg)
+    # This is an internal helper, not a user-facing input boundary. The programmer
+    # must ensure its callers supply the models required by the synthesis flow.
+    # A built stellar surface requires atmosphere tables; grid selection and table
+    # loading report their own failures before reaching this point. An empty result
+    # therefore breaks the internal pipeline contract and must not penalize a candidate.
+    return raise_elisa_unexpected_error(msg)
 
 
 def find_atm_defined_wavelength(
@@ -1900,12 +1813,17 @@ def find_atm_defined_wavelength(
     :type atm_containers: Iterable[AtmDataContainer]
     :returns: Wavelength array from the first container.
     :rtype: NDArray
-    :raises AtmosphereError: If no valid container is supplied.
+    :raises ElisaUnexpectedError: If the required atmosphere containers are missing.
     """
     for atm_container in atm_containers:
         return atm_container.model.wavelength
     msg = "No valid atmospheric container has been supplied to method."
-    raise AtmosphereError(msg)
+    # This is an internal helper, not a user-facing input boundary. The programmer
+    # must ensure its callers supply the models required by the synthesis flow.
+    # Successful loading and remapping must preserve the required atmosphere models.
+    # Missing tables fail earlier; an empty collection here is an internal contract
+    # violation, not a candidate atmosphere failure that fitting should penalize.
+    return raise_elisa_unexpected_error(msg)
 
 
 def remap_passbanded_unique_atms_to_matrix(

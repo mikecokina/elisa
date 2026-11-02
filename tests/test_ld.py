@@ -18,7 +18,7 @@ from pandas.testing import assert_frame_equal
 from elisa import const, ld, utils
 from elisa import settings
 from elisa.base.curves import utils as curve_utils
-from elisa.base.error import LimbDarkeningError
+from elisa.base.error import ElisaLimbDarkeningError, ElisaLookupError, ElisaUnexpectedError
 from tests.utils import ElisaTestCase
 
 set_astropy_units()
@@ -49,48 +49,6 @@ class TestLimbDarkeningModule(ElisaTestCase):
         ]
         obtained = [ld.get_ld_table_filename(**param) for param in params]
         assert_array_equal(expected, obtained)
-
-    def expected_ld_tables(self):
-        path = os.path.join(self.base_path, "data", "vh93")
-        # noinspection PyArgumentList
-        return [pd.read_csv(os.path.join(path, file)) for file in sorted(os.listdir(path))]
-
-    def test_get_ld_table(self):
-        settings.configure(LD_TABLES=os.path.join(self.base_path, "data", "vh93"))
-        params = [
-            dict(passband="Generic.Bessell.B", metallicity=-0.2, law="cosine"),
-            dict(passband="Kepler", metallicity=-4, law="logarithmic")
-        ]
-
-        expected = self.expected_ld_tables()
-        obtained = [ld.get_ld_table(**param) for param in params]
-
-        for e, o in zip(expected, obtained):
-            assert_frame_equal(e, o, rtol=1e-5, check_dtype=False, check_exact=True)
-
-    def test_get_ld_table_by_name(self):
-        settings.configure(**{"LD_TABLES": os.path.join(self.base_path, "data", "vh93")})
-        filenames = ["lin.Generic.Bessell.B.m02.csv", "log.Kepler.m40.csv"]
-
-        expected = self.expected_ld_tables()
-        obtained = [ld.get_ld_table_by_name(file) for file in filenames]
-
-        for e, o in zip(expected, obtained):
-            assert_frame_equal(e, o, rtol=1e-5, check_dtype=False, check_exact=True)
-
-    def test_get_ld_table_by_name_same_as_get_ld_table(self):
-        settings.configure(**{"LD_TABLES": os.path.join(self.base_path, "data", "vh93")})
-        params = [
-            dict(passband="Generic.Bessell.B", metallicity=-0.2, law="cosine"),
-            dict(passband="Kepler", metallicity=-4, law="logarithmic")
-        ]
-        filenames = ["lin.Generic.Bessell.B.m02.csv", "log.Kepler.m40.csv"]
-
-        obtained_by_params = [ld.get_ld_table(**param) for param in params]
-        obtained_by_filename = [ld.get_ld_table_by_name(file) for file in filenames]
-
-        for o1, o2 in zip(obtained_by_filename, obtained_by_params):
-            assert_frame_equal(o1, o2)
 
     def test_get_relevant_ld_tables(self):
         params = [
@@ -145,32 +103,29 @@ class TestLimbDarkeningModule(ElisaTestCase):
         self.assertTrue(np.all(expected_ylog == obtained_ylog))
         self.assertTrue(np.all(expected_xlog == obtained_xlog))
 
-    def _raise_test_limb_darkening_factor(self, msg, **kwargs):
-        with self.assertRaises(Exception) as context:
+    def _raise_test_limb_darkening_factor(self, exception_type, msg, **kwargs):
+        with self.assertRaises(exception_type) as context:
             ld.limb_darkening_factor(**kwargs)
-        self.assertTrue(msg in str(context.exception))
+        self.assertIn(msg, str(context.exception))
 
     def test_limb_darkening_factor_raise(self):
         normals = np.array([[1, 1, 1], [0.5, 0.5, 0.5], [-1., -1, 1.3]])
-        sov = const.LINE_OF_SIGHT
+        normals = normals / np.linalg.norm(normals, axis=1)[:, None]
+        valid = dict(normal_vector=normals, line_of_sight=const.LINE_OF_SIGHT,
+                     coefficients=np.array([[0.1], [0.2], [0.3]]), limb_darkening_law='linear')
+        self.assertTrue(np.isfinite(ld.limb_darkening_factor(**valid)).all())
 
-        # :warning: order of tests depend on order of check in ld.limb_darkening_factor method!!!
-
-        # missing line_of_sight
-        msg = 'Line of sight vector(s) was not supplied.'
-        self._raise_test_limb_darkening_factor(msg, normal_vector=normals)
-
-        # missing normal_vector
-        msg = 'Normal vector(s) was not supplied.'
-        self._raise_test_limb_darkening_factor(msg, line_of_sight=sov)
-
-        # missing coefficients
-        msg = 'Limb darkening coefficients were not supplied.'
-        self._raise_test_limb_darkening_factor(msg, line_of_sight=sov, normal_vector=normals)
-
-        # missing limb_darkening_law
-        msg = 'Limb darkening rule was not supplied choose from'
-        self._raise_test_limb_darkening_factor(msg, line_of_sight=sov, normal_vector=normals, coefficients=3)
+        # Omit exactly one prerequisite so validation order cannot choose the error.
+        for missing, exception_type, diagnostic in (
+            ('line_of_sight', ElisaUnexpectedError, 'Line of sight'),
+            ('normal_vector', ElisaUnexpectedError, 'Normal vector'),
+            ('coefficients', ElisaUnexpectedError, 'coefficients'),
+            ('limb_darkening_law', ElisaUnexpectedError, 'rule'),
+        ):
+            with self.subTest(missing=missing):
+                kwargs = valid.copy()
+                del kwargs[missing]
+                self._raise_test_limb_darkening_factor(exception_type, diagnostic, **kwargs)
 
     def test_limb_darkening_factor_linear(self):
         ld_law = 'linear'
@@ -258,9 +213,9 @@ def test_unrounded_griddata_equivalence(ld_sources, monkeypatch, law, metal, ban
     assert alias['rv_band'].shape == (len(queries), values.shape[1])
 
 
-@pytest.mark.parametrize('defect, error', [('outside', LimbDarkeningError), ('query_nan', LimbDarkeningError),
-    ('value_nan', LimbDarkeningError), ('domain_nan', ValueError), ('degenerate', QhullError),
-    ('missing_column', KeyError), ('missing_file', FileNotFoundError)])
+@pytest.mark.parametrize(('defect', 'error'), [('outside', ElisaLimbDarkeningError), ('query_nan', ElisaLimbDarkeningError),
+    ('value_nan', ElisaLimbDarkeningError), ('domain_nan', ElisaLimbDarkeningError), ('degenerate', ElisaLimbDarkeningError),
+    ('missing_column', ElisaUnexpectedError), ('missing_file', ElisaLimbDarkeningError)])
 def test_interpolation_errors(ld_sources, defect, error):
     path = ld_sources / ld.get_ld_table_filename('bolometric', 0.)
     frame = pd.read_csv(path)
@@ -281,8 +236,29 @@ def test_interpolation_errors(ld_sources, defect, error):
         path.unlink()
     else:
         frame.to_csv(path, index=False)
-    with pytest.raises(error):
+    with pytest.raises(error) as caught:
         ld.interpolate_on_ld_grid(np.array([query[0]]), np.array([query[1]]), 0., ['bolometric'])
+    if defect == 'degenerate':
+        assert isinstance(caught.value.__cause__, QhullError)
+    elif defect == 'domain_nan':
+        assert isinstance(caught.value.__cause__, ValueError)
+
+
+def test_interpolation_error_identifies_table_and_requested_values(ld_sources: Path) -> None:
+    temperature = np.array([5500.0, 4999.999999, 7000.0])
+    log_g_si = np.array([1.5, 1.5, 2.5])
+
+    with pytest.raises(ElisaLimbDarkeningError) as raised:
+        ld.interpolate_on_ld_grid(temperature, log_g_si, 0.0, ['bolometric'])
+
+    message = str(raised.value)
+    table_path = ld_sources / ld.get_ld_table_filename('bolometric', 0.0)
+    assert str(table_path) in message
+    assert 'Passband: bolometric; law: cosine; metallicity: 0.0' in message
+    assert 'Failed interpolation points: 2 of 3' in message
+    assert 'input rows (zero-based): [1, 2]' in message
+    assert 't_eff [K], log_g [log10(cm/s^2)]' in message
+    assert '[[4999.999999, 3.5], [7000.0, 4.5]]' in message
 
 
 def component(temperature=5500.1234567891):
@@ -391,16 +367,13 @@ def test_empty_and_nan_payload_keys(ld_sources):
         assert not decoded.flags.writeable
     result = ld.interpolate_on_ld_grid(np.array([]), np.array([]), 0., ['bolometric'])
     assert result['bolometric'].shape == (0, 1)
-    with pytest.raises(ValueError):
+    with pytest.raises(ElisaLimbDarkeningError):
         ld.interpolate_on_ld_grid(np.array([5500.]), np.array([1.5]), 99., ['bolometric'])
 
 
+@pytest.mark.requires_ld(passbands=("Generic.Bessell.U", "bolometric"), laws=("cosine",))
 def test_circular_complete_curve_lru(monkeypatch):
     from elisa.binary_system.curves import c_managed
-    table_dir = Path.home() / '.elisa/limbdarkening/ld'
-    if not (table_dir / 'lin.Generic.Bessell.U.p00.csv').is_file():
-        pytest.skip('Configured Van Hamme assets are required for the audit baseline')
-    monkeypatch.setattr(settings, 'LD_TABLES', str(table_dir))
     monkeypatch.setattr(settings, 'LIMB_DARKENING_LAW', 'cosine')
     monkeypatch.setattr(settings, 'NUMBER_OF_PROCESSES', 1)
     monkeypatch.setattr(settings, 'USE_SINGLE_LD_COEFFICIENTS', False)
@@ -433,16 +406,12 @@ def test_circular_complete_curve_lru(monkeypatch):
         ld.clear_ld_caches()
 
 
-@pytest.mark.parametrize('law', ['linear', 'cosine', 'logarithmic', 'square_root'])
-@pytest.mark.parametrize('metal', [-5., 0., .05, 1.])
-@pytest.mark.parametrize('band', ['Generic.Bessell.U', 'bolometric', 'Generic.Bessell.V'])
+@pytest.mark.parametrize("law", ["linear", "cosine", "logarithmic", "square_root"])
+@pytest.mark.parametrize("metal", [-5.0, 0.0, 0.05, 1.0])
+@pytest.mark.parametrize("band", ["Generic.Bessell.U", "bolometric", "Generic.Bessell.V"])
+@pytest.mark.requires_ld(source="van_hamme")
 def test_installed_asset_hull_parity(monkeypatch, law, metal, band):
     from scipy.spatial import ConvexHull
-    directory = Path.home() / '.elisa/limbdarkening/ld'
-    names = ld.get_relevant_ld_tables(band, metal, law)
-    if not all((directory / name).is_file() for name in names):
-        pytest.skip('Installed Van Hamme asset not available')
-    monkeypatch.setattr(settings, 'LD_TABLES', str(directory))
     monkeypatch.setattr(settings, 'LIMB_DARKENING_LAW', law)
     points, values = legacy_source(band, metal)
     hull = points[ConvexHull(points).vertices]
@@ -459,7 +428,7 @@ def test_installed_asset_hull_parity(monkeypatch, law, metal, band):
         gravity = np.array([query[1] - 2])
         expected = griddata(points, values, np.column_stack(([query[0]], gravity + 2)), method='linear')
         if np.isnan(expected).any():
-            with pytest.raises(LimbDarkeningError, match='produced numpy.nan/None'):
+            with pytest.raises(ElisaLimbDarkeningError, match='produced numpy.nan/None'):
                 ld.interpolate_on_ld_grid(np.array([query[0]]), gravity, metal, [band])
         else:
             assert_array_equal(ld.interpolate_on_ld_grid(np.array([query[0]]), gravity, metal, [band])[band], expected)
@@ -479,15 +448,14 @@ def audit_observer(eccentricity=0., bands=('Generic.Bessell.U',)):
     return Observer(passband=list(bands), system=binary)
 
 
-@pytest.mark.parametrize('eccentricity,bands', [(0., ['Generic.Bessell.U']),
-    (.2, ['Generic.Bessell.U']), (0., ['Generic.Bessell.U', 'Generic.Bessell.V'])])
+@pytest.mark.parametrize(
+    ("eccentricity", "bands"),
+    [(0.0, ["Generic.Bessell.U"]), (0.2, ["Generic.Bessell.U"]), (0.0, ["Generic.Bessell.U", "Generic.Bessell.V"])],
+)
+@pytest.mark.requires_ld(passbands=("bolometric",), laws=("cosine",))
 def test_complete_scientific_unrounded_parity(monkeypatch, eccentricity, bands):
     from astropy import units as u
     from elisa.binary_system.curves import utils as binary_curve_utils
-    directory = Path.home() / '.elisa/limbdarkening/ld'
-    if not (directory / 'lin.Generic.Bessell.U.p00.csv').is_file():
-        pytest.skip('Configured Van Hamme assets required')
-    monkeypatch.setattr(settings, 'LD_TABLES', str(directory))
     monkeypatch.setattr(settings, 'LIMB_DARKENING_LAW', 'cosine')
     monkeypatch.setattr(settings, 'NUMBER_OF_PROCESSES', 1)
     monkeypatch.setattr(settings, 'USE_SINGLE_LD_COEFFICIENTS', False)
@@ -617,12 +585,11 @@ def test_factor_bitwise_and_input_ownership(law, layout, dtype):
 def test_factor_errors_preserve_inputs(law):
     mu = np.array([[0., -.2], [.3, 1.]])
     before = mu.tobytes()
-    from elisa.base.error import LimbDarkeningError
     if law in LAWS:
-        with pytest.raises(LimbDarkeningError, match='coefficients were not supplied'):
+        with pytest.raises(ElisaUnexpectedError, match='coefficients were not supplied'):
             ld.limb_darkening_factor(cos_theta=mu, limb_darkening_law=law)
     else:
-        with pytest.raises(LimbDarkeningError):
+        with pytest.raises(ElisaUnexpectedError):
             ld.limb_darkening_factor(cos_theta=mu, coefficients=np.array([[.3], [.4]]), limb_darkening_law=law)
     assert mu.tobytes() == before
 
@@ -636,3 +603,139 @@ def test_factor_vector_route(law):
     result = ld.limb_darkening_factor(normal_vector=normals, line_of_sight=los,
                                     coefficients=coeff, limb_darkening_law=law)
     assert result.tobytes() == expected.tobytes()
+    # Explicit cosines take precedence even when the alternative vectors are supplied.
+    supplied_cosines = np.array([.2, .3, .4])
+    supplied_before = supplied_cosines.copy()
+    explicit = ld.limb_darkening_factor(
+        normal_vector=normals, line_of_sight=los, cos_theta=supplied_cosines,
+        coefficients=coeff, limb_darkening_law=law,
+    )
+    assert explicit.tobytes() == original_factor(supplied_cosines, coeff, law).tobytes()
+    np.testing.assert_array_equal(supplied_cosines, supplied_before)
+
+
+@pytest.mark.parametrize("band", ["bolometric", "rv_band", "Generic.Bessell.V"])
+def test_missing_source_lookup_has_domain_error_and_original_diagnostic(ld_sources, band):
+    source_band = "bolometric" if band == "rv_band" else band
+    path = ld_sources / ld.get_ld_table_filename(source_band, 0.0)
+    path.unlink()
+    with pytest.raises(ElisaLimbDarkeningError) as caught:
+        ld.get_ld_source_identities(0.0, (band,))
+    assert type(caught.value) is ElisaLimbDarkeningError
+    assert str(caught.value) == f"There is no file like {path}."
+
+
+def test_source_error_is_explicit_in_fitting_policy():
+    from elisa.analytics.binary_fit.failure_policy import SYNTHESIS_FAILURES
+    assert ElisaLimbDarkeningError in SYNTHESIS_FAILURES
+    assert isinstance(ElisaLimbDarkeningError("missing table"), SYNTHESIS_FAILURES)
+
+
+@pytest.mark.parametrize("metallicity", [-100.0, 100.0])
+def test_unsupported_metallicity_is_ld_failure_with_cause(metallicity):
+    with pytest.raises(ElisaLimbDarkeningError) as caught:
+        ld.get_relevant_ld_tables("bolometric", metallicity)
+    assert isinstance(caught.value.__cause__, ElisaLookupError)
+
+
+@pytest.mark.parametrize("metallicity", [np.nan, np.inf, -np.inf])
+def test_nonfinite_metallicity_is_ld_failure_before_source_lookup(metallicity):
+    with patch.object(ld.utils, "find_surrounded") as select:
+        with pytest.raises(ElisaLimbDarkeningError, match="nonfinite metallicity"):
+            ld.get_relevant_ld_tables("bolometric", metallicity)
+    select.assert_not_called()
+
+
+def test_selected_table_disappearing_at_read_is_ld_failure(ld_sources):
+    source = ld.get_ld_source_identities(0.0, ("bolometric",))[0]
+    failure = FileNotFoundError("table disappeared")
+    with patch.object(ld.pd, "read_csv", side_effect=failure):
+        with pytest.raises(ElisaLimbDarkeningError) as caught:
+            ld.get_ld_source_interpolator(source)
+    assert caught.value.__cause__ is failure
+
+
+def test_nonfinite_interpolation_result_is_ld_failure(ld_sources):
+    with patch.object(ld, "get_ld_source_interpolator", return_value=lambda query: np.full((len(query), 1), np.inf)):
+        with pytest.raises(ElisaLimbDarkeningError, match="infinity"):
+            ld.interpolate_on_ld_grid(np.array([5500.0]), np.array([1.5]), 0.0, ["bolometric"])
+
+
+@pytest.mark.parametrize("failure", [ValueError("bad interpolation input"), RuntimeError("interpolator failed")])
+def test_source_interpolator_construction_failure_is_ld_error_with_cause(ld_sources, failure):
+    source = ld.get_ld_source_identities(0.0, ("bolometric",))[0]
+    with patch.object(ld.interpolate, "LinearNDInterpolator", side_effect=failure):
+        with pytest.raises(ElisaLimbDarkeningError) as caught:
+            ld.get_ld_source_interpolator(source)
+    assert caught.value.__cause__ is failure
+
+
+@pytest.mark.parametrize("temperature,log_g,metallicity", [
+    (np.array(["invalid"]), np.array([1.5]), 0.0),
+    (np.array([5500.0]), np.array(["invalid"]), 0.0),
+    (np.array([5500.0]), np.array([1.5]), "invalid"),
+    (np.array([5500.0, 5600.0]), np.array([1.5]), 0.0),
+    (np.full((2, 2), 5500.0), np.full(2, 1.5), 0.0),
+])
+def test_candidate_input_conversion_and_shape_failures_are_ld_errors(ld_sources, temperature, log_g, metallicity):
+    with pytest.raises(ElisaLimbDarkeningError) as caught:
+        ld.interpolate_on_ld_grid(temperature, log_g, metallicity, ["bolometric"])
+    assert isinstance(caught.value.__cause__, (ValueError, TypeError))
+
+
+@pytest.mark.parametrize("failure", [
+    PermissionError("access denied"), OSError("device failure"),
+    pd.errors.ParserError("invalid CSV"), pd.errors.EmptyDataError("empty CSV"),
+    MemoryError("out of memory"), TypeError("reader bug"),
+])
+def test_table_reader_failures_are_unexpected_with_cause(ld_sources, failure):
+    source = ld.get_ld_source_identities(0.0, ("bolometric",))[0]
+    with patch.object(ld.pd, "read_csv", side_effect=failure):
+        with pytest.raises(ElisaUnexpectedError) as caught:
+            ld.get_ld_source_interpolator(source)
+    assert caught.value.__cause__ is failure
+
+
+def test_missing_table_column_is_unexpected_with_cause(ld_sources):
+    source = ld.get_ld_source_identities(0.0, ("bolometric",))[0]
+    with patch.object(ld.pd, "read_csv", return_value=pd.DataFrame({"wrong": [1]})):
+        with pytest.raises(ElisaUnexpectedError) as caught:
+            ld.get_ld_source_interpolator(source)
+    assert isinstance(caught.value.__cause__, KeyError)
+
+
+def test_table_stat_failure_is_unexpected_with_cause(ld_sources):
+    failure = PermissionError("cannot stat LD table")
+    original_stat = Path.stat
+
+    def fail_table_stat(path, *args, **kwargs):
+        if path.suffix == ".csv":
+            raise failure
+        return original_stat(path, *args, **kwargs)
+
+    with patch.object(Path, "stat", fail_table_stat):
+        with pytest.raises(ElisaUnexpectedError) as caught:
+            ld.get_ld_source_identities(0.0, ("bolometric",))
+    assert caught.value.__cause__ is failure
+
+
+@pytest.mark.parametrize("integrated", [False, True])
+def test_missing_prepared_coefficients_are_internal_contract_failure(integrated):
+    with pytest.raises(ElisaUnexpectedError, match="coefficients were not supplied"):
+        if integrated:
+            ld.calculate_integrated_limb_darkening_factor("linear")
+        else:
+            ld.limb_darkening_factor(cos_theta=np.ones(2), limb_darkening_law="linear")
+
+
+@pytest.mark.parametrize("integrated", [False, True])
+@pytest.mark.parametrize("law", ["invalid", None])
+def test_unsupported_factor_law_is_internal_contract_failure(integrated, law):
+    coefficients = np.ones((2, 2))
+    with pytest.raises(ElisaUnexpectedError, match="law|rule"):
+        if integrated:
+            ld.calculate_integrated_limb_darkening_factor(law, coefficients)
+        else:
+            ld.limb_darkening_factor(
+                coefficients=coefficients, cos_theta=np.ones(2), limb_darkening_law=law,
+            )

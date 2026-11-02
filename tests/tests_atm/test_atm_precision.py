@@ -8,7 +8,8 @@ import numpy as np
 import pytest
 from scipy.interpolate import Akima1DInterpolator
 
-from elisa import atm, settings
+from elisa import settings
+from elisa.atm import atm
 from elisa.observer.passband import PassbandContainer
 
 
@@ -18,7 +19,7 @@ def rounded_boundary_extension(container, left, right):
     interpolator = Akima1DInterpolator(model.wavelength, model.flux)
     flux = interpolator([left, right])
     if np.isnan(flux).any():
-        raise atm.AtmosphereError("Interpolation on bandwidth boundaries resulted in NaN value.")
+        raise atm.ElisaAtmosphereError("Interpolation on bandwidth boundaries resulted in NaN value.")
     model.wavelength[np.array([0, -1])] = [left, right]
     model.flux[np.array([0, -1])] = flux
     model.flux = np.round(model.flux, 10)
@@ -70,7 +71,7 @@ def test_nan_boundary_errors_leave_input_untouched(left, right):
     original = make_spectrum()
     before = deepcopy(original)
     for extend in (rounded_boundary_extension, atm.extend_atm_container_on_bandwidth_boundary):
-        with pytest.raises(atm.AtmosphereError, match="Interpolation on bandwidth boundaries resulted in NaN value."):
+        with pytest.raises(atm.ElisaAtmosphereError, match="Interpolation on bandwidth boundaries resulted in NaN value."):
             extend(original, left, right)
         np.testing.assert_array_equal(original.model.flux, before.model.flux)
         np.testing.assert_array_equal(original.model.wavelength, before.model.wavelength)
@@ -143,7 +144,7 @@ def test_ck04_spectra_and_absolute_radiance_match_unrounded_pipeline(monkeypatch
     monkeypatch.setattr(settings, "CK04_ATM_TABLES", directory)
     monkeypatch.setattr(atm.buffer, "ATMOSPHERE_TABLES", {})
     band = PassbandContainer.from_name("Generic.Bessell.U")
-    args = np.array([10000.0, 10001.0, 10250.0]), np.repeat(2.0, 3), 0.0, "ck04"
+    args = np.array([10000.0, 10001.0, 10250.0]), np.repeat(2.0, 3), 0.0, "ck"
     kwargs = dict(passband={"Generic.Bessell.U": band}, left_bandwidth=band.left_bandwidth,
                   right_bandwidth=band.right_bandwidth)
     with patch.object(atm, "extend_atm_container_on_bandwidth_boundary", rounded_boundary_extension):
@@ -168,18 +169,18 @@ def test_ck04_spectra_and_absolute_radiance_match_unrounded_pipeline(monkeypatch
 
 
 @pytest.mark.parametrize("normalize", [False, True])
+@pytest.mark.requires_ld(passbands=("bolometric", "Generic.Bessell.V"))
+@pytest.mark.requires_atmosphere(atlas="ck04")
 def test_ck04_raw_and_normalized_eccentric_curves(normalize, monkeypatch):
     """Compare both versions through an eccentric, eclipsing CK04 binary."""
     from elisa import Observer
     from tests.utils import BINARY_SYSTEM_PARAMS, prepare_binary_system
 
-    directory = Path(__file__).parents[1] / "data" / "light_curves"
-    monkeypatch.setattr(settings, "CK04_ATM_TABLES", directory / "atmosphere")
-    monkeypatch.setattr(settings, "LD_TABLES", str(directory / "limbdarkening"))
     monkeypatch.setattr(atm.buffer, "ATMOSPHERE_TABLES", {})
     binary = prepare_binary_system(BINARY_SYSTEM_PARAMS["detached.ecc"])
-    binary.primary.atmosphere = "ck04"
-    binary.secondary.atmosphere = "ck04"
+    # Direct internal mutation bypasses Star input normalization: use canonical names.
+    binary.primary.atmosphere = "ck"
+    binary.secondary.atmosphere = "ck"
     observer = Observer(passband=["Generic.Bessell.V"], system=binary)
     phases = np.linspace(-0.5, 0.5, 11)
     with patch.object(atm, "extend_atm_container_on_bandwidth_boundary", rounded_boundary_extension):

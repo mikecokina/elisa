@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from elisa.base.error import raise_elisa_operation_input_error, raise_elisa_unexpected_error
+from elisa.conf.enums import NormalizationKind
 from elisa.utils import is_empty
 
 if TYPE_CHECKING:
@@ -17,7 +19,7 @@ if TYPE_CHECKING:
 def normalize_light_curve(
         y_data: Mapping[str, NDArray],
         y_err: Mapping[str, NDArray | None] | None = None,
-        kind: str = "global_maximum",
+        kind: NormalizationKind | str = NormalizationKind.GLOBAL_MAXIMUM,
         top_fraction_to_average: Float = 0.1,
 ) -> tuple[dict[str, NDArray[Float]], dict[str, NDArray[Float] | None] | None]:
     """Normalize light curves using the selected normalization strategy.
@@ -37,49 +39,57 @@ def normalize_light_curve(
     :type y_err: Mapping[str, NDArray | None] | None
     :param kind: Normalization kind. Must be one of the supported kinds listed above.
         Defaults to "global_maximum".
-    :type kind: str
+    :type kind: NormalizationKind | str
     :param top_fraction_to_average: Fraction of points used when computing top-fraction
-        or bottom-fraction averages. Expected to be in the interval ``(0, 1)``.
-        Defaults to 0.1.
+        or bottom-fraction averages; ignored for average and global_average.
+        Expected to be finite and in the interval ``(0, 1]``. Maximum modes retain their
+        floor-plus-one selection rule; minimum uses the floor, selecting at least
+        one point. Counts are capped at the available observations. Defaults to 0.1.
     :type top_fraction_to_average: Float
     :returns: Tuple containing normalized curves and normalized errors. The first element
         is a dictionary of normalized flux curves (dict[str, NDArray[Float]]), and the
         second element is a dictionary of normalized error curves or None if no errors
         were provided (dict[str, NDArray[Float] | None] | None).
     :rtype: tuple[dict[str, NDArray[Float]], dict[str, NDArray[Float] | None] | None]
-    :raises ValueError: If ``kind`` is not one of the supported normalization modes.
+    :raises ElisaOperationInputError: If ``kind`` is not one of the supported normalization modes.
     """
-    valid_arguments = ["average", "global_average", "maximum", "global_maximum", "minimum"]
-
     y_data_arrays: dict[str, NDArray[Float]] = {
         key: np.asarray(val, dtype=float) for key, val in y_data.items()
     }
 
-    if kind == "average":
+    if kind == NormalizationKind.AVERAGE:
         coeff = {key: np.mean(val) for key, val in y_data_arrays.items()}
-    elif kind == "global_average":
+    elif kind == NormalizationKind.GLOBAL_AVERAGE:
         c = np.mean(np.concatenate(list(y_data_arrays.values())))
         coeff = dict.fromkeys(y_data_arrays, c)
-    elif kind == "maximum":
-        n = {key: int(top_fraction_to_average * len(val)) + 1 for key, val in y_data_arrays.items()}
+    elif kind == NormalizationKind.MAXIMUM:
+        n = {
+            key: min(len(val), int(top_fraction_to_average * len(val)) + 1)
+            for key, val in y_data_arrays.items()
+        }
         coeff = {
             key: np.average(np.partition(val, -n[key])[-n[key]:])
             for key, val in y_data_arrays.items()
         }
-    elif kind == "global_maximum":
+    elif kind == NormalizationKind.GLOBAL_MAXIMUM:
         vals = np.concatenate(list(y_data_arrays.values()))
-        n = int(top_fraction_to_average * len(vals) / len(y_data_arrays)) + 1
+        n = min(len(vals), int(top_fraction_to_average * len(vals) / len(y_data_arrays)) + 1)
         c = np.average(np.partition(vals, -n)[-n:])
         coeff = dict.fromkeys(y_data_arrays, c)
-    elif kind == "minimum":
-        n = {key: int(top_fraction_to_average * len(val)) for key, val in y_data_arrays.items()}
+    elif kind == NormalizationKind.MINIMUM:
+        n = {
+            key: min(len(val), max(1, int(top_fraction_to_average * len(val))))
+            for key, val in y_data_arrays.items()
+        }
         coeff = {
-            key: np.average(np.partition(val, n[key])[:n[key]])
+            key: np.average(np.partition(val, n[key] - 1)[:n[key]])
             for key, val in y_data_arrays.items()
         }
     else:
-        msg = f"Argument `kind` = {kind} is not one of the valid arguments {valid_arguments}"
-        raise ValueError(msg)
+        # Public callers (including plotting) choose this operation directly.
+        valid_arguments = [mode.value for mode in NormalizationKind]
+        msg = f"Unsupported light-curve normalization mode {kind!r}; expected one of {valid_arguments}."
+        raise_elisa_operation_input_error(msg)
 
     normalized_data = {key: val / coeff[key] for key, val in y_data_arrays.items()}
 
@@ -137,15 +147,17 @@ def convert_to_magnitudes(
     :returns: Band-wise magnitude curves with the same structure as input
         (dict[str, NDArray[Float]]).
     :rtype: dict[str, NDArray[Float]]
-    :raises ValueError: If a reference magnitude is not available for a requested band.
+    :raises ElisaUnexpectedError: If the fixed calibration has a null reference magnitude.
     """
     ret_dict: dict[str, NDArray[Float]] = {}
 
     for band, curve in curves.items():
         reference_magnitude = zero_points["reference_magnitudes"][band]
         if reference_magnitude is None:
-            msg = f"Calibration reference magnitude is not available for the filter {band}"
-            raise ValueError(msg)
+            # Calibration comes from a fixed photometric standard, independent
+            # of candidate fluxes. A null reference violates its data contract.
+            msg = f"The fixed photometric calibration has no reference magnitude for passband {band!r}."
+            raise_elisa_unexpected_error(msg)
 
         flux_curve = np.asarray(curve, dtype=float)
         ret_dict[band] = reference_magnitude - 2.5 * np.log10(

@@ -12,7 +12,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from elisa import atm, settings, units as u, utils
+from elisa import settings, units as u, utils
+from elisa.atm import atm
 from elisa.base.curves import utils as curves
 from elisa.binary_system.surface import mesh as binary_mesh, temperature
 from elisa.observer import observer as observer_module
@@ -24,13 +25,20 @@ from elisa.single_system.surface import mesh as single_mesh
 @pytest.fixture(autouse=True)
 def isolate_caches(monkeypatch):
     # Local fixture only: no configuration-scope invalidation or runner changes.
-    caches = (curves._get_rv_passband, binary_mesh._load_correction_factors,
-              temperature._load_albedo_data, single_mesh._load_correction_factors)
+    # noinspection PyProtectedMember
+    caches = (
+        curves._get_rv_passband,
+        binary_mesh._load_correction_factors,
+        temperature._load_albedo_data,
+        single_mesh._load_correction_factors,
+    )
     for cache in caches:
+        # noinspection PyUnresolvedReferences
         cache.cache_clear()
     monkeypatch.setattr(type(atm.buffer), "ATMOSPHERE_TABLES", {})
     yield
     for cache in caches:
+        # noinspection PyUnresolvedReferences
         cache.cache_clear()
 
 
@@ -192,7 +200,7 @@ def test_atmosphere_column_interpretation_and_source_deletion(tmp_path, monkeypa
         model = atm.read_unique_atm_tables([str(path)])[0][0]
         np.testing.assert_array_equal(model.model.flux, [value] * 3)
     path.unlink()
-    with pytest.raises(atm.AtmosphereError, match="doesn't exist"):
+    with pytest.raises(atm.ElisaAtmosphereError, match="doesn't exist"):
         atm.read_unique_atm_tables([str(path)])
 
 

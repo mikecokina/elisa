@@ -4,11 +4,14 @@ import multiprocessing
 from typing import TYPE_CHECKING
 
 from elisa import settings
+from elisa.base.error import raise_elisa_unexpected_error
 from elisa.logger import getLogger
 from elisa.utils import renormalize_async_result, split_to_batches
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    # noinspection PyProtectedMember
     from multiprocessing.context import BaseContext
     from typing import Any
 
@@ -24,7 +27,7 @@ def get_mp_context() -> BaseContext:
     available on platforms without fork. Workers inherit the parent's state at
     pool creation; callers must account for active threads and native runtimes.
 
-    :raises RuntimeError: If the platform does not support fork.
+    :raises ElisaUnexpectedError: If the platform does not support fork.
     """
     try:
         return multiprocessing.get_context("fork")
@@ -34,7 +37,8 @@ def get_mp_context() -> BaseContext:
             "on this platform. Use serial execution (NUMBER_OF_PROCESSES and "
             "NUMBER_OF_MCMC_PROCESSES <= 1)."
         )
-        raise RuntimeError(msg) from exc
+        # Platform support cannot change with a candidate's physical parameters.
+        return raise_elisa_unexpected_error(msg, exc)
 
 
 def manage_observations(

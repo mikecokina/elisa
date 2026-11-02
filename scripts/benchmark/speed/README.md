@@ -134,8 +134,9 @@ coordinates; exact direct/optimized equality isolates the structure-cache change
 has a constant normalized curve, so normalized flux alone is a weak regression check: raw flux and the full spatially
 varying coefficient/temperature/gravity arrays are also required. This case does not cover spots, pulsations or changing
 single-star surface parameters. No tolerance, clipping or extrapolation hides discrepancies. Built-in checks require the
-original `LimbDarkeningError` and message for out-of-hull/NaN queries and `FileNotFoundError` for missing tables; native
-lower-level interpolation exceptions propagate.
+`ElisaLimbDarkeningError` for out-of-hull/NaN queries, with the original diagnostic preserved. The optimized loader
+also uses `ElisaLimbDarkeningError` for missing tables; the standalone legacy reader retains `FileNotFoundError`.
+Native lower-level interpolation exceptions propagate.
 
 ## Provenance and reference compatibility
 
@@ -223,3 +224,8 @@ Results and metadata: `/tmp/elisa-ld-optimization/single-extension-balanced/benc
 directory. The same run also revalidated the circular, eccentric and multiband scientific comparisons and cache counts.
 Unit-test output is `/tmp/elisa-ld-optimization/single-extension-tests.txt`; benchmark output is
 `/tmp/elisa-ld-optimization/single-extension-benchmark.log`. These are generated local artifacts, not required inputs.
+
+The retired production CSV readers `get_ld_table` and `get_ld_table_by_name` are
+preserved locally in this benchmark script. The historical baseline uses the local
+filename reader; both readers raise builtin `FileNotFoundError` directly and are
+independent of ELISA's exception helpers and production source cache.

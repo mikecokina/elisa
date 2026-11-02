@@ -4,12 +4,15 @@ import os
 
 import numpy as np
 import pandas as pd
+import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 from pandas.testing import assert_frame_equal
 
-from elisa import atm, const, settings
+from elisa import const, settings
+from elisa.atm import atm, const as atm_const
 from elisa import umpy as up
-from elisa.atm import AtmModel
+from elisa.atm.atm import AtmModel
+from elisa.base import error
 from elisa.base.types import FLOAT
 from elisa.observer.passband import PassbandContainer
 from tests import set_astropy_units
@@ -20,7 +23,7 @@ from tests.utils import ElisaTestCase
 set_astropy_units()
 
 
-from elisa.atm import (
+from elisa.atm.atm import (
     AtmDataContainer,
     IntensityContainer,
     compute_integral_si_intensity_from_atm_data_containers,
@@ -35,7 +38,7 @@ class TestMapDict(ElisaTestCase):
     def test_ATLAS_TO_ATM_FILE_PREFIX(self):
         supplied = ["castelli", "castelli-kurucz", "ck", "ck04", "kurucz", "k93", "k"]
         expected = ["ck", "ck", "ck", "ck", "k", "k", "k"]
-        obtained = [settings.ATLAS_TO_ATM_FILE_PREFIX[s] for s in supplied]
+        obtained = [atm_const.ATLAS_TO_ATM_FILE_PREFIX[s] for s in supplied]
         assert_array_equal(obtained, expected)
 
     def test_ATLAS_TO_BASE_DIR(self):
@@ -49,7 +52,7 @@ class TestMapDict(ElisaTestCase):
     def test_ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX(self):
         supplied = ["temperature", "gravity", "metallicity"]
         expected = ["TEMPERATURE_LIST_ATM", "GRAVITY_LIST_ATM", "METALLICITY_LIST_ATM"]
-        obtained = [settings.ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX[s] for s in supplied]
+        obtained = [atm_const.ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX[s] for s in supplied]
         assert_array_equal(expected, obtained)
 
 
@@ -71,10 +74,6 @@ class TestAtmDataContainer(ElisaTestCase):
 
 
 class TestAtmModuleGeneral(ElisaTestCase):
-    def setUp(self):
-        super().setUp()
-        settings.configure(CK04_ATM_TABLES=os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data", "ck04"))
-
     def test_arange_atm_to_same_wavelength(self):
         c1 = atm.AtmDataContainer(AtmModel(flux=np.array([1, 2, 3, 4, 5]), wavelength=np.array([1, 2, 3, 4, 5])), 10, 10, 10)
 
@@ -88,6 +87,12 @@ class TestAtmModuleGeneral(ElisaTestCase):
                            result[1].model.wavelength)
         # are xpected
         assert_array_equal(result[0].model.wavelength, expected_wavelength)
+
+    def test_strip_empty_atmosphere_is_internal_contract_failure(self):
+        container = atm.AtmDataContainer(AtmModel(np.ones(3), np.arange(3)), 10, 10, 10)
+        container.model.wavelength = np.array([])
+        with pytest.raises(error.ElisaUnexpectedError, match="Atmosphere container is empty"):
+            atm.strip_atm_container_by_bandwidth(container, 0.0, 2.0)
 
     def test_strip_atm_container_by_bandwidth(self):
         c = atm.AtmDataContainer(AtmModel.from_dataframe(pd.DataFrame({
@@ -143,7 +148,7 @@ class TestAtmModuleGeneral(ElisaTestCase):
         assert_frame_equal(result, expected, check_dtype=False)
 
     def test_atm_file_prefix_to_quantity_list(self):
-        atlas = ["ck04", "kurucz", "ck"]
+        atlas = ["ck", "k", "ck"]
         quantities = ["temperature", "gravity", "metallicity"]
         expected = [[3500.0, 3750.0, 4000.0],
                     [3500.0, 3750.0, 4000.0],
@@ -177,18 +182,20 @@ class TestAtmModuleGeneral(ElisaTestCase):
         log_g = [0.0, 2.5, 4]
         m_h = [-0.1, 0.0, 1]
 
-        obtained = [atm.get_atm_table_filename(_t, _g, _m, atlas="ck04") for _t, _g, _m in zip(t, log_g, m_h)]
+        obtained = [atm.get_atm_table_filename(_t, _g, _m, atlas="ck") for _t, _g, _m in zip(t, log_g, m_h)]
         expected = ["ckm01_3500_g00.csv", "ckp00_10250_g25.csv", "ckp10_13000_g40.csv"]
         assert_array_equal(expected, obtained)
 
     def test_get_atm_directory(self):
         m_h = [-0.1, -5, 0.0, 0.1, 2]
-        atlas = ["ck", "ck04", "k93", "k", "kurucz"]
+        atlas = ["ck", "ck", "k", "k", "k"]
         obtained = [atm.get_atm_directory(_m, _a) for _m, _a in zip(m_h, atlas)]
         expected = ["ckm01", "ckm50", "kp00", "kp01", "kp20"]
         assert_array_equal(obtained, expected)
 
     def test_get_list_of_all_atm_tables(self):
+        # Fixed directory inventory fixture; independent of an installed atlas.
+        settings.configure(CK04_ATM_TABLES=os.path.join(os.path.dirname(__file__), "../data/ck04"))
         obtained = sorted([os.path.basename(f) for f in atm.get_list_of_all_atm_tables("ck04")])
         expected = sorted(["ckp00_10000_g40.csv", "ckp00_10250_g40.csv", "ckp00_25000_g45.csv", "ckp00_26000_g45.csv",
                            "ckp00_4500_g50.csv", "ckp00_5250_g30.csv", "ckp00_5500_g30.csv",
@@ -196,6 +203,8 @@ class TestAtmModuleGeneral(ElisaTestCase):
         assert_array_equal(expected, obtained)
 
     def test_get_atm_table(self):
+        # Exact parser reference fixture.
+        settings.configure(CK04_ATM_TABLES=os.path.join(os.path.dirname(__file__), "../data/ck04"))
         expected = pd.read_csv(os.path.join(os.path.dirname(
             os.path.abspath(__file__)), "../data", "ck04", "ckp00", "ckp00_10250_g40.csv"))
         obtained = atm.get_atm_table(10250, 4.0, 0, "ck")
@@ -253,6 +262,11 @@ class TestAtmModuleGeneral(ElisaTestCase):
         obtained_paths = sorted([r.fpath for r in result])
         assert_array_equal(obtained_paths, expected_paths)
 
+    def test_empty_atmosphere_collections_are_internal_contract_failures(self):
+        for extract in (atm.find_atm_si_multiplicators, atm.find_atm_defined_wavelength):
+            with pytest.raises(error.ElisaUnexpectedError, match="No valid atmospheric container"):
+                extract([])
+
     def test_find_atm_si_multiplicators(self):
         expected = (1e-7 * 1e4 * 1e10, 1e-10)
         cs = [atm.AtmDataContainer(AtmModel.from_dataframe(pd.DataFrame({settings.ATM_MODEL_DATAFRAME_WAVE: [1, 2, 3],
@@ -294,15 +308,11 @@ class TestAtmModuleGeneral(ElisaTestCase):
 
 
 class TestNaiveInterpolation(ElisaTestCase):
-    def setUp(self):
-        super().setUp()
-        settings.configure(CK04_ATM_TABLES=os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data", "ck04"))
-
     def test_atm_files(self):
         g = np.array([1.5, 2, 2])
         t = np.array([4999, 11300, 11500])
 
-        obtained = sorted([os.path.basename(v) for v in atm.NaiveInterpolatedAtm.atm_files(t, g, 0.5, "ck04")])
+        obtained = sorted([os.path.basename(v) for v in atm.NaiveInterpolatedAtm.atm_files(t, g, 0.5, "ck")])
         expected = ["ckp05_11250_g40.csv", "ckp05_11500_g40.csv",
                     "ckp05_11500_g40.csv", "ckp05_11500_g40.csv",
                     "ckp05_4750_g35.csv", "ckp05_5000_g35.csv"]
@@ -439,12 +449,6 @@ set_astropy_units()
 
 class TestAtmEdgeCases(ElisaTestCase):
     """Test edge cases and boundary conditions for atm module optimizations."""
-
-    def setUp(self):
-        super().setUp()
-        settings.configure(CK04_ATM_TABLES=os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "../data", "ck04",
-        ))
 
     def test_arange_atm_already_aligned(self):
         """Test that already aligned wavelengths are handled correctly."""
@@ -685,7 +689,18 @@ class TestAtmDataContainerEdgeCases(ElisaTestCase):
         assert_array_equal(container.model.flux, np.array([1., 2., 3.]))
 
 
+def test_missing_atmosphere_source_boundary_is_domain_error(tmp_path):
+    from elisa import settings
+    from elisa.atm import atm
+    previous = settings.settings_serializer()
+    try:
+        settings.configure(CK04_ATM_TABLES=str(tmp_path))
+        with pytest.raises(error.ElisaAtmosphereError, match='There is no file like'):
+            atm.get_atm_table(5000., 4., 0., 'ck04')
+    finally:
+        settings.configure(**previous)
+
+
 if __name__ == "__main__":
     import unittest
     unittest.main()
-

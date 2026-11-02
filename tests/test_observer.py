@@ -13,6 +13,7 @@ from pandas.testing import assert_frame_equal
 
 from elisa import settings
 from elisa import umpy as up
+from elisa.base.error import ElisaOperationInputError
 from elisa.binary_system.system import BinarySystem
 from elisa.observer.observer import Observer
 from elisa.observer.passband import PassbandContainer, bolometric
@@ -48,10 +49,10 @@ class TestPassbandContainer(ElisaTestCase):
     def test_table_setter__table(self):
         assert_frame_equal(self._bessel_v_df, self.pb.table)
 
-    def test_default_wave_to_si_mult(self):
+    def test_default_wave_unit(self):
         self.assertEqual(self.pb.wave_unit, "angstrom")
 
-    def test_default_wave_unit(self):
+    def test_default_wave_to_si_mult(self):
         self.assertEqual(self.pb.wave_to_si_mult, 1e-10)
 
     def test_bolometric_bandwidth(self):
@@ -301,11 +302,11 @@ class TestObserver(ElisaTestCase):
         phases_time = o.manage_time_series(from_time=0.0, to_time=1.0, time_step=0.1, times=times)
         self.assertEqual(len(phases_time), len(times))
         # Error: both phase and time domain
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ElisaOperationInputError):
             o.manage_time_series(from_phase=0.0, to_phase=1.0, phase_step=0.1, from_time=0.0, to_time=1.0,
                                  time_step=0.1)
         # Error: missing arguments
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ElisaOperationInputError):
             o.manage_time_series()
 
 

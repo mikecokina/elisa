@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import pytest
+
+from elisa.base.error import ElisaSettingsError
 # noinspection PyProtectedMember
 from elisa.conf.parsers import _parse_number, parse_tuple_interval
 
@@ -55,7 +57,7 @@ def test_parse_tuple_interval_ordered():
     """Test parse_tuple_interval require_ordered=True (default)."""
     result = parse_tuple_interval("(1, 2)", name="test")
     assert result == (1, 2)
-    with pytest.raises(ValueError, match="low > high"):
+    with pytest.raises(ElisaSettingsError, match="low > high"):
         parse_tuple_interval("(2, 1)", name="test")
 
 
@@ -66,16 +68,16 @@ def test_parse_tuple_interval_not_ordered():
 
 
 def test_parse_tuple_interval_invalid_format():
-    """Test parse_tuple_interval with invalid format raises ValueError."""
-    with pytest.raises(ValueError, match="invalid format"):
+    """Test parse_tuple_interval with invalid format raises ElisaSettingsError."""
+    with pytest.raises(ElisaSettingsError, match="invalid format"):
         parse_tuple_interval("1, 2", name="test")
-    with pytest.raises(ValueError, match="invalid format"):
+    with pytest.raises(ElisaSettingsError, match="invalid format"):
         parse_tuple_interval("(1 2)", name="test")
-    with pytest.raises(ValueError, match="invalid format"):
+    with pytest.raises(ElisaSettingsError, match="invalid format"):
         parse_tuple_interval("(a, b)", name="test")
 
 
 def test_parse_tuple_interval_missing():
-    """Test parse_tuple_interval with None input raises ValueError."""
-    with pytest.raises(ValueError, match="missing value"):
+    """Test parse_tuple_interval with None input raises ElisaSettingsError."""
+    with pytest.raises(ElisaSettingsError, match="missing value"):
         parse_tuple_interval(None, name="test")
