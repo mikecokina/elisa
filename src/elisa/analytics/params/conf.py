@@ -1,15 +1,18 @@
-import datetime
+import datetime as dt
+from datetime import UTC
 
 import numpy as np
 
 from elisa import settings
 from elisa import units as u
-from elisa.atm import atm_file_prefix_to_quantity_list, validated_atlas
-from elisa.utc import UTC
+from elisa.atm.atm import atm_file_prefix_to_quantity_list, validated_atlas
 from elisa.utils import jd_from_datetime
 
 PARAM_PARSER = "@"
 NUISANCE_PARSER = "nuisance"
+
+# Serialized identifier for constrained marginal summaries; preserve for result compatibility.
+JOINT_POSTERIOR_PERCENTILES_ESTIMATE = "marginal percentiles of joint posterior samples"
 
 COMPOSITE_FLAT_PARAMS = [
     "spot",
@@ -54,7 +57,7 @@ def get_default_normalization_star() -> dict:
     these are finite fitting defaults, not physical limits on blackbodies.
     """
     atlas = validated_atlas(settings.ATM_ATLAS)
-    atlas = "ck04" if atlas == "bb" else atlas
+    atlas = "ck" if atlas == "bb" else atlas
     temperatures = atm_file_prefix_to_quantity_list("temperature", atlas)
     metallicity = atm_file_prefix_to_quantity_list("metallicity", atlas)
     return {
@@ -64,7 +67,7 @@ def get_default_normalization_star() -> dict:
     }
 
 
-CURRENT_TIME_JD = jd_from_datetime(datetime.datetime.now(tz=UTC))
+CURRENT_TIME_JD = jd_from_datetime(dt.datetime.now(tz=UTC))
 
 DEFAULT_NORMALIZATION_SYSTEM = {
     "inclination": (0, 180),

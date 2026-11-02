@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from elisa.base.transform import normalize_morphology
+
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
@@ -100,13 +102,14 @@ def elisa_bv_temperature(
 
     :param b_v: B-V color index value(s)
     :type b_v: float | NDArray
-    :param morphology: Binary system morphology ('detached' or 'overcontact').
+    :param morphology: Binary system morphology ('detached' or 'over-contact').
+                       The legacy 'overcontact' alias is also accepted.
                        Default is 'detached'. Unknown values fall back to
                        solar-like formula.
     :type morphology: str
     :return: Estimated stellar effective temperature in Kelvin
     :rtype: float | NDArray
     """
-    if morphology == "overcontact":
+    if normalize_morphology(morphology) == "over-contact":
         return _overcontact_temperature_estimation(b_v)
     return _solar_like_temperature_estimation(b_v)

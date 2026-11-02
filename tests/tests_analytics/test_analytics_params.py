@@ -10,6 +10,7 @@ from elisa import units as u
 from elisa.analytics.params import conf, parameters
 from elisa.analytics.params.parameters import xs_reducer
 from elisa import settings
+from elisa.base.error import ElisaInitialParametersError, ElisaMissingKwargsError
 from tests.utils import ElisaTestCase
 
 set_astropy_units()
@@ -627,10 +628,10 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                         "fixed": False,
                     },
                     "frequency": {
-                        "value": 10.0 * 86400,
+                        "value": 10.0,
                         "fixed": False,
-                        "min": 1.0 * 86400,
-                        "max": 20.0 * 86400
+                        "min": 1.0,
+                        "max": 20.0
                     },
                     "start_phase": {
                         "constraint": "2.0 * primary@pulsation@bionic@frequency"
@@ -1069,7 +1070,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
         mock_value = {"value": 0.25, "min": 0.00, "max": 0.99}
         mock_data = {"system": {p: mock_value for p in mandatory_fit_params if p not in [param]}}
 
-        with self.assertRaises(Exception) as context:
+        with self.assertRaises(ElisaMissingKwargsError) as context:
             parameters.BinaryInitialParameters(**mock_data).validate_rv_parameters()
         self.assertTrue('Missing argument' in str(context.exception))
 
@@ -1078,7 +1079,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
         mock_value = {"value": 0.25, "min": 0.00, "max": 0.99}
         mock_data = {"system": {p: mock_value for p in mandatory_fit_params}}
 
-        with self.assertRaises(Exception) as context:
+        with self.assertRaises(ElisaInitialParametersError) as context:
             parameters.BinaryInitialParameters(**mock_data).validate_rv_parameters()
         self.assertTrue('Input requires at least period' in str(context.exception))
 
@@ -1094,11 +1095,11 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                                 for param in ['t_eff', 'surface_potential']
                                 for component in settings.BINARY_COUNTERPARTS]
 
-        mock_value = {"value": 0.25, "min": 0.00, "max": 0.99}
+        mock_value = {"value": 0.25, "min": 0.01, "max": 0.99}
         mock_data = {p: mock_value for p in mandatory_fit_params if p not in [param]}
         mock_data = parameters.serialize_result(mock_data)
 
-        with self.assertRaises(Exception) as context:
+        with self.assertRaises(ElisaMissingKwargsError) as context:
             parameters.BinaryInitialParameters(**mock_data).validate_lc_parameters('detached')
         self.assertTrue('Missing argument' in str(context.exception))
 
@@ -1118,11 +1119,15 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                                 for param in ['t_eff', 'gravity_darkening', 'albedo']
                                 for component in settings.BINARY_COUNTERPARTS]
 
-        mock_value = {"value": 0.25, "min": 0.00, "max": 0.99}
+        mock_value = {"value": 0.25, "min": 0.01, "max": 0.99}
         mock_data = {p: mock_value for p in mandatory_fit_params}
         mock_data.update(potentials)
+        mock_data.update({
+            "system@mass_ratio": {"value": 0.7, "fixed": True},
+            "system@semi_major_axis": {"value": 10.0, "fixed": True},
+        })
         mock_data = parameters.serialize_result(mock_data)
 
-        with self.assertRaises(Exception) as context:
+        with self.assertRaises(ElisaInitialParametersError) as context:
             parameters.BinaryInitialParameters(**mock_data).validate_lc_parameters('over-contact')
         self.assertTrue(err in str(context.exception))

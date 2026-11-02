@@ -12,6 +12,7 @@ from elisa.analytics.dataset.transform import (
     array_transform,
     unit_check,
 )
+from elisa.base.error import ElisaAnalyticsDataError
 from elisa.base.transform import WHEN_ARRAY
 from tests import set_astropy_units
 from tests.utils import ElisaTestCase
@@ -46,8 +47,8 @@ class ArrayTransformTestCase(ElisaTestCase):
         self.assertEqual(result.dtype, np.float64)
 
     def test_array_transform_non_array_raises(self):
-        """Test that non-array-like value raises TypeError."""
-        with self.assertRaises(TypeError) as context:
+        """Test that non-array-like value raises ElisaAnalyticsDataError."""
+        with self.assertRaises(ElisaAnalyticsDataError) as context:
             array_transform("not an array", WHEN_ARRAY)
         self.assertIn("not array-like", str(context.exception).lower())
 
@@ -80,7 +81,7 @@ class UnitCheckTestCase(ElisaTestCase):
 
     def test_unit_check_empty_string_returns_dimensionless(self):
         """Test that empty string unit is converted to dimensionless."""
-        result = unit_check(u.dimensionless_unscaled, (u.dimensionless_unscaled,))
+        result = unit_check("", (u.dimensionless_unscaled,))
         self.assertEqual(result, u.dimensionless_unscaled)
 
     def test_unit_check_compatible_unit(self):
@@ -94,8 +95,8 @@ class UnitCheckTestCase(ElisaTestCase):
         self.assertEqual(result, u.km)
 
     def test_unit_check_incompatible_unit_raises(self):
-        """Test that incompatible unit raises ValueError."""
-        with self.assertRaises(ValueError) as context:
+        """Test that incompatible unit raises ElisaAnalyticsDataError."""
+        with self.assertRaises(ElisaAnalyticsDataError) as context:
             unit_check(u.mag, (u.m, u.s))
         self.assertIn("not convertible", str(context.exception).lower())
 
@@ -169,13 +170,13 @@ class RVDataPropertiesTestCase(ElisaTestCase):
         self.assertEqual(result, u.m / u.s)
 
     def test_rv_data_properties_y_unit_invalid_raises(self):
-        """Test that invalid y_unit raises ValueError."""
-        with self.assertRaises(ValueError):
+        """Test that invalid y_unit raises ElisaAnalyticsDataError."""
+        with self.assertRaises(ElisaAnalyticsDataError):
             RVDataProperties.y_unit(u.mag)
 
     def test_rv_data_properties_x_unit_invalid_raises(self):
-        """Test that invalid x_unit raises ValueError."""
-        with self.assertRaises(ValueError):
+        """Test that invalid x_unit raises ElisaAnalyticsDataError."""
+        with self.assertRaises(ElisaAnalyticsDataError):
             RVDataProperties.x_unit(u.km / u.s)
 
 
@@ -203,8 +204,8 @@ class LCDataPropertiesTestCase(ElisaTestCase):
         self.assertEqual(result, u.mag)
 
     def test_lc_data_properties_y_unit_invalid_raises(self):
-        """Test that invalid y_unit raises ValueError."""
-        with self.assertRaises(ValueError):
+        """Test that invalid y_unit raises ElisaAnalyticsDataError."""
+        with self.assertRaises(ElisaAnalyticsDataError):
             LCDataProperties.y_unit(u.km / u.s)
 
     def test_lc_data_properties_zero_magnitude_float(self):
@@ -222,13 +223,10 @@ class LCDataPropertiesTestCase(ElisaTestCase):
         self.assertIsInstance(result, np.float64)
 
     def test_lc_data_properties_zero_magnitude_quantity(self):
-        """Test zero_magnitude with Quantity value - expect error due to code bug."""
-        value = 1.0 * u.mag
-        # The original code has a bug: it calls value.is_equivalent(u.mag)
-        # which is incorrect (should be value.unit.is_equivalent(u.mag))
-        # So we expect an AttributeError
-        with self.assertRaises(AttributeError):
-            LCDataProperties.zero_magnitude(value)
+        """A valid scalar magnitude Quantity converts to float64."""
+        result = LCDataProperties.zero_magnitude(1.0 * u.mag)
+        self.assertEqual(result, np.float64(1.0))
+        self.assertIsInstance(result, np.float64)
 
     def test_lc_data_properties_zero_magnitude_numpy_float(self):
         """Test zero_magnitude with numpy float value."""
@@ -238,8 +236,8 @@ class LCDataPropertiesTestCase(ElisaTestCase):
         self.assertIsInstance(result, np.float64)
 
     def test_lc_data_properties_zero_magnitude_invalid_raises(self):
-        """Test that invalid zero_magnitude type raises TypeError."""
-        with self.assertRaises(TypeError) as context:
+        """Test that invalid zero_magnitude type raises ElisaAnalyticsDataError."""
+        with self.assertRaises(ElisaAnalyticsDataError) as context:
             LCDataProperties.zero_magnitude("not a number")
-        self.assertIn("not", str(context.exception).lower())
+        self.assertIn("zero_magnitude", str(context.exception))
 
