@@ -682,6 +682,11 @@ class NaiveInterpolatedAtm:
 
         # Keep DataFrame length validation, but format only unique selected grid identities.
         domain, inverse = np.unique(domain_df.to_records(index=False), return_inverse=True)
+        if domain.size == 0:
+            # Preserve historical behavior for now; whether an empty selection is valid
+            # needs review of the full calling flow, including whether parameter drift
+            # can produce it and whether a domain error should be raised instead.
+            return []
         # Vectorized string conversions for the unique identities.
         # Metallicity: 0.5 -> 'p05', -1.1 -> 'm11'
         signs = np.where(domain["mh"] >= 0, "p", "m")

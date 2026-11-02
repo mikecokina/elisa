@@ -119,17 +119,26 @@ def test_mixed_strided_input_dtypes(atlas, dtype):
     )
 
 
-@pytest.mark.parametrize("atlas", ["ck04", "k93", "unsupported", "bb"])
-@pytest.mark.parametrize("temperature,gravity,metallicity", [
-    ([], [], 0.0),
-    ([3499.0], [2.0], 0.0),
-    ([50001.0], [2.0], 0.0),
-    ([np.nan], [2.0], 0.0),
-    ([np.inf], [2.0], 0.0),
-    ([5000.0, 6000.0], [2.0], 0.0),
-    ([5000.0], [], 0.0),
-    ([[5000.0, 6000.0]], [2.0], 0.0),
-])
+@pytest.mark.parametrize("atlas", ["ck04", "k93"])
+def test_atm_files_empty_selection(atlas):
+    assert atm.NaiveInterpolatedAtm.atm_files(
+        np.asarray([]), np.asarray([]), 0.0, validated_atlas(atlas),
+    ) == []
+
+
+@pytest.mark.parametrize("atlas,temperature,gravity,metallicity", [
+    (atlas, temperature, gravity, metallicity)
+    for atlas in ("ck04", "k93", "unsupported", "bb")
+    for temperature, gravity, metallicity in [
+        ([3499.0], [2.0], 0.0),
+        ([50001.0], [2.0], 0.0),
+        ([np.nan], [2.0], 0.0),
+        ([np.inf], [2.0], 0.0),
+        ([5000.0, 6000.0], [2.0], 0.0),
+        ([5000.0], [], 0.0),
+        ([[5000.0, 6000.0]], [2.0], 0.0),
+    ]
+] + [(atlas, [], [], 0.0) for atlas in ("unsupported", "bb")])
 def test_atm_files_preserves_errors(atlas, temperature, gravity, metallicity):
     args = np.asarray(temperature), np.asarray(gravity), metallicity, atlas
     with pytest.raises(Exception) as expected:
