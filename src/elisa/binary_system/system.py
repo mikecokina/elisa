@@ -664,12 +664,27 @@ class BinarySystem(System[Star]):
             if ((1 > self.secondary.filling_factor > 0) or (1 > self.primary.filling_factor > 0)) and abs(
                 self.primary.filling_factor - self.secondary.filling_factor,
             ) > precs:
-                message = "Detected over-contact binary system, but potentials of components are not the same."
+                message = (
+                    "Detected over-contact binary system, but potentials of components are not the same.\n"
+                    f"  primary: surface_potential={self.primary.surface_potential:.12g}, "
+                    f"filling_factor={self.primary.filling_factor:.12g}\n"
+                    f"  secondary: surface_potential={self.secondary.surface_potential:.12g}, "
+                    f"filling_factor={self.secondary.filling_factor:.12g}\n"
+                    "Filling-factor difference="
+                    f"{abs(self.primary.filling_factor - self.secondary.filling_factor):.12g} "
+                    f"exceeds tolerance={precs:g}\n"
+                    f"  inner_potential={lp[1]:.12g}, outer_potential={lp[2]:.12g}"
+                )
                 raise_elisa_morphology_error(message)
 
             if self.primary.filling_factor > 1 or self.secondary.filling_factor > 1:
                 message = (
-                    "Non-Physical system: primary_filling_factor or secondary_filling_factor is greater than 1. "
+                    "Non-Physical system: primary_filling_factor or secondary_filling_factor is greater than 1.\n"
+                    f"  primary: surface_potential={self.primary.surface_potential:.12g}, "
+                    f"filling_factor={self.primary.filling_factor:.12g}\n"
+                    f"  secondary: surface_potential={self.secondary.surface_potential:.12g}, "
+                    f"filling_factor={self.secondary.filling_factor:.12g}\n"
+                    f"  inner_potential={lp[1]:.12g}, outer_potential={lp[2]:.12g}\n"
                     "Filling factor is obtained as following: "
                     "(Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter})."
                 )
@@ -711,7 +726,27 @@ class BinarySystem(System[Star]):
             ):
                 morphology = "detached"
             else:
-                message = "Non-Physical system. Change stellar parameters."
+                component_details = "\n".join(
+                    f"  {name}:\n"
+                    f"    surface_potential: {star.surface_potential:.12g}\n"
+                    f"    critical_surface_potential: {star.critical_surface_potential:.12g}\n"
+                    f"    difference: {star.surface_potential - star.critical_surface_potential:.12g}\n"
+                    f"    above_critical: {star.surface_potential > star.critical_surface_potential}\n"
+                    f"    at_critical: {abs(star.surface_potential - star.critical_surface_potential) < precs}"
+                    for name, star in (("primary", self.primary), ("secondary", self.secondary))
+                )
+                message = (
+                    "Non-Physical system: eccentric/asynchronous morphology conditions failed.\n"
+                    "Required for each component:\n"
+                    "  surface_potential > critical_surface_potential, or\n"
+                    f"  abs(surface_potential - critical_surface_potential) < {precs:g}\n"
+                    "Critical potentials are evaluated at periastron.\n"
+                    f"{component_details}\n"
+                    "System:\n"
+                    f"  eccentricity: {self.eccentricity:.12g}\n"
+                    f"  primary_synchronicity: {self.primary.synchronicity:.12g}\n"
+                    f"  secondary_synchronicity: {self.secondary.synchronicity:.12g}"
+                )
                 raise_elisa_morphology_error(message)
 
         return morphology
