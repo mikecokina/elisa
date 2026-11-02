@@ -15,9 +15,12 @@ from elisa.analytics.binary_fit.plot import (
     RVPlotMCMC,
 )
 from elisa.analytics.params import bonds, parameters
+from elisa.base.error import raise_elisa_analytics_task_error, raise_elisa_operation_input_error
+from elisa.base.transform import normalize_morphology
 from elisa.logger import getLogger
 
 if TYPE_CHECKING:
+    from elisa.conf.enums import DiscardUnit
     from elisa.types import Float
 
 logger = getLogger(__name__)
@@ -126,13 +129,13 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
 
         :param method: Name of the optimization method provided by the user
         :type method: str
-        :raises ValueError: If method name is not in ALLOWED_METHODS
+        :raises ElisaAnalyticsTaskError: If method name is not in ALLOWED_METHODS
         """
         if method not in cls.ALLOWED_METHODS:
             error_msg: str = (
                 f"Invalid fitting method. Use one of: {', '.join(cls.ALLOWED_METHODS)}"
             )
-            raise ValueError(error_msg)
+            raise_elisa_analytics_task_error(error_msg)
 
     def load_result(self, filename: str, *, autofill_sma: bool = False) -> dict:
         """Load model parameters from JSON file.
@@ -219,6 +222,7 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
         *,
         discard: int = 0,
         percentiles: list | None = None,
+        discard_unit: DiscardUnit | str | None = None,
     ) -> AnalyticsTask:
         """Load MCMC chain along with auxiliary data from JSON file.
 
@@ -228,19 +232,24 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
 
         :param filename: Full name/path of the JSON file containing MCMC chain
         :type filename: str
-        :param discard: Number of first steps to discard as burn-in (default: 0)
+        :param discard: Number to discard (default: 0): ensemble steps for structured exports,
+            flat rows for legacy exports.
         :type discard: int
         :param percentiles: List of percentiles used to create error results and
                            confidence interval from MCMC chain
         :type percentiles: list | None
+        :param discard_unit: ``DiscardUnit.STEPS`` or ``DiscardUnit.ROWS``; steps require
+            temporal metadata. Legacy strings "steps" and "rows" are accepted.
+            If omitted, structured chains use steps and legacy flat files use rows.
+        :type discard_unit: DiscardUnit | str | None
         :return: Self for method chaining
         :rtype: AnalyticsTask
-        :raises ValueError: If method is not MCMC
+        :raises ElisaOperationInputError: If method is not MCMC
         """
         if self.method not in self.MCMC_NAMES:
             error_msg: str = "load_chain method can be used only with MCMC task."
-            raise ValueError(error_msg)
-        self.fit_cls.load_chain(filename, discard, percentiles)
+            raise_elisa_operation_input_error(error_msg)
+        self.fit_cls.load_chain(filename, discard, percentiles, discard_unit=discard_unit)
         return self
 
     def filter_chain(self, **boundaries: tuple[Float, Float]) -> None:
@@ -254,11 +263,11 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
                           {param_name: (min_value, max_value), ...}
                           Example: {'primary@t_eff': (5000, 6000), ...}
         :type boundaries: dict
-        :raises ValueError: If method is not MCMC
+        :raises ElisaOperationInputError: If method is not MCMC
         """
         if self.method not in self.MCMC_NAMES:
             error_msg: str = "filter_chain method can be used only with MCMC task."
-            raise ValueError(error_msg)
+            raise_elisa_operation_input_error(error_msg)
         self.fit_cls.filter_chain(**boundaries)
 
     def fit(
@@ -290,9 +299,9 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
           equidistant points per epoch
         - **discretization** (:class:`int` | :class:`float`) - Discretization factor
           of the primary component (default: 5)
-        - **samples** (:class:`str` | :class:`list`) - 'uniform' (equidistant sampling
-          in phase), 'adaptive' (equidistant sampling on curve) or list with phases
-          in (0, 1) interval
+        - **samples** - ``elisa.conf.enums.SamplingMethod.UNIFORM`` (equidistant
+          sampling in phase), ``SamplingMethod.ADAPTIVE`` (equidistant sampling
+          on curve), or a manual phase list/array. Legacy string values are accepted.
 
         **kwargs options for least_squares:**
 
@@ -316,9 +325,9 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
           and confidence interval from MCMC chain (default: [16, 50, 84])
         - **save** (:class:`bool`) - Save chain to file
         - **fit_id** (:class:`str`) - Identifier or location of stored chain
-        - **samples** (:class:`str` | :class:`list`) - 'uniform' (equidistant sampling
-          in phase), 'adaptive' (equidistant sampling on curve) or list with phases
-          in (0, 1) interval
+        - **samples** - ``elisa.conf.enums.SamplingMethod.UNIFORM`` (equidistant
+          sampling in phase), ``SamplingMethod.ADAPTIVE`` (equidistant sampling
+          on curve), or a manual phase list/array. Legacy string values are accepted.
         """
         if isinstance(x0, dict):
             x0 = parameters.BinaryInitialParameters(**x0)
@@ -399,8 +408,8 @@ class LCBinaryAnalyticsTask(AnalyticsTask):
     """Fitting task class for light curves of eclipsing binary stars.
 
     This class specializes AnalyticsTask for fitting light curves of eclipsing
-    binary systems. It supports various morphologies (detached, semi-detached,
-    over-contact) and provides comprehensive fitting parameter combinations for
+    binary systems. It supports detached and over-contact morphologies
+    and provides comprehensive fitting parameter combinations for
     standard and community analysis approaches.
 
     **class attributes:**
@@ -410,6 +419,7 @@ class LCBinaryAnalyticsTask(AnalyticsTask):
     - **TRANSFORM_PROPERTIES_CLS** - Class for transforming and validating input
     """
 
+    ALLOWED_MORPHOLOGIES: tuple[str, ...] = ("detached", "over-contact", "overcontact")
     FIT_CLS: Any = None
     PLOT_CLS: Any = None
     FIT_PARAMS_COMBINATIONS: str = json.dumps(
@@ -523,7 +533,7 @@ class LCBinaryAnalyticsTask(AnalyticsTask):
         :param name: Instance name (auto-generated if not provided)
         :type name: str | None
         :param expected_morphology: System morphology (default: 'detached').
-                                    Options: 'detached', 'semi-detached', 'over-contact'
+                                    Options: 'detached', 'over-contact', 'overcontact'
         :type expected_morphology: str
         :param atmosphere_models: Atmosphere model configuration
         :type atmosphere_models: str | None
@@ -531,8 +541,10 @@ class LCBinaryAnalyticsTask(AnalyticsTask):
         :type limb_darkening_coefficients: dict | None
         :param kwargs: Additional configuration options (data, atmosphere_model, etc.)
         :type kwargs: dict
+        :raises ElisaAnalyticsTaskError: If the fitting method or morphology is unsupported.
         """
         self.validate_method(method)
+        expected_morphology = self.validate_morphology(expected_morphology)
         if method in self.MCMC_NAMES:
             def _create_lc_fit_mcmc() -> lc_fit.LCFitMCMC:
                 return lc_fit.LCFitMCMC(
@@ -552,6 +564,22 @@ class LCBinaryAnalyticsTask(AnalyticsTask):
             self.__class__.FIT_CLS = _create_lc_fit_least_squares
             self.__class__.PLOT_CLS = LCPlotLsqr
         super().__init__(method, name=name, **kwargs)
+
+    @classmethod
+    def validate_morphology(cls, morphology: str) -> str:
+        """Validate and normalize morphology before creating the LC fitting instance.
+
+        :param morphology: Requested morphology, including the overcontact alias.
+        :returns: Canonical morphology: detached or over-contact.
+        :raises ElisaAnalyticsTaskError: If the morphology type or value is unsupported.
+        """
+        if not isinstance(morphology, str) or morphology not in cls.ALLOWED_MORPHOLOGIES:
+            msg = (
+                f"Invalid expected_morphology {morphology!r}. "
+                f"Use one of: {', '.join(cls.ALLOWED_MORPHOLOGIES)}"
+            )
+            raise_elisa_analytics_task_error(msg)
+        return normalize_morphology(morphology)
 
     def load_result(self, filename: str, *, autofill_sma: bool = True) -> dict:
         """Load result with default autofill_sma=True for light curves.

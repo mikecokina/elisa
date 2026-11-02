@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from unittest import mock
 
 from elisa import settings
+from elisa.base.error import ElisaAnalyticsTaskError
 from elisa.analytics.tasks import (
     AnalyticsTask,
     LCBinaryAnalyticsTask,
@@ -37,8 +38,8 @@ class TestAnalyticsTaskValidation(ElisaTestCase):
         for method_name in AnalyticsTask.LS_NAMES:
             try:
                 AnalyticsTask.validate_method(method_name)
-            except ValueError:
-                self.fail(f"Method {method_name} should be valid but raised ValueError")
+            except ElisaAnalyticsTaskError:
+                self.fail(f"Method {method_name} should be valid but raised ElisaAnalyticsTaskError")
 
     def test_validate_method_mcmc(self) -> None:
         """Test validation of MCMC fitting method names.
@@ -50,17 +51,17 @@ class TestAnalyticsTaskValidation(ElisaTestCase):
         for method_name in AnalyticsTask.MCMC_NAMES:
             try:
                 AnalyticsTask.validate_method(method_name)
-            except ValueError:
-                self.fail(f"Method {method_name} should be valid but raised ValueError")
+            except ElisaAnalyticsTaskError:
+                self.fail(f"Method {method_name} should be valid but raised ElisaAnalyticsTaskError")
 
     def test_validate_method_invalid_raises_error(self) -> None:
-        """Test that invalid fitting method raises ValueError.
+        """Test that invalid fitting method raises ElisaAnalyticsTaskError.
 
         Verifies that providing an unrecognized method name raises
-        a ValueError with helpful message.
+        an ElisaAnalyticsTaskError with helpful message.
 
         :return: None
-        :raises ValueError: When method name is invalid
+        :raises ElisaAnalyticsTaskError: When method name is invalid
         """
         invalid_methods: list[str] = [
             "invalid_method",
@@ -70,7 +71,7 @@ class TestAnalyticsTaskValidation(ElisaTestCase):
         ]
 
         for invalid_method in invalid_methods:
-            with self.assertRaises(ValueError) as context:
+            with self.assertRaises(ElisaAnalyticsTaskError) as context:
                 AnalyticsTask.validate_method(invalid_method)
 
             error_msg: str = str(context.exception)

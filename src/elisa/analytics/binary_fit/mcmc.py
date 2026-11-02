@@ -5,33 +5,39 @@ from typing import TYPE_CHECKING, Any
 
 import emcee
 import numpy as np
-from scipy import interpolate
 
 from elisa import settings
-from elisa.analytics.models import cost_fns
-from elisa.analytics.models import lc as lc_model
-from elisa.analytics.models import rv as rv_model
-from elisa.analytics.params import parameters
-from elisa.analytics.params.conf import NUISANCE_PARSER, PARAM_PARSER
-from elisa.analytics.tools.utils import time_layer_resolver
-from elisa.base.error import ElisaError
-from elisa.base.types import FLOAT
-from elisa.binary_system.curves.community import RadialVelocitySystem
-from elisa.binary_system.system import BinarySystem
-from elisa.graphic.mcmc_graphics import Plot
-from elisa.logger import getPersistentLogger
-from elisa.observer.mp_manager import get_mp_context
-from elisa.observer.utils import normalize_light_curve
-
-from . import mixins
-from .shared import (
+from elisa.analytics.binary_fit import mixins
+from elisa.analytics.binary_fit.failure_policy import (
+    CandidateFailureDiagnostics,
+    record_candidate_failure,
+    should_penalize_candidate,
+)
+from elisa.analytics.binary_fit.shared import (
     AbstractFit,
     AbstractLCFit,
     AbstractRVFit,
     check_for_boundary_surface_potentials,
-    lc_r_squared,
+    map_rv_predictions,
     rv_r_squared,
 )
+from elisa.analytics.models import cost_fns
+from elisa.analytics.models import rv as rv_model
+from elisa.analytics.params import parameters
+from elisa.analytics.params.conf import NUISANCE_PARSER, PARAM_PARSER
+from elisa.base.error import (
+    ElisaLookupError,
+    raise_elisa_monte_carlo_error,
+    raise_elisa_numeric_error,
+    raise_elisa_unexpected_error,
+)
+from elisa.base.types import FLOAT
+from elisa.binary_system.curves.community import RadialVelocitySystem
+from elisa.binary_system.system import BinarySystem
+from elisa.conf.enums import SamplingMethod
+from elisa.graphic.mcmc_graphics import Plot
+from elisa.logger import getPersistentLogger
+from elisa.observer.mp_manager import get_mp_context
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -68,13 +74,19 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
     norm_init_vector: NDArray[Float]
 
     def __init__(self) -> None:
+        self._candidate_failure_diagnostics = CandidateFailureDiagnostics()
         self.plot = Plot()
-        self.last_sampler = emcee.EnsembleSampler
+        self.last_sampler: emcee.EnsembleSampler | None = None
         self.last_normalization: dict[str, Any] = {}
         self.flat_chain_path = ""
         self.eval_counter = 0
-        self._last_known_lhood = -np.finfo(float).max * np.finfo(float).eps
         self.sigmas: NDArray[Float] | None = None
+
+    def set_up(self, *args: Any, **kwargs: Any) -> None:
+        """Prepare Gaussian statistics after RV setup or LC normalization."""
+        self._candidate_failure_diagnostics = CandidateFailureDiagnostics()
+        super().set_up(*args, **kwargs)
+        self._prepared_observations = cost_fns.prepare_observations(self.y_data, self.y_err)
 
     @staticmethod
     def ln_prior(
@@ -143,33 +155,55 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         :type ln_f: Float
         :return: Likelihood value.
         :rtype: Float
+        :raises ElisaUnexpectedError: If setup has not prepared observation statistics.
         """
-        lh = cost_fns.likelihood_fn(self.y_data, self.y_err, synthetic, ln_f)
-        self._last_known_lhood = min(self._last_known_lhood, lh)
-        return lh
+        # Setup must prepare these fixed statistics before candidate evaluation;
+        # parameter drift cannot invalidate them. Rejecting candidates would hide a broken flow.
+        if self._prepared_observations is None:
+            msg = "MCMC observation statistics require set_up()"
+            raise_elisa_unexpected_error(msg)
+        return cost_fns.prepared_likelihood(self._prepared_observations, synthetic, ln_f)
 
     def ln_probability(self, xn: NDArray[Float]) -> Float:
         """Calculate resulting probability distribution made of likelihood and prior distribution.
 
-        Combines the prior and likelihood to compute the log probability for the given
-        parameter state.
+        Combines prior and likelihood, rejecting recognized candidate failures.
+        Other ordinary exceptions propagate unless PENALIZE_ALL_EXCEPTIONS is enabled.
+        Rejections retain bounded diagnostics, including emergency failures.
+        A uniform-prior exclusion (-inf) is a normal rejection without diagnostics.
+        Setup and process-control exceptions remain outside this rejection policy.
 
         :param xn: Current state of the sampler (normalized values of variable parameters in range [0, 1]).
         :type xn: NDArray[Float]
         :return: Log probability (likelihood).
         :rtype: Float
         """
-        prior = self.ln_prior(xn, self.norm_init_vector, self.sigmas)
-        if prior == -np.inf:
-            return -np.inf
+        stage = "prior"
         try:
-            likelihood = prior + self.likelihood(xn)
-        except (ElisaError, ValueError) as e:
-            if not settings.SUPPRESS_WARNINGS:
-                error_msg = f"mcmc hit invalid parameters, exception: {e!s}"
-                logger.warning(error_msg)
-            return self._last_known_lhood * 1e3
-        return likelihood
+            prior = self.ln_prior(xn, self.norm_init_vector, self.sigmas)
+            if prior == -np.inf:
+                return -np.inf
+            if not np.isfinite(prior):
+                raise_elisa_numeric_error(f"Nonfinite prior: {prior}")
+            stage = "likelihood"
+            likelihood = self.likelihood(xn)
+            if not np.isfinite(likelihood):
+                raise_elisa_numeric_error(f"Nonfinite likelihood: {likelihood}")
+            stage = "posterior"
+            posterior = prior + likelihood
+            if not np.isfinite(posterior):
+                raise_elisa_numeric_error(f"Nonfinite posterior: {posterior}")
+        except ElisaLookupError as exc:
+            if not settings.PENALIZE_ALL_EXCEPTIONS:
+                raise_elisa_unexpected_error("An untranslated numeric lookup error reached fitting evaluation.", exc)
+            record_candidate_failure(self, xn, exc, stage=stage)
+            return -np.inf
+        except Exception as exc:  # Shared candidate policy decides whether to propagate.
+            if not should_penalize_candidate(exc):
+                raise
+            record_candidate_failure(self, xn, exc, stage=stage)
+            return -np.inf
+        return posterior
 
     def normalized_sigma(self, vector: NDArray[Float]) -> NDArray[Float]:
         """Assign normalized standard deviation for each variable parameter to attribute sigma.
@@ -181,17 +215,79 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         :return: Normalized sigma values for each parameter.
         :rtype: NDArray[Float]
         """
-        sigmas = np.array(
-            [val.sigma if val.sigma is not None else np.nan for val in self.fitable.values()],
+        if np.shape(vector) != (len(self.fitable),):
+            msg = "Normalized initial vector must match the fitted parameters"
+            raise_elisa_monte_carlo_error(msg)
+        sigmas = []
+        for key, parameter in self.fitable.items():
+            if parameter.sigma is None:
+                sigmas.append(np.nan)
+                continue
+            lower, upper = self.normalization[key]
+            sigmas.append(parameter.sigma / (upper - lower))
+        return np.asarray(sigmas, dtype=FLOAT)
+
+    def _validate_prior_metadata(self) -> None:
+        """Check free bounds, their span and optional Gaussian widths before normalization."""
+        for key, parameter in self.fitable.items():
+            lower, upper = self.normalization[key]
+            if not np.all(np.isfinite([lower, upper])) or lower >= upper:
+                msg = f"Parameter {key} requires finite, strictly increasing bounds"
+                raise_elisa_monte_carlo_error(msg)
+
+            width = upper - lower
+            if not np.isfinite(width):
+                msg = f"Parameter {key} requires a finite bound span"
+                raise_elisa_monte_carlo_error(msg)
+
+            sigma = parameter.sigma
+            if sigma is not None and (not np.isfinite(sigma) or sigma <= 0):
+                msg = f"Parameter {key} requires a finite, strictly positive Gaussian width"
+                raise_elisa_monte_carlo_error(msg)
+
+    def prepare_priors(self) -> None:
+        """Validate free prior metadata once, before normalization or sampling.
+
+        Fixed and constrained parameters have no independent prior coordinate.
+        Preserve the existing box-truncated standardized Gaussian definition.
+        """
+        self._validate_prior_metadata()
+
+        self.norm_init_vector = np.asarray(
+            parameters.vector_normalizer(
+                self.initial_vector,
+                self.fitable.keys(),
+                self.normalization,
+            ),
             dtype=FLOAT,
         )
-        perturbed = np.array(self.initial_vector, dtype=FLOAT) + sigmas
-        perturbed_norm = parameters.vector_normalizer(
-            perturbed,
+
+        if not np.all(np.isfinite(self.norm_init_vector)):
+            msg = "Initial free parameter values must have finite normalized coordinates"
+            raise_elisa_monte_carlo_error(msg)
+
+        self.sigmas = self.normalized_sigma(self.norm_init_vector)
+        gaussian_widths = self.sigmas[~np.isnan(self.sigmas)]
+        if not np.all(np.isfinite(gaussian_widths) & (gaussian_widths > 0)):
+            msg = "Gaussian widths must remain finite and positive in normalized coordinates"
+            raise_elisa_monte_carlo_error(msg)
+
+    def _prepare_likelihood_parameters(self, xn: NDArray[Float]) -> tuple[NDArray[Float], dict[str, Any]]:
+        """Denormalize a proposal, resolve constraints and check current physical scales.
+
+        Called within the posterior's synthesis-failure boundary. Retain the
+        physical vector for later, separate nuisance-parameter extraction.
+        """
+        xn_list = parameters.vector_renormalizer(xn, self.fitable.keys(), self.normalization)
+        xn_renorm = np.asarray(xn_list, dtype=FLOAT)
+        kwargs: dict[str, Any] = parameters.prepare_properties_set(
+            xn_renorm,
             self.fitable.keys(),
-            self.normalization,
+            self.constrained,
+            self.fixed,
+            raise_initial=False,
         )
-        return np.array(perturbed_norm, dtype=FLOAT) - vector
+        return xn_renorm, kwargs
 
     def _fit(
         self,
@@ -231,17 +327,7 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         :return: MCMC ensemble sampler with results.
         :rtype: emcee.EnsembleSampler
         """
-        self.norm_init_vector = np.array(
-            parameters.vector_normalizer(
-                self.initial_vector,
-                self.fitable.keys(),
-                self.normalization,
-            ),
-            dtype=FLOAT,
-        )
-
-        self.sigmas = self.normalized_sigma(self.norm_init_vector)
-
+        self.prepare_priors()
         p0 = self.generate_initial_states(p0, nwalkers, ndim, x0_vector=self.norm_init_vector)
 
         logger.info("starting mcmc")
@@ -289,6 +375,7 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
                 self.fitable,
                 self.normalization,
                 fit_id=fit_id,
+                chain_shape=np.asarray(sampler.get_chain()).shape,
             )
 
         return sampler
@@ -303,7 +390,7 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         """Transform user initial state to normalized format suitable for MCMC chain.
 
         Function transforms user initial state to normalized format suitable for MCMC chain,
-        where all values are in the interval (0, 1).
+        where all values are in the interval [0, 1]. Supplied states are copied and validated.
 
         :param initial_state: Initial state matrix. If None, random
             initial states in (0, 1) are generated with the first walker set to x0_vector.
@@ -322,16 +409,21 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
             rng = np.random.default_rng()
             retval = rng.uniform(0.0, 1.0, (nwalkers, ndim))
             retval[0] = x0_vector if x0_vector is not None else retval[0]
-            return retval
+            initial_state = retval
         if initial_state.shape != (nwalkers, ndim):
             error_msg = (
                 f"Your initial values for sampler do not satisfy required shape ({nwalkers}, {ndim}). "
                 f"Shape of your initial state matrix is {initial_state.shape}"
             )
-            raise ValueError(error_msg)
-        initial_state[initial_state < 0] = 0.0
-        initial_state[initial_state > 1] = 1.0
-        return initial_state
+            raise_elisa_monte_carlo_error(error_msg)
+        ensemble = np.array(initial_state, dtype=FLOAT, copy=True)
+        if not np.all(np.isfinite(ensemble)):
+            msg = "Supplied initial states must be finite"
+            raise_elisa_monte_carlo_error(msg)
+        if np.any((ensemble < 0.0) | (ensemble > 1.0)):
+            msg = "Supplied initial states must lie within normalized prior bounds [0, 1]"
+            raise_elisa_monte_carlo_error(msg)
+        return ensemble
 
 
 class LightCurveFit(MCMCFit, AbstractLCFit):
@@ -348,44 +440,15 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
         """Likelihood function for given set of model variables.
 
         Calculates the likelihood value for the current model parameters by comparing
-        synthetic and observed light curves. The best fit is 0.0, worst is -inf.
+        synthetic and observed light curves, including Gaussian normalization.
 
         :param xn: Vector of optimized free parameters (normalized to [0, 1] range).
         :type xn: NDArray[Float]
         :return: Likelihood value.
         :rtype: Float
         """
-        diff = 1.0 / self.interp_treshold
-        xn_list = parameters.vector_renormalizer(xn, self.fitable.keys(), self.normalization)
-        xn_renorm = np.asarray(xn_list, dtype=FLOAT)
-        kwargs: dict[str, Any] = parameters.prepare_properties_set(
-            xn_renorm,
-            self.fitable.keys(),
-            self.constrained,
-            self.fixed,
-        )
-        phases, kwargs = time_layer_resolver(self.x_data_reduced, pop=False, **kwargs)
-
-        fit_xs: NDArray[Float] = (
-            np.linspace(
-                np.min(phases) - diff,
-                np.max(phases) + diff,
-                num=self.interp_treshold + 2,
-            )
-            if np.shape(phases)[0] > self.interp_treshold
-            else phases
-        )
-        args: tuple[Any, ...] = (fit_xs, self.discretization, self.observer)
-        synthetic: dict[str, NDArray[Float]] = lc_model.synthetic_binary(*args, **kwargs)
-        synthetic, _ = normalize_light_curve(synthetic, kind="average")
-
-        if np.shape(fit_xs) != np.shape(phases):
-            synthetic = {
-                band: interpolate.interp1d(fit_xs, curve, kind="cubic")(
-                    phases[self.x_data_reducer[band]],
-                )
-                for band, curve in synthetic.items()
-            }
+        xn_renorm, kwargs = self._prepare_likelihood_parameters(xn)
+        synthetic = self.predict_light_curves(kwargs)
 
         ln_f_key = f"{NUISANCE_PARSER}{PARAM_PARSER}ln_f"
         ln_f: Float = parameters.prepare_nuisance_properties_set(xn_renorm, self.fitable, self.fixed)[ln_f_key]
@@ -404,7 +467,7 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
         burn_in: int | None = None,
         percentiles: list | None = None,
         interp_treshold: int | None = None,
-        samples: str | list = "uniform",
+        samples: SamplingMethod | str | list | NDArray = SamplingMethod.UNIFORM,
         progress: bool = False,
         save: bool = True,
         fit_id: str | None = None,
@@ -448,10 +511,10 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
             interpolated using model containing equidistant points. If None, uses
             settings.MAX_CURVE_DATAPOINTS.
         :type interp_treshold: int | None
-        :param samples: Sampling method: 'uniform' (equidistant in phase), 'adaptive'
-            (equidistant on curve), or list with phases in (0, 1) interval.
-            Default is 'uniform'.
-        :type samples: str | list
+        :param samples: SamplingMethod.UNIFORM (equidistant in phase),
+            SamplingMethod.ADAPTIVE (equidistant on curve), or a manual phase
+            list/array. Legacy string values remain accepted. Defaults to UNIFORM.
+        :type samples: SamplingMethod | str | list | NDArray
         :param progress: Display the progress bar of the sampling. Default is False.
         :type progress: bool
         :param save: Whether to store the chain to file. Default is True.
@@ -503,27 +566,19 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
                 for lbl, val in self.fixed.items()
             },
         )
-        result_dict = self.eval_constrained_results(result_dict, self.constrained)
-
-        r_squared_args: tuple[Any, ...] = (
-            self.x_data_reduced,
-            self.y_data,
-            self.observer.passband,
-            discretization,
-            self.x_data_reducer,
-            1.0 / self.interp_treshold,
-            self.interp_treshold,
-            self.observer.system_cls,
+        result_dict.update(
+            mixins.MCMCMixin.resolve_constrained_result(
+                flat_chain,
+                self.fitable,
+                self.normalization,
+                self.constrained,
+                self.fixed,
+                percentiles,
+            ),
         )
 
-        r_dict: dict[str, Any] = {key: value["value"] for key, value in result_dict.items()}
-        r_dict = parameters.extend_json_with_atm_params(
-            r_dict,
-            atmosphere_model=self.atmosphere_model,
-            limb_darkening_coefficients=self.limb_darkening_coefficients,
-        )
-
-        r_squared_result: Float = lc_r_squared(lc_model.synthetic_binary, *r_squared_args, **r_dict)
+        r_dict = {key: value["value"] for key, value in result_dict.items()}
+        r_squared_result = self.prediction_r_squared(r_dict)
         result_dict["r_squared"] = {"value": r_squared_result, "unit": None}
 
         result_dict = check_for_boundary_surface_potentials(result_dict, self.MORPHOLOGY)
@@ -560,21 +615,15 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
         :type xn: NDArray[Float]
         :return: Likelihood value.
         :rtype: Float
+        :raises ElisaPredictionAlignmentError: If raw RV components or shapes do not match the synthesis grid.
         """
-        xn_list = parameters.vector_renormalizer(xn, self.fitable.keys(), self.normalization)
-        xn_renorm = np.asarray(xn_list, dtype=FLOAT)
-        kwargs: dict[str, Any] = parameters.prepare_properties_set(
-            xn_renorm,
-            self.fitable.keys(),
-            self.constrained,
-            self.fixed,
-        )
+        xn_renorm, kwargs = self._prepare_likelihood_parameters(xn)
         synthetic: dict[str, NDArray[Float]] = rv_model.central_rv_synthetic(
             self.x_data_reduced,
             self.observer,
             **kwargs,
         )
-        synthetic = {comp: synthetic[comp][self.x_data_reducer[comp]] for comp in synthetic}
+        synthetic = map_rv_predictions(synthetic, self.x_data_reduced, self.x_data_reducer)
 
         ln_f_key = f"{NUISANCE_PARSER}{PARAM_PARSER}ln_f"
         ln_f: Float = parameters.prepare_nuisance_properties_set(
@@ -679,7 +728,16 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
                 for lbl, val in self.fixed.items()
             },
         )
-        result_dict = self.eval_constrained_results(result_dict, self.constrained)
+        result_dict.update(
+            mixins.MCMCMixin.resolve_constrained_result(
+                flat_chain,
+                self.fitable,
+                self.normalization,
+                self.constrained,
+                self.fixed,
+                percentiles,
+            ),
+        )
 
         r_squared_args: tuple[Any, ...] = (
             self.x_data_reduced,
@@ -687,9 +745,7 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
             self.x_data_reducer,
             self.observer.system_cls,
         )
-        r_dict: dict[str, Any] = {
-            key: value["value"] for key, value in result_dict.items()
-        }
+        r_dict: dict[str, Any] = {key: value["value"] for key, value in result_dict.items()}
 
         r_squared_result: Float = rv_r_squared(rv_model.central_rv_synthetic, *r_squared_args, **r_dict)
         result_dict["r_squared"] = {"value": r_squared_result, "unit": None}

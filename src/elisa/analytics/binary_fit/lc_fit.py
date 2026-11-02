@@ -4,17 +4,23 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
 from elisa.analytics.binary_fit import io_tools, least_squares, mcmc
+from elisa.analytics.binary_fit.chain_tools import get_production_chain
 from elisa.analytics.binary_fit.summary import (
     fit_lc_summary_with_error_propagation,
     simple_lc_fit_summary,
 )
 from elisa.analytics.params import parameters
 from elisa.analytics.params.result_handler import FitResultHandler
+from elisa.base.transform import normalize_morphology
 from elisa.logger import getLogger
 
 if TYPE_CHECKING:
+    import numpy as np
+    from numpy.typing import NDArray
+
     from elisa.analytics.binary_fit.mcmc import LightCurveFit
     from elisa.analytics.params.parameters import BinaryInitialParameters
+    from elisa.conf.enums import DiscardUnit
     from elisa.types import Float
 else:
     Float = float
@@ -32,6 +38,7 @@ class LCFit(FitResultHandler, ABC):
 
     :param morphology: str
         Morphology of the binary system ('detached' or 'over-contact').
+        The legacy 'overcontact' alias is normalized to 'over-contact'.
     :param atmosphere_model: dict | None
         Atmosphere model parameters. If None, default atmosphere model is used.
     :param limb_darkening_coefficients: dict | None
@@ -45,7 +52,7 @@ class LCFit(FitResultHandler, ABC):
         limb_darkening_coefficients: dict | None,
     ) -> None:
         super().__init__()
-        self.morphology: str = morphology
+        self.morphology: str = normalize_morphology(morphology)
         self.fit_method_instance: LCFitLeastSquares | LCFitMCMC | None = None
         self.atmosphere_model: dict | None = atmosphere_model
         self.limb_darkening_coefficients: dict | None = limb_darkening_coefficients
@@ -119,10 +126,11 @@ class LCFitMCMC(LCFit):
         limb_darkening_coefficients: dict | None,
     ) -> None:
         super().__init__(morphology, atmosphere_model, limb_darkening_coefficients)
-        self.fit_method_instance: LightCurveFit = self.resolve_fit_cls(morphology)()
+        self.fit_method_instance: LightCurveFit = self.resolve_fit_cls(self.morphology)()
         self.fit_method_instance.atmosphere_model = atmosphere_model
         self.fit_method_instance.limb_darkening_coefficients = limb_darkening_coefficients
 
+        self.chain: NDArray[np.float64] | None = None
         self.flat_chain: Any = None
         self.flat_chain_path: Any = None
         self.normalization: Any = None
@@ -169,8 +177,8 @@ class LCFitMCMC(LCFit):
         self.result = self.fit_method_instance.fit(data=data, x0=x0, **kwargs)
         self.flat_result = self.fit_method_instance.flat_result
 
-        # noinspection PyArgumentList
-        self.flat_chain = self.fit_method_instance.last_sampler.get_chain(flat=True)
+        self.chain = get_production_chain(self.fit_method_instance.last_sampler)
+        self.flat_chain = self.chain.reshape(-1, self.chain.shape[-1])
         self.flat_chain_path = self.fit_method_instance.flat_chain_path
         self.normalization = self.fit_method_instance.normalization
         self.variable_labels = list(self.fit_method_instance.fitable.keys())
@@ -229,6 +237,8 @@ class LCFitMCMC(LCFit):
         filename: str,
         discard: int = 0,
         percentiles: list[int] | None = None,
+        *,
+        discard_unit: DiscardUnit | str | None = None,
     ) -> Any:
         """Load MCMC chain along with auxiliary data from a JSON file.
 
@@ -239,12 +249,17 @@ class LCFitMCMC(LCFit):
             Chain identifier or filename (ending with .json) containing
             the chain data.
         :param discard: int
-            Discard the first `discard` steps in the chain as part of the
+            Discard the first `discard` samples in the chain as part of the
             thermalization phase (burn-in). Default is 0.
         :param percentiles: list[int] | None
             Percentile intervals used to generate confidence intervals.
             Should be provided in form [lower_percentile, center_percentile,
             upper_percentile], e.g., [16, 50, 84] for 1-sigma interval.
+        :param discard_unit: ``DiscardUnit.STEPS`` requires temporal metadata;
+            ``DiscardUnit.ROWS`` discards flat rows and preserves temporal axes only
+            at complete ensemble boundaries. ``None`` selects steps for structured
+            chains and rows for legacy files. Strings "steps" and "rows" are accepted.
+        :type discard_unit: DiscardUnit | str | None
         :return: Any
             Tuple containing flattened MCMC chain (numpy.ndarray),
             labels of variables in `flat_chain` columns (list),
@@ -252,7 +267,7 @@ class LCFitMCMC(LCFit):
             {var_name: (min_boundary, max_boundary), ...} needed
             to reconstruct real values from normalized `flat_chain` array.
         """
-        return io_tools.load_chain(self, filename, discard, percentiles)
+        return io_tools.load_chain(self, filename, discard, percentiles, discard_unit=discard_unit)
 
     def resolve_fit_cls(self, morphology: str) -> type:
         """Return MCMC fitting class suited for the model based on morphology.
@@ -266,7 +281,6 @@ class LCFitMCMC(LCFit):
         _cls = {
             "detached": mcmc.DetachedLightCurveFit,
             "over-contact": mcmc.OvercontactLightCurveFit,
-            "overcontact": mcmc.OvercontactLightCurveFit,
         }
         return _cls[morphology]
 
@@ -292,7 +306,7 @@ class LCFitLeastSquares(LCFit):
         limb_darkening_coefficients: dict | None,
     ) -> None:
         super().__init__(morphology, atmosphere_model, limb_darkening_coefficients)
-        self.fit_method_instance = self.resolve_fit_cls(morphology)()
+        self.fit_method_instance = self.resolve_fit_cls(self.morphology)()
         self.fit_method_instance.atmosphere_model = atmosphere_model
         self.fit_method_instance.limb_darkening_coefficients = limb_darkening_coefficients
 
@@ -349,6 +363,5 @@ class LCFitLeastSquares(LCFit):
         _cls = {
             "detached": least_squares.DetachedLightCurveFit,
             "over-contact": least_squares.OvercontactLightCurveFit,
-            "overcontact": least_squares.OvercontactLightCurveFit,
         }
         return _cls[morphology]

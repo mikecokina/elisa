@@ -8,6 +8,7 @@ import numpy as np
 
 from elisa import BinarySystem, opt, settings, u, utils
 from elisa import umpy as up
+from elisa.base.error import raise_value_error
 from elisa.base.types import FLOAT
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.model import (
@@ -373,7 +374,7 @@ def get_analytics_horizon(
 
     if utils.is_empty(horizon_points):
         error_msg: str = f"No horizon points found in given tolerance {tol}. Decrease tolerance."
-        raise ValueError(error_msg)
+        raise_value_error(error_msg)
 
     horizon_points_array: NDArray = np.array(horizon_points)
     horizon_points_array = utils.around_axis_rotation(

@@ -6,6 +6,7 @@ from copy import deepcopy
 import numpy as np
 
 from elisa import const, settings
+from elisa.atm import const as atm_const
 from elisa.analytics.params import conf, parameters
 from tests.utils import ElisaTestCase
 
@@ -48,7 +49,7 @@ class AtlasRuntimeDefaultsTestCase(ElisaTestCase):
             self.assertEqual(original, values)
 
     def test_all_supported_aliases(self):
-        for alias, prefix in settings.ATM_ATLAS_NORMALIZER.items():
+        for alias, prefix in atm_const.ATM_ATLAS_NORMALIZER.items():
             with self.subTest(atlas=alias):
                 settings.configure(ATM_ATLAS=alias)
                 self.assert_bounds(self.make_star(), (-5.0, 1.0) if prefix == "k" else (-2.5, 0.5))
