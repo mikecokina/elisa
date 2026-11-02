@@ -5,19 +5,22 @@ from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import numpy as np
-from emcee.autocorr import function_1d, integrated_time
 from scipy.interpolate import interp1d
 
 from elisa import units as u
 from elisa.analytics.binary_fit import shared
+from elisa.analytics.binary_fit.chain_tools import ENSEMBLE_NDIM, FLAT_NDIM, ensemble_autocorrelation
 from elisa.analytics.binary_fit.mixins import MCMCMixin
 from elisa.analytics.models.lc import synthetic_binary
 from elisa.analytics.models.rv import central_rv_synthetic
 from elisa.analytics.params import conf, parameters
+from elisa.base.error import raise_elisa_graphics_error
 from elisa.binary_system import t_layer
 from elisa.binary_system.system import BinarySystem
+from elisa.conf.enums import NormalizationKind
 from elisa.graphic import graphics
 from elisa.graphic.mcmc_graphics import Plot as MCMCPlot
+from elisa.graphic.mcmc_graphics import validate_selection
 from elisa.logger import getLogger
 from elisa.observer.observer import Observer
 from elisa.observer.utils import normalize_light_curve
@@ -127,11 +130,11 @@ class MCMCPlotMixin:
         :param correlations_to_plot: Names of variables whose autocorrelation
             functions should be displayed.
         :type correlations_to_plot: Sequence[str] | None
-        :param flat_chain: Optional flattened chain of all parameters. If
-            omitted, the internal ``flat_chain`` attribute is used.
+        :param flat_chain: Optional ensemble chain (steps, walkers, parameters).
+            If omitted, the internal ``chain`` is used. Flat samples cannot
+            provide temporal diagnostics. The legacy argument name is retained.
         :type flat_chain: NDArray[elisa.types.Float] | None
-        :param variable_labels: Variable names corresponding to columns in
-            ``flat_chain``. Use only with a custom chain.
+        :param variable_labels: Variable names corresponding to the parameter axis.
         :type variable_labels: Sequence[str] | None
         """
         autocorrelation(
@@ -156,8 +159,9 @@ class MCMCPlotMixin:
         :param traces_to_plot: Names of variables whose traces should be
             displayed.
         :type traces_to_plot: Sequence[str] | None
-        :param flat_chain: Optional flattened chain of all parameters. If
-            omitted, the internal ``flat_chain`` attribute is used.
+        :param flat_chain: Optional custom flat samples. If omitted, the stored
+            structured chain shows individual walkers against retained ensemble
+            steps. Otherwise, flat samples use flattened sample index.
         :type flat_chain: NDArray[elisa.types.Float] | None
         :param variable_labels: Variable names corresponding to columns in
             ``flat_chain``. Use only with a custom chain.
@@ -238,11 +242,10 @@ class RVPlot:
         fit_result: dict = kwargs.get("fit_result", self.fit.result)
 
         if fit_result is None:
-            msg = (
+            raise_elisa_graphics_error(
                 "You did not performed radial velocity fit on this instance "
-                "or you did not provided result parameter dictionary."
+                "or you did not provided result parameter dictionary.",
             )
-            raise ValueError(msg)
 
         x_data: dict[str, NDArray[Float]] = {}
         y_data: dict[str, NDArray[Float]] = {}
@@ -262,9 +265,7 @@ class RVPlot:
                     centre=0.0,
                 )
 
-            y_data[component] = (
-                (data_obj.y_data * data_obj.y_unit).to(y_axis_unit).value
-            )
+            y_data[component] = (data_obj.y_data * data_obj.y_unit).to(y_axis_unit).value
             if data_obj.y_err is not None:
                 err_value: NDArray[Float] = (  # type: ignore[assignment]
                     (data_obj.y_err * data_obj.y_unit).to(y_axis_unit).value  # type: ignore[operator]
@@ -358,7 +359,7 @@ class LCPlot:
         discretization: Float = 5,
         separation: Float = 0.1,
         data_frac_to_normalize: Float = 0.1,
-        normalization_kind: str = "maximum",
+        normalization_kind: NormalizationKind | str = NormalizationKind.MAXIMUM,
         loc: Int = 1,
         *,
         plot_legend: bool = True,
@@ -388,7 +389,7 @@ class LCPlot:
         :type data_frac_to_normalize: elisa.types.Float
         :param normalization_kind: Normalization mode, typically ``"average"``
             or ``"maximum"``.
-        :type normalization_kind: str
+        :type normalization_kind: NormalizationKind | str
         :param plot_legend: Whether to display the legend.
         :type plot_legend: bool
         :param loc: Legend location.
@@ -410,8 +411,9 @@ class LCPlot:
         fit_result: dict = kwargs.get("fit_result", self.fit.result)
 
         if fit_result is None:
-            msg = "You did not performed light curve fit on this instance or you did not provided parameter dictionary."
-            raise ValueError(msg)
+            raise_elisa_graphics_error(
+                "You did not performed light curve fit on this instance or you did not provided parameter dictionary.",
+            )
 
         x_data: dict[str, NDArray[Float]] = {}
         y_data: dict[str, NDArray[Float]] = {}
@@ -627,8 +629,7 @@ def corner(
     flat_result = deepcopy(mcmc_fit_instance.flat_result)
 
     if flat_chain is None:
-        msg = "You can use corner plot after running mcmc method or after loading the flat chain."
-        raise ValueError(msg)
+        raise_elisa_graphics_error("You can use corner plot after running mcmc method or after loading the flat chain.")
 
     plot_labels = serialize_plot_labels(variable_labels)
     flat_chain = MCMCMixin.renormalize_flat_chain(
@@ -707,30 +708,23 @@ def autocorrelation(
     :param correlations_to_plot: Names of variables whose autocorrelation
         functions should be displayed.
     :type correlations_to_plot: Sequence[str] | None
-    :param flat_chain: Optional flattened chain of all parameters. If omitted,
-        the internal ``flat_chain`` attribute is used.
+    :param flat_chain: Optional ensemble chain (steps, walkers, parameters).
+        If omitted, the internal ``chain`` is used. The legacy argument name
+        is retained; flat samples cannot provide temporal diagnostics.
     :type flat_chain: NDArray[elisa.types.Float] | None
     :param variable_labels: Variable names corresponding to columns in
         ``flat_chain``. Use only with a custom chain.
     :type variable_labels: Sequence[str] | None
     """
-    flat_chain = deepcopy(mcmc_fit_instance.flat_chain) if flat_chain is None else deepcopy(flat_chain)
+    chain = mcmc_fit_instance.chain if flat_chain is None else flat_chain
     variable_labels = mcmc_fit_instance.variable_labels if variable_labels is None else variable_labels
+    variable_labels = [] if variable_labels is None else list(variable_labels)
     correlations_to_plot = variable_labels if correlations_to_plot is None else correlations_to_plot
-
-    if flat_chain is None:
-        msg = "You can use trace plot only in case of mcmc method or for some reason the flat chain was not found."
-        raise ValueError(msg)
-
+    validate_selection(variable_labels, correlations_to_plot)
+    autocorr_fns, autocorr_time = ensemble_autocorrelation(chain)
+    if variable_labels is None or len(variable_labels) != autocorr_time.size:
+        raise_elisa_graphics_error("Chain parameter dimension does not match variable labels")
     labels = serialize_plot_labels(variable_labels)
-
-    n_params = len(variable_labels)
-    autocorr_fns = np.empty((flat_chain.shape[0], n_params))
-    autocorr_time = np.empty(n_params)
-
-    for idx, _lbl in enumerate(variable_labels):
-        autocorr_fns[:, idx] = function_1d(flat_chain[:, idx])
-        autocorr_time[idx] = integrated_time(flat_chain[:, idx], quiet=True)
 
     autocorr_plot_kwargs = {
         "correlations_to_plot": correlations_to_plot,
@@ -741,6 +735,43 @@ def autocorrelation(
     }
 
     MCMCPlot.autocorr(**autocorr_plot_kwargs)
+
+
+def _validate_trace_samples(
+    chain: NDArray[np.float64] | None,
+    source_labels: Sequence[str],
+    *,
+    custom: bool,
+) -> NDArray[np.float64]:
+    """Validate chain availability, supported dimensions and source column count."""
+    if chain is None:
+        raise_elisa_graphics_error("You can use trace plot after running mcmc or loading a chain.")
+    samples = np.asarray(chain)
+    if custom and samples.ndim != FLAT_NDIM:
+        raise_elisa_graphics_error("Custom trace samples must be a flat (samples, parameters) chain")
+    if samples.ndim not in (FLAT_NDIM, ENSEMBLE_NDIM) or samples.size == 0:
+        raise_elisa_graphics_error("Trace samples must be a nonempty flat or structured chain")
+    if samples.shape[-1] != len(source_labels):
+        raise_elisa_graphics_error("Chain parameter dimension does not match variable labels")
+    return samples
+
+
+def _trace_source(
+    fit: RVFitMCMC | LCFitMCMC,
+    custom_chain: NDArray[np.float64] | None,
+    custom_labels: Sequence[str] | None,
+) -> tuple[NDArray[np.float64], list[str]]:
+    """Resolve samples and their source column labels, independently of panel selection."""
+    if custom_chain is None:
+        chain = fit.chain if fit.chain is not None else fit.flat_chain
+        source_labels = fit.variable_labels
+    else:
+        chain = custom_chain
+        source_labels = fit.variable_labels if custom_labels is None else custom_labels
+
+    source_labels = [] if source_labels is None else list(source_labels)
+    samples = _validate_trace_samples(chain, source_labels, custom=custom_chain is not None)
+    return samples, source_labels
 
 
 def traces(
@@ -759,8 +790,10 @@ def traces(
     :type mcmc_fit_instance: RVFitMCMC | LCFitMCMC
     :param traces_to_plot: Names of variables whose traces should be displayed.
     :type traces_to_plot: Sequence[str] | None
-    :param flat_chain: Optional flattened chain of all parameters. If omitted,
-        the internal ``flat_chain`` attribute is used.
+    :param flat_chain: Optional custom flat samples. If omitted, the stored
+        structured chain is used when available, otherwise ``flat_chain``.
+        Structured samples show walkers against retained ensemble steps; flat
+        samples show points against flattened sample index.
     :type flat_chain: NDArray[elisa.types.Float] | None
     :param variable_labels: Variable names corresponding to columns in
         ``flat_chain``. Use only with a custom chain.
@@ -776,18 +809,18 @@ def traces(
     """
     logger.debug("Producing/retrieving data for traces plot.")
 
-    variable_labels = mcmc_fit_instance.variable_labels if variable_labels is None else variable_labels
+    samples, source_labels = _trace_source(mcmc_fit_instance, flat_chain, variable_labels)
+    variable_labels = source_labels if variable_labels is None else list(variable_labels)
+    traces_to_plot = variable_labels if traces_to_plot is None else traces_to_plot
+    validate_selection(source_labels, variable_labels)
+    validate_selection(variable_labels, traces_to_plot)
+
     normalization = mcmc_fit_instance.normalization if normalization is None else normalization
-    flat_chain = deepcopy(mcmc_fit_instance.flat_chain) if flat_chain is None else deepcopy(flat_chain)
+    shape = (*samples.shape[:-1], len(variable_labels))
     flat_result = deepcopy(mcmc_fit_instance.flat_result)
-
-    if flat_chain is None:
-        msg = "You can use trace plot only in case of mcmc method or for some reason the flat chain was not found."
-        raise ValueError(msg)
-
     flat_chain = MCMCMixin.renormalize_flat_chain(
-        flat_chain,
-        mcmc_fit_instance.variable_labels,
+        samples.reshape(-1, samples.shape[-1]),
+        source_labels,
         variable_labels,
         normalization,
     )
@@ -803,17 +836,13 @@ def traces(
                 (flat_result[lbl]["confidence_interval"]["min"] * unit).to(plot_units[lbl]).value
             )
             flat_result[lbl]["confidence_interval"]["max"] = (
-                (flat_result[lbl]["confidence_interval"]["max"] * unit)
-                .to(plot_units[lbl])
-                .value
+                (flat_result[lbl]["confidence_interval"]["max"] * unit).to(plot_units[lbl]).value
             )
             flat_result[lbl]["unit"] = plot_units[lbl].to_string()
 
-    traces_to_plot = variable_labels if traces_to_plot is None else traces_to_plot
-
     traces_plot_kwargs = {
         "traces_to_plot": traces_to_plot,
-        "flat_chain": flat_chain,
+        "flat_chain": flat_chain.reshape(shape),
         "variable_labels": variable_labels,
         "fit_params": flat_result,
         "truths": truths,
