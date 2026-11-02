@@ -2,25 +2,20 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import numpy as np
-
 from elisa import const
 from elisa.base.error import (
-    raise_elisa_max_iteration_error,
-    raise_elisa_numeric_error,
     raise_elisa_unexpected_error,
 )
 from elisa.base.types import FLOAT
-from elisa.binary_system import model
+from elisa.binary_system._radius_solver import RADIUS_LIMIT, solve_radius
 from elisa.conf.enums import BinaryComponent
-from elisa.opt.fsolver import fsolve
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from elisa.types import ComponentName, Float
 
-MAXIMAL_RADIUS_BOUNDARY = 30.0
+MAXIMAL_RADIUS_BOUNDARY = RADIUS_LIMIT
 
 
 def calculate_radius(
@@ -37,7 +32,13 @@ def calculate_radius(
     The radius is measured from the center of the selected component in the
     direction defined by spherical coordinates ``phi`` and ``theta``. The
     direction is evaluated in the Roche geometry by numerically solving for the
-    radius at which the potential equals ``surface_potential``.
+    first intersection on the descending branch of the local radial potential.
+    The interval ends at the first radial minimum (before the companion on the
+    forward axis), or at ``MAXIMAL_RADIUS_BOUNDARY`` for a decreasing ray.
+    A rounded critical potential may return the limiting stationary radius;
+    a potential demonstrably below the minimum raises ``ElisaNumericError``.
+    The result is independent of previous calls and uses the supplied instantaneous
+    separation and spin, including eccentric and asynchronous geometries.
 
     The spherical coordinates are interpreted as follows:
 
@@ -68,51 +69,13 @@ def calculate_radius(
     :raises ElisaMaxIterationError: If the radius solver does not converge.
     :raises ElisaNumericError: If the computed radius is outside the accepted range.
     """
-    if component == BinaryComponent.PRIMARY:
-        potential_fn = model.potential_primary_fn
-        # noinspection PyTypeChecker
-        precalculate_fn = model.pre_calculate_for_potential_value_primary
-    elif component == BinaryComponent.SECONDARY:
-        potential_fn = model.potential_secondary_fn
-        precalculate_fn = model.pre_calculate_for_potential_value_secondary
-    else:
-        # Component identity is a caller contract, independent of candidate values.
+    if component not in (BinaryComponent.PRIMARY, BinaryComponent.SECONDARY):
         message = f"Radius calculation received an unexpected component {component!r}; expected primary or secondary."
         raise_elisa_unexpected_error(message)
-
-    precalc_args = (
-        synchronicity,
-        mass_ratio,
-        components_distance,
-        phi,
-        theta,
+    return solve_radius(
+        synchronicity, mass_ratio, components_distance, surface_potential,
+        secondary=component == BinaryComponent.SECONDARY, phi=phi, theta=theta,
     )
-    solver_init_value = np.array([1e-4], dtype=np.float64)
-    solver_args = (
-        (mass_ratio, *precalculate_fn(*precalc_args)),
-        surface_potential,
-    )
-
-    solution, _, ier, _ = fsolve(
-        potential_fn,
-        solver_init_value,
-        full_output=True,
-        args=solver_args,
-        xtol=1e-10,
-    )
-
-    radius = solution[0]
-
-    if not np.isfinite(radius):
-        message = f"Invalid value of radius {solution} was calculated."
-        raise_elisa_numeric_error(message)
-    if ier != 1:
-        message = "Radius solver failed to converge."
-        raise_elisa_max_iteration_error(message)
-    if not (0.0 <= radius <= MAXIMAL_RADIUS_BOUNDARY):
-        message = f"Invalid value of radius {solution} was calculated."
-        raise_elisa_numeric_error(message)
-    return radius
 
 
 def calculate_polar_radius(

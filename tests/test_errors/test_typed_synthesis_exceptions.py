@@ -76,8 +76,9 @@ def test_static_physical_range_check_retains_message():
 
 
 def test_radius_domain_failure_retains_message(monkeypatch):
-    monkeypatch.setattr(radius, 'fsolve', lambda *a, **k: (np.array([-0.5]), {}, 1, 'unused'))
-    with pytest.raises(ElisaNumericError, match=r'Invalid value of radius \[-0.5\] was calculated\.') as caught:
+    monkeypatch.setattr('elisa.binary_system._radius_solver.brentq',
+                        lambda *a, **k: (-0.5, SimpleNamespace(converged=True)))
+    with pytest.raises(ElisaNumericError, match='Roche solver returned a radius outside its geometric bracket') as caught:
         radius.calculate_radius(1.0, 1.0, 4.0, 'primary', 1.0, 0.0, 0.0)
     assert type(caught.value) is ElisaNumericError
 

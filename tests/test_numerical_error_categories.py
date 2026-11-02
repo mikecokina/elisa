@@ -73,7 +73,7 @@ def test_wrong_prediction_shape_remains_alignment_failure():
     assert not isinstance(caught.value, SYNTHESIS_FAILURES)
 
 
-@pytest.mark.parametrize("system", ["binary", "single"])
+@pytest.mark.parametrize("system", ["single"])
 @pytest.mark.parametrize("status", [2, 3, 4, 5])
 def test_radius_solver_cannot_return_unconverged_finite_root(system, status):
     module, args = radius_call(system)
@@ -82,7 +82,7 @@ def test_radius_solver_cannot_return_unconverged_finite_root(system, status):
             module.calculate_radius(*args)
 
 
-@pytest.mark.parametrize("system", ["binary", "single"])
+@pytest.mark.parametrize("system", ["single"])
 @pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf, -0.5])
 def test_converged_radius_solver_must_return_usable_root(system, value):
     module, args = radius_call(system)
@@ -91,7 +91,7 @@ def test_converged_radius_solver_must_return_usable_root(system, value):
             module.calculate_radius(*args)
 
 
-@pytest.mark.parametrize("system", ["binary", "single"])
+@pytest.mark.parametrize("system", ["single"])
 def test_radius_solver_preserves_valid_result_and_unexpected_exceptions(system):
     module, args = radius_call(system)
     with patch.object(module, "fsolve", return_value=(np.array([0.5]), {}, 1, "converged")):

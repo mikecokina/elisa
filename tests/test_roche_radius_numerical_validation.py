@@ -3,18 +3,16 @@
 Critical float targets may straddle the exact minimum by a few ULP. Such cases
 explicitly test the limiting radius, not existence of an exact float-target root.
 The tolerances bound local radius/area error; they do not certify full LC accuracy.
-Expected failures expose current policy/branch problems and are not xfailed.
+All expected values come from the independent Decimal oracle.
 """
 
 # ruff: noqa: S101 - assertions express scientific regression contracts
-from contextlib import suppress
 from decimal import Decimal, localcontext
-from unittest.mock import patch
 
 import numpy as np
 import pytest
 
-from elisa.base.error import ElisaError
+from elisa.base.error import ElisaNumericError
 from elisa.binary_system import radius
 from elisa.binary_system.system import BinarySystem
 from scripts.diagnostics.roche_reference import Ray, reference
@@ -94,7 +92,7 @@ def test_below_directional_minimum_has_no_relevant_root(component: str, directio
     critical = reference(0.7, 1.0, 1.0, component, direction)
     omega = float(critical["critical"]) - 1e-5
     assert reference(0.7, 1.0, 1.0, component, direction, omega)["root"] is None
-    with pytest.raises(ElisaError):
+    with pytest.raises(ElisaNumericError):
         solve(0.7, 1.0, 1.0, component, direction, omega)
 
 
@@ -103,24 +101,13 @@ def test_forward_solver_must_not_accept_root_beyond_companion() -> None:
     # is no component-local forward surface intersection in the required (0,d).
     omega = 3.2034863800799114
     assert reference(0.01, 3.0, 0.4, "primary", "forward", omega)["root"] is None
-    with pytest.raises(ElisaError):
+    with pytest.raises(ElisaNumericError):
         solve(0.01, 3.0, 0.4, "primary", "forward", omega)
 
 
-def test_raw_critical_candidate_quality_is_independent_of_solver_status() -> None:
+def test_critical_limit_has_small_independent_potential_residual() -> None:
     q, omega = 0.6999999999999998, 3.243288166372893
-    captured = []
-    original = radius.fsolve
-
-    def record(*args, **kwargs) -> tuple:
-        result = original(*args, **kwargs)
-        captured.append(result)
-        return result
-
-    # Inspect the candidate even when today's status policy rejects it.
-    with patch.object(radius, "fsolve", side_effect=record), suppress(ElisaError):
-        solve(q, 1.0, 1.0, "primary", "forward", omega)
-    candidate = float(captured[0][0][0])
+    candidate = solve(q, 1.0, 1.0, "primary", "forward", omega)
     expected = reference(q, 1.0, 1.0, "primary", "forward")["stationary"]
     assert candidate == pytest.approx(float(expected), rel=CRITICAL_RTOL, abs=ABSOLUTE_PER_SEPARATION)
     with localcontext() as ctx:
