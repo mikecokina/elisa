@@ -4,11 +4,15 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from elisa import const
 from elisa import units as u
+from elisa.base.error import raise_elisa_parameters_error
 from elisa.base.transform import (
     WHEN_FLOAT64,
+    SystemProperties,
     TransformProperties,
     quantity_transform,
+    scalar_transform,
 )
 from elisa.base.types import FLOAT, INT
 
@@ -30,23 +34,20 @@ class OrbitProperties(TransformProperties):
         :type value: int | INT | Float | FLOAT
         :return: Validated eccentricity converted to ``Float``.
         :rtype: Float
-        :raises TypeError: If ``value`` is not a supported numeric scalar.
-        :raises ValueError: If ``value`` is outside the allowed interval
+        :raises ElisaParametersError: If ``value`` is not a supported numeric scalar.
+        :raises ElisaParametersError: If ``value`` is outside the allowed interval
             ``[0, 1)``.
+        :raises ElisaParametersError: If ``value`` is nonfinite.
         """
-        if not isinstance(value, (int, INT, float, FLOAT)):
-            message = (
-                "Input of variable `eccentricity` is not "
-                "(numpy.)int or (numpy.)float."
-            )
-            raise TypeError(message)
-
+        value = scalar_transform(
+            value, parameter="eccentricity", accepted_types=(int, INT, float, FLOAT),
+        )
         if value < 0 or value >= 1:
             message = (
                 "Input of variable `eccentricity` is invalid or out of "
                 "boundaries."
             )
-            raise ValueError(message)
+            raise_elisa_parameters_error(message)
 
         return np.float64(value)
 
@@ -62,11 +63,7 @@ class OrbitProperties(TransformProperties):
         :return: Period converted to the internal ``Float`` form.
         :rtype: Float
         """
-        return quantity_transform(
-            value,
-            u.DefaultBinarySystemUnits.system.period,
-            WHEN_FLOAT64,
-        )
+        return SystemProperties.period(value)
 
     @staticmethod
     def argument_of_periastron(value: Float) -> Float:
@@ -84,6 +81,7 @@ class OrbitProperties(TransformProperties):
             value,
             u.DefaultBinarySystemUnits.system.argument_of_periastron,
             WHEN_FLOAT64,
+            parameter="argument_of_periastron",
         )
 
     @staticmethod
@@ -98,8 +96,13 @@ class OrbitProperties(TransformProperties):
         :return: Inclination converted to internal ``Float`` form.
         :rtype: Float
         """
-        return quantity_transform(
+        value = quantity_transform(
             value,
             u.DefaultBinarySystemUnits.system.inclination,
             WHEN_FLOAT64,
+            parameter="inclination",
         )
+        if not 0 <= value <= const.PI:
+            message = f"Inclination value of {value} is out of bounds (0, pi)."
+            raise_elisa_parameters_error(message)
+        return value

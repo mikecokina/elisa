@@ -1,5 +1,7 @@
 # keep it first
 # due to stupid astropy units/constants implementation
+import pytest
+
 from tests import set_astropy_units
 
 import os.path as op
@@ -79,8 +81,8 @@ class IndempotenceTestCase(ElisaTestCase):
         self.single = testutils.prepare_single_system(testutils.SINGLE_SYSTEM_PARAMS['spherical'],
                                                       testutils.SPOTS_META["primary"])
         self.base_path = op.dirname(op.abspath(__file__))
-        settings.configure(LD_TABLES=op.join(self.base_path, "data", "light_curves", "limbdarkening"))
 
+    @pytest.mark.requires_ld
     def test_star_container_is_indempotent(self):
         system = OrbitalPositionContainer.from_binary_system(self.s, Position(0, 1.0, 0.0, 0.0, 0.0))
         system.build(components_distance=1.0)
@@ -90,8 +92,8 @@ class IndempotenceTestCase(ElisaTestCase):
         flatt_2 = star.flat_it()
         self.assertTrue(len(flatt_1.points) == len(flatt_2.points))
 
+    @pytest.mark.requires_ld
     def test_orbital_position_container_is_indempotent(self):
-        settings.configure(LD_TABLES=op.join(self.base_path, "data", "light_curves", "limbdarkening"))
 
         system = OrbitalPositionContainer.from_binary_system(self.s, Position(0, 1.0, 0.0, 0.0, 0.0))
         system.build(components_distance=1.0)
@@ -105,3 +107,24 @@ class IndempotenceTestCase(ElisaTestCase):
         flatt_1 = system.flat_it()
         flatt_2 = system.flat_it()
         self.assertTrue(len(flatt_1.star.points) == len(flatt_2.star.points))
+
+
+@pytest.mark.parametrize("method, spots, pulsations", [
+    ("symmetry_points", {0: object()}, {}),
+    ("mirror_face_values", {0: object()}, {}),
+    ("mirror_face_values", {}, {0: object()}),
+    ("symmetry_faces", {0: object()}, {}),
+    ("symmetry_faces", {}, {0: object()}),
+])
+def test_asymmetric_surface_rejects_symmetry_contract(method, spots, pulsations):
+    import numpy as np
+
+    from elisa.analytics.binary_fit.failure_policy import SYNTHESIS_FAILURES
+    from elisa.base.error import ElisaUnexpectedError
+
+    star = StarContainer()
+    star.spots, star.pulsations = spots, pulsations
+    args = () if method == "symmetry_points" else (np.array([1.0]),)
+    with pytest.raises(ElisaUnexpectedError) as caught:
+        getattr(star, method)(*args)
+    assert not isinstance(caught.value, SYNTHESIS_FAILURES)

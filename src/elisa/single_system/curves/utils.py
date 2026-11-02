@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from elisa import atm, settings
+from elisa import settings
+from elisa.atm import atm
 from elisa.base.curves.utils import get_component_limbdarkening_cfs
 from elisa.observer.passband import init_bolometric_passband
 

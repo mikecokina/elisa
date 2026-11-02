@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
-from typing import Literal
 
 import numpy as np
 from matplotlib import pyplot as plt
 from numpy.typing import NDArray
 
 from elisa import umpy as up
+from elisa.base.error import (
+    raise_elisa_not_implemented_error,
+    raise_elisa_operation_input_error,
+)
 from elisa.base.types import FLOAT
+from elisa.conf.enums import OrbitalSortKey
 from elisa.logger import getLogger
 from elisa.types import Float, NumpyBool
 from elisa.utils import is_empty, polar_to_cartesian
@@ -163,7 +167,7 @@ class OrbitalSupplements(Sequence[tuple[NDArray[Float], NDArray[Float]]]):
 
     def sort(
         self,
-        by: Literal["index", "distance", "radius"] = "distance",
+        by: OrbitalSortKey | str = OrbitalSortKey.DISTANCE,
     ) -> OrbitalSupplements:
         """Sort stored orbital positions by the selected quantity.
 
@@ -177,18 +181,18 @@ class OrbitalSupplements(Sequence[tuple[NDArray[Float], NDArray[Float]]]):
         - ``"radius"`` - sort by the same column as distance
 
         :param by: Sorting key.
-        :type by: Literal["index", "distance", "radius"]
+        :type by: OrbitalSortKey | str
         :return: Sorted orbital supplements instance.
         :rtype: OrbitalSupplements
-        :raises ValueError: If ``by`` has an invalid value.
+        :raises ElisaOperationInputError: If the caller supplies an unsupported sorting key.
         """
-        if by == "index":
+        if by == OrbitalSortKey.INDEX:
             sort_column = 0
-        elif by in {"distance", "radius"}:
+        elif by in {OrbitalSortKey.DISTANCE, OrbitalSortKey.RADIUS}:
             sort_column = 1
         else:
-            message = "Invalid value of `by`."
-            raise ValueError(message)
+            message = f"Unsupported orbital sorting key {by!r}; expected index, distance or radius."
+            raise_elisa_operation_input_error(message)
 
         sort_index = np.argsort(self.body[:, sort_column])
         self._body = self.body[sort_index]
@@ -203,16 +207,19 @@ class OrbitalSupplements(Sequence[tuple[NDArray[Float], NDArray[Float]]]):
         """
         return self.__len__()
 
+    # noinspection PyMethodMayBeStatic
     def to_orbital_position(self) -> None:
         """Convert stored rows to orbital-position objects.
 
         This method is currently not implemented.
 
+        :raises ElisaNotImplementedError: Always raised for this unfinished helper.
+
         :return: ``None``.
         :rtype: None
         """
         message = "`to_orbital_position` is not implemented yet."
-        raise NotImplementedError(message)
+        raise_elisa_not_implemented_error(message)
 
     def plot_bodies(self) -> None:
         """Visualize orbital positions stored in ``body``.

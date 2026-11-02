@@ -10,6 +10,7 @@ from copy import copy
 from elisa import umpy as up
 from elisa import settings, BinarySystem, ld
 from elisa.binary_system.surface import temperature
+from elisa.base.error import ElisaLimbDarkeningError
 from elisa.utils import is_empty
 from tests import utils as testutils
 from tests.utils import ElisaTestCase
@@ -17,12 +18,12 @@ from tests.utils import ElisaTestCase
 set_astropy_units()
 
 
+@pytest.mark.requires_ld(passbands=("bolometric",), laws=("linear",))
 class BuildSpotFreeTemperatureTestCase(ElisaTestCase):
     def generator_test_temperatures(self, key, allowed_range=None):
 
         settings.configure(**{
             "LIMB_DARKENING_LAW": "linear",
-            "LD_TABLES": op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves", "limbdarkening")
         })
 
         s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS[key])
@@ -48,9 +49,9 @@ class BuildSpotFreeTemperatureTestCase(ElisaTestCase):
                             (obtained_secondary[1] <= allowed_range[1][1]))
 
     def test_build_temperatures_detached(self):
-        with self.assertRaises(Exception) as context:
+        with self.assertRaises(ElisaLimbDarkeningError) as context:
             self.generator_test_temperatures('detached')
-        msg = "Limb darkening interpolation produced numpy.nan/None."
+        msg = "Limb darkening interpolation produced numpy.nan/None or infinity."
         self.assertTrue(msg in str(context.exception))
 
     def test_build_temperatures_detached_physical(self):
@@ -63,12 +64,12 @@ class BuildSpotFreeTemperatureTestCase(ElisaTestCase):
         self.generator_test_temperatures('semi-detached', [[3760, 5335], [3840, 5450]])
 
 
+@pytest.mark.requires_ld(passbands=("bolometric",), laws=("linear",))
 class BuildSpottyTemperatureTestCase(ElisaTestCase):
     def setUp(self):
         super(BuildSpottyTemperatureTestCase, self).setUp()
         settings.configure(**{
             "LIMB_DARKENING_LAW": "linear",
-            "LD_TABLES": op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves", "limbdarkening")
         })
     
     def generator_test_temperatures(self, key):
@@ -104,7 +105,6 @@ class GravityDarkeningAlbedoTestCase(ElisaTestCase):
         super(GravityDarkeningAlbedoTestCase, self).setUp()
         settings.configure(**{
             "LIMB_DARKENING_LAW": "linear",
-            "LD_TABLES": op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves", "limbdarkening")
         })
         self._base_model = {
               "system": {
@@ -251,3 +251,45 @@ def test_reflection_only_keeps_required_validation(monkeypatch, defect):
             temperature.get_symmetrical_d_gamma((7, 9), (3, 4), ldc, gamma, reflection_only=reflection_only)
         errors.append((type(caught.value), str(caught.value)))
     assert errors[0] == errors[1]
+
+
+@pytest.mark.parametrize("helper", [temperature.get_symmetrical_distance_matrix, temperature.get_symmetrical_gammma])
+@pytest.mark.parametrize("missing", ["primary", "secondary"])
+def test_missing_reflection_symmetry_mask_is_unexpected(helper, missing):
+    from elisa.base.error import ElisaUnexpectedError
+
+    masks = {"primary": np.ones(1, dtype=bool), "secondary": np.ones(1, dtype=bool)}
+    masks[missing] = None
+    args = ((1, 1, 3), (1, 1), {}, {}, masks) if helper is temperature.get_symmetrical_distance_matrix else (
+        (1, 1), (1, 1), {}, np.empty((1, 1, 3)), {}, masks,
+    )
+    with pytest.raises(ElisaUnexpectedError, match="visibility masks"):
+        helper(*args)
+
+
+def test_overcontact_reflection_symmetry_matches_full_surface(monkeypatch):
+    monkeypatch.setattr(settings, "LIMB_DARKENING_LAW", "linear")
+    monkeypatch.setattr(settings, "REFLECTION_EFFECT", False)
+    binary = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS["over-contact"])
+    for star in (binary.primary, binary.secondary):
+        star.discretization_factor = np.radians(10.0)
+        star.limb_darkening_coefficients = {"bolometric": [0.5]}
+    initial = testutils.prepare_orbital_position_container(binary)
+    initial.build_mesh(components_distance=1.0)
+    initial.build_faces(components_distance=1.0)
+    initial.build_surface_areas()
+    initial.build_surface_gravity(components_distance=1.0)
+    initial.build_faces_orientation(components_distance=1.0)
+    initial.build_temperature_distribution(components_distance=1.0)
+    symmetric, full = initial.copy(), initial.copy()
+    monkeypatch.setattr(settings, "REFLECTION_EFFECT", True)
+    # Select the full reflection calculation without changing the surface data.
+    monkeypatch.setattr(full, "has_pulsations", lambda: True)
+    temperature.apply_reflection_effect(symmetric, 1.0, 2)
+    temperature.apply_reflection_effect(full, 1.0, 2)
+    for component in ("primary", "secondary"):
+        np.testing.assert_allclose(
+            getattr(symmetric, component).temperatures,
+            getattr(full, component).temperatures,
+            rtol=1e-12,
+        )

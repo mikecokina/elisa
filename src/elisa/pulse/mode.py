@@ -9,6 +9,7 @@ import numpy as np
 from elisa import const as c
 from elisa import settings, units, utils
 from elisa import umpy as up
+from elisa.base.error import raise_elisa_parameters_error
 from elisa.logger import getLogger
 from elisa.pulse.transform import PulsationModeProperties
 
@@ -101,9 +102,11 @@ class PulsationMode:
 
         Raises
         ------
-        ValueError
-            If mandatory parameters are missing or invalid values provided.
-        TypeError
+        ElisaParametersError
+            If parameter validation fails or ``|m| > l``.
+        ElisaMissingKwargsError
+            If mandatory parameters are missing.
+        ElisaInvalidKwargsError
             If invalid keyword arguments are supplied.
 
         Examples
@@ -233,12 +236,27 @@ class PulsationMode:
         """
         return PulsationModeProperties.transform_input(**kwargs)
 
+    def reinitialization_kwargs(self) -> dict[str, Any]:
+        """Return current mode descriptors with their internal physical units."""
+        kwargs: dict[str, Any] = {}
+        for kwarg in self.ALL_KWARGS:
+            value = getattr(self, kwarg)
+            # This optional default is calculated during system initialization;
+            # passing None explicitly to its input validator is invalid.
+            if kwarg == "horizontal_to_radial_amplitude_ratio" and value is None:
+                continue
+            unit = self.default_internal_units[kwarg]
+            if unit not in (units.dimensionless_unscaled, bool) and not isinstance(value, units.Quantity):
+                value = value * unit
+            kwargs[kwarg] = value
+        return kwargs
+
     def validate_mode(self) -> None:
         """Validate that azimuthal order constraint ``|m| <= l`` is satisfied.
 
         Raises
         ------
-        ValueError
+        ElisaParametersError
             If ``|m| > l``, which is physically invalid for spherical harmonics.
 
         """
@@ -246,7 +264,7 @@ class PulsationMode:
             error_msg = (
                 f"Absolute value of azimuthal order m: {self.m} cannot be higher than degree of the mode l: {self.l}."
             )
-            raise ValueError(error_msg)
+            raise_elisa_parameters_error(error_msg)
 
     def init_properties(self, **kwargs) -> None:
         """Initialize pulsation mode properties from input keyword arguments.

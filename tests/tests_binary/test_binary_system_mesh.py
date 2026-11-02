@@ -3,12 +3,15 @@
 from tests import set_astropy_units
 
 import numpy as np
+import pytest
 from numpy.testing import assert_array_equal
 
 from elisa import umpy as up, const, units as u, settings
+from elisa.base import error
 from elisa.base.container import StarContainer
 from elisa.binary_system import model
 from elisa.binary_system.container import OrbitalPositionContainer
+from elisa.binary_system.surface import mesh
 from elisa.const import Position
 from elisa.utils import is_empty, find_nearest_dist_3d
 from tests import utils as testutils
@@ -152,9 +155,9 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
             position=Position(*(0, 1.0, 0.0, 0.0, 0.0)),
             **s.properties_serializer()
         )
-        with self.assertRaises(Exception) as context:
+        with self.assertRaises(error.ElisaSpotError) as context:
             orbital_position_container.build_mesh(components_distance=1.0)
-        self.assertTrue("Please, specify spots wisely" in str(context.exception))
+        self.assertTrue("have no mesh points after overlap processing" in str(context.exception))
 
     @staticmethod
     def test_build_mesh_detached_with_overlapped_like_umbra():
@@ -355,3 +358,46 @@ class MeshUtilsTestCase(ElisaTestCase):
 
         obtained = np.round(obtained, 3)
         assert_array_equal(expected, obtained)
+
+
+def test_entire_spot_cannot_be_omitted(monkeypatch):
+    binary = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS['detached'],
+                                             spots_primary=testutils.SPOTS_META['primary'])
+    container = testutils.prepare_orbital_position_container(binary)
+    monkeypatch.setattr(mesh, 'fsolver', lambda *args, **kwargs: (np.nan, False))
+    count = len(container.primary.spots)
+    with pytest.raises(error.ElisaSpotError, match='surface radius'):
+        mesh.mesh_spots(container, 1., 'primary')
+    assert len(container.primary.spots) == count
+
+
+def test_real_overcontact_spot_neck_intersection_rejected():
+    spot = dict(longitude=30., latitude=90., angular_radius=40., temperature_factor=.9)
+    binary = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS['over-contact'], spots_primary=[spot])
+    container = testutils.prepare_orbital_position_container(binary)
+    with pytest.raises(error.ElisaSpotError, match='calculating surface points') as caught:
+        container.build_mesh(components_distance=1.)
+    assert isinstance(caught.value.__cause__, (error.ElisaMaxIterationError, error.ElisaNumericError))
+    assert container.primary.spots
+
+
+def test_spot_center_translates_solver_failure_and_preserves_cause(monkeypatch):
+    import importlib
+    from elisa.analytics.binary_fit.failure_policy import SYNTHESIS_FAILURES
+
+    solver = importlib.import_module("elisa.opt.fsolver")
+    binary = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS["detached"],
+                                             spots_primary=testutils.SPOTS_META["primary"])
+    container = testutils.prepare_orbital_position_container(binary)
+    cause = ValueError("failed center calculation")
+
+    def broken(*args, **kwargs):
+        raise cause
+
+    monkeypatch.setattr(solver, "fsolve", broken)
+    with pytest.raises(error.ElisaSpotError, match="center of spot") as caught:
+        mesh.mesh_spots(container, 1., "primary")
+    assert isinstance(caught.value, SYNTHESIS_FAILURES)
+    assert type(caught.value.__cause__) is error.ElisaNumericSolverError
+    assert caught.value.__cause__.__cause__ is cause
+    assert error.ElisaNumericSolverError not in SYNTHESIS_FAILURES

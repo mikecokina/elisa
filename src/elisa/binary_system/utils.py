@@ -8,12 +8,18 @@ from jsonschema import ValidationError, validate
 
 from elisa import const, settings, units
 from elisa import umpy as up
-from elisa.base.error import YouHaveNoIdeaError
+from elisa.base.error import (
+    raise_elisa_operation_input_error,
+    raise_elisa_parameters_error,
+    raise_elisa_unexpected_error,
+)
 from elisa.base.transform import SystemProperties
 from elisa.binary_system import model
 from elisa.binary_system.radius import calculate_side_radius
+from elisa.binary_system.transform import RadialVelocityObserverProperties
+from elisa.conf.enums import BinaryComponent
 from elisa.pypex.poly2d.polygon import Polygon
-from elisa.types import ComponentName, Float
+from elisa.types import ComponentName, ComponentSelection, Float
 from elisa.units import DefaultBinarySystemUnits
 from elisa.utils import is_empty
 
@@ -24,7 +30,6 @@ if TYPE_CHECKING:
 
     from elisa.binary_system.container import OrbitalPositionContainer
 
-ComponentSelection: TypeAlias = Literal["primary", "secondary", "all", "both"]
 JSONScalar: TypeAlias = str | int | Float | bool | None
 JSONValue: TypeAlias = JSONScalar | dict[str, "JSONValue"] | list["JSONValue"]
 JSONDict: TypeAlias = dict[str, JSONValue]
@@ -173,7 +178,7 @@ def hull_to_pypex_poly(hull: NDArray) -> Polygon:
 
 def component_to_list(
     component: ComponentSelection | None,
-) -> list[ComponentName] | []:
+) -> list[ComponentName]:
     """Convert a component selector into a normalized list of components.
 
     If ``component`` is ``None`` or empty, an empty list is returned. Values
@@ -184,19 +189,22 @@ def component_to_list(
     :type component: Literal["primary", "secondary", "all", "both"] | None
     :return: Normalized list of component names.
     :rtype: list[Literal["primary", "secondary"]]
-    :raises ValueError: If the supplied component name is invalid.
+    :raises ElisaOperationInputError: If the component selector is invalid.
     """
     if component in {"all", "both"}:
         return ["primary", "secondary"]
 
-    if component in {"primary", "secondary"}:
-        return [component]
+    if component == BinaryComponent.PRIMARY:
+        return ["primary"]
+    if component == BinaryComponent.SECONDARY:
+        return ["secondary"]
 
     if is_empty(component):
         return []
 
-    message = "Invalid name of the component. Use `primary`, `secondary`, `all` or `both`."
-    raise ValueError(message)
+    # Public model operations also forward their component selection here.
+    message = f"Unsupported component selector {component!r}; expected primary, secondary, all or both."
+    return raise_elisa_operation_input_error(message)
 
 
 def move_sys_onpos(
@@ -298,9 +306,9 @@ def validate_binary_json(data: JSONDict) -> bool:
     :type data: JSONDict
     :return: ``True`` if validation succeeds.
     :rtype: bool
-    :raises ValidationError: If the payload does not match a valid binary
-        system schema or mixes parameterization styles.
-    :raises YouHaveNoIdeaError: If both schemas validate simultaneously.
+    :raises ElisaParametersError: If the payload does not match a valid binary
+        system schema, mixes parameterization styles or matches both schemas.
+        Schema rejection details are preserved in ``__cause__``.
     """
     schema_std = settings.SCHEMA_REGISTRY.get_schema("binary_system_std")
     schema_community = settings.SCHEMA_REGISTRY.get_schema(
@@ -309,6 +317,7 @@ def validate_binary_json(data: JSONDict) -> bool:
 
     std_valid = False
     community_valid = False
+    schema_error: ValidationError | None = None
 
     try:
         validate(instance=data, schema=schema_std)
@@ -319,21 +328,27 @@ def validate_binary_json(data: JSONDict) -> bool:
     try:
         validate(instance=data, schema=schema_community)
         community_valid = True
-    except ValidationError:
-        pass
+    except ValidationError as exc:
+        schema_error = exc
+
+    if not community_valid and not std_valid:
+        message = "BinarySystem cannot be created from supplied JSON schema."
+        raise_elisa_parameters_error(message, schema_error)
 
     system_section = data.get("system", {})
     primary_section = data.get("primary", {})
     secondary_section = data.get("secondary", {})
 
-    is_mixed = "mass_ratio" in system_section or "semi_major_axis" in system_section
-    if isinstance(system_section, dict) and is_mixed and std_valid:
+    is_mixed = isinstance(system_section, dict) and (
+        "mass_ratio" in system_section or "semi_major_axis" in system_section
+    )
+    if is_mixed and std_valid:
         message = (
             "You probably tried to input your parameters in `standard` format "
             "but your parameters include `mass_ratio` or `semi_major_axis` "
             "(use either (M1, M2) or (q, a))."
         )
-        raise ValidationError(message)
+        raise_elisa_parameters_error(message)
 
     if (
         isinstance(primary_section, dict)
@@ -346,19 +361,15 @@ def validate_binary_json(data: JSONDict) -> bool:
             "but your parameters include masses of the components "
             "(use either (M1, M2) or (q, a))."
         )
-        raise ValidationError(message)
-
-    if not community_valid and not std_valid:
-        message = "BinarySystem cannot be created from supplied JSON schema."
-        raise ValidationError(message)
+        raise_elisa_parameters_error(message)
 
     if community_valid and std_valid:
         message = (
-            "Make sure that the list of fitted parameters contains only "
+            "Make sure that the list of model parameters contains only "
             "`standard` or `community` combinations of parameters "
             "(either (M1, M2) or (q, a))."
         )
-        raise YouHaveNoIdeaError(message)
+        raise_elisa_parameters_error(message)
 
     return True
 
@@ -368,6 +379,7 @@ def _build_found_params_msg(
     m2: JSONValue | None,
     q: JSONValue | None,
     a: JSONValue | None,
+    lookup: str,
 ) -> str:
     """Build message describing which parameters were found in the JSON.
 
@@ -379,6 +391,7 @@ def _build_found_params_msg(
     :type q: JSONValue | None
     :param a: Semi-major axis or asini value or None.
     :type a: JSONValue | None
+    :param lookup: Name of the inspected separation parameter.
     :return: Formatted message of found parameters.
     :rtype: str
     """
@@ -390,7 +403,7 @@ def _build_found_params_msg(
     if q is not None:
         found_params.append("system.mass_ratio")
     if a is not None:
-        found_params.append("system.semi_major_axis")
+        found_params.append(f"system.{lookup}")
     return f"Found parameters: {', '.join(found_params) if found_params else 'none'}"
 
 
@@ -455,7 +468,7 @@ def resolve_json_kind(data: JSONDict, *, _sin: bool = False) -> Literal["std", "
     :type _sin: bool
     :return: Resolved JSON kind, either ``"std"`` or ``"community"``.
     :rtype: Literal["std", "community"]
-    :raises LookupError: If the JSON content is insufficient or inconsistent.
+    :raises ElisaUnexpectedError: If neither required parameter pair is available.
     """
     lookup = "asini" if _sin else "semi_major_axis"
 
@@ -474,10 +487,18 @@ def resolve_json_kind(data: JSONDict, *, _sin: bool = False) -> Literal["std", "
     if q is not None and a is not None:
         return "community"
 
-    found_msg = _build_found_params_msg(m1, m2, q, a)
+    # Callers must supply a complete parameterization. Candidate drift changes
+    # values, not the required keys. This also applies to from_json(): its caller
+    # owns supplying a complete parameter pair before model construction.
+    # Missing pairs violate that contract, so this is ElisaUnexpectedError,
+    # not a lookup failure or a candidate penalty; fitting must stop.
+    found_msg = _build_found_params_msg(m1, m2, q, a, lookup)
     missing_msg = _build_missing_parts_msg(m1, m2, q, a, lookup)
-    error_msg = f"Invalid fitting parameters. {found_msg}. You need either: {missing_msg}"
-    raise LookupError(error_msg)
+    error_msg = (
+        f"Cannot determine the binary system parameterization. {found_msg}. "
+        f"A complete standard or community parameter pair is required: {missing_msg}."
+    )
+    return raise_elisa_unexpected_error(error_msg)
 
 
 def transform_json_community_to_std(data: JSONDict) -> JSONDict:
@@ -496,19 +517,21 @@ def transform_json_community_to_std(data: JSONDict) -> JSONDict:
     primary_section = data["primary"]
     secondary_section = data["secondary"]
 
+    # Internal serializers/from_json must preserve the three mapping sections.
+    # Candidate values may drift, but section types are a caller contract.
     if not isinstance(system_section, dict):
         message = "Expected `system` section to be a dictionary."
-        raise TypeError(message)
+        raise_elisa_unexpected_error(message)
 
     if not isinstance(primary_section, dict):
         message = "Expected `primary` section to be a dictionary."
-        raise TypeError(message)
+        raise_elisa_unexpected_error(message)
 
     if not isinstance(secondary_section, dict):
         message = "Expected `secondary` section to be a dictionary."
-        raise TypeError(message)
+        raise_elisa_unexpected_error(message)
 
-    q = system_section.pop("mass_ratio")
+    q = RadialVelocityObserverProperties.mass_ratio(system_section.pop("mass_ratio"))
     a = SystemProperties.semi_major_axis(system_section.pop("semi_major_axis"))
     period_value = copy(system_section["period"])
     period = (SystemProperties.period(period_value) * DefaultBinarySystemUnits.system.period).to(units.TIME_UNIT).value

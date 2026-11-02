@@ -6,10 +6,12 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from elisa import const, settings
+from elisa.base.error import raise_elisa_not_implemented_error, raise_elisa_unexpected_error
 from elisa.binary_system import dynamic, surface
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.curves import c_appx_router, c_managed
 from elisa.binary_system.curves import utils as crv_utils
+from elisa.conf.enums import CurveType
 from elisa.logger import getLogger
 from elisa.observer.mp_manager import manage_observations
 
@@ -30,7 +32,7 @@ PHASE_SPAN_TEST_THRESHOLD = 0.79
 
 def resolve_curve_method(
     system: BinarySystem,
-    curve: str,
+    curve: CurveType,
 ) -> Callable[..., dict[str, NDArray[Float]]]:
     """Resolve which curve-calculation method to use.
 
@@ -39,12 +41,13 @@ def resolve_curve_method(
 
     :param system: Binary system instance.
     :type system: BinarySystem
-    :param curve: Curve selector. Allowed values are ``"lc"`` and ``"rv"``.
-    :type curve: str
+    :param curve: Curve selector: ``CurveType.LC`` or ``CurveType.RV``.
+    :type curve: CurveType
     :return: Callable curve-calculation method.
     :rtype: Callable[..., dict[str, NDArray[Float]]]
     """
-    if curve == "lc":
+    fn_array: tuple[Callable[..., dict[str, NDArray[Float]]], ...]
+    if curve == CurveType.LC:
         # noinspection PyProtectedMember
         fn_array = (
             system._compute_circular_synchronous_lightcurve,  # noqa: SLF001
@@ -53,7 +56,7 @@ def resolve_curve_method(
             system._compute_eccentric_spotty_lightcurve,  # noqa: SLF001
             system._compute_eccentric_lightcurve,  # noqa: SLF001
         )
-    elif curve == "rv":
+    elif curve == CurveType.RV:
         # noinspection PyProtectedMember
         fn_array = (
             system._compute_circular_synchronous_rv_curve,  # noqa: SLF001
@@ -63,8 +66,10 @@ def resolve_curve_method(
             system._compute_eccentric_rv_curve_no_spots,  # noqa: SLF001
         )
     else:
-        message = "Invalid value of argument `curve`. Only `lc` and `rv` are allowed."
-        raise ValueError(message)
+        # Internal callers must select LC or RV before entering this router;
+        # candidate parameter changes cannot introduce another curve type.
+        message = f"Invalid curve selector {curve!r}; expected CurveType.LC or CurveType.RV."
+        raise_elisa_unexpected_error(message)
 
     is_circular = system.eccentricity == 0
     is_eccentric = 1 > system.eccentricity > 0
@@ -100,8 +105,11 @@ def resolve_curve_method(
         logger.debug("calculating curve for eccentric binary system without spotty components")
         return fn_array[4]
 
-    message = "Orbit type not implemented or invalid."
-    raise NotImplementedError(message)
+    message = (
+        f"No {curve!r} curve calculation method is implemented for "
+        f"{type(system).__name__} with eccentricity={system.eccentricity!r}."
+    )
+    return raise_elisa_not_implemented_error(message)
 
 
 def prep_initial_system(

@@ -9,9 +9,17 @@ from scipy import optimize
 from elisa import const, units, utils
 from elisa import umpy as up
 from elisa.base.curves import utils as rv_utils
+from elisa.base.error import (
+    raise_elisa_invalid_kwargs_error,
+    raise_elisa_max_iteration_error,
+    raise_elisa_numeric_error,
+    raise_elisa_operation_input_error,
+    raise_elisa_parameters_error,
+)
 from elisa.base.star import Star
 from elisa.base.system import System
 from elisa.base.types import INT
+from elisa.conf.enums import RVMethod
 from elisa.logger import getLogger
 from elisa.opt.fsolver import fsolve
 from elisa.single_system import graphic, model
@@ -71,7 +79,7 @@ if TYPE_CHECKING:
     SingleSystemParams = SingleStandardParams | SingleRadiusParams
 
 
-class SingleSystem(System):
+class SingleSystem(System[Star]):
     r"""Represent a rotating single-star system.
 
     Child class of :class:`elisa.base.system.System`.
@@ -249,6 +257,7 @@ class SingleSystem(System):
         utils.check_missing_kwargs(SingleSystem.MANDATORY_KWARGS, kwargs, instance_of=SingleSystem)
         self.object_params_validity_check({"star": star}, self.STAR_MANDATORY_KWARGS)
         kwargs = self.transform_input(**kwargs)
+        self._gamma_was_supplied: bool = "gamma" in kwargs
 
         super().__init__(name, **kwargs)
 
@@ -337,10 +346,10 @@ class SingleSystem(System):
         # Convert TypedDict to plain mapping for downstream functions that
         # expect a standard dict[str, Any]. Keep a local mutable copy because
         # some transforms return plain dicts.
-        raw_data: dict[str, Any] = dict(deepcopy(data))
-
+        data_copy = deepcopy(data)
         if _verify:
-            sys_utils.validate_single_json(raw_data)
+            sys_utils.validate_single_json(data_copy)
+        raw_data: dict[str, Any] = dict(data_copy)
 
         kind_of = _kind_of or sys_utils.resolve_json_kind(raw_data)
         if kind_of == "radius":
@@ -373,14 +382,14 @@ class SingleSystem(System):
         :returns: Built :class:`SinglePositionContainer` for the requested
             phase or time.
         :rtype: elisa.single_system.container.SinglePositionContainer
-        :raises ValueError: If both ``phase`` and ``time`` are supplied.
+        :raises ElisaOperationInputError: If both ``phase`` and ``time`` are supplied.
         """
         if phase is not None and time is not None:
             msg = (
                 "Please specify whether you want to build your container EITHER at given photometric "
                 "`phase` or at given `time`."
             )
-            raise ValueError(msg)
+            raise_elisa_operation_input_error(msg)
 
         phase = phase if time is None else utils.jd_to_phase(
             time,
@@ -405,12 +414,12 @@ class SingleSystem(System):
 
         :param kwargs: Mapping of property names to check.
         :type kwargs: dict[str, object]
-        :raises AttributeError: If any entry in ``kwargs`` is not a valid property.
+        :raises ElisaInvalidKwargsError: If any entry in ``kwargs`` is not a valid property.
         """
         is_not = [f"`{k}`" for k in kwargs if k not in cls.ALL_KWARGS]
         if is_not:
             msg = f"Arguments {', '.join(is_not)} are not valid {cls.__name__} properties."
-            raise AttributeError(msg)
+            raise_elisa_invalid_kwargs_error(msg)
 
     def critical_break_up_radius(self) -> Float:
         """Return the critical break-up equatorial radius for the system.
@@ -431,10 +440,26 @@ class SingleSystem(System):
     def get_info(self) -> None:
         """Return formatted summary information about the system."""
 
+    def reinitialization_kwargs(self) -> dict[str, Any]:
+        """Return current system parameters, omitting the original default gamma.
+
+        As with Star, reassignment of the same NaN singleton to an originally
+        omitted parameter cannot be distinguished from its untouched default.
+        """
+        kwargs = self.kwargs_serializer()
+        # As for Star, newly computed nonfinite values must be validated.
+        if not self._gamma_was_supplied and self.gamma is up.NaN:
+            del kwargs["gamma"]
+        return kwargs
+
     def init(self) -> None:
         """Re-initialize the instance after parameter changes."""
         logger.info("re/initialising class instance %s", SingleSystem.__name__)
-        self.__init__(star=self.star, **self.kwargs_serializer())
+        self.object_params_validity_check({"star": self.star}, self.STAR_MANDATORY_KWARGS)
+        # Rebuild modes without reconstructing the star's derived surface potential.
+        if self.star.has_pulsations():
+            self.star.pulsations = self.star.kwargs_serializer()["pulsations"]
+        self.__init__(star=self.star, **self.reinitialization_kwargs())
 
     def init_orbit(self) -> None:
         """Initialize the orbit helper used for computing lines of sight."""
@@ -465,8 +490,8 @@ class SingleSystem(System):
 
         :returns: Mapping of component name to calculated radii.
         :rtype: dict[str, dict[str, elisa.types.Float]]
-        :raises ValueError: If one of the radius solvers fails for a
-            non-physical system.
+        :raises ElisaParametersError: If a radius cannot be calculated from the
+            supplied system parameters. The original failure is preserved as its cause.
         """
         fns = [sradius.calculate_polar_radius, sradius.calculate_equatorial_radius]
         radii: dict[str, dict[str, Float]] = {"star": {}}
@@ -484,12 +509,9 @@ class SingleSystem(System):
             }
             try:
                 radius = fn(**kwargs)
-            except Exception as err:
-                msg = (
-                    f"Function {fn.__name__} was not able to calculate its radius. "
-                    f"Your system is not physical. Exception: {err}"
-                )
-                raise ValueError(msg) from err
+            except Exception as exc:  # noqa: BLE001 - model initialization maps radius failures to invalid parameters
+                msg = f"Cannot calculate {param} from the supplied system parameters: {exc}"
+                raise_elisa_parameters_error(msg, exc)
 
             radii["star"][param] = radius
 
@@ -558,7 +580,8 @@ class SingleSystem(System):
         :returns: Serialized and transformed property mapping.
         :rtype: dict[str, object]
         """
-        props = SingleSystemProperties.transform_input(**self.kwargs_serializer())
+        props = SingleSystemProperties.transform_input(**self.reinitialization_kwargs())
+        props.setdefault("gamma", self.gamma)
         props.update(
             {
                 "angular_velocity": self.angular_velocity,
@@ -588,37 +611,42 @@ class SingleSystem(System):
 
         :returns: Critical surface potential.
         :rtype: elisa.types.Float
-        :raises ValueError: If the root-finding iteration does not converge to
-            a valid solution.
+        :raises ElisaMaxIterationError: If the root-finding iteration does not converge.
+        :raises ElisaNumericError: If the solver returns a nonfinite solution.
         """
         precalc_args = self.star.mass, self.angular_velocity, c.HALF_PI
         args = (model.pre_calculate_for_potential_value(*precalc_args), 0.0)
 
         x0 = -c.G * self.star.mass / self.star.surface_potential
-        solution = optimize.newton(
+        solution, result = optimize.newton(
             model.radial_potential_derivative,
             x0,
             args=args[0],
             tol=1e-12,
+            full_output=True,
+            disp=False,
         )
-        if np.isnan(solution):
+        if not result.converged:
             msg = (
                 "Iteration process to solve critical potential seems to lead nowhere "
                 "(critical potential solver has failed)."
             )
-            raise ValueError(msg)
+            raise_elisa_max_iteration_error(msg)
+        if not np.isfinite(solution):
+            msg = "Critical potential solver returned a nonfinite radius."
+            raise_elisa_numeric_error(msg)
 
         return model.potential_fn(solution, *args)
 
     def check_stability(self) -> None:
         """Check whether the star is rotationally stable.
 
-        :raises ValueError: If the star rotates above critical break-up
+        :raises ElisaParametersError: If the star rotates above critical break-up
             velocity.
         """
         if self.star.critical_surface_potential < self.star.surface_potential:
             msg = "Non-physical system. Star rotation is above critical break-up velocity."
-            raise ValueError(msg)
+            raise_elisa_parameters_error(msg)
 
     def get_positions_method(self) -> Callable[..., Any]:
         """Return the method used to calculate observer line-of-sight positions.
@@ -732,10 +760,10 @@ class SingleSystem(System):
             ``None`` when the requested ``method`` is not recognised.
         :rtype: dict[str, numpy.typing.NDArray[elisa.types.Float]] | None
         """
-        if kwargs["method"] == "kinematic":
+        if kwargs["method"] == RVMethod.KINEMATIC:
             return rv.com_radial_velocity(self, **kwargs)
 
-        if kwargs["method"] == "radiometric":
+        if kwargs["method"] == RVMethod.RADIOMETRIC:
             fn_arr = (
                 self._compute_rv_curve_without_pulsations,
                 self._compute_rv_curve_with_pulsations,

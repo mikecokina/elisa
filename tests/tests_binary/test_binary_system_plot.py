@@ -4,6 +4,8 @@ from tests import set_astropy_units
 
 import unittest
 
+import pytest
+
 from matplotlib.figure import Figure
 from matplotlib import pyplot as plt
 
@@ -333,6 +335,8 @@ class BinarySystemPlotWireframeTestCase(ElisaTestCase):
         self.assertIsInstance(fig, Figure)
 
 
+@pytest.mark.requires_ld(passbands=("bolometric",), laws=("cosine",))
+@pytest.mark.requires_atmosphere
 class BinarySystemPlotSurfaceTestCase(ElisaTestCase):
     """Happy path tests for Plot.surface() method."""
 

@@ -3,9 +3,12 @@
 from tests import set_astropy_units
 
 import numpy as np
+import pytest
 from numpy.testing import assert_array_equal
 
 from elisa.binary_system import t_layer
+from elisa.base.error import ElisaParametersError
+from elisa.analytics.binary_fit.failure_policy import SYNTHESIS_FAILURES
 from tests.utils import ElisaTestCase
 
 set_astropy_units()
@@ -28,3 +31,11 @@ class SupportMethodTestCase(ElisaTestCase):
         phases = t_layer.jd_to_phase(t0, p, jd)
         obtained = np.round(t_layer.phase_to_jd(t0, p, phases), 5)
         assert_array_equal(obtained, jd)
+
+
+@pytest.mark.parametrize("t0", [0.0, -1.0])
+@pytest.mark.parametrize("conversion", [t_layer.jd_to_phase, t_layer.phase_to_jd])
+def test_invalid_reference_time_is_a_penalizable_parameter_error(t0, conversion):
+    with pytest.raises(ElisaParametersError, match="Primary minimum time") as caught:
+        conversion(t0, 1.0, np.array([0.1, 0.2]))
+    assert isinstance(caught.value, SYNTHESIS_FAILURES)

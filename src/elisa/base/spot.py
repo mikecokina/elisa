@@ -1,40 +1,26 @@
 from __future__ import annotations
 
-import gc
 from copy import copy
 from typing import TYPE_CHECKING
 
 import numpy as np
 
-from elisa import settings, utils
 from elisa import umpy as up
 from elisa import units as u
+from elisa import utils
+from elisa.base.error import raise_elisa_spot_error
 from elisa.base.transform import SpotProperties
 from elisa.base.types import INT
 from elisa.logger import getLogger
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
-    from typing import Protocol
 
     from numpy.typing import NDArray
 
-    from elisa.types import Float, Int
+    from elisa.base.container import StarContainer
+    from elisa.types import Float, Int, VertexMap
     from elisa.units import _DefaultSpotInputUnits, _DefaultSpotUnits
-
-    class ContainerWithSpots(Protocol):
-        """Minimal protocol describing objects used by spot helpers.
-
-        Implemented to provide useful type hints for container-like objects
-        (e.g. star/system containers) that hold spot instances.
-        """
-
-        spots: Mapping[Int, Spot]
-        points: NDArray[Float]
-        faces: NDArray[Int]
-        name: str
-
-        def remove_spot(self, spot_index: Int) -> None: ...
 
 
 logger = getLogger(__name__)
@@ -182,7 +168,7 @@ class Spot:
 
 
 def split_points_of_spots_and_component(
-    on_container: ContainerWithSpots,
+    on_container: StarContainer,
     points: NDArray[Float],
     vertices_map: NDArray[Int],
 ) -> dict:
@@ -193,7 +179,7 @@ def split_points_of_spots_and_component(
 
     :param on_container: Container holding spot instances (must implement a
         ``spots`` mapping).
-    :type on_container: ContainerWithSpots
+    :type on_container: elisa.base.container.StarContainer
     :param points: Array containing component and spot points stacked together.
     :type points: numpy.typing.NDArray[numpy.float64]
     :param vertices_map: Integer array assigning each point to either the
@@ -218,11 +204,11 @@ def split_points_of_spots_and_component(
     return {**component_points, **spots_points}
 
 
-def setup_body_points(on_container: ContainerWithSpots, points: dict) -> None:
+def setup_body_points(on_container: StarContainer, points: dict) -> None:
     """Assign component and spot points back to the container.
 
     :param on_container: Container with ``spots`` mapping.
-    :type on_container: ContainerWithSpots
+    :type on_container: elisa.base.container.StarContainer
     :param points: Mapping returned by :func:`split_points_of_spots_and_component`.
     :type points: dict
     """
@@ -231,18 +217,18 @@ def setup_body_points(on_container: ContainerWithSpots, points: dict) -> None:
         on_container.spots[int(spot_index)].points = spot
 
 
-def incorporate_spots_mesh(to_container: ContainerWithSpots, component_com: Float) -> ContainerWithSpots:
+def incorporate_spots_mesh(to_container: StarContainer, component_com: Float) -> StarContainer:
     """Incorporate spot points into component mesh and remove underlying points.
 
     The function collects component points, appends spot points and produces a
     vertices map that is then used to split points back to component and spots.
 
     :param to_container: Container with spot definitions.
-    :type to_container: ContainerWithSpots
+    :type to_container: elisa.base.container.StarContainer
     :param component_com: X coordinate of component centre of mass.
     :type component_com: Float
     :returns: The same container with updated ``points`` and spot ``points`` set.
-    :rtype: ContainerWithSpots
+    :rtype: elisa.base.container.StarContainer
     """
     if not to_container.spots:
         logger.debug(
@@ -285,20 +271,20 @@ def incorporate_spots_mesh(to_container: ContainerWithSpots, component_com: Floa
 
 
 def remap_surface_elements(
-    on_container: ContainerWithSpots,
+    on_container: StarContainer,
     mapper: Mapping,
     points_to_remap: NDArray[Float],
-) -> ContainerWithSpots:
+) -> StarContainer:
     """Remap points and faces arrays for the component and spots according to a mapper.
 
     :param on_container: Container with ``spots``.
-    :type on_container: ContainerWithSpots
+    :type on_container: elisa.base.container.StarContainer
     :param mapper: Mapping with keys ``"object"`` and ``"spots"`` describing new indices.
     :type mapper: Mapping
     :param points_to_remap: Array with all points used in remapping.
     :type points_to_remap: numpy.typing.NDArray[numpy.float64]
     :returns: Updated container.
-    :rtype: ContainerWithSpots
+    :rtype: elisa.base.container.StarContainer
     """
     logger.debug("changing value of parameter points of component %s", on_container.name)
     indices = np.unique(mapper["object"])
@@ -321,26 +307,25 @@ def remap_surface_elements(
         remap_list = np.empty(points_length, dtype=INT)
         remap_list[indices] = up.arange(np.shape(indices)[0])
         on_container.spots[spot_index].faces = remap_list[mapper["spots"][spot_index]]
-    gc.collect()
     return on_container
 
 
 def remove_overlaped_spots_by_spot_index(
-    from_container: ContainerWithSpots,
+    from_container: StarContainer,
     keep_spot_indices: NDArray[Int],
     *,
     _raise: bool = True,
-) -> ContainerWithSpots:
+) -> StarContainer:
     """Remove spot definitions that are overlapped and have no points / faces left.
 
     :param from_container: Container with ``spots``.
-    :type from_container: ContainerWithSpots
+    :type from_container: elisa.base.container.StarContainer
     :param keep_spot_indices: Iterable of spot indices that have points and should be kept.
     :type keep_spot_indices: numpy.typing.NDArray[int]
-    :param _raise: If True, raise :class:`ValueError` when spots would be removed.
+    :param _raise: If True, raise :class:`ElisaSpotError` when spots would be removed.
     :type _raise: bool
     :returns: Updated container.
-    :rtype: ContainerWithSpots
+    :rtype: elisa.base.container.StarContainer
     """
     all_spot_indices = {int(val) for val in from_container.spots}
     spot_indices_to_remove = all_spot_indices.difference(keep_spot_indices)
@@ -349,38 +334,35 @@ def remove_overlaped_spots_by_spot_index(
     ]
     spots_meta_str = "\n".join([str(meta) for meta in spots_meta])
     if _raise and not utils.is_empty(spot_indices_to_remove):
-        msg = f"Spots {spots_meta_str} have no pointns to continue.\nPlease, specify spots wisely."
-        raise ValueError(msg)
+        msg = f"The following spots have no mesh points after overlap processing:\n{spots_meta_str}"
+        raise_elisa_spot_error(msg)
     for spot_index in spot_indices_to_remove:
         from_container.remove_spot(spot_index)
     return from_container
 
 
 def remove_overlaped_spots_by_vertex_map(
-    from_container: ContainerWithSpots,
-    vertices_map: NDArray,
-) -> ContainerWithSpots:
+    from_container: StarContainer,
+    vertices_map: VertexMap,
+) -> StarContainer:
     """Remove spots that are totally overlapped by another spot according to ``vertices_map``.
 
     :param from_container: Container with ``spots``.
-    :type from_container: ContainerWithSpots
+    :type from_container: elisa.base.container.StarContainer
     :param vertices_map: Iterable of vertex descriptors; each item must provide an
         ``"enum"`` key with spot ownership index.
-    :type vertices_map: numpy.typing.NDArray
+    :type vertices_map: elisa.types.VertexMap
     :returns: Updated container.
-    :rtype: ContainerWithSpots
+    :rtype: elisa.base.container.StarContainer
     """
     spots_instance_indices = list(
         {vertices_map[ix]["enum"] for ix, _ in enumerate(vertices_map) if vertices_map[ix]["enum"] >= 0},
     )
     for spot_index in list(from_container.spots.keys()):
         if spot_index not in spots_instance_indices:
-            if not settings.SUPPRESS_WARNINGS:
-                logger.warning(
-                    "spot with index %s doesn't contain Any face and will be removed from component %s spot list",
-                    spot_index,
-                    from_container.name,
-                )
-            from_container.remove_spot(spot_index=spot_index)
-    gc.collect()
+            msg = (
+                f"Spot {spot_index} has no assigned mesh vertices on component {from_container.name!r} "
+                "after overlap processing."
+            )
+            raise_elisa_spot_error(msg)
     return from_container

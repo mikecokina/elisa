@@ -14,6 +14,7 @@ from elisa.binary_system.orbit.orbit import (
     component_distance_from_mean_anomaly,
     get_approx_ecl_angular_width,
 )
+from elisa.conf.enums import OrbitalSortKey
 from elisa.logger import getLogger
 from elisa.observer.mp_manager import manage_observations
 
@@ -394,7 +395,7 @@ def eval_symmetrical_counterparts_approximation(
         base_orbit_arr,
         orbit_supplement_arr,
     )
-    orbital_supplements = orbital_supplements.sort(by="distance")
+    orbital_supplements = orbital_supplements.sort(by=OrbitalSortKey.DISTANCE)
 
     idxs_where_nan = np.argwhere(np.isnan(orbital_supplements.mirror[:, 0]))
     if idxs_where_nan.shape[0] == orbital_supplements.mirror.shape[0]:
@@ -507,7 +508,7 @@ def integrate_eccentric_curve_interp_appx(
         body=reduced_orbit_arr,
         mirror=counterpart_position_arr,
     )
-    orbital_supplements = orbital_supplements.sort(by="distance")
+    orbital_supplements = orbital_supplements.sort(by=OrbitalSortKey.DISTANCE)
 
     orbital_positions = np.stack(
         (orbital_supplements.body, orbital_supplements.mirror),

@@ -4,15 +4,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import numpy as np
-
 from elisa import const as c
 from elisa import units as u
+from elisa.base.error import raise_elisa_parameters_error
 from elisa.base.transform import (
     WHEN_FLOAT64,
     SystemProperties,
     deg_transform,
+    integer_transform,
     quantity_transform,
+    scalar_transform,
 )
 from elisa.base.types import FLOAT, INT
 
@@ -34,13 +35,13 @@ class PulsationModeProperties(SystemProperties):
         :type value: int | float
         :returns: Validated angular degree as integer.
         :rtype: int
-        :raises TypeError: If value is not an integer or integer-convertible number.
+        :raises ElisaParametersError: If value has an incompatible object type.
+        :raises ElisaParametersError: If the degree is negative, nonintegral or nonfinite.
         """
-        if int(value) - value == 0:
-            value = int(value)
-        if not isinstance(value, (int, INT)):
-            error_msg = "Angular degree `l` is not (numpy.)int"
-            raise TypeError(error_msg)
+        value = integer_transform(value, parameter="l")
+        if value < 0:
+            error_msg = "Angular degree `l` must be non-negative."
+            raise_elisa_parameters_error(error_msg)
         return value
 
     @staticmethod
@@ -54,14 +55,10 @@ class PulsationModeProperties(SystemProperties):
         :type value: int | float
         :returns: Validated azimuthal order as integer.
         :rtype: int
-        :raises TypeError: If value is not an integer or integer-convertible number.
+        :raises ElisaParametersError: If value has an incompatible object type.
+        :raises ElisaParametersError: If a numeric index is nonintegral or nonfinite.
         """
-        if int(value) - value == 0:
-            value = int(value)
-        if not isinstance(value, (int, INT)):
-            error_msg = "Angular degree `m` is not (numpy.)int"
-            raise TypeError(error_msg)
-        return value
+        return integer_transform(value, parameter="m")
 
     @staticmethod
     def amplitude(value: float | Quantity | str) -> float:
@@ -74,23 +71,15 @@ class PulsationModeProperties(SystemProperties):
         :type value: float | int | u.Quantity | str
         :returns: Validated amplitude in default internal velocity unit.
         :rtype: float
-        :raises TypeError: If value is not a numeric type or Quantity.
-        :raises ValueError: If amplitude is negative.
+        :raises ElisaParametersError: If value is not a numeric type or Quantity.
+        :raises ElisaParametersError: If amplitude is negative or nonfinite.
         """
-        if isinstance(value, (u.Quantity, str)):
-            retval = u.Quantity(value) if isinstance(value, str) else value
-            retval = np.float64(retval.to(u.VELOCITY_UNIT))
-        elif isinstance(value, (int, INT, float, FLOAT)):
-            retval = FLOAT(value)
-        else:
-            error_msg = (
-                "Value of `amplitude` is not (numpy.)int or (numpy.)float "
-                "nor astropy.unit.quantity.Quantity instance."
-            )
-            raise TypeError(error_msg)
+        retval = quantity_transform(
+            value, u.VELOCITY_UNIT, (int, INT, float, FLOAT), parameter="amplitude",
+        )
         if retval < 0:
             error_msg = "Temperature amplitude of mode has to be non-negative number."
-            raise ValueError(error_msg)
+            raise_elisa_parameters_error(error_msg)
 
         return retval
 
@@ -105,27 +94,19 @@ class PulsationModeProperties(SystemProperties):
         :type value: float | int | Quantity | str
         :returns: Validated frequency in default internal frequency unit.
         :rtype: float
-        :raises TypeError: If value is not a numeric type or Quantity.
-        :raises ValueError: If frequency is negative.
+        :raises ElisaParametersError: If value is not a numeric type or Quantity.
+        :raises ElisaParametersError: If frequency is negative or nonfinite.
         """
-        if isinstance(value, (u.Quantity, str)):
-            retval = u.Quantity(value) if isinstance(value, str) else value
-            retval = np.float64(retval.to(u.FREQUENCY_UNIT))
-        elif isinstance(value, (int, INT, float, FLOAT)):
-            retval = (
-                (FLOAT(value) * u.DefaultPulsationsInputUnits["frequency"])
-                .to(u.FREQUENCY_UNIT)
-                .value
-            )
-        else:
-            error_msg = (
-                "Value of `frequency` is not (numpy.)int or (numpy.)float "
-                "nor astropy.unit.quantity.Quantity instance."
-            )
-            raise TypeError(error_msg)
+        retval = quantity_transform(
+            value,
+            u.FREQUENCY_UNIT,
+            (int, INT, float, FLOAT),
+            u.DefaultPulsationsInputUnits.frequency,
+            parameter="frequency",
+        )
         if retval < 0:
             error_msg = "Frequency of the mode has to be non-negative number."
-            raise ValueError(error_msg)
+            raise_elisa_parameters_error(error_msg)
 
         return retval
 
@@ -145,6 +126,7 @@ class PulsationModeProperties(SystemProperties):
             u.DefaultPulsationsUnits.start_phase,
             WHEN_FLOAT64,
             u.DefaultPulsationsInputUnits.start_phase,
+            parameter="start_phase",
         )
 
     @staticmethod
@@ -158,19 +140,20 @@ class PulsationModeProperties(SystemProperties):
         :type value: float | int | u.Quantity | str
         :returns: Validated latitudinal angle in radians, in range [0, pi).
         :rtype: float
-        :raises ValueError: If value is outside the valid range [0, pi).
+        :raises ElisaParametersError: If value is outside the valid range [0, pi).
         """
         retval = deg_transform(
             value,
             u.DefaultPulsationsUnits.mode_axis_theta,
             WHEN_FLOAT64,
             u.DefaultPulsationsInputUnits.mode_axis_theta,
+            parameter="mode_axis_theta",
         )
         if not 0 <= retval < c.PI:
             error_msg = (
                 f"Value of `mode_axis_theta`: {retval} is outside bounds (0, pi)."
             )
-            raise ValueError(error_msg)
+            raise_elisa_parameters_error(error_msg)
 
         return retval
 
@@ -191,6 +174,7 @@ class PulsationModeProperties(SystemProperties):
             u.DefaultPulsationsUnits.mode_axis_phi,
             WHEN_FLOAT64,
             u.DefaultPulsationsInputUnits.mode_axis_phi,
+            parameter="mode_axis_phi",
         )
 
     @staticmethod
@@ -212,6 +196,7 @@ class PulsationModeProperties(SystemProperties):
             u.DefaultPulsationsUnits.temperature_perturbation_phase_shift,
             WHEN_FLOAT64,
             u.DefaultPulsationsInputUnits.temperature_perturbation_phase_shift,
+            parameter="temperature_perturbation_phase_shift",
         )
 
     @staticmethod
@@ -226,11 +211,13 @@ class PulsationModeProperties(SystemProperties):
         :type value: float | int
         :returns: Validated amplitude ratio.
         :rtype: float
-        :raises TypeError: If value is not a numeric type.
+        :raises ElisaParametersError: If value is not a finite numeric scalar.
         """
-        if not isinstance(value, (int, INT, float, FLOAT)):
-            error_msg = "Parameter is not is not (numpy.)int or (numpy.)float"
-            raise TypeError(error_msg)
+        scalar_transform(
+            value,
+            parameter="horizontal_to_radial_amplitude_ratio",
+            accepted_types=(int, INT, float, FLOAT),
+        )
         return value
 
     @staticmethod
@@ -245,11 +232,11 @@ class PulsationModeProperties(SystemProperties):
         :type value: bool
         :returns: Validated boolean value.
         :rtype: bool
-        :raises TypeError: If value is not a boolean.
+        :raises ElisaParametersError: If value is not a boolean.
         """
         if not isinstance(value, bool):
             error_msg = "Parameter `tidally_locked` can contain only boolean"
-            raise TypeError(error_msg)
+            raise_elisa_parameters_error(error_msg)
         return value
 
 

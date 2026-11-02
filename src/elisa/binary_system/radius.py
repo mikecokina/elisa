@@ -5,9 +5,14 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from elisa import const
-from elisa import umpy as up
+from elisa.base.error import (
+    raise_elisa_max_iteration_error,
+    raise_elisa_numeric_error,
+    raise_elisa_unexpected_error,
+)
 from elisa.base.types import FLOAT
 from elisa.binary_system import model
+from elisa.conf.enums import BinaryComponent
 from elisa.opt.fsolver import fsolve
 
 if TYPE_CHECKING:
@@ -59,19 +64,21 @@ def calculate_radius(
     :type theta: Float
     :return: Radius in the requested direction.
     :rtype: Float
-    :raises ValueError: If ``component`` is invalid or if the computed radius
-        is outside the accepted range.
+    :raises ElisaUnexpectedError: If the internal component selector is invalid.
+    :raises ElisaMaxIterationError: If the radius solver does not converge.
+    :raises ElisaNumericError: If the computed radius is outside the accepted range.
     """
-    if component == "primary":
+    if component == BinaryComponent.PRIMARY:
         potential_fn = model.potential_primary_fn
         # noinspection PyTypeChecker
         precalculate_fn = model.pre_calculate_for_potential_value_primary
-    elif component == "secondary":
+    elif component == BinaryComponent.SECONDARY:
         potential_fn = model.potential_secondary_fn
         precalculate_fn = model.pre_calculate_for_potential_value_secondary
     else:
-        message = f"Invalid value of `component` argument {component}. Expecting `primary` or `secondary`."
-        raise ValueError(message)
+        # Component identity is a caller contract, independent of candidate values.
+        message = f"Radius calculation received an unexpected component {component!r}; expected primary or secondary."
+        raise_elisa_unexpected_error(message)
 
     precalc_args = (
         synchronicity,
@@ -96,13 +103,15 @@ def calculate_radius(
 
     radius = solution[0]
 
-    if ier == 1 and not up.isnan(radius) and MAXIMAL_RADIUS_BOUNDARY >= radius >= 0.0:
-        return radius
-
-    if not (0.0 < radius < 1.0):
+    if not np.isfinite(radius):
         message = f"Invalid value of radius {solution} was calculated."
-        raise ValueError(message)
-
+        raise_elisa_numeric_error(message)
+    if ier != 1:
+        message = "Radius solver failed to converge."
+        raise_elisa_max_iteration_error(message)
+    if not (0.0 <= radius <= MAXIMAL_RADIUS_BOUNDARY):
+        message = f"Invalid value of radius {solution} was calculated."
+        raise_elisa_numeric_error(message)
     return radius
 
 

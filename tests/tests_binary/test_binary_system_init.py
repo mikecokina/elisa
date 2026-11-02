@@ -269,7 +269,7 @@ class ValidityTestCase(ElisaTestCase):
                              primary_minimum_time=self._initial_params["primary_minimum_time"],
                              phase_shift=self._initial_params["phase_shift"])
 
-            self.assertTrue(f'Mising argument(s): `{kw}`' in str(context.exception))
+            self.assertTrue(f'Missing argument(s): `{kw}`' in str(context.exception))
 
     def test_invalid_kwarg_checker(self):
         with self.assertRaises(Exception) as context:

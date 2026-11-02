@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from copy import copy
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from elisa import const, settings, utils
 from elisa import umpy as up
+from elisa.base.error import ElisaLookupError, raise_elisa_unexpected_error
 from elisa.base.types import BOOL, FLOAT, INT
 from elisa.binary_system import utils as bsutils
 from elisa.binary_system.curves.utils import (
@@ -14,6 +15,7 @@ from elisa.binary_system.curves.utils import (
     compute_rel_d_geometry,
 )
 from elisa.binary_system.orbit.container import OrbitalSupplements
+from elisa.conf.enums import GeometryUpdateTarget
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -143,10 +145,17 @@ def find_apsidally_corresponding_positions(
     r_body = radii_array[:, base_array[:, 0].astype(INT)]
     r_supplement = radii_array[:, supplement_array[:, 0].astype(INT)]
 
-    ids_of_closest_reduced_values = utils.find_idx_of_nearest(
-        r_body[bigger_comp],
-        r_supplement[bigger_comp],
-    )
+    try:
+        ids_of_closest_reduced_values = utils.find_idx_of_nearest(
+            r_body[bigger_comp],
+            r_supplement[bigger_comp],
+        )
+    except ElisaLookupError as exc:
+        # Preserve the original caller's failure behavior until the orbital
+        # pairing policy is reviewed. The low-level marker must not leak out.
+        if exc.__cause__ is not None:
+            raise exc.__cause__ from None
+        raise_elisa_unexpected_error("Orbital pairing lookup failed without its original cause.", exc)
 
     # Ensure ids_of_closest_reduced_values is explicitly cast to INT
     ids_of_closest_reduced_values = ids_of_closest_reduced_values.astype(INT)
@@ -234,7 +243,7 @@ def resolve_object_geometry_update(
         size=size,
         rel_d=rel_d,
         max_allowed_difference=(max_allowed_difference or settings.MAX_D_FLUX),
-        resolve="object",
+        resolve=GeometryUpdateTarget.OBJECT,
     )
 
 
@@ -289,7 +298,7 @@ def resolve_spots_geometry_update(
             size=size,
             rel_d=d_long,
             max_allowed_difference=(max_allowed_difference or settings.MAX_SPOT_D_LONGITUDE),
-            resolve="spot",
+            resolve=GeometryUpdateTarget.SPOT,
         )
 
     return reducer["primary"], reducer["secondary"]
@@ -301,7 +310,7 @@ def _resolve_geometry_update(
     rel_d: NDArray,
     max_allowed_difference: Float,
     *,
-    resolve: Literal["object", "spot"] = "object",
+    resolve: GeometryUpdateTarget | str = GeometryUpdateTarget.OBJECT,
 ) -> NDArray[NP_BOOL_]:
     """Evaluate where full geometry updates are required.
 
@@ -318,22 +327,24 @@ def _resolve_geometry_update(
         full rebuild is required.
     :type max_allowed_difference: Float
     :param resolve: Decision mode, either ``"object"`` or ``"spot"``.
-    :type resolve: Literal["object", "spot"]
+    :type resolve: GeometryUpdateTarget | str
     :return: Boolean mask indicating where full geometry recalculation is
         required.
     :rtype: NDArray[bool]
-    :raises ValueError: If ``resolve`` has an invalid value.
+    :raises ElisaUnexpectedError: If the internal geometry update selector is invalid.
     """
-    if resolve not in {"object", "spot"}:
-        message = "Invalid option for `resolve`, use `object` or `spot`."
-        raise ValueError(message)
+    if resolve not in {GeometryUpdateTarget.OBJECT, GeometryUpdateTarget.SPOT}:
+        # Both synthesis callers choose a fixed mode; model parameter drift
+        # cannot change this internal dispatch selector.
+        message = f"Unexpected geometry update target {resolve!r}; expected object or spot."
+        raise_elisa_unexpected_error(message)
 
-    if has_spots and resolve == "object":
+    if has_spots and resolve == GeometryUpdateTarget.OBJECT:
         return np.ones(size, dtype=BOOL)
 
     rel_d_array = np.asarray(rel_d)
 
-    if utils.is_empty(rel_d_array) and resolve == "spot":
+    if utils.is_empty(rel_d_array) and resolve == GeometryUpdateTarget.SPOT:
         arr = up.zeros(size, dtype=BOOL)
         arr[0] = True
         return arr

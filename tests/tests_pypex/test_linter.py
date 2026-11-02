@@ -10,6 +10,7 @@ from elisa.pypex.poly2d.point import Point
 class LinterTestCase(ElisaTestCase):
     @staticmethod
     def intersection_equal(a, b):
+        assert len(a) == len(b)
         for x, y, in zip(a, b):
             assert_array_equal([x], [y])
 

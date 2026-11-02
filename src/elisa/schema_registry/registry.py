@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from elisa.base.error import raise_elisa_settings_error
+
 SCHEMA_SEARCH_DIRS: list[Path] = [Path(__file__).resolve().parent / "schema_files"]
 
 
@@ -25,7 +27,7 @@ class Registry:
 
         :param fname: Schema topic name (filename stem without extension).
         :returns: Parsed and composed schema as a dictionary.
-        :raises LookupError: If the base schema cannot be located.
+        :raises ElisaSettingsError: If the base schema cannot be located.
         :raises json.JSONDecodeError: If any schema file contains invalid JSON.
         """
         schema_path = cls._get_schema_path(fname)
@@ -58,7 +60,7 @@ class Registry:
 
         :param fname: Schema topic name (filename stem without extension).
         :returns: Path to the schema file.
-        :raises LookupError: If the schema cannot be found in any search directory.
+        :raises ElisaSettingsError: If the schema cannot be found in any search directory.
         """
         for base_path in SCHEMA_SEARCH_DIRS:
             path = base_path / f"{fname}.sc"
@@ -66,4 +68,4 @@ class Registry:
                 return path
 
         msg = f"No schema found for fname: {fname}."
-        raise LookupError(msg)
+        return raise_elisa_settings_error(msg)

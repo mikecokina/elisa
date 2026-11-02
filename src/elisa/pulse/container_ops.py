@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from elisa import const, utils
+from elisa.base.error import raise_elisa_unexpected_error
 from elisa.base.surface.faces import calculate_normals, set_all_surface_centres
 from elisa.base.types import COMPLEX
 from elisa.pulse import pulsations
@@ -42,11 +43,14 @@ def generate_harmonics(
     :type time: float
     :returns: Star container with updated harmonics on all pulsation modes.
     :rtype: elisa.base.container.StarContainer
-    :raises ValueError: If star container is not flattened.
+    :raises ElisaUnexpectedError: If the caller has not flattened the star container.
     """
-    error_msg = "Pulsations can be calculated only on flattened container."
+    # The synthesis flow must flatten the surface before computing harmonics.
+    # Parameter drift cannot justify skipping this preparation step.
     if not star_container.is_flat():
-        raise ValueError(error_msg)
+        error_msg = ("Cannot generate pulsation harmonics: the star container "
+                     "has not been flattened.")
+        raise_elisa_unexpected_error(error_msg)
 
     # Transform surface points to spherical coordinates
     coords_kwargs = {"kind": "points", "com_x": com_x}
@@ -187,11 +191,13 @@ def complex_displacement(star: StarContainer, scale: float) -> None:
     :type star: elisa.base.container.StarContainer
     :param scale: Scaling factor for amplitudes.
     :type scale: float
-    :raises ValueError: If star container is not flattened.
+    :raises ElisaUnexpectedError: If the caller has not flattened the star container.
     """
-    error_msg = "Pulsations can be calculated only on flattened container."
+    # Flattening is a caller-owned preparation contract, not a candidate constraint.
     if not star.is_flat():
-        raise ValueError(error_msg)
+        error_msg = ("Cannot calculate pulsation displacements: the star "
+                     "container has not been flattened.")
+        raise_elisa_unexpected_error(error_msg)
 
     for mode in star.pulsations.values():
         mode.complex_displacement = kinematics.calculate_displacement_coordinates(

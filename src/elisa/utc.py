@@ -1,10 +1,3 @@
-"""UTC compatibility shim for Python 3.10+ and newer."""
+"""Re-export the standard-library UTC constant for existing ELISa imports."""
 
-from datetime import datetime
-
-try:
-    UTC = datetime.UTC  # type: ignore[attr-defined]
-except AttributeError:
-    from datetime import timezone
-    UTC = timezone.utc
-
+from datetime import UTC as UTC

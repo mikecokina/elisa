@@ -3,6 +3,7 @@
 from tests import set_astropy_units
 
 import os.path as op
+import pytest
 import numpy as np
 
 from elisa import settings
@@ -25,6 +26,8 @@ set_astropy_units()
 TOL = 5e-3
 
 
+@pytest.mark.requires_ld(passbands=("bolometric", "Generic.Bessell.V"))
+@pytest.mark.requires_atmosphere(atlas="ck04")
 class ComputeLightCurvesTestCase(ElisaTestCase):
     PARAMS = {
         'solar':
@@ -59,8 +62,6 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         self.base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves")
 
         settings.configure(**{
-            "LD_TABLES": op.join(self.base_path, "limbdarkening"),
-            "CK04_ATM_TABLES": op.join(self.base_path, "atmosphere"),
             "ATM_ATLAS": "ck04",
             "LIMB_DARKENING_LAW": "linear"
         })

@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 from copy import copy
-from typing import TYPE_CHECKING, Any, Literal, TypeAlias
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 import numpy as np
-from scipy.spatial import Delaunay
+from scipy.spatial import Delaunay, QhullError
 
 from elisa import const
 from elisa import umpy as up
 from elisa import units as u
 from elisa.base import spot
+from elisa.base.error import raise_elisa_numeric_error
 from elisa.base.surface.faces import (
     calculate_normals,
     initialize_model_container,
@@ -20,8 +21,9 @@ from elisa.base.surface.faces import (
 from elisa.base.types import INT
 from elisa.binary_system import utils as bsutils
 from elisa.binary_system.orbit import orbit
+from elisa.binary_system.surface.validation import validate_component_distance
 from elisa.logger import getLogger
-from elisa.types import ComponentName
+from elisa.types import ComponentName, ComponentSelection
 from elisa.utils import is_empty
 
 if TYPE_CHECKING:
@@ -35,7 +37,6 @@ if TYPE_CHECKING:
 
 logger = getLogger(__name__)
 
-ComponentSelection: TypeAlias = Literal["primary", "secondary", "all", "both"]
 SurfaceComponent: TypeAlias = ComponentName
 
 
@@ -94,7 +95,7 @@ def get_visibility_tests(
         # this branch is activated in case of clean surface where symmetries can be used
         # excluding quadrants that can be mirrored using symmetries
         quadrant_exclusion = (
-            up.logical_or(y_test, z_test) if morphology == "over-contfact" else np.array([True] * len(centres))
+            up.logical_or(y_test, z_test) if morphology == "over-contact" else np.array([True] * len(centres))
         )
 
         single_quadrant = up.logical_and(y_test, z_test)
@@ -176,6 +177,9 @@ def build_faces(
 
     Faces are evaluated from points that must already be available.
 
+    Numeric distances that are nonfinite or nonpositive reject the candidate;
+    missing or malformed distance inputs violate the internal calling contract.
+
     :param system: Orbital position container instance.
     :type system: OrbitalPositionContainer
     :param components_distance: Distance between components in SMA units.
@@ -189,9 +193,7 @@ def build_faces(
         logger.debug("no component set to build faces")
         return system
 
-    if is_empty(components_distance):
-        msg = "Value of `components_distance` was not provided."
-        raise ValueError(msg)
+    validate_component_distance(components_distance)
 
     components = bsutils.component_to_list(component)
     for component_name in components:
@@ -357,7 +359,7 @@ def detached_system_surface(
             f"{component_instance.name} do not contain any valid surface "
             "point to triangulate"
         )
-        raise ValueError(msg)
+        raise_elisa_numeric_error(msg)
 
     # there is a problem with triangulation of near over-contact system, delaunay is not good with pointy surfaces
     critical_pot = (
@@ -372,7 +374,10 @@ def detached_system_surface(
             "triangulating surface of %s component using standard method",
             component,
         )
-        triangulation = Delaunay(points)
+        try:
+            triangulation = Delaunay(points)
+        except QhullError as exc:
+            raise_elisa_numeric_error(str(exc), exc)
         triangles_indices = triangulation.convex_hull
     else:
         logger.debug(
@@ -395,7 +400,10 @@ def detached_system_surface(
         if component == "secondary":
             projected_points[:, 0] += components_distance
 
-        triangulation = Delaunay(projected_points)
+        try:
+            triangulation = Delaunay(projected_points)
+        except QhullError as exc:
+            raise_elisa_numeric_error(str(exc), exc)
         triangles_indices = triangulation.convex_hull
 
     return triangles_indices
@@ -435,7 +443,7 @@ def over_contact_system_surface(
             f"{component} component, with class instance name "
             f"{component_instance.name} contain any valid point to triangulate"
         )
-        raise ValueError(msg)
+        raise_elisa_numeric_error(msg)
 
     # calculating position of the neck
     neck_x = np.max(points[:, 0]) if component == "primary" else np.min(points[:, 0])
@@ -444,7 +452,10 @@ def over_contact_system_surface(
     projected_points[:, 0] -= 1 if component == "secondary" else 0
     projected_points = neck_x * projected_points / np.linalg.norm(projected_points, axis=1)[:, None]
 
-    triangulation = Delaunay(projected_points)
+    try:
+        triangulation = Delaunay(projected_points)
+    except QhullError as exc:
+        raise_elisa_numeric_error(str(exc), exc)
     triangles_indices = triangulation.convex_hull
 
     # removal of faces on top of the neck

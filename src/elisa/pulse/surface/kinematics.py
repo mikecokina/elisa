@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from elisa import settings
+from elisa.base.error import raise_elisa_not_implemented_error
 from elisa.pulse.utils import generate_phase_shift
 
 if TYPE_CHECKING:
@@ -101,7 +102,7 @@ def calculate_displacement_coordinates(
     :returns: Complex displacement vector with shape (n_points, 3) containing
               [radial, azimuthal, latitudinal] components.
     :rtype: NDArray
-    :raises NotImplementedError: If PULSATION_MODEL setting is not 'uniform'.
+    :raises ElisaNotImplementedError: If PULSATION_MODEL setting is not 'uniform'.
     """
     if settings.PULSATION_MODEL == "uniform":
         radial_displacement = calculate_radial_displacement(mode, harmonics) / scale
@@ -112,9 +113,9 @@ def calculate_displacement_coordinates(
         return np.column_stack((radial_displacement, phi_displacement, theta_displacement))
 
     error_msg = (
-        f"Pulsation model: {settings.PULSATION_MODEL} is not implemented."
+        f"Surface displacement calculation is not implemented for pulsation model {settings.PULSATION_MODEL!r}."
     )
-    raise NotImplementedError(error_msg)
+    return raise_elisa_not_implemented_error(error_msg)
 
 
 def calculate_mode_angular_displacement(displacement: NDArray) -> NDArray:

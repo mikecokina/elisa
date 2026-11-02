@@ -5,18 +5,27 @@ from dataclasses import dataclass
 from fractions import Fraction as F
 from pathlib import Path
 from typing import Any, TypeAlias
+from unittest.mock import patch
 
 import numpy as np
 import pytest
 from numpy.typing import NDArray
 
+from elisa import settings
+from elisa.base.error import ElisaSettingsError
+from elisa.binary_system.surface import coverage
 from elisa.binary_system.surface.clipping import (
     convex_polygon_triangle_intersection_area as reference,
-    optimized_intersection_area as optimized,
-    intersection_areas,
 )
-from tests.utils import signed_double_area, exact_area
-
+from elisa.binary_system.surface.clipping import (
+    sutherland_hodgman_intersection_areas,
+)
+from elisa.binary_system.surface.clipping import (
+    optimized_intersection_area as optimized,
+)
+from elisa.binary_system.surface.coverage import _calculate_intersection_areas
+from elisa.conf.enums import IntersectionBackend
+from tests.utils import exact_area, signed_double_area
 
 FloatArray: TypeAlias = NDArray[np.float64]
 Coordinates: TypeAlias = FloatArray | Sequence[Sequence[int | float | F]]
@@ -246,7 +255,7 @@ def _known_area_backend(request: pytest.FixtureRequest) -> BatchAreaKernel:
     if request.param == "numba-batch":
 
         def compiled_batch(polygon: FloatArray, triangles: FloatArray) -> FloatArray:
-            return np.asarray(intersection_areas(polygon, triangles), dtype=np.float64)
+            return np.asarray(sutherland_hodgman_intersection_areas(polygon, triangles), dtype=np.float64)
 
         return compiled_batch
     kernel = reference if request.param == "reference" else optimized
@@ -318,7 +327,7 @@ def test_explicit_mixed_numba_batch(reverse_batch: bool) -> None:
     cases = [case for case in KNOWN_AREA_CASES if np.array_equal(case.polygon, SQUARE)]
     if reverse_batch:
         cases.reverse()
-    actual = np.asarray(intersection_areas(SQUARE, np.stack([case.triangle for case in cases])), dtype=np.float64)
+    actual = np.asarray(sutherland_hodgman_intersection_areas(SQUARE, np.stack([case.triangle for case in cases])), dtype=np.float64)
     assert actual.shape == (len(cases),)
     for result, case in zip(actual, cases):
         _assert_known_area(result, case, case.explanation)
@@ -386,20 +395,20 @@ def test_tiny_positive() -> None:
 
 def test_invalid_and_empty() -> None:
     for kernel in (reference, optimized):
-        with pytest.raises(ValueError):
+        with pytest.raises(FloatingPointError):
             kernel(SQUARE, np.full((3, 2), np.nan))
         with pytest.raises(ValueError):
             kernel(SQUARE, np.zeros((4, 2)))
         assert kernel(np.empty((0, 2)), SQUARE[:3]) == 0
-    assert intersection_areas(SQUARE, np.empty((0, 3, 2))).shape == (0,)
+    assert sutherland_hodgman_intersection_areas(SQUARE, np.empty((0, 3, 2))).shape == (0,)
 
 
 def test_captured_geometry() -> None:
     data = np.load(Path(__file__).parents[1] / "data/clipping/eclipse_geometry.npz")
     for i in range(int(data["batches"])):
         p, t = data[f"h{i}"], data[f"t{i}"]
-        compiled_areas = intersection_areas(p, t)
-        reference_areas = intersection_areas(p, t, compiled=False)
+        compiled_areas = sutherland_hodgman_intersection_areas(p, t)
+        reference_areas = sutherland_hodgman_intersection_areas(p, t, compiled=False)
         np.testing.assert_allclose(compiled_areas, reference_areas, rtol=0.0, atol=64.0 * float(np.finfo(float).eps))
         if len(compiled_areas) == 0:
             continue
@@ -434,21 +443,17 @@ def test_redundant_vertices_and_large_offset(kernel: AreaKernel) -> None:
 
 
 def test_private_integration_replay() -> None:
-    from unittest.mock import patch
-    from elisa import settings
-    from elisa.binary_system.surface import coverage
-
     data = np.load(Path(__file__).parents[1] / "data/clipping/eclipse_geometry.npz")
-    assert settings.INTERSECTION_BACKEND == "sutherland_hodgman"
+    assert settings.INTERSECTION_BACKEND == IntersectionBackend.SUTHERLAND_HODGMAN
     first_batch_args = [data[f"{key}0"] for key in ("p", "f", "n", "h")]
-    for i in range(int(data["batches"])):
-        batch_args = [data[f"{key}{i}"] for key in ("p", "f", "n", "h")]
-        with patch.object(settings, "INTERSECTION_BACKEND", "reference"):
+    for batch_index in range(int(data["batches"])):
+        batch_args = [data[f"{key}{batch_index}"] for key in ("p", "f", "n", "h")]
+        with patch.object(settings, "INTERSECTION_BACKEND", IntersectionBackend.REFERENCE):
             reference_coverage = coverage.partial_visible_faces_surface_coverage(*batch_args)
-        with patch.object(settings, "INTERSECTION_BACKEND", "sutherland_hodgman"):
+        with patch.object(settings, "INTERSECTION_BACKEND", IntersectionBackend.SUTHERLAND_HODGMAN):
             compiled_coverage = coverage.partial_visible_faces_surface_coverage(*batch_args)
         np.testing.assert_array_equal(reference_coverage, compiled_coverage)
-    with pytest.raises(ValueError), patch.object(settings, "INTERSECTION_BACKEND", "invalid"):
+    with pytest.raises(ElisaSettingsError), patch.object(settings, "INTERSECTION_BACKEND", "invalid"):
         coverage.partial_visible_faces_surface_coverage(*first_batch_args)
 
 
@@ -456,3 +461,25 @@ def test_private_integration_replay() -> None:
 def test_overflow_is_reported(kernel: AreaKernel) -> None:
     with np.errstate(over="ignore", invalid="ignore"), pytest.raises(FloatingPointError):
         kernel(SQUARE, np.array([[0.0, 0.0], [1e308, 0.0], [0.0, 1e308]]))
+
+
+@pytest.mark.parametrize("backend", list(IntersectionBackend))
+@pytest.mark.parametrize("as_string", [False, True], ids=["enum-setting", "string-setting"])
+def test_configured_backend_preserves_intersection_areas(backend: IntersectionBackend, as_string: bool) -> None:
+    triangles = np.array(
+        [
+            [[0.1, 0.1], [0.9, 0.1], [0.1, 0.9]],
+            [[0.5, 0.2], [1.5, 0.2], [0.5, 1.2]],
+            [[2.0, 2.0], [3.0, 2.0], [2.0, 3.0]],
+        ]
+    )
+    # Fully inside, clipped on two sides (1/2 - 1/8 - 1/50), and disjoint.
+    expected_areas = np.array([0.32, 0.355, 0.0])
+    selected_backend = backend.value if as_string else backend
+
+    with settings.override(INTERSECTION_BACKEND=selected_backend):
+        actual_areas = _calculate_intersection_areas(SQUARE, triangles)
+
+    assert actual_areas.shape == expected_areas.shape
+    assert actual_areas.dtype == np.float64
+    np.testing.assert_allclose(actual_areas, expected_areas, rtol=0.0, atol=1e-14)

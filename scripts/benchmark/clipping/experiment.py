@@ -138,7 +138,7 @@ def main():
     }
     dummy_p = np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]])
     start = perf_counter()
-    clip.intersection_areas(dummy_p, dummy_p[:3][None])
+    clip.sutherland_hodgman_intersection_areas(dummy_p, dummy_p[:3][None])
     result["numba_first_call_s"] = perf_counter() - start
     batches = []
     batch_meta = []
@@ -256,8 +256,8 @@ def main():
             name: fn(hull, triangles)
             for name, fn in (
                 ("pypex", pypex),
-                ("reference", lambda p, t: clip.intersection_areas(p, t, compiled=False)),
-                ("numba", clip.intersection_areas),
+                ("reference", lambda p, t: clip.sutherland_hodgman_intersection_areas(p, t, compiled=False)),
+                ("numba", clip.sutherland_hodgman_intersection_areas),
             )
         }
         if not len(triangles):
@@ -325,8 +325,8 @@ def main():
     result["coverage_timing"] = {}
     for name, fn in [
         ("pypex", pypex),
-        ("reference", lambda p, t: clip.intersection_areas(p, t, compiled=False)),
-        ("numba", clip.intersection_areas),
+        ("reference", lambda p, t: clip.sutherland_hodgman_intersection_areas(p, t, compiled=False)),
+        ("numba", clip.sutherland_hodgman_intersection_areas),
     ]:
         result["kernel_timing"][name] = timed(lambda: [fn(b[3], b[0][b[1]]) for b in batches], args.repeats, total)
         with patch.object(settings, "INTERSECTION_BACKEND", BACKENDS[name]):
@@ -345,8 +345,8 @@ def main():
             result["group_timing"][f"{size}/{kind}"] = {"count": count}
             for name, fn in [
                 ("pypex", pypex),
-                ("reference", lambda p, t: clip.intersection_areas(p, t, compiled=False)),
-                ("numba", clip.intersection_areas),
+                ("reference", lambda p, t: clip.sutherland_hodgman_intersection_areas(p, t, compiled=False)),
+                ("numba", clip.sutherland_hodgman_intersection_areas),
             ]:
                 result["group_timing"][f"{size}/{kind}"][name] = timed(
                     lambda: [fn(p, t) for p, t in subset if len(t)], args.repeats, count

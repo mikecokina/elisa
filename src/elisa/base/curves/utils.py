@@ -7,6 +7,7 @@ import numpy as np
 
 from elisa import ld, settings, utils
 from elisa import umpy as up
+from elisa.base.error import raise_elisa_initial_parameters_error
 from elisa.base.types import FLOAT, INT
 from elisa.observer.passband import init_rv_passband
 
@@ -167,6 +168,7 @@ def get_component_limbdarkening_cfs(
     If the component provides explicit limb-darkening coefficients, they are
     tiled or mirrored to match the number of surface faces. Otherwise, the
     coefficients are interpolated from the limb-darkening grid.
+    Missing custom passband entries are fatal initial-configuration errors.
     """
     if component_instance.limb_darkening_coefficients is not None:
         if isinstance(component_instance.limb_darkening_coefficients, ld.CustomLimbDarkeningCoefficients):
@@ -184,13 +186,15 @@ def get_component_limbdarkening_cfs(
                     cols = arr.shape[0]
                     ld_cfs[passband] = np.broadcast_to(arr.reshape(1, cols), (faces, cols))
                 else:
-                    # fallback to tile for non-1D inputs to preserve existing behaviour
+                    # fallback to tile for non-1D inputs to preserve existing behavior
                     ld_cfs[passband] = np.tile(arr, desired_repeats)
         except KeyError as err:
             ld_passband = component_instance.limb_darkening_coefficients.keys()
             missing_passbands = list(set(passbands) - set(ld_passband))
-            msg = f"Please supply limb-darkening factors for {missing_passbands} pasband(s) as well."
-            raise KeyError(msg) from err
+            msg = f"Please supply also limb-darkening factors for {missing_passbands} passband(s)."
+            # Custom coefficients and requested passbands are fixed inputs. A
+            # missing entry cannot be corrected by proposal drift: abort the fit.
+            raise_elisa_initial_parameters_error(msg, err)
     else:
         temperatures, log_g = generate_teff_logg_for_ld_cfs(component_instance, symmetry_test=symmetry_test)
 

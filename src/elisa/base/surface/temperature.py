@@ -9,6 +9,10 @@ import numpy as np
 
 from elisa import settings
 from elisa import umpy as up
+from elisa.base.error import (
+    raise_elisa_temperature_error,
+    raise_elisa_unexpected_error,
+)
 from elisa.logger import getLogger
 
 logger = getLogger(__name__)
@@ -84,7 +88,7 @@ def calculate_polar_effective_temperature(star_container: StarContainer) -> Floa
     # avoid division by zero
     if denominator == 0:
         msg = "Division by zero encountered while computing polar effective temperature"
-        raise ZeroDivisionError(msg)
+        raise_elisa_temperature_error(msg)
 
     # noinspection PyUnresolvedReferences
     return sc.t_eff * up.power(numerator / denominator, 0.25)
@@ -119,7 +123,7 @@ def renormalize_temperatures(star: StarContainer) -> None:
     # avoid division by zero
     if current_flux == 0:
         msg = "Current bolometric flux is zero, cannot renormalize temperatures"
-        raise ZeroDivisionError(msg)
+        raise_elisa_temperature_error(msg)
 
     coefficient = up.power(desired_flux_value / current_flux, 0.25)
     logger.debug("surface temperature map renormalized by a factor %s", coefficient)
@@ -141,27 +145,29 @@ def interpolate_bolometric_gravity_darkening(temperature: Float) -> Float:
     :type temperature: elisa.types.Float
     :returns: Interpolated gravity-darkening exponent beta.
     :rtype: elisa.types.Float
-    :raises ValueError: If ``temperature`` is not positive.
-    :raises RuntimeError: If the beta data file cannot be read or parsed.
+    :raises ElisaTemperatureError: If ``temperature`` is not positive.
+    :raises ElisaUnexpectedError: If the fixed beta table cannot be read or parsed.
     """
+    # Production callers pass Star.t_eff, already validated as a finite scalar.
     if temperature <= 0:
-        msg = "Negative or zero temperature encountered"
-        raise ValueError(msg)
+        msg = f"Gravity-darkening interpolation requires a positive effective temperature; received {temperature!r}."
+        raise_elisa_temperature_error(msg)
 
+    # This bundled resource is independent of candidate parameters. Its failure
+    # is an installation/data contract failure, never a temperature penalty.
     try:
         content = Path(settings.PATH_TO_BETA).read_text()
         data = json.loads(content)
-    except Exception as err:
-        msg = f"Failed to read or parse gravity-darkening table: {err}"
-        raise RuntimeError(msg) from err
-
-    interp_temps = data.get("x")
-    interp_betas = data.get("y")
+        interp_temps = data["x"]
+        interp_betas = data["y"]
+    except Exception as err:  # noqa: BLE001 - fixed resource failures are fatal contract errors
+        msg = f"Cannot load the fixed gravity-darkening table {settings.PATH_TO_BETA}: {err}"
+        raise_elisa_unexpected_error(msg, err)
 
     # basic validation of data
     if interp_temps is None or interp_betas is None:
-        msg = "Gravity-darkening table is missing required keys 'x'/'y'"
-        raise RuntimeError(msg)
+        msg = "The fixed gravity-darkening table must provide non-null 'x' and 'y' arrays."
+        raise_elisa_unexpected_error(msg)
 
     return float(
         np.interp(

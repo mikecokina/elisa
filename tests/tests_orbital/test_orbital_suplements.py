@@ -90,3 +90,23 @@ class OrbitalSupplementsTestCase(ElisaTestCase):
         obtained = supplements.sort(by="distance")
 
         self.assertTrue(obtained == expected)
+
+
+def test_sort_keys_accept_enum_and_preserve_string_behavior():
+    from elisa.conf.enums import OrbitalSortKey
+
+    body = np.array([[2.0, 0.5, 0.0, 0.0], [0.0, 1.5, 0.0, 0.0], [1.0, 1.0, 0.0, 0.0]])
+    mirror = body + 10.0
+    for key in OrbitalSortKey:
+        actual = OrbitalSupplements(body.copy(), mirror.copy()).sort(key)
+        expected = OrbitalSupplements(body.copy(), mirror.copy()).sort(key.value)
+        assert_array_equal(actual.body, expected.body)
+        assert_array_equal(actual.mirror, expected.mirror)
+
+
+def test_unknown_sort_key_is_a_contract_failure():
+    import pytest
+    from elisa.base.error import ElisaOperationInputError
+
+    with pytest.raises(ElisaOperationInputError, match="Unsupported orbital sorting key"):
+        OrbitalSupplements().sort("unknown")

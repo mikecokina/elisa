@@ -2,11 +2,17 @@
 # due to astropy units/constants initialization
 from tests import set_astropy_units
 
+from unittest.mock import patch
+
+from types import SimpleNamespace
+
 import numpy as np
+import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 
 import elisa.const as c
 
+from elisa.base.error import ElisaNumericError, ElisaMaxIterationError
 from elisa.binary_system.orbit import orbit as bin_orbit
 from elisa.single_system.orbit import orbit as single_orbit
 from tests.utils import ElisaTestCase
@@ -167,3 +173,47 @@ if __name__ == "__main__":
     import pytest
 
     pytest.main([__file__, "-q"])
+
+
+@pytest.mark.parametrize("result", [np.nan, np.inf, -np.inf])
+def test_kepler_nonfinite_result_raises(result):
+    orbit = bin_orbit.Orbit.__new__(bin_orbit.Orbit)
+    orbit.eccentricity = 0.8
+    with patch.object(bin_orbit._sci_opt, "newton", return_value=(result, SimpleNamespace(converged=True))):
+        with pytest.raises(ElisaNumericError, match="nonfinite anomaly") as caught:
+            orbit.mean_anomaly_to_eccentric_anomaly(0.5)
+    assert isinstance(caught.value, FloatingPointError)
+
+
+def test_kepler_nonconvergence_uses_solver_status():
+    orbit = bin_orbit.Orbit.__new__(bin_orbit.Orbit)
+    orbit.eccentricity = 0.8
+    original = bin_orbit._sci_opt.newton
+
+    def exhausted(*args, **kwargs):
+        return original(*args, **kwargs, maxiter=1)
+
+    with patch.object(bin_orbit._sci_opt, "newton", side_effect=exhausted):
+        with pytest.raises(ElisaMaxIterationError, match="Kepler solver") as caught:
+            orbit.mean_anomaly_to_eccentric_anomaly(0.5)
+    assert isinstance(caught.value, ElisaMaxIterationError)
+
+
+def test_kepler_programming_error_propagates():
+    orbit = bin_orbit.Orbit.__new__(bin_orbit.Orbit)
+    orbit.eccentricity = 0.8
+    failure = TypeError("broken residual")
+    with patch.object(bin_orbit._sci_opt, "newton", side_effect=failure):
+        with pytest.raises(TypeError) as caught:
+            orbit.mean_anomaly_to_eccentric_anomaly(0.5)
+    assert caught.value is failure
+
+
+@pytest.mark.parametrize("eccentricity", [0.0, 0.8, 0.99])
+@pytest.mark.parametrize("mean_anomaly", [0.0, 0.5, np.pi, 2 * np.pi])
+def test_kepler_success_solves_equation(eccentricity, mean_anomaly):
+    orbit = bin_orbit.Orbit.__new__(bin_orbit.Orbit)
+    orbit.eccentricity = eccentricity
+    result = orbit.mean_anomaly_to_eccentric_anomaly(mean_anomaly)
+    assert not isinstance(result, bool)
+    assert_allclose(result - eccentricity * np.sin(result), mean_anomaly, atol=1e-10)

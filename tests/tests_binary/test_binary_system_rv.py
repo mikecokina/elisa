@@ -3,6 +3,7 @@
 from tests import set_astropy_units
 
 import os
+import pytest
 import numpy as np
 import os.path as op
 from unittest import skip
@@ -119,14 +120,12 @@ class BinaryRadialCurvesTestCase(ElisaTestCase):
         self.do_comparison(s, "detahed.ecc.json")
 
 
+@pytest.mark.requires_ld
+@pytest.mark.requires_atmosphere
 class BinaryRadialCurvesConsistencyTestCase(ElisaTestCase):
     def setUp(self):
         super(BinaryRadialCurvesConsistencyTestCase, self).setUp()
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves")
-        settings.configure(**{
-            "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
-            "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
-        })
         # self.default_law = "cosine"
         # self.reset_config()
 
@@ -176,15 +175,13 @@ class BinaryRadialCurvesConsistencyTestCase(ElisaTestCase):
         self.check_consistency(binary_kwargs, 0.005, phases=phases)
 
 
+@pytest.mark.requires_ld
+@pytest.mark.requires_atmosphere
 class ComputeRadiometricRVTestCase(ElisaTestCase):
     def setUp(self):
         super(ComputeRadiometricRVTestCase, self).setUp()
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves")
 
-        settings.configure(**{
-            "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
-            "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
-        })
 
     def do_comparison(self, bs, rv_file, start_phs=-0.2, stop_phs=1.2, step=0.1):
         o = Observer(system=bs)
@@ -216,6 +213,10 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
         self.assertTrue(np.all((up.abs(obt_p - exp_p) / np.abs(np.max(obt_p))) < TOL))
         self.assertTrue(np.all((up.abs(obt_s - exp_s) / np.abs(np.max(obt_s))) < TOL))
 
+    @pytest.mark.requires_ld(
+        passbands=("Generic.Bessell.V", "bolometric"), laws=("linear", "logarithmic", "square_root")
+    )
+    @pytest.mark.requires_atmosphere(atlas="ck04")
     def test_light_curve_pass_on_all_ld_law(self):
         """
         no assert here, it just has to pass without error
@@ -235,8 +236,6 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
             for law in laws:
                 settings.configure(**{"NUMBER_OF_PROCESSES": cpu_core,
                                       "LIMB_DARKENING_LAW": law,
-                                      "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
-                                      "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere"),
                                       "ATM_ATLAS": "ck04"})
                 self.write_default_support(ld_tables=settings.LD_TABLES, atm_tables=settings.CK04_ATM_TABLES)
                 with open(self.CONFIG_FILE, "a") as f:
@@ -300,16 +299,14 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
         self.do_comparison(bs, "ecc.spotty.async.json")
 
 
+@pytest.mark.requires_ld
+@pytest.mark.requires_atmosphere
 class CompareSingleVsMultiprocess(ElisaTestCase):
     def setUp(self):
         super(CompareSingleVsMultiprocess, self).setUp()
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves")
         self.base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "radial_curves")
 
-        settings.configure(**{
-            "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
-            "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
-        })
         self.write_default_support(ld_tables=settings.LD_TABLES, atm_tables=settings.CK04_ATM_TABLES)
 
     def tearDown(self):
@@ -405,16 +402,14 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         self.do_comparison(bs)
 
 
+@pytest.mark.requires_ld
+@pytest.mark.requires_atmosphere
 class CompareApproxVsExact(ElisaTestCase):
     def setUp(self):
         super(CompareApproxVsExact, self).setUp()
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves")
         self.base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "radial_curves")
 
-        settings.configure(**{
-            "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
-            "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
-        })
         self.write_default_support(ld_tables=settings.LD_TABLES, atm_tables=settings.CK04_ATM_TABLES)
 
     @skip

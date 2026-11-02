@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from elisa import utils
+from elisa.base.error import raise_elisa_unexpected_error
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -30,12 +31,12 @@ def correct_component_mesh(star: StarContainer, com: Float, correction_factors: 
     :type correction_factors: numpy.typing.NDArray | numpy.typing.NDArray
     :returns: The same ``star`` instance with updated ``points``.
     :rtype: elisa.base.container.StarContainer
-    :raises TypeError: If required attributes are missing on ``star``.
+    :raises ElisaUnexpectedError: If required attributes are missing on ``star``.
     """
-    # Basic validation of star interface
+    # Internal callers must provide a mesh container with these attributes.
     if not hasattr(star, "points") or not hasattr(star, "discretization_factor"):
         msg = "`star` does not provide required mesh attributes"
-        raise TypeError(msg)
+        raise_elisa_unexpected_error(msg)
 
     com_vector = np.array([com, 0.0, 0.0])
 
@@ -74,15 +75,22 @@ def symmetry_point_reduction(array: NDArray, base_symmetry_points_number: int) -
     :type base_symmetry_points_number: int
     :returns: Reduced array limited to the base symmetry points.
     :rtype: numpy.typing.NDArray
-    :raises TypeError: If ``base_symmetry_points_number`` is not an int.
-    :raises ValueError: If ``base_symmetry_points_number`` is negative.
+    :raises ElisaUnexpectedError: If ``base_symmetry_points_number`` is not a nonnegative int.
     """
+    # Mesh builders derive this count from len(); its type and nonnegative value
+    # are internal contracts, independent of physical candidate parameters.
     if not isinstance(base_symmetry_points_number, int):
-        msg = "`base_symmetry_points_number` must be an int"
-        raise TypeError(msg)
+        msg = (
+            "Symmetry point reduction requires an integer base point count; "
+            f"received {base_symmetry_points_number!r} ({type(base_symmetry_points_number).__name__})."
+        )
+        raise_elisa_unexpected_error(msg)
     if base_symmetry_points_number < 0:
-        msg = "`base_symmetry_points_number` must be non-negative"
-        raise ValueError(msg)
+        msg = (
+            f"Symmetry point reduction received a negative base point count ({base_symmetry_points_number}); "
+            "mesh point counts cannot be negative."
+        )
+        raise_elisa_unexpected_error(msg)
 
     arr = np.asarray(array)
     return arr[:base_symmetry_points_number]

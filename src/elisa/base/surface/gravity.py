@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from elisa.base.error import raise_elisa_unexpected_error
+
 if TYPE_CHECKING:
     import numpy as np
     from numpy.typing import NDArray
@@ -22,12 +24,12 @@ def eval_args_for_magnitude_gradient(star_container: StarContainer) -> tuple[NDA
         array of coordinates and ``faces`` is an (M,3) array of triangle
         indices suitable for further geometric computations.
     :rtype: tuple[numpy.typing.NDArray, numpy.typing.NDArray]
-    :raises TypeError: If ``star_container`` does not provide expected API.
+    :raises ElisaUnexpectedError: If ``star_container`` does not provide expected API.
     """
-    # basic runtime validation
+    # Surface builders must pass a StarContainer; drift cannot remove its API.
     if not hasattr(star_container, "symmetry_test") or not hasattr(star_container, "points"):
         msg = "`star_container` does not appear to be a valid StarContainer"
-        raise TypeError(msg)
+        raise_elisa_unexpected_error(msg)
 
     if star_container.symmetry_test():
         points = star_container.symmetry_points()

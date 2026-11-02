@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from elisa import utils
-from elisa.base.surface.coverage import surface_area_coverage
+from elisa.base.surface.coverage import assemble_surface_coverage
 from elisa.logger import getLogger
 
 if TYPE_CHECKING:
@@ -21,7 +21,7 @@ def compute_surface_coverage(system: SinglePositionContainer) -> dict[str, NDArr
 
     The function computes visible-triangle areas for faces that are visible
     in the supplied ``system`` container and expands them to a full per-face
-    coverage distribution using :func:`elisa.base.surface.coverage.surface_area_coverage`.
+    coverage distribution using :func:`elisa.base.surface.coverage.assemble_surface_coverage`.
 
     :param system: Single-position container describing the system and star.
     :type system: elisa.single_system.container.SinglePositionContainer
@@ -33,6 +33,6 @@ def compute_surface_coverage(system: SinglePositionContainer) -> dict[str, NDArr
 
     visible_face_points = star.points[star.faces[star.indices]]
     coverage_visible = utils.poly_areas(visible_face_points)
-    coverage_full = surface_area_coverage(len(star.faces), star.indices, coverage_visible)
+    coverage_full = assemble_surface_coverage(len(star.faces), star.indices, coverage_visible)
 
     return {"star": coverage_full}

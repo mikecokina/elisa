@@ -7,7 +7,12 @@ import numpy as np
 
 import elisa.umpy as up
 from elisa import const, opt, settings, utils
-from elisa.base.error import MaxIterationError
+from elisa.base.error import (
+    ElisaMaxIterationError,
+    ElisaNumericError,
+    raise_elisa_spot_error,
+    raise_elisa_unexpected_error,
+)
 from elisa.base.spot import incorporate_spots_mesh
 from elisa.base.surface.mesh import correct_component_mesh
 from elisa.base.types import FLOAT, INT
@@ -87,14 +92,21 @@ def mesh(
     :type symmetry_output: bool
     :returns: Surface mesh points, optionally with symmetry metadata.
     :rtype: numpy.typing.NDArray[numpy.float64] | tuple[numpy.typing.NDArray[numpy.float64], Int, numpy.typing.NDArray[int]]
-    :raises ValueError: If the discretization factor is greater than
+    :raises ElisaUnexpectedError: If the discretization factor is greater than
         ``const.HALF_PI``.
     """  # noqa: E501
     star_container = system_container.star
     discretization_factor = star_container.discretization_factor
     if discretization_factor > const.HALF_PI:
-        message = "Invalid value of alpha parameter. Use value less than 90."
-        raise ValueError(message)
+        # Star initialization already validates this upper bound, and single-star
+        # setup does not recalculate the star's factor. This should be unreachable
+        # in the normal flow; retain the historical guard rather than removing it
+        # casually during exception cleanup.
+        message = (
+            "Single-star mesh received a discretization factor above pi/2 radians "
+            f"({discretization_factor!r}); star initialization must validate this bound."
+        )
+        raise_elisa_unexpected_error(message)
 
     potential_fn = model.potential_fn
     precalc_fn = model.pre_calculate_for_potential_value
@@ -531,7 +543,7 @@ def calculate_equator_points(
     return utils.spherical_to_cartesian(np.column_stack((radii, phis, thetas)))
 
 
-def mesh_spots(system_container: SinglePositionContainer) -> None:  # noqa: PLR0915
+def mesh_spots(system_container: SinglePositionContainer) -> None:  # noqa: C901, PLR0915
     """Compute points for each spot and assign them to the spot container.
 
     :param system_container: Single star system container.
@@ -550,13 +562,17 @@ def mesh_spots(system_container: SinglePositionContainer) -> None:  # noqa: PLR0
     potential_derivative_fn = model.radial_potential_derivative
 
     # iterate over spots
-    for spot_index, spot_instance in list(star_container.spots.items()):
+    for spot_instance in star_container.spots.values():
         # lon -> phi, lat -> theta
         lon = spot_instance.longitude
         lat = spot_instance.latitude
 
         alpha = spot_instance.discretization_factor
         spot_radius = spot_instance.angular_radius
+
+        if spot_radius <= 0:
+            msg = f"Spot angular radius must be positive; received {spot_radius!r}."
+            raise_elisa_spot_error(msg)
 
         # initial containers for current spot
         boundary_points: list[NDArray[np.float64]] = []
@@ -570,56 +586,60 @@ def mesh_spots(system_container: SinglePositionContainer) -> None:  # noqa: PLR0
 
         args = (radial_vector[2],)
 
-        solution = calculate_radius(
-            star_container.mass,
-            system_container.angular_velocity,
-            star_container.surface_potential,
-            *args,
-        )
+        try:
+            solution = calculate_radius(
+                star_container.mass,
+                system_container.angular_velocity,
+                star_container.surface_potential,
+                *args,
+            )
+        except (ElisaMaxIterationError, ElisaNumericError) as exc:
+            msg = (
+                "Solver failed while calculating the surface radius at the center of spot "
+                f"{spot_instance.kwargs_serializer()}."
+            )
+            raise_elisa_spot_error(msg, exc)
 
         if solution > star_container.equatorial_radius or solution < star_container.polar_radius:
-            # in case of spots, each point should be usefull, otherwise remove spot from
-            # component spot list and skip current spot computation
-            logger.info(
-                "center of spot %s doesn't satisfy reasonable conditions and entire spot will be omitted",
-                spot_instance.kwargs_serializer(),
+            msg = (
+                f"Surface radius {solution!r} at the center of spot {spot_instance.kwargs_serializer()} "
+                f"is outside the allowed stellar radius interval "
+                f"[{star_container.polar_radius!r}, {star_container.equatorial_radius!r}]."
             )
-
-            star_container.remove_spot(spot_index=spot_index)
-            continue
+            raise_elisa_spot_error(msg)
 
         spot_center_r = solution
         spot_center = utils.spherical_to_cartesian(np.asarray([spot_center_r, lon, lat], dtype=FLOAT))
 
-        # compute Euclidean distance of two points on spot (x0)
-        # we have to obtain distance between center and 1st point in 1st ring of spot
+        # validate the first-ring radius against the stellar radius bounds
         args = (lat + alpha,)
-        solution = calculate_radius(
-            star_container.mass,
-            system_container.angular_velocity,
-            star_container.surface_potential,
-            *args,
-        )
+        try:
+            solution = calculate_radius(
+                star_container.mass,
+                system_container.angular_velocity,
+                star_container.surface_potential,
+                *args,
+            )
+        except (ElisaMaxIterationError, ElisaNumericError) as exc:
+            msg = (
+                "Solver failed while calculating the surface radius on the first mesh ring of spot "
+                f"{spot_instance.kwargs_serializer()}."
+            )
+            raise_elisa_spot_error(msg, exc)
 
         if solution > star_container.equatorial_radius or solution < star_container.polar_radius:
-            # in case of spots, each point should be usefull, otherwise remove spot from
-            # component spot list and skip current spot computation
-            logger.info(
-                "first ring of spot %s doesn't satisfy reasonable conditions and entire spot will be omitted",
-                spot_instance.kwargs_serializer(),
+            msg = (
+                f"Surface radius {solution!r} on the first mesh ring of spot {spot_instance.kwargs_serializer()} "
+                f"is outside the allowed stellar radius interval "
+                f"[{star_container.polar_radius!r}, {star_container.equatorial_radius!r}]."
             )
-            star_container.remove_spot(spot_index=spot_index)
-            continue
-
-        x0 = np.sqrt(
-            spot_center_r**2 + solution**2 - (2.0 * spot_center_r * solution * np.cos(alpha)),
-        )
+            raise_elisa_spot_error(msg)
 
         # number of points in latitudal direction
         num_radial = int(np.round(spot_radius / alpha)) + 1
         thetas = np.linspace(lat, lat + spot_radius, num=num_radial, endpoint=True)
 
-        num_azimuthal = [1 if i == 0 else int(i * 2.0 * np.pi * x0 // x0) for i in range(len(thetas))]
+        num_azimuthal = [1 if i == 0 else int(i * 2.0 * np.pi) for i in range(len(thetas))]
         deltas = [np.linspace(0.0, const.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]
 
         spot_phi: list[Float] = []
@@ -658,14 +678,9 @@ def mesh_spots(system_container: SinglePositionContainer) -> None:  # noqa: PLR0
         )
         try:
             spot_points_radii = get_surface_points_radii(*args)
-        except MaxIterationError:
-            if not settings.SUPPRESS_WARNINGS:
-                logger.warning(
-                    "at least 1 point of spot %s doesn't satisfy reasonable conditions and entire spot will be omitted",
-                    spot_instance.kwargs_serializer(),
-                )
-            star_container.remove_spot(spot_index=spot_index)
-            continue
+        except (ElisaMaxIterationError, ElisaNumericError) as exc:
+            msg = f"Solver failed while calculating surface points for spot {spot_instance.kwargs_serializer()}."
+            raise_elisa_spot_error(msg, exc)
 
         spherical_points_: NDArray[Float] = np.column_stack(
             (spot_points_radii, spot_phi_array, spot_theta_array),

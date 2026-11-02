@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from elisa.pypex.base.conf import ROUND_PRECISION
+from elisa.pypex.base.error import raise_value_error
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -69,7 +70,7 @@ def is_point_in_polygon(point: Point, polygon: Polygon) -> bool:
     """
     if len(polygon) < MIN_POLYGON_POINTS:
         msg = "invalid polygon shape, expected at least 3 corners polygon"
-        raise ValueError(msg)
+        raise_value_error(msg)
     return polygon.mplpath.contains_point(point.to_array())
 
 

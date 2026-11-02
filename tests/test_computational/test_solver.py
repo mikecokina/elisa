@@ -4,7 +4,9 @@ from elisa.opt.newton import newton
 from tests import set_astropy_units
 
 import numpy as np
+import pytest
 
+from elisa.base import error
 from elisa.opt.fsolver import fsolve, fsolver
 from tests import utils
 from tests.utils import ElisaTestCase
@@ -121,3 +123,48 @@ class NewtonSolverTestCase(ElisaTestCase):
         expected = np.array([-1., -1.])
         obtained = np.round(newton(self.x_square, x0, fprime=self.d_x_square, args=args, maxiter=100, rtol=1e-10), 7)
         self.assertTrue(np.all(expected == obtained))
+
+
+def test_point_solver_keeps_nonconverged_and_unusable_flags(monkeypatch):
+    import importlib
+    solver = importlib.import_module('elisa.opt.fsolver')
+    for solution, status in [(np.nan, 1), (.5, 4), (-1., 1)]:
+        monkeypatch.setattr(solver, 'fsolve', lambda *a, **k: (np.array([solution]), {}, status, 'nonconverged'))
+        radius, use = fsolver(lambda x: x, lambda x: True)
+        assert not use
+        if status != 1 or np.isnan(solution):
+            assert np.isnan(radius)
+
+
+def test_unrecoverable_newton_failure_and_unexpected_function_error():
+    with pytest.raises(error.ElisaMaxIterationError):
+        newton(lambda x, *a: x * x + 1, 1., lambda x: 2 * x, args=((),), maxiter=1)
+
+    def broken_function(*args):
+        raise TypeError('broken numerical implementation')
+
+    with pytest.raises(TypeError, match='broken numerical implementation'):
+        newton(broken_function, 1., lambda x: 1., args=((),))
+
+
+@pytest.mark.parametrize("failure_type", [ValueError, TypeError, FloatingPointError, MemoryError])
+def test_implicit_solver_wraps_failures_with_original_cause(failure_type):
+    cause = failure_type("failed solver callback")
+
+    def broken(*args):
+        raise cause
+
+    with pytest.raises(error.ElisaNumericSolverError) as caught:
+        fsolver(broken, lambda *args: True)
+    assert caught.value.__cause__ is cause
+
+
+def test_implicit_solver_preserves_keyboard_interrupt():
+    cause = KeyboardInterrupt()
+
+    def interrupted(*args):
+        raise cause
+
+    with pytest.raises(KeyboardInterrupt) as caught:
+        fsolver(interrupted, lambda *args: True)
+    assert caught.value is cause

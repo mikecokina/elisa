@@ -67,7 +67,7 @@ and the available audit at `docs/audits/PYPEX_ALGORITHM_AUDIT.md`.
 
 * `convex_polygon_triangle_intersection_area`: readable list-based reference.
 * `optimized_intersection_area`: validated scalar Numba entry point.
-* `intersection_areas`: validated batch adapter, compiling the triangle loop.
+* `sutherland_hodgman_intersection_areas`: validated batch adapter, compiling the triangle loop.
 
 The outline is the subject polygon, clipped against exactly three triangle
 half-planes. For an edge `a -> b`, compute `f(x) = sign * cross(b-a, x-a)`, where

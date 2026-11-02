@@ -10,6 +10,10 @@ from numpy.typing import NDArray
 
 from elisa import ld, settings, utils
 from elisa import umpy as up
+from elisa.base.error import (
+    raise_elisa_temperature_error,
+    raise_elisa_unexpected_error,
+)
 from elisa.base.surface import temperature as btemperature
 from elisa.base.surface.temperature import renormalize_temperatures
 from elisa.base.types import FLOAT
@@ -264,9 +268,11 @@ def apply_reflection_effect(  # noqa: C901, PLR0912, PLR0915
                 star = getattr(system, component)
                 counterpart_component = settings.BINARY_COUNTERPARTS[component]
                 vis_sym = vis_test_symmetry[component]
+                # The symmetry branch uses the same flag that requests these masks.
+                # A missing mask violates the internal flow, not the candidate physics.
                 if vis_sym is None:
-                    msg = "Symmetry visibility mask is required in symmetry branch."
-                    raise ValueError(msg)
+                    msg = f"Reflection symmetry requires a visibility mask for component {component!r}; received None."
+                    raise_elisa_unexpected_error(msg)
 
                 # calculation of reflection effect correction as
                 # 1 + (c / t_effi) * sum_j(r_j * Q_ab * t_effj^4 * D(gamma_j) * areas_j)
@@ -296,9 +302,11 @@ def apply_reflection_effect(  # noqa: C901, PLR0912, PLR0915
         for component in components:
             star = getattr(system, component)
             vis_sym = vis_test_symmetry[component]
+            # The symmetry branch uses the same flag that requests these masks.
+            # A missing mask violates the internal flow, not the candidate physics.
             if vis_sym is None:
-                msg = "Symmetry visibility mask is required in symmetry branch."
-                raise ValueError(msg)
+                msg = f"Reflection symmetry requires a visibility mask for component {component!r}; received None."
+                raise_elisa_unexpected_error(msg)
 
             # assigning new temperatures according to last iteration as
             # teff_new = teff_old * reflection_factor^0.25
@@ -587,9 +595,10 @@ def get_symmetrical_distance_matrix(
     """
     vis_primary_sym = vis_test_symmetry["primary"]
     vis_secondary_sym = vis_test_symmetry["secondary"]
+    # Only the symmetry branch calls this helper; mask creation must precede it.
     if vis_primary_sym is None or vis_secondary_sym is None:
-        msg = "Symmetry visibility masks are required in symmetry branch."
-        raise ValueError(msg)
+        msg = "Reflection symmetry requires visibility masks for both components; at least one mask is None."
+        raise_elisa_unexpected_error(msg)
 
     # in case of symmetries, you need to calculate only minor part of distance matrix connected with base
     # symmetry part of the both surfaces
@@ -646,9 +655,10 @@ def get_symmetrical_gammma(
     """
     vis_primary_sym = vis_test_symmetry["primary"]
     vis_secondary_sym = vis_test_symmetry["secondary"]
+    # Only the symmetry branch calls this helper; mask creation must precede it.
     if vis_primary_sym is None or vis_secondary_sym is None:
-        msg = "Symmetry visibility masks are required in symmetry branch."
-        raise ValueError(msg)
+        msg = "Reflection symmetry requires visibility masks for both components; at least one mask is None."
+        raise_elisa_unexpected_error(msg)
 
     gamma = {
         "primary": np.empty(shape=shape, dtype=FLOAT),
@@ -830,15 +840,25 @@ def get_distance_matrix_shape(
 
 def _load_albedo_data() -> tuple[list, list]:
     """Resolve the current albedo resource before cache lookup."""
-    return _load_albedo_data_cached(utils.file_source_identity(settings.PATH_TO_ALBEDOS))
+    # The table is fixed; temperature selects an interpolation point, not a file.
+    try:
+        source = utils.file_source_identity(settings.PATH_TO_ALBEDOS)
+    except Exception as exc:  # noqa: BLE001 - fixed resource failures are fatal contract errors
+        msg = f"Cannot locate the fixed albedo table {settings.PATH_TO_ALBEDOS}: {exc}"
+        raise_elisa_unexpected_error(msg, exc)
+    return _load_albedo_data_cached(source)
 
 
 @functools.cache
 def _load_albedo_data_cached(source: utils.FileSourceIdentity) -> tuple[list, list]:
     """Load the selected source revision without consulting mutable settings."""
-    with Path(source[0]).open("r") as f:
-        data = json.load(f)
-    return data["x"], data["y"]
+    try:
+        with Path(source[0]).open("r") as f:
+            data = json.load(f)
+        return data["x"], data["y"]
+    except Exception as exc:  # noqa: BLE001 - fixed resource failures are fatal contract errors
+        msg = f"Cannot load the fixed albedo table {source[0]}: {exc}"
+        raise_elisa_unexpected_error(msg, exc)
 
 
 _load_albedo_data.cache_clear = _load_albedo_data_cached.cache_clear
@@ -856,10 +876,13 @@ def interpolate_albedo(temperature: Float) -> Float:
     :type temperature: Float
     :return: Interpolated albedo in the interval ``(0, 1)``.
     :rtype: Float
+    :raises ElisaTemperatureError: If ``temperature`` is not positive.
+    :raises ElisaUnexpectedError: If the fixed albedo table cannot be loaded.
     """
+    # Production callers pass Star.t_eff, already validated as a finite scalar.
     if temperature <= 0:
-        msg = "Negative temperature of the star encountered."
-        raise ValueError(msg)
+        msg = f"Albedo interpolation requires a positive effective temperature; received {temperature!r}."
+        raise_elisa_temperature_error(msg)
 
     interp_temps, interp_a = _load_albedo_data()
     return np.interp(np.log10(temperature), interp_temps, interp_a)
