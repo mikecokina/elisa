@@ -183,10 +183,21 @@ class RocheRay:
         if sum(terms) < -slack:
             # Omega' is negative everywhere in this interval: skip it.
             return None
-        # Dropping the nonnegative 3*b*(r-d*c)**2/s**5 term gives a lower
-        # bound on Omega''. Positive curvature means Omega' strictly increases.
-        curvature = 2 * self.a / hi**3 - self.b / smin**3 + 2 * self.rotation
-        if curvature > INTERVAL_ROUNDING_UNITS * EPS * (2 * self.a / hi**3 + self.b / smin**3 + 2 * self.rotation):
+        # Retain a lower bound for the positive axial curvature term. Dropping
+        # it entirely does NOT converge to the true curvature as hi-lo -> 0,
+        # and can leave a perfectly regular first minimum uncertifiable.
+        # |r-center| >= axial_min and s <= smax throughout the interval, so
+        # 3*axial_min**2/smax**5 <= 3*(r-center)**2/s**5.
+        axial_min = abs(nearest - center)
+        curvature_terms = (
+            2 * self.a / hi**3,
+            3 * self.b * (axial_min / smax) ** 2 / smax**3,
+            -self.b / smin**3,
+            2 * self.rotation,
+        )
+        curvature = sum(curvature_terms)
+        curvature_slack = INTERVAL_ROUNDING_UNITS * EPS * sum(abs(term) for term in curvature_terms)
+        if curvature > curvature_slack:
             if self.derivative(hi) <= 0:
                 # Even the largest derivative is nonpositive: no turn here.
                 return None
@@ -197,6 +208,8 @@ class RocheRay:
         if depth >= MAX_SUBDIVISION_DEPTH:
             raise_elisa_numeric_error("Cannot certify the first stationary point on this Roche ray.")
         mid = (lo + hi) / 2
+        if mid in (lo, hi):
+            raise_elisa_numeric_error("Cannot certify this Roche interval at floating-point resolution.")
         first = self._turn_interval(lo, mid, depth + 1)
         return first if first is not None else self._turn_interval(mid, hi, depth + 1)
 

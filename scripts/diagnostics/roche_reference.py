@@ -10,6 +10,8 @@ from collections.abc import Callable
 from decimal import Decimal, getcontext, localcontext
 from typing import TypedDict
 
+ANGULAR_MAX_DEPTH = 180
+
 
 class Reference(TypedDict):
     """High-precision values; absent roots are explicit, never estimated."""
@@ -136,4 +138,108 @@ def reference(
         stationary = ray.stationary()
         critical = None if stationary is None else ray.potential(stationary)
         root = None if omega is None else ray.inner_root(omega, stationary)
+        return {"stationary": stationary, "critical": critical, "root": root}
+
+
+def decimal_sincos(angle: float) -> tuple[Decimal, Decimal]:
+    """Independent Taylor evaluation at the exact input float (diagnostic angles)."""
+    x = Decimal(angle)
+    sine, cosine = x, Decimal(1)
+    sin_term, cos_term = sine, cosine
+    for n in range(1, 4 * getcontext().prec + 100):
+        sin_term *= -x * x / ((2 * n) * (2 * n + 1))
+        cos_term *= -x * x / ((2 * n - 1) * (2 * n))
+        previous = sine, cosine
+        sine += sin_term
+        cosine += cos_term
+        if previous == (sine, cosine):
+            return sine, cosine
+    message = "Reference trigonometric series did not converge"
+    raise ArithmeticError(message)
+
+
+class AngularRay(Ray):
+    """Independent arbitrary-angle oracle with analytic companion-term extrema.
+
+    Unlike production's separate term bounds, this reference bounds the complete
+    companion derivative and curvature by evaluating all their internal extrema.
+    Decimal arithmetic and bisection are used throughout. No production geometry,
+    trigonometry, bracket or stationary radius is reused.
+    """
+
+    def __init__(self, q: float, spin: float, distance: float, component: str, phi: float, theta: float) -> None:
+        super().__init__(q, spin, distance, component, "forward")
+        sin_phi, cos_phi = decimal_sincos(phi)
+        sin_theta, cos_theta = decimal_sincos(theta)
+        self.sign = cos_phi * sin_theta
+        self.transverse = (sin_phi * sin_theta) ** 2 + cos_theta**2
+        self.rotation *= sin_theta**2
+
+    def separation(self, r: Decimal) -> Decimal:
+        return ((r - self.distance * self.sign) ** 2 + self.distance**2 * self.transverse).sqrt()
+
+    def stationary(self) -> Decimal | None:
+        center = self.distance * self.sign
+        width2 = self.distance**2 * self.transverse
+
+        def companion_derivative(u: Decimal) -> Decimal:
+            return -u / (u * u + width2) ** Decimal("1.5")
+
+        def companion_curvature(u: Decimal) -> Decimal:
+            return (2 * u * u - width2) / (u * u + width2) ** Decimal("2.5")
+
+        def search(lo: Decimal, hi: Decimal, depth: int) -> Decimal | None:
+            left, right = lo - center, hi - center
+            # The curvature has maxima at +/-sqrt(3/2)*width and a minimum
+            # at zero. Only zero and the endpoints can attain its minimum.
+            candidates = [companion_curvature(left), companion_curvature(right)]
+            if left <= 0 <= right:
+                candidates.append(companion_curvature(Decimal(0)))
+            lower = 2 * self.a / hi**3 + self.b * min(candidates) + 2 * self.rotation
+            if lower > 0:
+                if self.derivative(hi) <= 0:
+                    return None
+                return bisect(self.derivative, lo, hi)
+            # Companion derivative extrema occur at +/-width/sqrt(2).
+            extrema = [left, right]
+            turn = (width2 / 2).sqrt()
+            extrema.extend(u for u in (-turn, turn) if left <= u <= right)
+            upper = (
+                -self.a / hi**2
+                + self.b * max(map(companion_derivative, extrema))
+                - self.b * self.sign / self.distance**2
+                + 2 * self.rotation * hi
+            )
+            if upper < 0:
+                return None
+            if depth > ANGULAR_MAX_DEPTH:
+                message = "Independent angular stationary isolation failed"
+                raise ArithmeticError(message)
+            mid = (lo + hi) / 2
+            first = search(lo, mid, depth + 1)
+            return first if first is not None else search(mid, hi, depth + 1)
+
+        return search(self.distance * Decimal("1e-25"), Decimal(30), 0)
+
+
+def angular_reference(
+    q: float,
+    spin: float,
+    distance: float,
+    component: str,
+    phi: float,
+    theta: float,
+    omega: float | None = None,
+    precision: int = 65,
+) -> Reference:
+    """Return first angular minimum and inner intersection, independently."""
+    with localcontext() as ctx:
+        ctx.prec = precision
+        ray = AngularRay(q, spin, distance, component, phi, theta)
+        stationary = ray.stationary()
+        end = stationary if stationary is not None else Decimal(30)
+        critical = ray.potential(end)
+        root = None
+        if omega is not None and Decimal(omega) >= critical:
+            root = bisect(lambda r: ray.potential(r) - Decimal(omega), Decimal(distance) * Decimal("1e-25"), end)
         return {"stationary": stationary, "critical": critical, "root": root}
