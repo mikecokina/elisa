@@ -60,6 +60,14 @@ elisa.binary\_system.surface.temperature module
    :show-inheritance:
    :undoc-members:
 
+elisa.binary\_system.surface.validation module
+----------------------------------------------
+
+.. automodule:: elisa.binary_system.surface.validation
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 Module contents
 ---------------
 

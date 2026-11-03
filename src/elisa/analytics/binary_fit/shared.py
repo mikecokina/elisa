@@ -657,6 +657,7 @@ class AbstractLCFit(AbstractFit):
         :param kwargs: Optional prediction arguments, such as a synthesis callable.
         :return: Per-band mean-normalized flux arrays in observation order.
         :raises ElisaPredictionAlignmentError: If dynamic prediction alignment is invalid.
+
         Synthesis exceptions propagate unchanged.
         """
         return predict_light_curves(

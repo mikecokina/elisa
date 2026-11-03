@@ -4,6 +4,22 @@ elisa.analytics.binary\_fit package
 Submodules
 ----------
 
+elisa.analytics.binary\_fit.chain\_tools module
+-----------------------------------------------
+
+.. automodule:: elisa.analytics.binary_fit.chain_tools
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+elisa.analytics.binary\_fit.failure\_policy module
+--------------------------------------------------
+
+.. automodule:: elisa.analytics.binary_fit.failure_policy
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 elisa.analytics.binary\_fit.io\_tools module
 --------------------------------------------
 
@@ -16,6 +32,14 @@ elisa.analytics.binary\_fit.lc\_fit module
 ------------------------------------------
 
 .. automodule:: elisa.analytics.binary_fit.lc_fit
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+elisa.analytics.binary\_fit.lc\_prediction module
+-------------------------------------------------
+
+.. automodule:: elisa.analytics.binary_fit.lc_prediction
    :members:
    :show-inheritance:
    :undoc-members:

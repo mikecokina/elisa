@@ -12,6 +12,14 @@ elisa.pypex.base.conf module
    :show-inheritance:
    :undoc-members:
 
+elisa.pypex.base.error module
+-----------------------------
+
+.. automodule:: elisa.pypex.base.error
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 elisa.pypex.base.shape module
 -----------------------------
 

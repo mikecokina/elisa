@@ -8,6 +8,7 @@ Subpackages
    :maxdepth: 4
 
    elisa.analytics
+   elisa.atm
    elisa.base
    elisa.binary_system
    elisa.conf
@@ -27,14 +28,6 @@ Subpackages
 Submodules
 ----------
 
-elisa.atm module
-----------------
-
-.. automodule:: elisa.atm
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
 elisa.buffer module
 -------------------
 
@@ -47,6 +40,14 @@ elisa.const module
 ------------------
 
 .. automodule:: elisa.const
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+elisa.json\_encoder module
+--------------------------
+
+.. automodule:: elisa.json_encoder
    :members:
    :show-inheritance:
    :undoc-members:
@@ -111,6 +112,7 @@ Module contents
 ---------------
 
 .. automodule:: elisa
+   :no-index:
    :members:
    :show-inheritance:
    :undoc-members:

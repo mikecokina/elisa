@@ -201,6 +201,7 @@ def predict_light_curves(
         support or returned synthesis arrays do not align or contain nonfinite
         values. Callers must let this structural error escape physical-state
         penalty handlers.
+
     Synthesis exceptions propagate unchanged to the caller.
     """
     xs = np.asarray(x_data_reduced)

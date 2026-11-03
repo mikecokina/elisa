@@ -12,6 +12,14 @@ Subpackages
 Submodules
 ----------
 
+elisa.conf.enums module
+-----------------------
+
+.. automodule:: elisa.conf.enums
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 elisa.conf.logconfig module
 ---------------------------
 
