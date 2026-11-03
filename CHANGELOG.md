@@ -9,7 +9,9 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ## 1.0.0
 
-### Added
+### Scientific modeling and fitting
+
+#### Added
 
 - Configurable Kepler solving through `MEAN_ANOMALY_SOLVER` or
   `[computational].mean_anomaly_solver`: `vectorized` (default) solves arrays of
@@ -41,9 +43,8 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
   propagate. The option can hide programming errors and does not cover fit setup
   or process-control exceptions.
 
-### Changed
+#### Changed
 
-- Raised the minimum supported Python version from 3.10 to 3.11.
 - Moved atmosphere APIs from `elisa.atm` to `elisa.atm.atm`.
 - Replaced legacy exception names and many generic validation errors with explicit
   domain exceptions in `elisa.base.error`; callers must update imports and handlers.
@@ -58,7 +59,7 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 - Made settings updates atomic and validated, and preserved host logging handlers
   when applying built-in logging profiles.
 
-### Fixed
+#### Fixed
 
 - Corrected eccentric surface-potential reference geometry and phase-dependent
   volume conservation: input `surface_potential` now refers to periastron rather
@@ -95,11 +96,11 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 - Preserved small atmospheric fluxes at interpolated bandwidth boundaries and exact
   limb-darkening query coordinates instead of rounding them.
 - Improved errors for missing or malformed atmosphere, limb-darkening, and passband
-  sources, and GUI handling of validation and numerical failures.
+  sources.
 - Fixed Pypex 2D point-side checks for NumPy 2.5, parallel-line classification,
   and orientation-independent collinear segment overlap detection.
 
-### Performance
+#### Performance
 
 - Added default Sutherland-Hodgman eclipse clipping without legacy coordinate
   rounding; `INTERSECTION_BACKEND` also supports `pypex` and `reference`.
@@ -110,33 +111,47 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 - Reduced repeated LC fitting validation, observation mapping, and R² preparation,
   and skipped unused reflection calculations.
 
-### Removed
+#### Removed
 
 - Deprecated `[support].atlas` INI option and the first-run atmosphere-selection
   prompt; select atmospheres per star or through fitting's `atmosphere_model` mapping.
 
-## 0.7.0dev0 - 2026-03-02
+### GUI
 
-### Added
+#### Added
+
+- Gradio desktop UI, launched with `python -m elisa.ui`, with tabs for light curve
+  modeling, radial velocity modeling, light curve fitting, radial velocity
+  fitting, and system visualization.
+- Least-squares and MCMC fitting in both fitting tabs, kinematic and radiometric
+  RV modeling, and surface, mesh, orbit, and equipotential visualization.
+- UI configuration through `ELISA_UI_SERVER_PORT`, `ELISA_UI_SERVER_HOST`,
+  `ELISA_UI_THEME`, `ELISA_UI_MAX_SPOTS`, and `ELISA_UI_MAX_PULSE_MODES`.
+- `UI_GUIDE.md` covering parameters, workflows, and troubleshooting.
+
+#### Fixed
+
+- Improved GUI handling of validation errors and numerical synthesis failures.
+
+### Python compatibility and packaging
+
+Includes changes previously listed under the unreleased `0.7.0dev0` version.
+
+#### Added
 
 - Support for Python 3.13 and 3.14.
 - `pyproject.toml` with PEP 517 build isolation using the setuptools backend.
 - Development extras for building and publishing packages.
 
-### Changed
+#### Changed
 
-- Raised the minimum supported Python version to 3.10.
+- Raised the minimum supported Python version to 3.11.
 - Modernized packaging configuration and dependency declarations.
 - Replaced deprecated NumPy APIs, including `np.row_stack`, `np.chararray`, and
-  `np.NaN`, with NumPy 2.x compatible implementations.
-- Improved NumPy 2.x compatibility in geometry and intersection utilities.
+  `np.NaN`, and improved NumPy 2.x compatibility in geometry and intersection utilities.
 - Adopted the Keep a Changelog format.
 
-### Removed
-
-- Support for Python versions below 3.10.
-
-### Fixed
+#### Fixed
 
 - Included required data files in source distributions.
 
@@ -144,27 +159,29 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
-- Included all required files from the package data directory in build distributions.
+- Fixed package builds to include all required files from the data directory.
 
 ## 0.6.1 - 2026-02-04
 
 ### Fixed
 
-- Aligned INI configuration parsing with documented setting types, correcting uses
-  of `getfloat`, `getint`, and `getboolean`.
-- Preserved integer and float types when safely parsing `rv_lambda_interval` tuples.
-- Allowed valid configurations that previously failed during settings loading.
+- Fixed INI settings parsed with the wrong getter so numeric and boolean values
+  use their documented types.
+- Parsed `rv_lambda_interval` tuples safely while preserving integer and
+  floating-point values.
+- Fixed settings-loading failures for otherwise valid configurations.
 
 ## 0.6.0 - 2026-02-04
 
 ### Added
 
-- First-run configuration wizard for the minimum required settings.
-- Download manager for limb-darkening tables and atmosphere models.
+- A first-run wizard to configure the settings required to start ELISA.
+- A download manager for installing limb-darkening tables and atmosphere models
+  without downloading them manually.
 - Support for Python 3.9 through 3.12.
 - Gaia passbands using the Van Hamme 2019 limb-darkening table notation:
   `Gaia.2010.G` (equivalent to the previous `GaiaDR2`), `Gaia.2010.BP`, and `Gaia.2010.RP`.
-- Configurable `default_discretization_factor` to control surface mesh fidelity.
+- A `default_discretization_factor` setting to control the resolution of surface meshes.
 - Automatic semi-major axis estimation when loading light curve fitting parameters
   without `semi_major_axis`. `LCBinaryAnalyticsTask.set_result()` and `load_result()`
   accept `autofill_sma=True` to select a fixed value that keeps component surface
@@ -173,20 +190,21 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
   the `Star` arguments `atmosphere` and `limb_darkening_coefficients`, and through
   `AnalyticsTask` arguments for fitting. Custom coefficients remain constant over
   the component surface.
-- Observer distance through the `distance` parameter of `BinarySystem` and
-  `SingleSystem`, defaulting to 10 pc.
+- Configurable observer distance through the `distance` parameter of
+  `BinarySystem` and `SingleSystem`, with a default of 10 pc.
 - Light curves in magnitudes through `Observer.flux_unit = u.mag` or the
   `flux_unit` argument of `Observer.observe.lc()`.
-- `MAGNITUDE_SYSTEM` configuration with `vega` (default), `ab`, and `st` zero-point sets.
+- A `MAGNITUDE_SYSTEM` setting to select `vega` (default), `ab`, or `st`
+  photometric zero points for magnitude calculations.
 
 ### Changed
 
-- Updated dependencies and implementation compatibility across Python 3.6 through 3.12.
+- Updated dependencies and code for compatibility with Python 3.6 through 3.12.
 
 ### Fixed
 
 - Prevented configuration parser crashes when `general.home` is set.
-- Clipped normal-distribution priors to the configured `min` and `max` bounds.
+- Restricted normal-distribution priors to the configured `min` and `max` bounds.
 
 ## 0.5.1 - 2021-11-04
 
@@ -199,18 +217,23 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Added
 
-- Black-body atmospheres through `black_body`.
-- Different atmosphere models for individual celestial objects.
+- Black-body atmosphere modeling with the `black_body` option.
+- Per-object atmosphere selection, allowing different stars to use different models.
 - `velocity` and `radial_velocity` colormaps for `BinarySystem.plot.surface()`
   and `SingleSystem.plot.surface()`.
-- Uniform and normal parameter priors, with normal standard deviation set by `sigma`.
+- A choice of uniform or normal parameter priors, with `sigma` setting the
+  standard deviation of a normal prior.
 - Built-in `default` and `fit` logging configurations, or a custom configuration
   file path, selected through `LOG_CONFIG`. The `fit` configuration limits logging
   to analytics classes.
-- Adaptive and custom fitting samples through the `samples` argument.
-- Figure return values through the surface plot argument `return_figure_instance`.
-- Flat-chain filtering with `AnalyticsTask.filter_chain()` to examine multiple solutions.
-- R² evaluation with `AnalyticsTask.coefficient_of_determination()`.
+- Adaptive phase sampling and user-supplied phase samples for fitting through
+  the `samples` argument.
+- An option to return the surface plot figure for further customization through
+  `return_figure_instance`.
+- Filtering of flattened MCMC samples with `AnalyticsTask.filter_chain()` to
+  examine different fitted solutions.
+- Fit-quality evaluation using R² through
+  `AnalyticsTask.coefficient_of_determination()`.
 - Loading radius-based JSON models with `equivalent_radius` as an alternative to
   the standard `polar_log_g` format.
 - `BinarySystem.build_container()` and `SingleSystem.build_container()` for complete
@@ -218,16 +241,15 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Changed
 
-- Conserved the solar constant across surface discretization levels.
+- Preserved the solar constant when changing surface mesh resolution.
 - Improved trapezoidal discretization.
-- Checked relative irradiation changes before reusing approximations at similar
-  orbital positions during eccentric light curve integration.
-- Used Numba for computationally intensive calculations such as reflection effects,
-  in preparation for GPU support.
-- Returned dictionaries from `elisa.analytics.tasks.load_results()`.
+- Checked relative changes in irradiation before reusing calculations at similar
+  orbital positions, improving eccentric light curve integration accuracy.
+- Used Numba for computationally intensive calculations, including reflection effects.
+- Changed `elisa.analytics.tasks.load_results()` to return a dictionary.
 - Removed the need to call `set_up_logging()` when changing logging configurations.
-- Tuned surface underestimation corrections separately for single stars, detached
-  binaries, and over-contact binaries.
+- Calibrated corrections for underestimated mesh surface areas separately for
+  single stars, detached binaries, and over-contact binaries.
 - Scaled default component discretization to produce similar flux contributions
   per surface element within the permitted discretization range, reducing excessive
   sampling of smaller, dimmer components.
@@ -249,20 +271,22 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Added
 
-- Radiometric radial velocity curves that model the Rossiter effect and spot effects.
+- Radiometric radial velocity curves that account for the Rossiter effect and
+  velocity shifts caused by spots.
 
 ### Changed
 
 - Updated dependencies and support for Python 3.6, 3.7, and 3.8.
-- Exposed configuration through a singleton imported with `from elisa import settings`.
-- Enabled observation plotting with `DataSet.plot.display_observation()`.
+- Made configuration available through a shared settings instance imported with
+  `from elisa import settings`.
+- Added observation plotting through `DataSet.plot.display_observation()`.
 
 ### Fixed
 
 - Removed faulty curve points produced by multiprocessing integration.
-- Conserved component volumes in eccentric systems with spots.
+- Fixed component volume conservation in eccentric systems with spots.
 - Reduced surface area artifacts caused by numerical noise during total eclipses.
-- Corrected temperature renormalization using fourth powers.
+- Corrected temperature renormalization to use the fourth power of temperature.
 
 ## 0.3.1 - 2020-08-19
 
@@ -273,10 +297,11 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
-- Normalized light curves on demand.
+- Fixed on-demand light curve normalization.
 - Prevented MCMC chain evaluation crashes near Roche-lobe filling by snapping
   surface potentials to critical values when they fall within the fitted errors.
-- Used confidence intervals rather than fitting bounds in corner and trace plots.
+- Corrected corner and trace plot ranges to use fitted confidence intervals
+  instead of parameter search bounds.
 - Improved the least squares cost function.
 - Corrected the secondary potential derivative.
 - Accounted for libration when positioning spots in eccentric orbits.
@@ -287,19 +312,22 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 ### Added
 
 - Single-star light curves with spots and pulsations.
-- Improved analytics API, fitting summaries, and fitting input/output.
-- TESS passband with limb-darkening tables.
+- A revised analytics API with fitting summaries and improved loading and saving
+  of fitting data.
+- Support for the TESS passband, including limb-darkening tables.
 
 ### Fixed
 
-- Prevented missing-`param` crashes caused by invalid backend constraints when
-  fitting over-contact binaries.
-- Normalized each fitted light curve to its own maximum.
+- Fixed crashes reporting a missing `param` when backend constraints were
+  configured incorrectly for over-contact binary fitting.
+- Fixed fitting normalization to scale each light curve by its own maximum
+  rather than the maximum across all curves.
 - Returned a large negative MCMC penalty for invalid binary systems instead of
   a value close to zero.
 - Raised `elisa.base.error.AtmosphereError` rather than `FileNotFoundError` for
   missing atmosphere files.
-- Removed the hardcoded `ck04` atmosphere from light curve observations.
+- Allowed light curve observations to use the selected atmosphere instead of
+  always using `ck04`.
 - Prevented crashes caused by small spots.
 - Prevented MCMC chain evaluation crashes near Roche-lobe filling by snapping
   surface potentials to critical values when they fall within the fitted errors.
@@ -308,9 +336,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Fixed
 
-- Prevented missing-`param` crashes caused by invalid backend constraints when
-  fitting over-contact binaries.
-- Normalized each fitted light curve to its own maximum.
+- Fixed crashes reporting a missing `param` when backend constraints were
+  configured incorrectly for over-contact binary fitting.
+- Fixed fitting normalization to scale each light curve by its own maximum
+  rather than the maximum across all curves.
 - Returned a large negative MCMC penalty for invalid binary systems instead of
   a value close to zero.
 - Raised `elisa.base.error.AtmosphereError` rather than `FileNotFoundError` for
@@ -334,10 +363,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Added
 
-- Binary radial velocity curves based on center-of-mass motion and the community
-  parameters `q` and `asini`.
-- Parallel light curve calculation by splitting phases into batches across up to
-  `N` available processes.
+- Binary radial velocity curves from center-of-mass motion, parameterized by
+  mass ratio `q` and projected semi-major axis `asini`.
+- Parallel light curve calculation by distributing batches of orbital phases
+  across the configured number of processes, limited by available cores.
 - MCMC and nonlinear least squares fitting of binary light curves using standard
   masses `M_1`, `M_2` or community parameters `q` (mass ratio) and `a` (semi-major axis).
 - MCMC and nonlinear least squares fitting of radial velocities using the
@@ -347,8 +376,8 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 ### Fixed
 
 - Accepted NumPy arrays for `phases` in `Observer.observe.lc()` and `Observer.observe.rv()`.
-- Kept adaptive binary discretization within its prescribed bounds to avoid
-  insufficient surface points and triangulation crashes.
+- Fixed adaptive binary meshing to respect discretization limits, preventing
+  triangulation failures caused by too few surface points.
 - Prevented `phase_interval_reduce` crashes when `BinarySystem` was not imported directly.
 - Removed a constant PI multiplier from the output flux; further investigation
   was still required.
@@ -359,8 +388,8 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 ### Added
 
-- Binary surface point generation from generalized surface potentials and
-  triangulation into component surface elements.
+- Binary star surface meshes generated from generalized surface potentials
+  and triangulated into surface elements.
 - Gravity and temperature distributions over component surfaces.
 - Surface spots and temperature pulsations.
 - Light curves for circular synchronous and asynchronous binary orbits, with
