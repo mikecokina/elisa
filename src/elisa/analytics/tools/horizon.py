@@ -86,10 +86,19 @@ def _horizon_base_component(
         binary.init()
 
     position_container = OrbitalPositionContainer.from_binary_system(binary, position)
-    position_container.build_mesh(components_distance=1.0, component="primary")
-    position_container.build_faces(components_distance=1.0, component="primary")
+    if binary.eccentricity != 0.0:
+        potentials = binary.correct_potentials(distances=np.array([position.distance]))
+        position_container.set_on_position_params(
+            position, potentials["primary"][0], potentials["secondary"][0],
+        )
+        radii = binary.calculate_components_radii(position.distance)
+        for component, values in radii.items():
+            for name, value in values.items():
+                setattr(getattr(position_container, component), name, value)
+    position_container.build_mesh(components_distance=position.distance, component="primary")
+    position_container.build_faces(components_distance=position.distance, component="primary")
     position_container.build_faces_orientation(
-        components_distance=1.0,
+        components_distance=position.distance,
         component="primary",
     )
     position_container.build_surface_areas(component="primary")
@@ -332,7 +341,9 @@ def get_analytics_horizon(
         "rtol": 1e-10,
         "args": (
             (binary.mass_ratio, *precalc_vals),
-            star.surface_potential,
+            binary.correct_potentials(
+                distances=np.array([position.distance]), component="primary",
+            )["primary"][0],
         ),
     }
 

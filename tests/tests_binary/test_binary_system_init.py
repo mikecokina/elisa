@@ -143,18 +143,18 @@ class BinarySystemInitTestCase(ElisaTestCase):
 
         expected = {
             "primary": {
-                "forward_radius": [0.01005, 0.01229, 0.3783, 0.24608, 0.57075, 0.53029, np.nan],
-                "side_radius": [0.01005, 0.01229, 0.35511, 0.23553, 0.43994, 0.41553, 0.48182],
+                "forward_radius": [0.01005, 0.01229, 0.3783, 0.26257, 0.57075, 0.53029, np.nan],
+                "side_radius": [0.01005, 0.01229, 0.35511, 0.24859, 0.43994, 0.41553, 0.48182],
                 "equatorial_radius": [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
-                "backward_radius": [0.01005, 0.01229, 0.36723, 0.24152, 0.46794, 0.44207, 0.52573],
-                "polar_radius": [0.01005, 0.01005, 0.33055, 0.23053, 0.41427, 0.37162, 0.44577]
+                "backward_radius": [0.01005, 0.01229, 0.36723, 0.25608, 0.46794, 0.44207, 0.52573],
+                "polar_radius": [0.01005, 0.01005, 0.33055, 0.24242, 0.41427, 0.37162, 0.44577]
             },
             "secondary": {
-                "forward_radius": [0.00506, 0.00763, 0.34966, 0.19564, 0.42925, 0.36743, np.nan],
-                "side_radius": [0.00506, 0.00763, 0.29464, 0.18102, 0.31288, 0.28094, 0.35376],
+                "forward_radius": [0.00506, 0.00763, 0.34966, 0.25693, 0.42925, 0.36743, np.nan],
+                "side_radius": [0.00506, 0.00763, 0.29464, 0.21419, 0.31288, 0.28094, 0.35376],
                 "equatorial_radius": [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
-                "backward_radius": [0.00506, 0.00763, 0.32018, 0.19011, 0.34537, 0.30842, 0.41825],
-                "polar_radius": [0.00506, 0.00635, 0.2798, 0.17880, 0.29977, 0.2489, 0.33306]
+                "backward_radius": [0.00506, 0.00763, 0.32018, 0.23324, 0.34537, 0.30842, 0.41825],
+                "polar_radius": [0.00506, 0.00635, 0.2798, 0.20994, 0.29977, 0.2489, 0.33306]
             }
         }
 
@@ -166,6 +166,12 @@ class BinarySystemInitTestCase(ElisaTestCase):
                     value = np.round(getattr(getattr(bs, component), radius), 5) \
                         if hasattr(getattr(bs, component), radius) else np.nan
                     assert_array_equal([value], [expected[component][radius][i]])
+                    if bs.eccentricity and radius != "equatorial_radius":
+                        from scripts.diagnostics.roche_reference import reference
+                        star = getattr(bs, component)
+                        oracle = reference(bs.mass_ratio, star.synchronicity, 1 - bs.eccentricity,
+                                           component, radius.removesuffix("_radius"), star.surface_potential)
+                        np.testing.assert_allclose(getattr(star, radius), float(oracle["root"]), rtol=1e-9)
 
     def test_lagrangian_points(self):
 
@@ -591,9 +597,9 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
                         'start_phase': 0.0,
                         'mode_axis_theta': 0,
                         'mode_axis_phi': 0,
-                        'horizontal_to_radial_amplitude_ratio': 88.803761160,
+                        'horizontal_to_radial_amplitude_ratio': 70.931415717,
                         'temperature_perturbation_phase_shift': 1.0471975,
-                        'temperature_amplitude_factor': 0.23169729556612906,
+                        'temperature_amplitude_factor': 0.21494597573438942,
                         'tidally_locked': False
                     }
                 ]
@@ -602,6 +608,33 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
 
         bs = BinarySystem.from_json(data)
         js = bs.to_json()
+        # Independently integrate the periastron volume before accepting derived
+        # pulsation defaults; the slice approximation has finite resolution.
+        from tests.tests_binary.test_periastron_volume import volume
+        from elisa.pulse.pulsations import spherical_harmonics
+        star = bs.secondary
+        mode = star.pulsations[1]
+        radius = (3 * volume(bs, "secondary", star.surface_potential, 0.7) / (4 * c.PI)) ** (1 / 3)
+        radius *= bs.semi_major_axis
+        ratio = np.sqrt(110) * c.G * star.mass / (radius**3 * mode.angular_frequency**2)
+        temperature = c.IDEAL_ADIABATIC_GRADIENT * (ratio * 110 - 4 - 1 / ratio)
+        temperature *= mode.amplitude / (mode.angular_frequency * np.sqrt(1 + ratio**2) * radius)
+        np.testing.assert_allclose(mode.horizontal_to_radial_amplitude_ratio, ratio, rtol=0.002)
+        np.testing.assert_allclose(mode.temperature_amplitude_factor, temperature, rtol=0.002)
+
+        restored = BinarySystem.from_json(js)
+        points = np.array([[1.0, 0.2, 0.5], [1.0, 1.2, 2.0]])
+        for index, original in star.pulsations.items():
+            recovered = restored.secondary.pulsations[index]
+            for name in ("amplitude", "frequency", "start_phase", "mode_axis_theta", "mode_axis_phi",
+                         "horizontal_to_radial_amplitude_ratio", "temperature_amplitude_factor",
+                         "temperature_perturbation_phase_shift", "radial_amplitude", "horizontal_amplitude",
+                         "l", "m", "tidally_locked"):
+                np.testing.assert_allclose(getattr(recovered, name), getattr(original, name), rtol=1e-12)
+            np.testing.assert_allclose(
+                spherical_harmonics(recovered, points, np.exp(0.3j)),
+                spherical_harmonics(original, points, np.exp(0.3j)),
+            )
 
         for item in js['system']:
             self.assertEqual(js['system'][item], expected['system'][item])

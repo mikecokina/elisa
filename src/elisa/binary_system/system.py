@@ -1332,7 +1332,9 @@ class BinarySystem(System[Star]):
         """Correct potentials so that component volume is conserved.
 
         The function calculates potential for each phase or distance in a way
-        that conserves the volume of the component.
+        that conserves the volume of the component. The input surface potential
+        defines the reference surface at periastron and is returned unchanged
+        at that distance.
 
         :param phases: Orbital phases. Ignored when ``distances`` is supplied.
         :type phases: NDArray | None
@@ -1361,34 +1363,42 @@ class BinarySystem(System[Star]):
         component_ = cast("ComponentSelection", component)
         components = bsutils.component_to_list(component_)
         potentials: dict[str, NDArray[np.float64]] = {}
+        reference_distance = self.orbit.periastron_distance
+        non_reference = distances_array != reference_distance
 
         for component_name in components:
             star = getattr(self, component_name)
-            new_potentials = star.surface_potential * np.ones(distances_array.shape, dtype=FLOAT)
+            corrected = np.full(distances_array.shape, star.surface_potential, dtype=FLOAT)
+            if not np.any(non_reference):
+                potentials[component_name] = corrected
+                continue
+
+            active_distances = distances_array[non_reference]
+            new_potentials = np.full(active_distances.shape, star.surface_potential, dtype=FLOAT)
 
             points_equator, points_meridian = self.generate_equator_and_meridian_points(
-                components_distance=1.0,
+                components_distance=self.orbit.periastron_distance,
                 component=component_name,
                 surface_potential=star.surface_potential,
             )
             reference_volume = utils.calculate_volume_ellipse_approx(points_equator, points_meridian)
             equiv_r_mean = utils.calculate_equiv_radius(reference_volume)
 
-            side_radii = np.empty(distances_array.shape, dtype=FLOAT)
-            volume = np.empty(distances_array.shape, dtype=FLOAT)
+            side_radii = np.empty(active_distances.shape, dtype=FLOAT)
+            volume = np.empty(active_distances.shape, dtype=FLOAT)
             for _ in range(iterations):
                 for idx, _potential in enumerate(new_potentials):
                     radii_args = (
                         star.synchronicity,
                         self.mass_ratio,
-                        distances_array[idx],
+                        active_distances[idx],
                         _potential,
                         component_name,
                     )
                     side_radii[idx] = bsradius.calculate_side_radius(*radii_args)
 
                     points_equator, points_meridian = self.generate_equator_and_meridian_points(
-                        components_distance=distances_array[idx],
+                        components_distance=active_distances[idx],
                         component=component_name,
                         surface_potential=_potential,
                     )
@@ -1405,16 +1415,17 @@ class BinarySystem(System[Star]):
                             corrected_side_radii[idx],
                             const.HALF_PI,
                             const.HALF_PI,
-                            distances_array[idx],
+                            active_distances[idx],
                             self.mass_ratio,
                             star.synchronicity,
                         )
-                        for idx in range(len(distances_array))
+                        for idx in range(len(active_distances))
                     ],
                     dtype=FLOAT,
                 )
 
-            potentials[component_name] = np.asarray(new_potentials, dtype=FLOAT)
+            corrected[non_reference] = new_potentials
+            potentials[component_name] = corrected
 
         return potentials
 
@@ -1422,7 +1433,8 @@ class BinarySystem(System[Star]):
         """Return equivalent radius of the given component or components.
 
         Equivalent radius is the radius of the sphere with the same volume as
-        the given component.
+        the given component. The reference volume is defined by the input
+        surface potential at periastron.
 
         :param component: Target component, ``primary``, ``secondary``, or
             ``all``.
@@ -1435,7 +1447,7 @@ class BinarySystem(System[Star]):
         for component_name in components:
             star = getattr(self, component_name)
             points_equator, points_meridian = self.generate_equator_and_meridian_points(
-                components_distance=1.0,
+                components_distance=self.orbit.periastron_distance,
                 component=component_name,
                 surface_potential=star.surface_potential,
             )
