@@ -5,7 +5,6 @@ from functools import lru_cache
 from typing import TYPE_CHECKING, Literal, TypeAlias, cast
 
 import numpy as np
-from scipy import optimize
 
 from elisa import const, settings, utils
 from elisa import umpy as up
@@ -25,6 +24,7 @@ from elisa.base.types import FLOAT
 from elisa.binary_system import graphic, model
 from elisa.binary_system import radius as bsradius
 from elisa.binary_system import utils as bsutils
+from elisa.binary_system._radius_solver import RocheRay, bracket_root
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.curves import c_router, lc, rv
 from elisa.binary_system.orbit import orbit
@@ -876,7 +876,11 @@ class BinarySystem(System[Star]):
         mass_ratio: Float,
         synchronicity: Float,
     ) -> Float:
-        """Calculate critical potential for a binary-system component.
+        """Calculate the generalized inner critical potential of one component.
+
+        Uses that component's synchronicity and instantaneous separation in
+        its own local Roche coordinates, including the secondary zero point.
+        For eccentric binaries the caller supplies the periastron separation.
 
         :param component: Target component, either ``primary`` or ``secondary``.
         :type component: Literal["primary", "secondary"]
@@ -892,44 +896,46 @@ class BinarySystem(System[Star]):
         :raises ElisaNumericError: If the solver returns a nonfinite solution.
         :raises ElisaMaxIterationError: If the solver does not converge.
         """
-        args1 = (synchronicity, mass_ratio, components_distance)
-        args2 = (*args1, 0.0, const.HALF_PI)
-        solver_message = (
-            "Iteration process to solve critical potential seems to lead nowhere "
-            "(critical potential solver has failed)."
+        # Caller-selected component identity cannot change with candidate values.
+        if component not in (BinaryComponent.PRIMARY, BinaryComponent.SECONDARY):
+            message = (
+                f"Critical potential received an unexpected component {component!r}; expected primary or secondary."
+            )
+            raise_elisa_unexpected_error(message)
+
+        inputs = (synchronicity, mass_ratio, components_distance)
+        finite_inputs = all(np.isfinite(value) for value in inputs)
+        positive_geometry = mass_ratio > 0 and components_distance > 0
+        if not finite_inputs or not positive_geometry:
+            message = "Critical potential requires finite inputs and positive mass ratio and separation."
+            raise_elisa_numeric_error(message)
+
+        # Each ray starts at its own star and points toward the companion.
+        # The secondary convention swaps gravity coefficients and shifts Omega's zero point.
+        if component == BinaryComponent.PRIMARY:
+            own_gravity, companion_gravity = 1.0, mass_ratio
+            potential_offset = 0.0
+        else:
+            own_gravity, companion_gravity = mass_ratio, 1.0
+            potential_offset = (1 - mass_ratio) / 2
+
+        ray = RocheRay(
+            a=own_gravity,
+            b=companion_gravity,
+            d=components_distance,
+            c=1.0,  # Forward direction along the line joining the stellar centres.
+            rotation=synchronicity**2 * (1 + mass_ratio) / 2,
+            offset=potential_offset,
+            transverse_squared=0.0,
         )
 
-        if component == BinaryComponent.PRIMARY:
-            solution, result = optimize.newton(
-                model.primary_potential_derivative_x, x0=1e-6, args=args1, tol=1e-12,
-                full_output=True, disp=False,
-            )
-            if result.converged and np.isfinite(solution):
-                precalc_args = model.pre_calculate_for_potential_value_primary(*args2)
-                args = (mass_ratio, *precalc_args)
-                return abs(model.potential_value_primary(solution, *args))
-
-            if not result.converged:
-                raise_elisa_max_iteration_error(solver_message)
-            raise_elisa_numeric_error(solver_message)
-
-        if component == BinaryComponent.SECONDARY:
-            solution, result = optimize.newton(
-                model.secondary_potential_derivative_x, x0=1e-6, args=args1, tol=1e-12,
-                full_output=True, disp=False,
-            )
-            if result.converged and np.isfinite(solution):
-                precalc_args = model.pre_calculate_for_potential_value_secondary(*args2)
-                args = (mass_ratio, *precalc_args)
-                return abs(model.potential_value_secondary(components_distance - solution, *args))
-
-            if not result.converged:
-                raise_elisa_max_iteration_error(solver_message)
-            raise_elisa_numeric_error(solver_message)
-
-        # Caller-selected component identity cannot change with candidate values.
-        message = f"Critical potential received an unexpected component {component!r}; expected primary or secondary."
-        return raise_elisa_unexpected_error(message)
+        # The forward ray is strictly convex between the two stellar centres.
+        # Bracket its unique stationary minimum without the surface-radius ceiling.
+        stationary_radius = bracket_root(ray.derivative, 0.0, components_distance)
+        potential = ray.potential(stationary_radius)
+        if not np.isfinite(potential):
+            raise_elisa_numeric_error("Critical potential solver returned a nonfinite potential.")
+        return potential
 
     def libration_potentials(self) -> list[Float]:
         """Return potentials in L3, L1, and L2 respectively.
@@ -944,6 +950,9 @@ class BinarySystem(System[Star]):
         """Return potentials in L3, L1, and L2 for supplied parameters.
 
         This is the static version of :meth:`libration_potentials`.
+        These are classical synchronous potentials in the primary convention.
+        A common critical equipotential applies to circular synchronous systems;
+        these values are not generalized eccentric/asynchronous component limits.
 
         :param periastron_distance: Periastron distance.
         :type periastron_distance: Float

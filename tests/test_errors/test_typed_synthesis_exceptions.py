@@ -85,8 +85,8 @@ def test_radius_domain_failure_retains_message(monkeypatch):
 
 @pytest.mark.parametrize('component', ['primary', 'secondary'])
 def test_critical_potential_nan_is_explicit_elisa_failure(monkeypatch, component):
-    monkeypatch.setattr('elisa.binary_system.system.optimize.newton', lambda *a, **k: (np.nan, SimpleNamespace(converged=True)))
-    with pytest.raises(ElisaNumericError, match='critical potential solver has failed') as caught:
+    monkeypatch.setattr('elisa.binary_system.system.bracket_root', lambda *a, **k: np.nan)
+    with pytest.raises(ElisaNumericError, match='nonfinite potential') as caught:
         # noinspection PyTypeChecker
         BinarySystem.critical_potential_static(component, 1.0, 1.0, 1.0)
     assert type(caught.value) is ElisaNumericError
@@ -99,7 +99,7 @@ def test_dependency_solver_errors_are_not_relabelled(monkeypatch, error_type):
     # noinspection PyUnusedLocal
     def fail(*args, **kwargs):
         raise original
-    monkeypatch.setattr('elisa.binary_system.system.optimize.newton', fail)
+    monkeypatch.setattr('elisa.binary_system.system.bracket_root', fail)
     with pytest.raises(error_type) as caught:
         BinarySystem.critical_potential_static('primary', 1.0, 1.0, 1.0)
     assert caught.value is original

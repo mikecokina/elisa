@@ -1070,6 +1070,8 @@ def check_for_boundary_surface_potentials(
     Checks if surface potential values are within errors below critical potentials
     (which would break BinarySystem initialization). If they are close but still within
     errors, they are snapped to critical potential.
+    Component inner limits use their own spin at periastron. The outer Lagrange
+    limit and shared overcontact potential apply only to circular synchronous systems.
 
     :param result_dict: Flat dictionary of fit results with confidence intervals.
     :type result_dict: dict[str, dict[str, Any]]
@@ -1081,7 +1083,13 @@ def check_for_boundary_surface_potentials(
     if "primary@surface_potential" not in result_dict or "secondary@surface_potential" not in result_dict:
         return result_dict
 
-    if result_dict["primary@surface_potential"]["value"] == result_dict["secondary@surface_potential"]["value"]:
+    classical = result_dict["system@eccentricity"]["value"] == 0.0 and all(
+        result_dict.get(f"{component}@synchronicity", {}).get("value", 1.0) == 1.0
+        for component in settings.BINARY_COUNTERPARTS
+    )
+    if classical and (
+        result_dict["primary@surface_potential"]["value"] == result_dict["secondary@surface_potential"]["value"]
+    ):
         return result_dict
 
     for component in settings.BINARY_COUNTERPARTS:
@@ -1103,7 +1111,7 @@ def check_for_boundary_surface_potentials(
 
         periastron_distance = 1 - result_dict["system@eccentricity"]["value"]
 
-        l1 = BinarySystem.critical_potential_static(
+        inner_critical = BinarySystem.critical_potential_static(
             component=component,
             components_distance=periastron_distance,
             mass_ratio=mass_ratio,
@@ -1112,15 +1120,16 @@ def check_for_boundary_surface_potentials(
 
         # if resulting potential is too close critical potentials (within errors), it will snap potential
         # to critical one to avoid problems
-        if 5 * sigma >= l1 - pot["value"] >= 0.0:
-            pot["value"] = l1 + 1e-5 * sigma
+        if 5 * sigma >= inner_critical - pot["value"] >= 0.0:
+            pot["value"] = inner_critical + 1e-5 * sigma
 
         # test for over-contact overflow trough L2 point
-        l2 = BinarySystem.libration_potentials_static(periastron_distance, mass_ratio)[2]
-        if 5 * sigma >= l2 - pot["value"] >= 0.0:
-            pot["value"] = l2 - 1e-5 * sigma
+        if classical:
+            l2 = BinarySystem.libration_potentials_static(periastron_distance, mass_ratio)[2]
+            if 5 * sigma >= l2 - pot["value"] >= 0.0:
+                pot["value"] = l2 - 1e-5 * sigma
 
-    if morphology == "over-contact":
+    if classical and morphology == "over-contact":
         result_dict["secondary@surface_potential"]["value"] = result_dict["primary@surface_potential"]["value"]
 
     return result_dict

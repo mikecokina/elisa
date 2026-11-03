@@ -114,7 +114,8 @@ def radius_call(system):
     [(False, 0.5, ElisaMaxIterationError), (True, np.nan, ElisaNumericError)],
 )
 def test_binary_critical_solver_distinguishes_convergence_and_numerical_failure(component, converged, root, category):
-    with patch("elisa.binary_system.system.optimize.newton", return_value=(root, SimpleNamespace(converged=converged))):
+    outcome = {"return_value": root} if converged else {"side_effect": category("nonconvergence")}
+    with patch("elisa.binary_system.system.bracket_root", **outcome):
         with pytest.raises(category):
             BinarySystem.critical_potential_static(component, 1.0, 1.0, 1.0)
 
