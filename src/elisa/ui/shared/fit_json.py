@@ -170,7 +170,7 @@ def load_model_params_from_json(
         msg = f"Cannot read result file: {exc}"
         raise ValueError(msg) from exc
 
-    if "system" not in data:
+    if not isinstance(data, dict) or "system" not in data:
         msg = "File does not look like an ELISa LC result - missing 'system' key."
         raise ValueError(msg)
 

@@ -14,6 +14,7 @@ import gradio as gr
 import pandas as pd  # noqa: TC002  - needed at runtime for Gradio get_type_hints()
 from PIL import Image  # noqa: TC002  - same reason
 
+from elisa.base.error import ElisaMaxIterationError, ElisaNumericError
 from elisa.ui.components import star_inputs, system_inputs
 from elisa.ui.shared.const import ATMOSPHERE_CHOICES
 from elisa.ui.shared.fit_json import make_json_load_handler
@@ -143,6 +144,9 @@ def _make_handler(
                 secondary_spot_params,
             )
             return fig, df, gr.DownloadButton(value=csv_path, visible=True)
+        except (ElisaNumericError, ElisaMaxIterationError) as exc:
+            msg = "The model could not be calculated numerically. Check the system parameters and sampling."
+            raise gr.Error(msg) from exc
         except Exception as exc:
             raise gr.Error(str(exc)) from exc
 
