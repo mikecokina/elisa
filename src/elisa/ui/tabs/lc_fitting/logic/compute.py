@@ -616,6 +616,10 @@ def detect_approach_from_json(path: str) -> str:
         msg = f"Cannot read result file: {exc}"
         raise ValueError(msg) from exc
 
+    if not isinstance(data, dict):
+        msg = "Result file must contain a JSON object."
+        raise ValueError(msg)  # noqa: TRY004 - malformed file content follows the public ValueError contract
+
     # resolve_json_kind expects plain values, not the fitting meta-dicts.
     # Extract just the first-level keys per section so it can check presence.
     def _extract_keys(section_data: object) -> dict:
@@ -662,7 +666,7 @@ def load_params_from_json(path: str) -> dict[str, object]:  # noqa: C901
         msg = f"Cannot read result file: {exc}"
         raise ValueError(msg) from exc
 
-    if "system" not in data:
+    if not isinstance(data, dict) or "system" not in data:
         msg = "File does not look like an ELISa LC result - missing 'system' key."
         raise ValueError(msg)
 

@@ -6,6 +6,6 @@ include setup.py
 include pyproject.toml
 include setup.cfg
 include LICENCE
-include README.rst
+include README.md
 include schema_registry/**
 include ui/assets/**

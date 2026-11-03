@@ -509,7 +509,7 @@ def load_params_from_json(path: str) -> dict[str, object]:
     except (OSError, ValueError) as exc:
         msg = f"Cannot read result file: {exc}"
         raise ValueError(msg) from exc
-    if "system" not in data:
+    if not isinstance(data, dict) or "system" not in data:
         msg = "File does not look like an ELISa RV result - missing 'system' key."
         raise ValueError(msg)
     out: dict[str, object] = {}

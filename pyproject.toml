@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "elisa"
 dynamic = ["version"]
 description = "Eclipsing Binary Modeling Software"
-readme = { file = "README.rst", content-type = "text/x-rst" }
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
 license = { text = "GPLv3" }
 authors = [
@@ -93,63 +93,49 @@ version = { attr = "elisa.__version__" }
 
 
 [tool.ruff]
-exclude = ["unittests", "tests"]
 force-exclude = true
 
 line-length = 120
 target-version = "py311"
 
 [tool.ruff.lint]
-select = [
-    "ALL",
-    "A", # flake8-builtins
-    "ARG", # flake8-unused-arguments
-    "B", # flake8-bugbear
-    "C", # mccabe
-    "DTZ", # flake8-datetimez
-    "E", # pycodestyle errors
-    "EM", # flake8-errmsg
-    "F", # pyflakes
-    "FBT", # flake8-boolean-trap
-    "I", # isort
-    "ICN", # flake8-import-conventions
-    "ISC", # flake8-implicit-str-concat
-    "N", # pep8-naming
-    "PLC", # pylint convention
-    "PLE", # pylint errors
-    "PLR", # pylint refactor
-    "PLW", # pylint warnings
-    "Q", # flake8-quotes
-    "RUF", # ruff-specific rules
-    "S", # flake8-bandit (security)
-    "T", # flake8-debugger
-    "TID", # tidy imports
-    "UP", # pyupgrade
-    "W", # pycodestyle warnings
-    "YTT", # flake8-2020
-]
+select = ["ALL"]
+
 ignore = [
-    "PLR0917", # Too many positional arguments
-    "PLR0913", # to many arguments
-    "F405", # os import
-    "D100", # Missing docstring in public module
-    "D101", # missing docstring
-    "D107", # missing docstring in `__init__`
-    "D102", # Missing docstring in public method
-    "D103", # Missing docstring in public function
-    "D104", # Missing docstring in public package
-    "D105", # Missing docstring in magic method
-    "ERA001", # Found commented-out code
-    "ANN002", # Missing type annotation for `*args`
-    "ANN003", # Missing type annotation for `**kwargs`
-    "ANN401", # Any type annotation
-    "EXE002", # Shebang is missing executable file
-    "D213", # Multiline summary docstring should start at the first line
-    "D203", # Incorrect blank lines before class docstring
-    "CPY001", # Missing copyright notice
+    # Type annotations
+    "ANN002",  # Missing type annotation for *args
+    "ANN003",  # Missing type annotation for **kwargs
+    "ANN401",  # Allow Any annotations
+
+    # Documentation
+    "CPY001",  # Missing copyright notice
+    "D100",    # Missing module docstring
+    "D101",    # Missing class docstring
+    "D102",    # Missing method docstring
+    "D103",    # Missing function docstring
+    "D104",    # Missing package docstring
+    "D105",    # Missing magic method docstring
+    "D107",    # Missing __init__ docstring
+    "D203",    # Blank line before class docstring
+    "D213",    # Multiline docstring summary on second line
+
+    # Style and complexity
+    "PLR0913",  # Too many function arguments
+    "PLR0917",  # Too many positional arguments
+    "ERA001",   # Commented-out code
+    "EXE002",   # Missing executable permission for shebang
+    "F405",     # Names potentially undefined from wildcard imports
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# Pytest assertions are intentional in the scientific data regression tests.
-"tests/test_scientific_requirements.py" = ["S101"]
-"tests/test_bolometric_preparation.py" = ["S101"]
+"tests/**/*.py" = [
+    "S101",     # Pytest assertions.
+    "PLR2004",  # Scientific reference values.
+    "SLF001",   # Testing internal APIs.
+    "FBT001",
+    "FBT002",
+    "FBT003",   # Boolean test cases and mock signatures.
+    "EM101",
+    "TRY003",   # Intentional exception messages.
+    "PLC0415",  # Local imports for test isolation.
+]
