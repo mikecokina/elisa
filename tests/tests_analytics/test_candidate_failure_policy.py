@@ -225,3 +225,15 @@ def test_public_residual_cost_accepts_representable_large_norm():
     )
     np.testing.assert_array_equal(result, observed)
     assert np.dot(result, result) == pytest.approx(1e308)
+
+
+@pytest.mark.parametrize('distance,ratio', [(10**100, .7), (1., 10**100), (10**400, .7)])
+def test_lagrange_numeric_failure_is_penalized_by_all_callbacks(monkeypatch, distance, ratio):
+    from elisa.binary_system.system import BinarySystem
+
+    with pytest.raises(error.ElisaNumericError) as caught:
+        BinarySystem.lagrangian_points_static(distance, ratio)
+    fit, calls = callbacks(monkeypatch, caught.value)
+    with settings.override(PENALIZE_ALL_EXCEPTIONS=False, SUPPRESS_WARNINGS=True):
+        for index, call in enumerate(calls):
+            assert_penalty(call(fit, np.array([])), index)

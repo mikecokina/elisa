@@ -5,7 +5,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from elisa.base.error import ElisaMaxIterationError
+from elisa.base.error import ElisaMaxIterationError, ElisaNumericError
 from elisa.binary_system import system
 
 
@@ -105,6 +105,20 @@ def test_scalar_precision_is_preserved_in_cache_keys(isolated_cache):
 @pytest.mark.parametrize('distance,ratio', [(10**100, .7), (1., 10**100)])
 @pytest.mark.filterwarnings('ignore:invalid value encountered in divide:RuntimeWarning')
 def test_large_integer_inputs_retain_solver_failure(isolated_cache, distance, ratio):
-    with pytest.raises(ElisaMaxIterationError, match='Lagrange solver'):
+    # Native float arithmetic avoids object dtype, but converged attempts cannot
+    # resolve the three distinct validated roots for these extreme candidates.
+    with pytest.raises(ElisaNumericError, match='distinct validated roots'):
         system.BinarySystem.lagrangian_points_static(distance, ratio)
     assert isolated_cache.cache_info().currsize == 0
+
+
+def test_unrepresentable_integer_is_numeric_failure(isolated_cache):
+    with pytest.raises(ElisaNumericError, match='floating-point range') as caught:
+        system.BinarySystem.lagrangian_points_static(10**400, .7)
+    assert isinstance(caught.value.__cause__, OverflowError)
+    assert isolated_cache.cache_info().currsize == 0
+
+
+def test_integer_scalars_use_native_solver_dtype(isolated_cache):
+    expected = system.BinarySystem.lagrangian_points_static(1., 1.)
+    np.testing.assert_array_equal(system.BinarySystem.lagrangian_points_static(1, 1), expected)

@@ -1029,6 +1029,15 @@ class BinarySystem(System[Star]):
     @lru_cache(maxsize=128, typed=True)
     def _lagrangian_points_static(periastron_distance: Float, mass_ratio: Float) -> tuple[Float, ...]:  # noqa: C901
         """Cache immutable collinear roots; clear this cache before solver patching."""
+        # Python integers beyond NumPy's native integer range otherwise promote
+        # the callback result to object dtype, which MINPACK cannot consume.
+        try:
+            periastron_distance, mass_ratio = (
+                float(value) if isinstance(value, (int, np.integer)) else value
+                for value in (periastron_distance, mass_ratio)
+            )
+        except OverflowError as exc:
+            raise_elisa_numeric_error("Lagrange solver input exceeds floating-point range.", exc)
 
         def _potential_dx(x: Float, distance: Float) -> Float:
             """Evaluate derivative of the general potential along the x-axis.
@@ -1058,6 +1067,7 @@ class BinarySystem(System[Star]):
         round_to = 10
         unique_points: list[Float] = []
         lagrange: list[Float] = []
+        converged = False
 
         for x_val in xs:
             try:
@@ -1076,6 +1086,7 @@ class BinarySystem(System[Star]):
                     xtol=1e-12,
                 )
                 if ier == 1:
+                    converged = True
                     rounded_solution = round(solution[0], 5)
                     if rounded_solution not in unique_points:
                         try:
@@ -1095,6 +1106,8 @@ class BinarySystem(System[Star]):
                 continue
 
         if len(lagrange) != NUM_LAGRANGE_POINTS - 2:
+            if converged:
+                raise_elisa_numeric_error("Lagrange solver could not resolve three distinct validated roots.")
             message = "Lagrange solver could not find all required collinear points."
             raise_elisa_max_iteration_error(message)
         return tuple(sorted(lagrange) if mass_ratio < 1.0 else sorted(lagrange, reverse=True))
