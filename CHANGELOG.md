@@ -7,322 +7,113 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Historical release identifiers are preserved as originally published.
 Planned work is tracked in the [roadmap](ROADMAP.md).
 
-## Unreleased
+## 1.0.0
 
 ### Added
 
-- Shared `ElisaJSONEncoder` for result saves, MCMC chain exports, and
-  parameter JSON representations, supporting Astropy units, NumPy scalars
-  and arrays, and ISO 8601 dates and datetimes. Unsupported objects, including
-  Astropy quantities, continue to raise `TypeError`.
-- Configurable Kepler solver through `MEAN_ANOMALY_SOLVER` or
-  `[computational].mean_anomaly_solver`: `vectorized` (default) or the original
-  SciPy `scalar` secant solver.
-- Explicit domain exception categories for expected physical synthesis failures and
-  `PulsationModeError` for invalid pulsation modes and perturbation calculations.
-  Domain exceptions inherit from `ElisaError` and are listed explicitly in the
-  candidate-rejection policy; numerical markers retain their native exception
-  inheritance.
-- Source-level and fitting regression coverage for invalid spots and pulsations,
-  numerical failures, local root recovery, and multiprocessing propagation, plus
-  a deterministic scientific baseline capture helper.
-- `LimbDarkeningSourceError`, a `LimbDarkeningError` subclass raised directly
-  when a required limb-darkening source table is missing, including bolometric
-  tables used by reflection-effect synthesis.
-- Configurable MCMC autocorrelation tolerance through `MCMC_AUTOCORR_TOL` or
-  `[computational].mcmc_autocorr_tol`. The default `0` disables emcee's minimum
-  chain-length reliability threshold; positive values retain rejection of
-  insufficient-length estimates.
-- ELISA-specific `ElisaMaxIterationError` and `ElisaNumericError` exceptions
-  in `elisa.base.error`, inheriting from `ElisaError` and `FloatingPointError`
-  respectively, with explicit candidate-rejection categories.
-- Public `elisa.analytics.DiscardUnit` enum with `STEPS` and `ROWS` for MCMC chain
-  loading; existing string values remain supported.
-- Optional MCMC export shape and ordering metadata to restore ensemble step,
-  walker, and parameter axes while preserving the existing flat sample format.
-- Public `elisa.analytics.SamplingMethod` enum with `UNIFORM` and `ADAPTIVE`
-  strategies shared by LC least-squares and MCMC fitting. Existing string values
-  and manual phase lists/arrays remain supported.
-- A reproducible LC prediction overhead benchmark separating validation,
-  mapping/interpolation, and normalization from physical synthesis.
-- `ld.clear_ld_caches()` to clear loaded LD tables, prepared interpolators, and
-  evaluated coefficient results together.
-- Independent Sutherland-Hodgman polygon/triangle intersection area kernels: a
-  float64 reference and a Numba implementation without fastmath, with analytic,
-  exact-rational, transformation, and captured eclipse geometry validation.
-- Gradio desktop UI, launched with `python -m elisa.ui`, with tabs for light curve
-  modeling, radial velocity modeling, light curve fitting, radial velocity fitting,
-  and system visualization.
-- Least Squares and MCMC fitting methods in the light curve and radial velocity UI tabs.
-- Surface, mesh, orbit, and equipotential rendering modes in System Visualization.
-- Kinematic and radiometric computation methods in Radial Velocity Modeling.
-- UI configuration through `ELISA_UI_SERVER_PORT`, `ELISA_UI_SERVER_HOST`,
-  `ELISA_UI_THEME`, `ELISA_UI_MAX_SPOTS`, and `ELISA_UI_MAX_PULSE_MODES`.
-- [UI guide](UI_GUIDE.md) covering tabs, parameters, workflows, and troubleshooting.
-- Type annotations throughout the codebase for improved type checking and IDE support.
+- Configurable Kepler solving through `MEAN_ANOMALY_SOLVER` or
+  `[computational].mean_anomaly_solver`: `vectorized` (default) solves arrays of
+  orbital phases together for supported float64 arrays, with scalar fallback
+  when batch solving fails. The `scalar` option uses the original SciPy solver
+  for each phase separately.
+- MCMC chain exports can now retain sampling-step and walker dimensions, allowing
+  reloads to preserve the time ordering needed by trace and autocorrelation plots.
+  Discard controls distinguish complete steps from individual sample rows through
+  `DiscardUnit.STEPS` / `ROWS` in `elisa.conf.enums`. The same module provides
+  `SamplingMethod.UNIFORM` / `ADAPTIVE` for LC fitting phase sampling; existing
+  string arguments and manual phase arrays remain supported.
+- Configurable reliability checks for MCMC integrated autocorrelation-time
+  estimates through `MCMC_AUTOCORR_TOL`: a positive value requires the retained
+  chain to span at least that many estimated autocorrelation times, otherwise
+  the estimate is reported as unavailable. The default `0` disables this
+  chain-length check; it does not establish that a chain has converged.
+- Shared `ElisaJSONEncoder` lets parameter, fitting-result, and MCMC-chain JSON
+  exports serialize NumPy integer, floating-point, and boolean scalars, arrays
+  of JSON-compatible values, Astropy unit objects, and ISO 8601 dates/datetimes
+  consistently. Astropy quantities remain unsupported and raise `TypeError`.
+- Explicit cache controls: `ld.clear_ld_caches()` clears loaded limb-darkening
+  tables, interpolators, and coefficient results; atmosphere
+  `clear_atm_strip_cache()` clears reused bandwidth-trimming results, while
+  `atm_strip_cache_info()` reports cache usage and capacity.
+- Optional `PENALIZE_ALL_EXCEPTIONS` lets fitting continue by rejecting candidates
+  whenever their evaluation raises an ordinary exception. By default, only
+  recognized physical and numerical failures reject candidates; unexpected errors
+  propagate. The option can hide programming errors and does not cover fit setup
+  or process-control exceptions.
 
 ### Changed
 
-- Raised the minimum supported Python version to 3.11; removed Python 3.10
-  dependency branches and adopted standard-library `Self` and `UTC`.
-- Remove the deprecated `[support].atlas` INI option and atmosphere-selection
-  prompt from initial configuration. Select stellar atmospheres through
-  `atmosphere` or the per-component `atmosphere_model` fitting mapping.
-- Vectorize Kepler solving for float64 orbital phase arrays to reduce overhead
-  in RV synthesis and fitting, retaining independent root convergence, existing
-  tolerances, and phase ordering. Replay scalar solves in input order when batch
-  calculations fail.
-- Cache repeated collinear Lagrange-point calculations in a bounded 128-entry
-  LRU using exact distance and mass-ratio inputs, preserving solver behavior
-  and independent returned lists. Measured fixed-q LC fitting callbacks improved
-  from approximately 33.3 ms to 26.9 ms; distinct free-q proposals had no cache
-  hits or meaningful speedup.
-- Simplify azimuthal spot-ring sampling by removing the canceled `x0` scale in
-  binary and single-star meshes. Remove the binary auxiliary first-ring solve;
-  retain the single-star first-ring radius validation and downstream surface and
-  neck checks. Floating-point ring counts can differ from the former expression.
-- Improve component and surface-ownership typing with generic `System` component
-  types, `StarContainer` annotations, and shared `VertexMapEntry`/`VertexMap` types.
-- Rename the internal least-squares fitting module from
-  `elisa.analytics.binary_fit.least_squares` to `elisa.analytics.binary_fit.lsqrt`.
-- Log expected LSQ synthesis failures as warnings, respecting `SUPPRESS_WARNINGS`.
-- Remove redundant bolometric passband construction during binary surface
-  preparation by passing passband names directly to limb-darkening calculations.
-  Preserve array-identical coefficients and light curves, custom/table-based
-  limb darkening, and explicit bolometric observations.
-- Retain structured MCMC chains on LC/RV fit wrappers. Chain loading defaults to
-  discarding ensemble steps for structured exports and flat rows for legacy files;
-  `discard_unit` can select an explicit unit. Share production-chain retrieval
-  and validation between LC and RV wrappers.
-- Validate static light-curve observation mappings once per fitter setup and reuse
-  them for LS, MCMC, and internal R² calculations. Revalidate on normalization or
-  explicit `validate_observations()` after manual edits; standalone prediction
-  and public R² helpers continue validating their inputs.
-- Reuse the prepared LC fitter's prediction method and Observer for internal R²
-  calculations, retaining compatibility of the standalone `lc_r_squared()` API.
-- Require one Jacobian or `jac_sparsity` row per observation in LC/RV least squares,
-  ordered by dataset insertion order. Robust-loss `f_scale` now applies to
-  individual standardized residuals; finite-tolerance optimizer behavior can change.
-- Share light-curve synthesis, observation mapping, and mean normalization across
-  LS, MCMC, and R² calculations while preserving physical synthesis, parameter
-  constraints, and statistical noise models.
-- Keep settings mutable with atomic, validated updates and consistent attribute
-  access and serialization.
-- Use module-based loggers and configurable logging profiles, with scoped changes
-  and host-handler preservation for built-in profiles.
-- Use explicit fork contexts for observation and fitting workers without changing
-  the application's multiprocessing default.
-- Skip unused symmetric reflection blocks and a redundant limb-darkening matrix
-  copy while preserving numerical results.
-- Reduce passband preparation overhead by removing a redundant deep copy and
-  reusing exact numeric bandwidth-trimming results in a bounded LRU cache.
-  Store 128-bit BLAKE2b content digests instead of complete spectra in cache keys
-  to reduce retained memory, preserving exact boundary bits and cache limits.
-  Preserve independent writable outputs, input isolation, Akima interpolation,
-  and bitwise-identical spectra, radiances, and light curves.
-- Deduplicate selected CK04 and K93 atmosphere grid combinations before
-  constructing filenames and paths, preserving table selection, ordering,
-  interpolation results, and error behavior.
-- Reuse bounded, cached `LinearNDInterpolator` instances for unchanged
-  limb-darkening sources while retaining the evaluated-result LRU and evaluating
-  current surface parameters on eccentric-orbit rebuilds.
-- Evaluate limb-darkening queries at their original float64 coordinates instead
-  of rounding to nine decimal places. Cache keys preserve exact values, array
-  shape, and ordering
-- Use Sutherland-Hodgman clipping by default for eclipse intersection areas.
-  Configure it through `INTERSECTION_BACKEND` or `[computational].intersection_backend`;
-  `pypex` and `reference` remain available.
-- Eliminate intersection coordinate rounding. Measured maximum area error decreased
-  from **3.36e-12 to 1.87e-18 SMA²** against exact geometry. Reference and compiled
-  results agreed bitwise.
-- Measured normalized light-curve differences versus Pypex were at most
-  **4.27e-11 (0.0000427 ppm)**, reflecting removal of legacy geometric rounding.
-  The physical model and mesh accuracy are unchanged.
-- Measured speedups: **236x** for intersection areas, **124x** for partial coverage,
-  and approximately **2x** for complete light curves.
-- Reduced fitting overhead in MCMC likelihood evaluation, parameter serialization,
-  curve integration, and logging-dependent R² calculations.
-- Cached albedo and correction factor calculations to reduce repeated I/O.
-- Vectorized surface transformations and spot temperature scaling.
-- Reduced redundant array allocation while constructing surface meshes.
-- Used partitioning where full sorting is unnecessary in observer calculations.
+- Raised the minimum supported Python version from 3.10 to 3.11.
+- Moved atmosphere APIs from `elisa.atm` to `elisa.atm.atm`.
+- Replaced legacy exception names and many generic validation errors with explicit
+  domain exceptions in `elisa.base.error`; callers must update imports and handlers.
+- Custom least-squares Jacobians and `jac_sparsity` must now have one row per
+  observed data point, in dataset insertion order; robust losses assess each
+  point separately, with `f_scale` measured in units of residual divided by
+  measurement uncertainty.
+- When loading MCMC chains with saved step/walker metadata, the discard count
+  now removes complete sampling steps, including all walkers: discarding 100
+  steps with 20 walkers removes 2,000 samples. Older flat files still discard
+  individual sample rows; use `discard_unit` to select steps or rows explicitly.
+- Made settings updates atomic and validated, and preserved host logging handlers
+  when applying built-in logging profiles.
 
 ### Fixed
 
-- Reject incomplete or mixed standard/community LC fitting parameters with
-  `ValidationError` before model preparation can overwrite supplied component
-  masses. Require either both masses or `mass_ratio` and `semi_major_axis`,
-  accounting for fixed, free, and constrained inputs in LSQ and MCMC fitting.
-- Validate community binary mass ratios before deriving component masses and
-  periods before JD/phase conversion. Reject invalid model inputs, including
-  nonfinite values, with `ElisaParametersError`,
-  preserving valid conversion formulas and time-unit conventions.
-- Reject incomplete or conflicting standard/community RV fitting parameters
-  before model preparation can discard explicitly supplied component masses.
-  Preserve optional orbital and nuisance parameters and account for fixed,
-  free, and constrained inputs.
-- Accept `asini = 0` consistently in RV fitting by reusing model validation;
-  preserve constant systemic velocities for a zero projected axis and retain
-  rejection of negative or nonfinite values without changing default bounds.
-- Restore `Star.init()`, `BinarySystem.init()`, and `SingleSystem.init()`
-  after direct parameter changes, preserving current attributes and calculated
-  defaults. Omit original, unspecified optional NaN sentinels during reconstruction
-  while retaining strict validation of explicit and computed nonfinite values.
-- Preserve the internal logarithmic unit of `polar_log_g` during reconstruction,
-  preventing the repeated 2 dex decrease while retaining bare numeric cgs inputs.
-- Reconstruct pulsations from current descriptors with internal frequency and
-  angular units, including mode changes in single systems. Preserve spot units
-  and prevent nested modes or spots from accumulating across reinitializations.
-- Preserve the original `r_squared` value and unit when loading LSQ and MCMC
-  fitting results and reevaluating constraints. Keep the diagnostic separate
-  from physical parameter processing, without recalculating R² or adding it
-  to results where it was absent.
-- Fix constrained LSQ result save/load/save failures caused by Astropy unit
-  objects introduced during constraint reevaluation. Preserve separate
-  numerical values and unit strings, fitting unit conventions, and existing
-  constrained MCMC posterior summaries.
-- Restore missing LC synthesis defaults in `BinarySystem.from_fit_results()`
-  so standard and community LSQ/MCMC results reconstruct with `gamma = 0.0`
-  and component `synchronicity = 1.0` when omitted. Share default values with
-  synthesis preparation, preserve explicit values and canonical fitting units,
-  and retain JSON schema validation for mandatory physical parameters.
-- Fix single-system orbit `rotation_period` transformation so numeric inputs
-  use days and Astropy quantities convert to days. Apply existing positive,
-  finite period validation and initialize the `period` alias from the
-  normalized `rotation_period` instead of an unused NaN placeholder.
-- Correct the secondary polar gravity derivative for binary separations other
-  than one semi-major axis, using the actual secondary center. Repair the
-  eccentric gravity test to use consistent orbital radii and independent
-  analytical references for both stars at two non-unit separations.
-- Reject invalid pulsation degrees, orders, amplitudes, frequencies, and mode axes
-  with `PulsationModeError`. Require integral numeric indices and explicitly
-  enforce `l >= 0` in the degree transformer; preserve valid negative `m`, the
-  `abs(m) <= l` constraint, and `TypeError` for incompatible object types.
-- Report missing radial-mode temperature factors and zero denominators in
-  pulsation amplitude and normalization calculations as pulsation-domain failures.
-- Raise `SpotError` for failed spot construction, fully overlapped spots, or
-  missing retained vertices instead of silently removing declared spots.
-  Preserve numerical exception causes during spot surface construction.
-- Classify degenerate Qhull triangulation, terminal surface failures, zero
-  temperature-normalization denominators, and exhausted Lagrange searches as
-  typed numerical synthesis failures. Retain existing individual-root recovery
-  and historical bounded-radius fallbacks.
-- Raise `AtmosphereError` when a requested atmosphere source table is missing,
-  consistently with the other atmosphere readers, and use domain exceptions for
-  existing physical-parameter and nonpositive-temperature checks.
-- Classify nonfinite LC/RV predictions as numerical synthesis failures while
-  retaining fatal alignment errors for mismatched prediction keys and shapes.
-- Fix double conversion of fitted pulsation frequencies by storing values,
-  bounds, and sigma in cycles/day until mode construction converts to Hz.
-  Keep free, fixed, and constrained frequencies consistent, including explicit
-  Astropy units, while preserving direct-model frequency conventions.
-- Apply one explicit synthesis-failure policy to LC/RV least-squares and MCMC
-  fitting, using the shared synthesis base and explicit legacy numerical types.
-  Expected physical, convergence, numerical, spot, pulsation, atmosphere, and
-  limb-darkening failures reject the current proposal: LSQ returns the existing
-  fixed-length residual penalty `sqrt(MAX_USABLE_FLOAT / N)`, while MCMC returns
-  `-np.inf`. Include proposal-dependent construction and terminal RV prediction
-  checks in the fitting exception boundary. Missing ATM/LD tables follow the same
-  policy without resource preflight.
-- Propagate unexpected programming and statistical arithmetic errors instead of
-  converting them into rejected proposals. Remove the broad `LCSynthesisError`
-  wrapper, preserve typed numerical failures through spot synthesis, and keep
-  existing local recovery, prediction checks, Gaussian likelihood, and prior
-  behavior. Validate RV observation reducers during setup.
-- Raise explicit exceptions for Kepler solver nonconvergence and nonfinite
-  eccentric anomalies instead of returning `False`, which could silently become
-  a zero anomaly in orbital calculations. Inspect SciPy convergence status
-  directly in Kepler and critical-potential solving so unexpected errors from
-  residual functions or solver invocations propagate unchanged.
-- Restore NumPy floating-point error settings after successful and failed
-  Lagrange-point candidate checks and Cartesian-to-spherical conversions using
-  scoped `np.errstate()` contexts. Restore settings before exception logging and
-  `continue` in the Lagrange-point search, preserving numerical policies and
-  successful results.
-- Compute constrained MCMC medians and credible intervals from complete joint
-  posterior samples in physical coordinates, preserving correlations and nonlinear
-  transformations. Include fixed dependencies through the existing constraint evaluator.
-- Preserve samplewise constrained summaries when results are saved and reloaded;
-  recompute them from retained samples after chain loading, discard, or filtering.
-- Preserve signs and power precedence when substituting negative constraint values,
-  and reject nonfinite constrained posterior results instead of dropping samples.
-- Retain full numerical precision in MCMC parameter summaries and return zero-width
-  credible intervals for constant samples without applying `log10(0)` rounding.
-  Validate required posterior-update state with explicit exceptions, including
-  when Python runs with optimization enabled.
-- Render structured MCMC traces as individual walker trajectories against retained
-  ensemble steps; label flat-only inputs as flattened samples without inferring
-  temporal structure. Preserve physical units and posterior summary lines.
-- Correct custom trace column mapping for reordered and subset inputs. Reject
-  empty, duplicate and unknown diagnostic parameter selections before plotting.
-- Display connected MCMC ACF curves with ensemble-step lag and integrated-time
-  units, and explain unavailable estimates and constant-walker panels.
-- Compute MCMC autocorrelation functions and integrated times along ensemble
-  steps, averaging individual walker ACFs instead of treating flattened walkers
-  as consecutive times. Mark unreliable integrated times and parameters with
-  constant walkers as unavailable.
-- Preserve temporal ordering through structured MCMC reloads and aligned row
-  cuts. Clear temporal chains after value-dependent filtering, partial-ensemble
-  cuts, or legacy reloads; reject temporal diagnostics without trustworthy axes.
-- Validate MCMC sample matrices, labels, temporal metadata and discard arguments
-  before slicing or overwriting exported samples. Document discard units and
-  export shapes across the chain-loading and serialization APIs.
-- Reject explicitly invalid MCMC physical configurations with `-np.inf`,
-  independently of previous likelihood evaluations. Propagate programming,
-  input-structure, and unexpected numerical errors instead of penalizing them.
-- Initialize MCMC walkers only at finite-posterior states within prior bounds,
-  with bounded automatic sampling attempts. Validate supplied ensembles without
-  clipping or mutating caller arrays.
-- Validate free-parameter bounds and Gaussian widths before MCMC sampling;
-  normalize widths directly by the physical bound span to avoid cancellation,
-  preserving existing prior definitions and fixed/constrained parameter handling.
-- Accept finite LC normalization fractions in `(0, 1]` for `maximum`,
-  `global_maximum`, and `minimum`; ignore the fraction for mean normalization.
-  Prevent empty or out-of-range extrema selections while preserving existing
-  normalization formulas and `global_maximum` selection semantics.
-- Pass per-observation standardized residual vectors to SciPy for LC and RV least
-  squares, so default linear loss minimizes `0.5 * chi2` instead of
-  `0.5 * chi2**2`. Apply robust losses to individual observations and use a
-  fixed-length, finite chi-squared penalty vector for invalid LC synthesis.
-- Apply per-passband observation reducers in direct MCMC synthesis, preserving
-  unsorted and repeated coordinates and differently sampled passbands. Prevent
-  singleton observations from broadcasting against an entire synthetic curve.
-- Apply explicit per-fit atmosphere models and custom limb-darkening coefficients
-  to MCMC synthesis, matching LS and R².
-- Use prepared uniform, adaptive, and manual phase support in both fitting methods
-  and their final R² calculations, including the interpolation-threshold boundary.
-  Accept manual support supplied as a NumPy array.
-- Determine light-curve interpolation from actual coordinate correspondence rather
-  than array shape, fixing equal-length support and observation grids with
-  different phases in LS, MCMC, and R².
-- Normalize synthetic curves only after mapping or interpolation onto each
-  passband's observation points, ensuring consistent LS/MCMC flux scales.
-- Validate observation, reducer, uncertainty, support, and prediction alignment
-  before evaluating light-curve costs. Propagate structural errors explicitly
-  instead of converting them into MCMC invalid-physical-state penalties.
-- Reject reuse of custom limb-darkening coefficients under an incompatible law,
-  including logarithmic/square-root switches. Preserve linear/cosine compatibility
-  and runtime law switching for automatically interpolated coefficients.
-- Resolve stellar fitting temperature and metallicity defaults from the current
-  `ATM_ATLAS` when creating parameters, preserving existing instances and explicit
-  user bounds. Support CK04/K93 aliases and use CK04 fitting bounds for blackbody.
-- Prevent stale RV passband, atmosphere, correction-factor, albedo, and photometric
-  calibration caches after configuration or source-file changes.
-- Preserve atmospheric spectral flux precision during bandwidth boundary
-  interpolation by removing decimal rounding that could erase small nonzero
-  flux values.
-- Prevent stale limb-darkening table, interpolator, and coefficient reuse after
-  directory, law, column configuration, or source-file revision changes.
-- Prevent caller mutations of returned LD coefficient arrays from corrupting
-  cached results.
-- Restored Pypex point-side checks on NumPy 2.5 by explicitly computing
-  2D cross-product components instead of calling `np.cross` with 2D vectors.
-- Prevented multiprocessing worker hangs by explicitly closing and joining pools.
-- Guarded zero-point lookups against missing keys.
-- Corrected parallel-line distances in vectorized Pypex segment intersections,
-  including parallel versus collinear classification near the distance tolerance.
-- Made collinear segment overlap detection independent of endpoint orientation,
-  preserving the configured endpoint-contact policy.
+- Corrected eccentric surface-potential reference geometry and phase-dependent
+  volume conservation: input `surface_potential` now refers to periastron rather
+  than unit separation; reusing old numerical potentials can change radii and
+  light curves, so historical fitted potentials may need reinterpretation or conversion.
+- Fixed near-critical Roche radius root selection and convergence, and generalized
+  critical potentials for eccentric and asynchronous binaries.
+- Corrected secondary-star polar gravity at non-unit component separations.
+- Fixed star and system reinitialization to preserve current parameters, spot and
+  pulsation units, and `polar_log_g` without repeated 2 dex shifts.
+- Fixed single-star rotation-period unit conversion and period initialization.
+- Fixed Kepler nonconvergence and nonfinite-result handling, incomplete Lagrange
+  solutions, and unintended changes to NumPy floating-point error settings.
+- Corrected LC/RV prediction alignment and LC interpolation and normalization at
+  observation coordinates, including repeated, unsorted, and differently sampled data.
+- Fixed LC/RV least squares to minimize per-observation standardized residuals
+  instead of squaring the total chi-squared, including finite penalties for invalid candidates.
+- Made LSQ/MCMC candidate rejection consistent for recognized synthesis failures,
+  while propagating unexpected errors by default.
+- Fixed MCMC likelihood numerical edge cases, prior validation, and initialization
+  of walkers at finite-posterior states within prior bounds.
+- Corrected constrained MCMC summaries using joint posterior samples, preserving
+  correlations, full precision, and constant-sample credible intervals.
+- Fixed MCMC chain validation, reloads, filtering, walker traces, and autocorrelation
+  diagnostics to preserve or explicitly require trustworthy ensemble time axes.
+- Fixed standard/community fitting parameter validation, model reconstruction from
+  fit results, and result round trips preserving constraints, units, and R².
+- Corrected fitted pulsation frequency conversion and validation of pulsation modes,
+  spot construction, nonfinite physical inputs, and LC normalization fractions.
+- Applied custom atmosphere and limb-darkening settings consistently in MCMC fitting,
+  and rejected custom coefficients reused under an incompatible limb-darkening law.
+- Fixed stale atmosphere, limb-darkening, RV passband, and calibration caches after
+  configuration or source changes, and protected cached LD coefficients from caller mutation.
+- Preserved small atmospheric fluxes at interpolated bandwidth boundaries and exact
+  limb-darkening query coordinates instead of rounding them.
+- Improved errors for missing or malformed atmosphere, limb-darkening, and passband
+  sources, and GUI handling of validation and numerical failures.
+- Fixed Pypex 2D point-side checks for NumPy 2.5, parallel-line classification,
+  and orientation-independent collinear segment overlap detection.
+
+### Performance
+
+- Added default Sutherland-Hodgman eclipse clipping without legacy coordinate
+  rounding; `INTERSECTION_BACKEND` also supports `pypex` and `reference`.
+- Reduced orbital calculation overhead with vectorized Kepler solving and cached
+  collinear Lagrange points.
+- Reused limb-darkening interpolators and atmospheric bandwidth strips, deduplicated
+  atmosphere table lookups, and avoided redundant bolometric passband preparation.
+- Reduced repeated LC fitting validation, observation mapping, and R² preparation,
+  and skipped unused reflection calculations.
+
+### Removed
+
+- Deprecated `[support].atlas` INI option and the first-run atmosphere-selection
+  prompt; select atmospheres per star or through fitting's `atmosphere_model` mapping.
 
 ## 0.7.0dev0 - 2026-03-02
 
