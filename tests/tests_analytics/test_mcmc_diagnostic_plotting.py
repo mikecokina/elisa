@@ -3,28 +3,34 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
 from copy import deepcopy
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
-import matplotlib
-from numpy.typing import NDArray
+import matplotlib as mpl
 
-matplotlib.use("Agg")
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
+
+    import numpy as np
+    from matplotlib.axes import Axes
+    from numpy.typing import NDArray
+
+
+mpl.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
-from matplotlib.axes import Axes
 from numpy.testing import assert_allclose, assert_array_equal
 
 from elisa import units as u
 from elisa.analytics.binary_fit import chain_tools, io_tools, plot
-from elisa.base.error import ElisaGraphicsError, ElisaMonteCarloError
 from elisa.analytics.binary_fit.mixins import MCMCMixin
 from elisa.analytics.binary_fit.rv_fit import RVFitMCMC
 from elisa.analytics.params.parameters import InitialParameter
 from elisa.analytics.params.transform import StarInitialProperties
+from elisa.base.error import ElisaGraphicsError, ElisaMonteCarloError
 from elisa.graphic.mcmc_graphics import Plot
 
 LABELS = ["primary@t_eff", "secondary@t_eff"]
@@ -79,7 +85,7 @@ def test_structured_walkers_units_summaries_and_no_mutation() -> None:
 
 
 @pytest.mark.parametrize("indices", [[1, 0], [1]])
-def test_custom_flat_source_column_mapping(indices) -> None:
+def test_custom_flat_source_column_mapping(indices: list[int]) -> None:
     fit = diagnostic_result(np.arange(30.0).reshape(5, 3, 2) / 30)
     assert fit.flat_chain is not None
     assert fit.normalization is not None
@@ -106,10 +112,15 @@ def test_internal_reordered_subset_maps_from_internal_source_axis() -> None:
 
 
 @pytest.mark.parametrize(
-    ("method", "keyword"), [(plot.traces, "traces_to_plot"), (plot.autocorrelation, "correlations_to_plot")]
+    ("method", "keyword"),
+    [(plot.traces, "traces_to_plot"), (plot.autocorrelation, "correlations_to_plot")],
 )
 @pytest.mark.parametrize("selection", [[], ["missing"], [LABELS[0], LABELS[0]], [LABELS[0], "missing"]])
-def test_invalid_selections_create_no_figure(method, keyword, selection) -> None:
+def test_invalid_selections_create_no_figure(
+    method: Callable[..., None],
+    keyword: str,
+    selection: list[object] | list[str],
+) -> None:
     fit = diagnostic_result(np.ones((5, 3, 2)))
     with pytest.raises(ElisaGraphicsError, match="selection"):
         method(fit, **{keyword: selection})
@@ -118,7 +129,7 @@ def test_invalid_selections_create_no_figure(method, keyword, selection) -> None
 
 @pytest.mark.parametrize("labels", [[], [LABELS[0]], [LABELS[0], LABELS[0]]])
 @pytest.mark.parametrize("method", [plot.traces, plot.autocorrelation])
-def test_bad_source_labels_create_no_figure(method, labels) -> None:
+def test_bad_source_labels_create_no_figure(method: Callable[..., None], labels: list[object] | list[str]) -> None:
     fit = diagnostic_result(np.ones((5, 3, 2)))
     custom = fit.flat_chain if method is plot.traces else fit.chain
     with pytest.raises(ElisaGraphicsError):
@@ -127,7 +138,7 @@ def test_bad_source_labels_create_no_figure(method, labels) -> None:
 
 
 @pytest.mark.parametrize("samples", [np.ones(5), np.ones((0, 2)), np.ones((5, 3, 2))])
-def test_trace_custom_format_is_not_expanded(samples) -> None:
+def test_trace_custom_format_is_not_expanded(samples: NDArray[np.generic]) -> None:
     with pytest.raises(ElisaGraphicsError):
         plot.traces(diagnostic_result(np.ones((5, 3, 2))), flat_chain=samples)
     assert not plt.get_fignums()
@@ -162,14 +173,18 @@ def test_acf_values_mapping_units_and_no_mutation() -> None:
     assert_array_equal(chain, before)
     plt.close("all")
     plot.autocorrelation(
-        fit, flat_chain=chain[:, :, ::-1], variable_labels=LABELS[::-1], correlations_to_plot=[LABELS[1]]
+        fit,
+        flat_chain=chain[:, :, ::-1],
+        variable_labels=LABELS[::-1],
+        correlations_to_plot=[LABELS[1]],
     )
     assert_allclose(np.asarray(plt.gca().lines[0].get_ydata(), dtype=float), acf[:, 1])
 
 
 @pytest.mark.parametrize("constant", [False, True])
-def test_unavailable_acf_annotations(constant, monkeypatch) -> None:
+def test_unavailable_acf_annotations(constant: bool, monkeypatch: pytest.MonkeyPatch) -> None:
     from elisa import settings
+
     monkeypatch.setattr(settings, "MCMC_AUTOCORR_TOL", 50)
     chain = np.broadcast_to(np.arange(8.0)[:, None, None], (8, 3, 2)).copy()
     if constant:
@@ -190,9 +205,10 @@ def test_unavailable_acf_annotations(constant, monkeypatch) -> None:
 
 
 @pytest.mark.parametrize(
-    ("renderer", "selection_key"), [(Plot.paramtrace, "traces_to_plot"), (Plot.autocorr, "correlations_to_plot")]
+    ("renderer", "selection_key"),
+    [(Plot.paramtrace, "traces_to_plot"), (Plot.autocorr, "correlations_to_plot")],
 )
-def test_backend_rejects_invalid_selection_before_figure(renderer, selection_key) -> None:
+def test_backend_rejects_invalid_selection_before_figure(renderer: Callable[..., None], selection_key: str) -> None:
     with pytest.raises(ElisaGraphicsError, match="selection"):
         renderer(
             **{selection_key: [], "variable_labels": LABELS, "labels": LABELS},

@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING
 import pytest
 
 from elisa import ld, settings
-from elisa.atm import atm
 from elisa.analytics.binary_fit.lc_fit import LCFitMCMC
 from elisa.analytics.binary_fit.rv_fit import RVFitMCMC
+from elisa.atm import atm
 from elisa.buffer import buffer
 
 if TYPE_CHECKING:

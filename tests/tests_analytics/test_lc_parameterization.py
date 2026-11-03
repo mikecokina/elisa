@@ -7,12 +7,11 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
-from elisa.base.error import ElisaInitialParametersError
 
 from elisa.analytics.binary_fit.lc_fit import LCFit, LCFitLeastSquares, LCFitMCMC
 from elisa.analytics.params.parameters import BinaryInitialParameters
+from elisa.base.error import ElisaInitialParametersError
 from tests.tests_analytics.fitting_helpers import lc_parameters
-
 
 STANDARD_PARAMETERS = ("primary@mass", "secondary@mass")
 COMMUNITY_PARAMETERS = ("system@mass_ratio", "system@semi_major_axis")
@@ -44,7 +43,9 @@ def lc_config() -> dict[str, Any]:
 
 
 def add_parameters(
-    config: dict[str, Any], names: tuple[str, ...], definition: dict[str, Any],
+    config: dict[str, Any],
+    names: tuple[str, ...],
+    definition: dict[str, Any],
 ) -> BinaryInitialParameters:
     """Give each physical input independent fixed, free or constrained metadata."""
     for name in names:
@@ -78,10 +79,10 @@ def test_incomplete_lc_parameterization_is_rejected(
 @pytest.mark.parametrize(
     "parameter_names",
     [
-        pytest.param(COMMUNITY_PARAMETERS + ("primary@mass",), id="community-with-primary-mass"),
-        pytest.param(COMMUNITY_PARAMETERS + ("secondary@mass",), id="community-with-secondary-mass"),
-        pytest.param(STANDARD_PARAMETERS + ("system@mass_ratio",), id="standard-with-ratio"),
-        pytest.param(STANDARD_PARAMETERS + ("system@semi_major_axis",), id="standard-with-axis"),
+        pytest.param((*COMMUNITY_PARAMETERS, "primary@mass"), id="community-with-primary-mass"),
+        pytest.param((*COMMUNITY_PARAMETERS, "secondary@mass"), id="community-with-secondary-mass"),
+        pytest.param((*STANDARD_PARAMETERS, "system@mass_ratio"), id="standard-with-ratio"),
+        pytest.param((*STANDARD_PARAMETERS, "system@semi_major_axis"), id="standard-with-axis"),
         pytest.param(STANDARD_PARAMETERS + COMMUNITY_PARAMETERS, id="both-complete-parameterizations"),
         pytest.param(("primary@mass", "system@mass_ratio"), id="partial-masses-with-ratio"),
         pytest.param(("secondary@mass", "system@semi_major_axis"), id="partial-masses-with-axis"),
@@ -122,29 +123,35 @@ def test_complete_lc_parameterization_is_accepted(
 @pytest.fixture
 def stellar_phenomena() -> dict[str, Any]:
     return {
-        "spots": [{
-            "label": "cool",
-            "longitude": {"value": 90.0, "fixed": True},
-            "latitude": {"value": 60.0, "fixed": True},
-            "angular_radius": {"value": 15.0, "fixed": True},
-            "temperature_factor": {"value": 0.9, "fixed": True},
-        }],
-        "pulsations": [{
-            "label": "mode",
-            "l": {"value": 1, "fixed": True},
-            "m": {"value": 0, "fixed": True},
-            "amplitude": {"value": 50.0, "fixed": True},
-            "frequency": {"value": 16.0, "fixed": True},
-            "start_phase": {"value": 0.0, "fixed": True},
-            "mode_axis_phi": {"value": 0.0, "fixed": True},
-            "mode_axis_theta": {"value": 30.0, "fixed": True},
-        }],
+        "spots": [
+            {
+                "label": "cool",
+                "longitude": {"value": 90.0, "fixed": True},
+                "latitude": {"value": 60.0, "fixed": True},
+                "angular_radius": {"value": 15.0, "fixed": True},
+                "temperature_factor": {"value": 0.9, "fixed": True},
+            },
+        ],
+        "pulsations": [
+            {
+                "label": "mode",
+                "l": {"value": 1, "fixed": True},
+                "m": {"value": 0, "fixed": True},
+                "amplitude": {"value": 50.0, "fixed": True},
+                "frequency": {"value": 16.0, "fixed": True},
+                "start_phase": {"value": 0.0, "fixed": True},
+                "mode_axis_phi": {"value": 0.0, "fixed": True},
+                "mode_axis_theta": {"value": 30.0, "fixed": True},
+            },
+        ],
     }
 
 
 @pytest.mark.parametrize("standard", [True, False], ids=["standard", "community"])
 def test_valid_lc_inputs_preserve_optional_parameters_and_stellar_phenomena(
-    standard: bool, stellar_phenomena: dict[str, Any], morphology: str,
+    standard: bool,
+    stellar_phenomena: dict[str, Any],
+    morphology: str,
 ) -> None:
     config, _ = lc_parameters(standard=standard)
     config["system"]["primary_minimum_time"] = {"value": 2450000.0, "fixed": True}
@@ -172,9 +179,11 @@ def test_public_lc_fit_rejects_a_constrained_mass_before_forward_model_preparati
     initial = BinaryInitialParameters(**config)
     fit = fit_class("detached", None, None)
 
-    with patch.object(fit.fit_method_instance, "fit") as run_fit:
-        with pytest.raises(ElisaInitialParametersError, match="LC parameters must use either"):
-            fit.fit(x0=initial, data={})
+    with (
+        patch.object(fit.fit_method_instance, "fit") as run_fit,
+        pytest.raises(ElisaInitialParametersError, match="LC parameters must use either"),
+    ):
+        fit.fit(x0=initial, data={})
 
     run_fit.assert_not_called()
     assert initial.data["primary@mass"].constraint == "-1"

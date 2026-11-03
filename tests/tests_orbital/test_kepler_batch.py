@@ -3,18 +3,22 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Iterator
-from typing import NoReturn
+from typing import TYPE_CHECKING, NoReturn
 
 import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
-from numpy.typing import DTypeLike, NDArray
 
-from elisa.base.error import ElisaNumericError, ElisaMaxIterationError
+from elisa.base.error import ElisaMaxIterationError, ElisaNumericError
 from elisa.binary_system.orbit.orbit import Orbit
-from elisa.types import Float
 from tests.kepler_helpers import scalar_orbital_motion
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from numpy.typing import DTypeLike, NDArray
+
+    from elisa.types import Float
 
 
 @pytest.fixture

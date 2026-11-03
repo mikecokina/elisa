@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-# ruff: noqa: S101
+from typing import TYPE_CHECKING
 
 from elisa.ui.tabs.system_visualization.components import observer_inputs
 from elisa.ui.tabs.system_visualization.logic import compute
+
+if TYPE_CHECKING:
+    import pytest
 
 
 class _DummyStar:
@@ -41,7 +44,7 @@ def test_update_ui_enables_expected_controls_for_wireframe() -> None:
     assert updates[6].get("interactive") is True  # azimuth
 
 
-def test_run_visualization_dispatches_wireframe_with_camera_params(monkeypatch) -> None:
+def test_run_visualization_dispatches_wireframe_with_camera_params(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(compute, "Star", _DummyStar)
     monkeypatch.setattr(compute, "BinarySystem", _DummyBinarySystem)
     monkeypatch.setattr(compute, "parse_pulsation_modes", lambda _: [])
@@ -76,4 +79,3 @@ def test_run_visualization_dispatches_wireframe_with_camera_params(monkeypatch) 
     assert wireframe_call["inclination"] == 20.0
     assert wireframe_call["azimuth"] == 110.0
     assert wireframe_call["return_figure_instance"] is True
-

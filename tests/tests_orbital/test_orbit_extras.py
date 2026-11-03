@@ -1,21 +1,25 @@
+from __future__ import annotations
+
 # keep it first
 # due to astropy units/constants initialization
-from tests import set_astropy_units
-
-from unittest.mock import patch
-
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 
 import elisa.const as c
-
-from elisa.base.error import ElisaNumericError, ElisaMaxIterationError
+from elisa.base.error import ElisaMaxIterationError, ElisaNumericError
 from elisa.binary_system.orbit import orbit as bin_orbit
 from elisa.single_system.orbit import orbit as single_orbit
+from tests import set_astropy_units
 from tests.utils import ElisaTestCase
+
+if TYPE_CHECKING:
+    import scipy.optimize._zeros_py
+
 
 set_astropy_units()
 
@@ -53,7 +57,7 @@ class TestOrbitHelpers(ElisaTestCase):
         """Sanity test for angular_velocity (static expected value check)."""
         expected = 7.349e-05
         obtained = round(bin_orbit.angular_velocity(1.25, 0.3, 0.869), 8)
-        self.assertEqual(expected, obtained)
+        assert (expected) == (obtained)
 
     def test_create_orb_vel_vectors_basic(self) -> None:
         """Verify returned vectors have expected shapes and symmetry using a small mock system."""
@@ -83,8 +87,8 @@ class TestOrbitHelpers(ElisaTestCase):
         primary = vectors["primary"]
         secondary = vectors["secondary"]
 
-        self.assertEqual(primary.shape, (3,))
-        self.assertEqual(secondary.shape, (3,))
+        assert (primary.shape) == ((3,))
+        assert (secondary.shape) == ((3,))
 
         # center-of-mass frame: primary + secondary should be approximately zero
         assert_allclose(primary + secondary, np.zeros(3))
@@ -107,14 +111,14 @@ class TestSingleSystemOrbit(ElisaTestCase):
         # scalar
         out = self.orbit.rotational_motion(0.0)
         # expect shape (1,3)
-        self.assertEqual(out.shape, (1, 3))
+        assert (out.shape) == ((1, 3))
         assert_allclose(out[0, 0], single_orbit.true_phase_to_azimuth(0.0))
         assert_allclose(out[0, 2], 0.0)
 
         # array
         phases = np.array([0.0, 0.25, 0.5])
         out2 = self.orbit.rotational_motion(phases)
-        self.assertEqual(out2.shape, (3, 3))
+        assert (out2.shape) == ((3, 3))
         assert_allclose(out2[:, 0], single_orbit.true_phase_to_azimuth(phases))
         assert_allclose(out2[:, 2], phases)
 
@@ -122,48 +126,59 @@ class TestSingleSystemOrbit(ElisaTestCase):
         """Verify azimuth -> phase mapping is consistent with azimuth_to_true_phase."""
         az = np.array([0.0, 1.0, 2.0])
         out = self.orbit.rotational_motion_from_azimuths(az)
-        self.assertEqual(out.shape, (3, 3))
+        assert (out.shape) == ((3, 3))
         assert_allclose(out[:, 0], az)
         assert_allclose(out[:, 2], single_orbit.azimuth_to_true_phase(az))
 
 
 class RotationalMotionTestCase(ElisaTestCase):
-    def setUp(self):
-        super(RotationalMotionTestCase, self).setUp()
+    def setUp(self) -> None:
+        super().setUp()
         self.params_combination = np.array(
-            [{"phase_shift": 0, "rotation_period": 0.9, "inclination": c.HALF_PI},
+            [
+                {"phase_shift": 0, "rotation_period": 0.9, "inclination": c.HALF_PI},
+                {"phase_shift": np.pi / 2.0, "rotation_period": 0.9, "inclination": c.HALF_PI},
+                {"rotation_period": 0.9, "inclination": c.HALF_PI},
+                {"phase_shift": np.pi / 2.0, "rotation_period": 0.9, "inclination": np.radians(86.4)},
+            ],
+        )
 
-             {"phase_shift": np.pi / 2.0, "rotation_period": 0.9, "inclination": c.HALF_PI},
-
-             {"rotation_period": 0.9, "inclination": c.HALF_PI},
-
-             {"phase_shift": np.pi / 2.0, "rotation_period": 0.9, "inclination": np.radians(86.4)},
-             ])
-
-    def test_rotational_motion(self):
+    def test_rotational_motion(self) -> None:
         phases = np.array([-0.1, 0.0, 0.1, 0.5, 1.0, 1.1])
         obtained = []
-        expected = [np.array([[-0.6283, np.nan, -0.1],
-                              [0., np.nan, 0.],
-                              [0.6283, np.nan, 0.1],
-                              [3.1416, np.nan, 0.5],
-                              [6.2832, np.nan, 1.],
-                              [6.9115, np.nan, 1.1]]), ]
-        for i, combo in enumerate(self.params_combination[np.array([0])]):
+        expected = [
+            np.array(
+                [
+                    [-0.6283, np.nan, -0.1],
+                    [0.0, np.nan, 0.0],
+                    [0.6283, np.nan, 0.1],
+                    [3.1416, np.nan, 0.5],
+                    [6.2832, np.nan, 1.0],
+                    [6.9115, np.nan, 1.1],
+                ],
+            ),
+        ]
+        for _i, combo in enumerate(self.params_combination[np.array([0])]):
             o = single_orbit.Orbit(**combo)
             obtained.append(np.round(o.rotational_motion(phases), 4))
         assert_array_equal(expected, obtained)
 
-    def test_rotational_motion_from_azimuths(self):
+    def test_rotational_motion_from_azimuths(self) -> None:
         azimuths = np.array([-0.1, 0.0, 0.1, 0.5, 1.0, 1.1]) * c.FULL_ARC
         obtained = []
-        expected = [np.array([[-0.6283, np.nan, -0.1],
-                              [0., np.nan, 0.],
-                              [0.6283, np.nan, 0.1],
-                              [3.1416, np.nan, 0.5],
-                              [6.2832, np.nan, 1.],
-                              [6.9115, np.nan, 1.1]]), ]
-        for i, combo in enumerate(self.params_combination[np.array([0])]):
+        expected = [
+            np.array(
+                [
+                    [-0.6283, np.nan, -0.1],
+                    [0.0, np.nan, 0.0],
+                    [0.6283, np.nan, 0.1],
+                    [3.1416, np.nan, 0.5],
+                    [6.2832, np.nan, 1.0],
+                    [6.9115, np.nan, 1.1],
+                ],
+            ),
+        ]
+        for _i, combo in enumerate(self.params_combination[np.array([0])]):
             o = single_orbit.Orbit(**combo)
             obtained.append(np.round(o.rotational_motion_from_azimuths(azimuths), 4))
         assert_array_equal(expected, obtained)
@@ -176,42 +191,45 @@ if __name__ == "__main__":
 
 
 @pytest.mark.parametrize("result", [np.nan, np.inf, -np.inf])
-def test_kepler_nonfinite_result_raises(result):
+def test_kepler_nonfinite_result_raises(result: float) -> None:
     orbit = bin_orbit.Orbit.__new__(bin_orbit.Orbit)
     orbit.eccentricity = 0.8
-    with patch.object(bin_orbit._sci_opt, "newton", return_value=(result, SimpleNamespace(converged=True))):
-        with pytest.raises(ElisaNumericError, match="nonfinite anomaly") as caught:
-            orbit.mean_anomaly_to_eccentric_anomaly(0.5)
+    with (
+        patch.object(bin_orbit._sci_opt, "newton", return_value=(result, SimpleNamespace(converged=True))),
+        pytest.raises(ElisaNumericError, match="nonfinite anomaly") as caught,
+    ):
+        orbit.mean_anomaly_to_eccentric_anomaly(0.5)
     assert isinstance(caught.value, FloatingPointError)
 
 
-def test_kepler_nonconvergence_uses_solver_status():
+def test_kepler_nonconvergence_uses_solver_status() -> None:
     orbit = bin_orbit.Orbit.__new__(bin_orbit.Orbit)
     orbit.eccentricity = 0.8
     original = bin_orbit._sci_opt.newton
 
-    def exhausted(*args, **kwargs):
+    def exhausted(*args, **kwargs) -> tuple[np.float64, scipy.optimize._zeros_py.RootResults]:
         return original(*args, **kwargs, maxiter=1)
 
-    with patch.object(bin_orbit._sci_opt, "newton", side_effect=exhausted):
-        with pytest.raises(ElisaMaxIterationError, match="Kepler solver") as caught:
-            orbit.mean_anomaly_to_eccentric_anomaly(0.5)
+    with (
+        patch.object(bin_orbit._sci_opt, "newton", side_effect=exhausted),
+        pytest.raises(ElisaMaxIterationError, match="Kepler solver") as caught,
+    ):
+        orbit.mean_anomaly_to_eccentric_anomaly(0.5)
     assert isinstance(caught.value, ElisaMaxIterationError)
 
 
-def test_kepler_programming_error_propagates():
+def test_kepler_programming_error_propagates() -> None:
     orbit = bin_orbit.Orbit.__new__(bin_orbit.Orbit)
     orbit.eccentricity = 0.8
     failure = TypeError("broken residual")
-    with patch.object(bin_orbit._sci_opt, "newton", side_effect=failure):
-        with pytest.raises(TypeError) as caught:
-            orbit.mean_anomaly_to_eccentric_anomaly(0.5)
+    with patch.object(bin_orbit._sci_opt, "newton", side_effect=failure), pytest.raises(TypeError) as caught:
+        orbit.mean_anomaly_to_eccentric_anomaly(0.5)
     assert caught.value is failure
 
 
 @pytest.mark.parametrize("eccentricity", [0.0, 0.8, 0.99])
 @pytest.mark.parametrize("mean_anomaly", [0.0, 0.5, np.pi, 2 * np.pi])
-def test_kepler_success_solves_equation(eccentricity, mean_anomaly):
+def test_kepler_success_solves_equation(eccentricity: float, mean_anomaly: float) -> None:
     orbit = bin_orbit.Orbit.__new__(bin_orbit.Orbit)
     orbit.eccentricity = eccentricity
     result = orbit.mean_anomaly_to_eccentric_anomaly(mean_anomaly)

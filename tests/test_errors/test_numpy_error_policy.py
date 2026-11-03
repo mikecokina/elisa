@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
+
 ErrorPolicy = dict[str, str]
 
 
@@ -116,9 +117,9 @@ def test_lagrangian_points_restores_policy_before_logging_and_continue(caller_po
         patch.object(binary_system.np, "linspace", return_value=candidates),
         patch.object(binary_system, "fsolve", side_effect=record_solver_policy) as solver,
         patch.object(binary_system.logger, "debug", side_effect=record_log),
+        pytest.raises(ElisaMaxIterationError, match="Lagrange solver"),
     ):
-        with pytest.raises(ElisaMaxIterationError, match="Lagrange solver"):
-            binary_system.BinarySystem.lagrangian_points_static(1.0, 0.5)
+        binary_system.BinarySystem.lagrangian_points_static(1.0, 0.5)
     assert np.geterr() == caller_policy
     assert [call.args[1] for call in solver.call_args_list] == expected_solver_inputs
     assert solver_policies == expected_policies
@@ -127,4 +128,4 @@ def test_lagrangian_points_restores_policy_before_logging_and_continue(caller_po
     # Each singular candidate logs before the following nonsingular solve;
     # additional debug events and changes to the rendered text are harmless.
     assert 0 < solver_log_counts[0] < solver_log_counts[1]
-    assert any('divide' in str(arg) or 'invalid' in str(arg) for arg in diagnostics)
+    assert any("divide" in str(arg) or "invalid" in str(arg) for arg in diagnostics)

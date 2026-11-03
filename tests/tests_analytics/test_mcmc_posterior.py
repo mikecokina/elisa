@@ -3,24 +3,37 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import emcee
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
-from numpy.typing import NDArray
 
 from elisa import settings
-from elisa.base.error import ElisaPredictionAlignmentError
 from elisa.analytics.binary_fit.mcmc import CentralRadialVelocity, DetachedLightCurveFit, MCMCFit
 from elisa.analytics.params import parameters as p
-from elisa.base.error import ElisaError, ElisaInitialParametersError, ElisaMonteCarloError, ElisaParametersError, MorphologyError
+from elisa.base.error import (
+    ElisaError,
+    ElisaInitialParametersError,
+    ElisaMonteCarloError,
+    ElisaParametersError,
+    ElisaPredictionAlignmentError,
+    MorphologyError,
+)
 from elisa.base.transform import StarProperties, SystemProperties
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
 from elisa.binary_system.transform import RadialVelocityObserverProperties
 from tests.tests_analytics.fitting_helpers import BINARY_PARAMETERS, V, lc_setup, make_lc, rv_problem
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from numpy.typing import NDArray
+
+    import elisa.base.error
 
 
 class QuadraticPosterior(MCMCFit):
@@ -38,7 +51,7 @@ def make_quadratic_posterior() -> QuadraticPosterior:
     initial = p.BinaryInitialParameters(
         system={
             "gamma": {"value": 15.0, "fixed": False, "min": 10.0, "max": 20.0},
-        }
+        },
     )
     fit.fitable = initial.get_fitable()
     fit.fixed = initial.get_fixed()
@@ -69,14 +82,21 @@ def test_physical_rejection_is_independent_of_previous_proposals() -> None:
         ElisaPredictionAlignmentError("alignment"),
     ],
 )
-def test_unexpected_errors_escape(error) -> None:
+def test_unexpected_errors_escape(
+    error: FloatingPointError
+    | RuntimeError
+    | TypeError
+    | ValueError
+    | elisa.base.error.ElisaError
+    | elisa.base.error.ElisaPredictionAlignmentError,
+) -> None:
     fit = make_quadratic_posterior()
     with patch.object(fit, "likelihood", side_effect=error), pytest.raises(type(error), match=str(error)):
         fit.ln_probability(np.array([0.5]))
 
 
 @pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
-def test_nonfinite_likelihood_rejects_candidate(value) -> None:
+def test_nonfinite_likelihood_rejects_candidate(value: float) -> None:
     fit = make_quadratic_posterior()
     with patch.object(fit, "likelihood", return_value=value):
         assert fit.ln_probability(np.array([0.5])) == -np.inf
@@ -84,7 +104,11 @@ def test_nonfinite_likelihood_rejects_candidate(value) -> None:
 
 def test_emcee_rejected_proposal_keeps_previous_valid_position() -> None:
     class InvalidMove(emcee.moves.Move):
-        def propose(self, model, state):
+        def propose(
+            self,
+            model: emcee.model.Model,
+            state: emcee.state.State,
+        ) -> tuple[emcee.state.State, NDArray[np.bool]]:
             proposed = np.full_like(state.coords, 0.1)
             log_prob, blobs = model.compute_log_prob_fn(proposed)
             accepted = np.isfinite(log_prob)
@@ -137,10 +161,10 @@ def test_supplied_initialization_does_not_evaluate_posterior() -> None:
         np.ones((2, 2)),
     ],
 )
-def test_supplied_initial_states_rejected_without_mutation(states) -> None:
+def test_supplied_initial_states_rejected_without_mutation(states: NDArray[np.generic]) -> None:
     before = states.copy()
     states.flags.writeable = False
-    with pytest.raises(ElisaMonteCarloError, match="initial|walker"):
+    with pytest.raises(ElisaMonteCarloError, match=r"initial|walker"):
         make_quadratic_posterior().generate_initial_states(states, 2, 1)
     assert_array_equal(states, before)
 
@@ -154,17 +178,18 @@ def test_valid_supplied_states_are_copied_without_changes() -> None:
 
 
 @pytest.mark.parametrize(
-    "bounds", [(1.0, 1.0), (2.0, 1.0), (np.nan, 1.0), (0.0, np.inf), (-np.inf, 1.0), (-1e308, 1e308)]
+    "bounds",
+    [(1.0, 1.0), (2.0, 1.0), (np.nan, 1.0), (0.0, np.inf), (-np.inf, 1.0), (-1e308, 1e308)],
 )
-def test_invalid_prior_bounds(bounds) -> None:
+def test_invalid_prior_bounds(bounds: tuple[float, ...]) -> None:
     fit = make_quadratic_posterior()
     fit.normalization["system@gamma"] = bounds
-    with pytest.raises(ElisaMonteCarloError, match="bounds|span"):
+    with pytest.raises(ElisaMonteCarloError, match=r"bounds|span"):
         fit.prepare_priors()
 
 
 @pytest.mark.parametrize("sigma", [0.0, -1.0, np.nan, np.inf, -np.inf])
-def test_invalid_gaussian_widths(sigma) -> None:
+def test_invalid_gaussian_widths(sigma: float) -> None:
     fit = make_quadratic_posterior()
     fit.fitable["system@gamma"].sigma = sigma
     with pytest.raises(ElisaMonteCarloError, match="Gaussian width"):
@@ -228,7 +253,7 @@ def test_real_roche_boundaries_through_lc_posterior() -> None:
     for component in ("primary", "secondary"):
         template[component]["synchronicity"] = 1.0
 
-    def geometry(kwargs):
+    def geometry(kwargs: dict[str, float | np.float64]) -> dict[str, NDArray[np.float64]]:
         config = deepcopy(template)
         for name, value in kwargs.items():
             group, key = name.split("@")
@@ -253,10 +278,15 @@ def test_real_roche_boundaries_through_lc_posterior() -> None:
         assert fit.ln_probability(fit.norm_init_vector) == -np.inf
 
 
-@pytest.mark.parametrize("validator", [
-    SystemProperties.period, RadialVelocityObserverProperties.mass_ratio, StarProperties.t_eff,
-])
-def test_explicit_physical_scales(validator) -> None:
+@pytest.mark.parametrize(
+    "validator",
+    [
+        SystemProperties.period,
+        RadialVelocityObserverProperties.mass_ratio,
+        StarProperties.t_eff,
+    ],
+)
+def test_explicit_physical_scales(validator: Callable[..., float | None]) -> None:
     with pytest.raises(ElisaParametersError):
         validator(0.0)
     validator(np.nextafter(0.0, 1.0))
@@ -265,7 +295,10 @@ def test_explicit_physical_scales(validator) -> None:
 
 
 @pytest.mark.parametrize(("sigma", "bounds"), [(np.nextafter(0.0, 1.0), (0.0, 1e100)), (1e308, (0.0, 1e-100))])
-def test_gaussian_width_must_be_representable_after_normalization(sigma, bounds) -> None:
+def test_gaussian_width_must_be_representable_after_normalization(
+    sigma: float | np.float64,
+    bounds: tuple[float, ...],
+) -> None:
     fit = make_quadratic_posterior()
     fit.fitable["system@gamma"].sigma = sigma
     fit.normalization["system@gamma"] = bounds
@@ -275,7 +308,7 @@ def test_gaussian_width_must_be_representable_after_normalization(sigma, bounds)
 
 
 @pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
-def test_nonfinite_initial_prior_center_rejected(value) -> None:
+def test_nonfinite_initial_prior_center_rejected(value: float) -> None:
     fit = make_quadratic_posterior()
     fit.initial_vector = [value]
     with pytest.raises(ElisaMonteCarloError, match="finite normalized"):

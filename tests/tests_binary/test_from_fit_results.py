@@ -11,10 +11,10 @@ from astropy import units as u
 from numpy.testing import assert_allclose
 
 from elisa import BinarySystem, const
-from elisa.base.error import ElisaParametersError
 from elisa.analytics.models import lc
 from elisa.analytics.params import parameters
 from elisa.analytics.params.conf import DEFAULT_FLOAT_UNITS, JOINT_POSTERIOR_PERCENTILES_ESTIMATE
+from elisa.base.error import ElisaParametersError
 
 
 def fit_results(kind: str, method: str) -> dict[str, Any]:
@@ -32,13 +32,15 @@ def fit_results(kind: str, method: str) -> dict[str, Any]:
     else:
         values.update({"system@mass_ratio": 0.5, "system@semi_major_axis": 10.0})
     for component, temperature in (("primary", 6250.0), ("secondary", 5000.0)):
-        values.update({
-            f"{component}@surface_potential": 10.0,
-            f"{component}@t_eff": temperature,
-            f"{component}@gravity_darkening": 0.32,
-            f"{component}@albedo": 0.5,
-            f"{component}@metallicity": -0.1,
-        })
+        values.update(
+            {
+                f"{component}@surface_potential": 10.0,
+                f"{component}@t_eff": temperature,
+                f"{component}@gravity_darkening": 0.32,
+                f"{component}@albedo": 0.5,
+                f"{component}@metallicity": -0.1,
+            },
+        )
     flat = {
         key: {"value": value, "fixed": True, "unit": str(DEFAULT_FLOAT_UNITS[key.split("@")[-1]])}
         for key, value in values.items()
@@ -47,7 +49,9 @@ def fit_results(kind: str, method: str) -> dict[str, Any]:
     if method == "mcmc":
         flat["system@inclination"]["confidence_interval"] = {"min": 84.0, "max": 86.0}
     flat["secondary@t_eff"] = {
-        "value": 5000.0, "constraint": "primary@t_eff * 0.8", "unit": "K",
+        "value": 5000.0,
+        "constraint": "primary@t_eff * 0.8",
+        "unit": "K",
     }
     if method == "mcmc":
         flat["secondary@t_eff"].update(
@@ -70,18 +74,28 @@ def fit_results(kind: str, method: str) -> dict[str, Any]:
     ],
 )
 def test_reconstruction_matches_synthesis(
-    kind: str, method: str, gamma: float | None, primary_sync: float | None, secondary_sync: float | None,
+    kind: str,
+    method: str,
+    gamma: float | None,
+    primary_sync: float | None,
+    secondary_sync: float | None,
 ) -> None:
     result = fit_results(kind, method)
     if gamma is not None:
         result["system"]["gamma"] = {
-            "value": gamma, "fixed": False, "min": -20000.0, "max": 20000.0, "unit": "m / s",
+            "value": gamma,
+            "fixed": False,
+            "min": -20000.0,
+            "max": 20000.0,
+            "unit": "m / s",
         }
     if primary_sync is not None:
         result["primary"]["synchronicity"] = {"value": primary_sync, "fixed": True, "unit": ""}
     if secondary_sync is not None:
         result["secondary"]["synchronicity"] = {
-            "value": secondary_sync, "constraint": "system@period * 0 + 0.75", "unit": "",
+            "value": secondary_sync,
+            "constraint": "system@period * 0 + 0.75",
+            "unit": "",
         }
     before = deepcopy(result)
     flat = {key: metadata["value"] for key, metadata in parameters.deserialize_result(result).items()}
@@ -99,17 +113,30 @@ def test_reconstruction_matches_synthesis(
     if kind == "standard":
         expected_mass = 1.5 * u.solMass.to(u.kg)
     else:
-        expected_mass = 4 * np.pi**2 * (10 * u.solRad.to(u.m))**3 / (const.G * 1.5 * (3.5 * 86400)**2)
+        expected_mass = 4 * np.pi**2 * (10 * u.solRad.to(u.m)) ** 3 / (const.G * 1.5 * (3.5 * 86400) ** 2)
         assert_allclose((rebuilt.semi_major_axis * u.m).to_value(u.solRad), 10.0)
     assert_allclose(rebuilt.primary.mass, expected_mass)
     assert_allclose(rebuilt.secondary.mass, expected_mass * 0.5)
     for key in (
-        "gamma", "period", "inclination", "argument_of_periastron", "eccentricity", "phase_shift", "additional_light",
+        "gamma",
+        "period",
+        "inclination",
+        "argument_of_periastron",
+        "eccentricity",
+        "phase_shift",
+        "additional_light",
     ):
         assert_allclose(getattr(rebuilt, key), getattr(synthesized, key))
     for component in ("primary", "secondary"):
         for key in (
-            "mass", "t_eff", "surface_potential", "synchronicity", "gravity_darkening", "albedo", "metallicity", "polar_radius",
+            "mass",
+            "t_eff",
+            "surface_potential",
+            "synchronicity",
+            "gravity_darkening",
+            "albedo",
+            "metallicity",
+            "polar_radius",
         ):
             assert_allclose(getattr(getattr(rebuilt, component), key), getattr(getattr(synthesized, component), key))
     phases = np.array([0.0, 0.25, 0.5])
@@ -131,8 +158,12 @@ def test_missing_mandatory_parameters_are_rejected(kind: str, component: str, pa
 
 @pytest.mark.parametrize(
     ("kind", "component", "parameter"),
-    [("standard", "primary", "mass"), ("standard", "secondary", "mass"),
-     ("community", "system", "mass_ratio"), ("community", "system", "semi_major_axis")],
+    [
+        ("standard", "primary", "mass"),
+        ("standard", "secondary", "mass"),
+        ("community", "system", "mass_ratio"),
+        ("community", "system", "semi_major_axis"),
+    ],
 )
 def test_missing_physical_scale_is_rejected(kind: str, component: str, parameter: str) -> None:
     result = fit_results(kind, "lsq")
@@ -162,7 +193,10 @@ def test_explicit_none_is_not_replaced(component: str, parameter: str) -> None:
 
 def test_from_json_still_requires_explicit_model_inputs() -> None:
     result = fit_results("standard", "lsq")
-    data = {component: {key: metadata["value"] for key, metadata in content.items()}
-            for component, content in result.items() if component != "r_squared"}
+    data = {
+        component: {key: metadata["value"] for key, metadata in content.items()}
+        for component, content in result.items()
+        if component != "r_squared"
+    }
     with pytest.raises(ElisaParametersError):
         BinarySystem.from_json(data)

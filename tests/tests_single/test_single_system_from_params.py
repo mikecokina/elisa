@@ -1,12 +1,12 @@
-from __future__ import annotations
-
 """Unit tests for SingleSystem.from_json using standard and radius parameter dicts.
 
 These tests check that the constructor accepts the two supported JSON shapes and
 produces a usable :class:`elisa.single_system.system.SingleSystem` instance.
 """
 
-from typing import TYPE_CHECKING, Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from elisa.single_system.system import SingleRadiusParams, SingleStandardParams
 
 
-def _numeric_value(x: Any) -> float:
+def _numeric_value(x: float | u.Quantity) -> float:
     """Return a numeric float value for quantities or plain numbers.
 
     This helper converts astropy Quantity-like objects or plain numbers to a
@@ -28,11 +28,7 @@ def _numeric_value(x: Any) -> float:
     :returns: Float representation of the input value.
     :rtype: float
     """
-    # noinspection PyBroadException
-    try:
-        return float(x)
-    except Exception:
-        return x  # let the assertion fail if not numeric
+    return float(x)
 
 
 def test_single_system_from_standard_params() -> None:

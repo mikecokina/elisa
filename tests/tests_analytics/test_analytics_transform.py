@@ -1,21 +1,25 @@
 """Unit tests for elisa.analytics.transform module."""
+
 from __future__ import annotations
 
 import unittest
 from typing import TYPE_CHECKING
 from unittest import mock
 
+import pytest
+
 from elisa import settings
-from elisa.base.error import ElisaAnalyticsTaskError, ElisaPassbandError
 from elisa.analytics.transform import (
     LCBinaryAnalyticsProperties,
     RVBinaryAnalyticsTask,
 )
+from elisa.base.error import ElisaAnalyticsTaskError, ElisaPassbandError
 from tests import set_astropy_units
 from tests.utils import ElisaTestCase
 
 if TYPE_CHECKING:
     from elisa.analytics.dataset.base import LCData, RVData
+
 
 set_astropy_units()
 
@@ -47,8 +51,8 @@ class TestRVBinaryAnalyticsTask(ElisaTestCase):
             mock_rv_data[counterpart] = mock_data
 
         result = RVBinaryAnalyticsTask.data(mock_rv_data)
-        self.assertEqual(result, mock_rv_data)
-        self.assertIsInstance(result, dict)
+        assert (result) == (mock_rv_data)
+        assert isinstance(result, dict)
 
     def test_data_not_dict_raises_task_error(self) -> None:
         """Test that non-dict input raises ElisaAnalyticsTaskError.
@@ -69,9 +73,9 @@ class TestRVBinaryAnalyticsTask(ElisaTestCase):
         ]
 
         for invalid_input in invalid_inputs[:5]:  # Skip the dict for now
-            with self.assertRaises(ElisaAnalyticsTaskError) as context:
+            with pytest.raises(ElisaAnalyticsTaskError) as context:
                 RVBinaryAnalyticsTask.data(invalid_input)
-            self.assertIn("`radial_velocities`", str(context.exception))
+            assert ("`radial_velocities`") in (str(context.value))
 
     def test_data_invalid_counterpart_key(self) -> None:
         """Test that invalid binary counterpart key raises ElisaAnalyticsTaskError.
@@ -85,12 +89,12 @@ class TestRVBinaryAnalyticsTask(ElisaTestCase):
         mock_data = mock.MagicMock(spec=self.RVData)
         invalid_data: dict = {"invalid_key": mock_data}
 
-        with self.assertRaises(ElisaAnalyticsTaskError) as context:
+        with pytest.raises(ElisaAnalyticsTaskError) as context:
             RVBinaryAnalyticsTask.data(invalid_data)
 
-        error_msg: str = str(context.exception)
-        self.assertIn("invalid_key", error_msg)
-        self.assertIn("invalid designation", error_msg)
+        error_msg: str = str(context.value)
+        assert ("invalid_key") in (error_msg)
+        assert ("invalid designation") in (error_msg)
 
     def test_data_non_rvdata_instance_raises_task_error(self) -> None:
         """Test that non-RVData values raise ElisaAnalyticsTaskError.
@@ -101,14 +105,14 @@ class TestRVBinaryAnalyticsTask(ElisaTestCase):
         :return: None
         :raises ElisaAnalyticsTaskError: When dict value is not RVData instance
         """
-        valid_key: str = list(settings.BINARY_COUNTERPARTS.keys())[0]
+        valid_key: str = next(iter(settings.BINARY_COUNTERPARTS.keys()))
         invalid_data: dict = {valid_key: "not an RVData instance"}
 
-        with self.assertRaises(ElisaAnalyticsTaskError) as context:
+        with pytest.raises(ElisaAnalyticsTaskError) as context:
             RVBinaryAnalyticsTask.data(invalid_data)
 
-        error_msg: str = str(context.exception)
-        self.assertIn("not an instance of RVData", error_msg)
+        error_msg: str = str(context.value)
+        assert ("not an instance of RVData") in (error_msg)
 
     def test_data_multiple_counterparts(self) -> None:
         """Test validation with multiple valid counterpart keys.
@@ -119,13 +123,13 @@ class TestRVBinaryAnalyticsTask(ElisaTestCase):
         :return: None
         """
         mock_data_dict: dict[str, RVData] = {}
-        for counterpart in settings.BINARY_COUNTERPARTS.keys():
+        for counterpart in settings.BINARY_COUNTERPARTS:
             mock_data = mock.MagicMock(spec=self.RVData)
             mock_data_dict[counterpart] = mock_data
 
         result = RVBinaryAnalyticsTask.data(mock_data_dict)
-        self.assertEqual(len(result), len(settings.BINARY_COUNTERPARTS))
-        self.assertIsInstance(result, dict)
+        assert (len(result)) == (len(settings.BINARY_COUNTERPARTS))
+        assert isinstance(result, dict)
 
     def test_data_empty_dict(self) -> None:
         """Test validation of empty dictionary.
@@ -137,8 +141,8 @@ class TestRVBinaryAnalyticsTask(ElisaTestCase):
         """
         empty_dict: dict = {}
         result = RVBinaryAnalyticsTask.data(empty_dict)
-        self.assertEqual(result, {})
-        self.assertIsInstance(result, dict)
+        assert (result) == ({})
+        assert isinstance(result, dict)
 
 
 class TestLCBinaryAnalyticsProperties(ElisaTestCase):
@@ -167,8 +171,8 @@ class TestLCBinaryAnalyticsProperties(ElisaTestCase):
             mock_lc_data[passband] = mock_data
 
         result = LCBinaryAnalyticsProperties.data(mock_lc_data)
-        self.assertEqual(result, mock_lc_data)
-        self.assertIsInstance(result, dict)
+        assert (result) == (mock_lc_data)
+        assert isinstance(result, dict)
 
     def test_data_not_dict_raises_task_error(self) -> None:
         """Test that non-dict input raises ElisaAnalyticsTaskError.
@@ -188,9 +192,9 @@ class TestLCBinaryAnalyticsProperties(ElisaTestCase):
         ]
 
         for invalid_input in invalid_inputs:
-            with self.assertRaises(ElisaAnalyticsTaskError) as context:
+            with pytest.raises(ElisaAnalyticsTaskError) as context:
                 LCBinaryAnalyticsProperties.data(invalid_input)
-            self.assertIn("`light_curves`", str(context.exception))
+            assert ("`light_curves`") in (str(context.value))
 
     def test_data_invalid_passband_key(self) -> None:
         """Test that invalid passband key raises ElisaPassbandError.
@@ -205,12 +209,12 @@ class TestLCBinaryAnalyticsProperties(ElisaTestCase):
         mock_data = mock.MagicMock(spec=self.LCData)
         invalid_data: dict = {"invalid_passband": mock_data}
 
-        with self.assertRaises(ElisaPassbandError) as context:
+        with pytest.raises(ElisaPassbandError) as context:
             LCBinaryAnalyticsProperties.data(invalid_data)
 
-        error_msg: str = str(context.exception)
-        self.assertIn("invalid_passband", error_msg)
-        self.assertIn("invalid passband", error_msg)
+        error_msg: str = str(context.value)
+        assert ("invalid_passband") in (error_msg)
+        assert ("invalid passband") in (error_msg)
 
     def test_data_non_lcdata_instance_raises_task_error(self) -> None:
         """Test that non-LCData values raise ElisaAnalyticsTaskError.
@@ -221,14 +225,14 @@ class TestLCBinaryAnalyticsProperties(ElisaTestCase):
         :return: None
         :raises ElisaAnalyticsTaskError: When dict value is not LCData instance
         """
-        valid_passband: str = list(settings.PASSBANDS)[0]
+        valid_passband: str = next(iter(settings.PASSBANDS))
         invalid_data: dict = {valid_passband: "not an LCData instance"}
 
-        with self.assertRaises(ElisaAnalyticsTaskError) as context:
+        with pytest.raises(ElisaAnalyticsTaskError) as context:
             LCBinaryAnalyticsProperties.data(invalid_data)
 
-        error_msg: str = str(context.exception)
-        self.assertIn("not an instance of LCData", error_msg)
+        error_msg: str = str(context.value)
+        assert ("not an instance of LCData") in (error_msg)
 
     def test_data_multiple_passbands(self) -> None:
         """Test validation with multiple valid passband keys.
@@ -244,8 +248,8 @@ class TestLCBinaryAnalyticsProperties(ElisaTestCase):
             mock_data_dict[passband] = mock_data
 
         result = LCBinaryAnalyticsProperties.data(mock_data_dict)
-        self.assertEqual(len(result), 3)
-        self.assertIsInstance(result, dict)
+        assert (len(result)) == (3)
+        assert isinstance(result, dict)
 
     def test_data_empty_dict(self) -> None:
         """Test validation of empty dictionary.
@@ -257,8 +261,8 @@ class TestLCBinaryAnalyticsProperties(ElisaTestCase):
         """
         empty_dict: dict = {}
         result = LCBinaryAnalyticsProperties.data(empty_dict)
-        self.assertEqual(result, {})
-        self.assertIsInstance(result, dict)
+        assert (result) == ({})
+        assert isinstance(result, dict)
 
     def test_data_all_passbands(self) -> None:
         """Test validation with all available passbands.
@@ -274,8 +278,8 @@ class TestLCBinaryAnalyticsProperties(ElisaTestCase):
             mock_data_dict[passband] = mock_data
 
         result = LCBinaryAnalyticsProperties.data(mock_data_dict)
-        self.assertEqual(len(result), len(settings.PASSBANDS))
-        self.assertIsInstance(result, dict)
+        assert (len(result)) == (len(settings.PASSBANDS))
+        assert isinstance(result, dict)
 
 
 class TestRVBinaryAnalyticsTaskEdgeCases(ElisaTestCase):
@@ -298,14 +302,14 @@ class TestRVBinaryAnalyticsTaskEdgeCases(ElisaTestCase):
         :raises ElisaAnalyticsTaskError: When any dict key is invalid
         """
         mock_data = mock.MagicMock(spec=self.RVData)
-        valid_key: str = list(settings.BINARY_COUNTERPARTS.keys())[0]
+        valid_key: str = next(iter(settings.BINARY_COUNTERPARTS.keys()))
 
         mixed_data: dict = {
             valid_key: mock_data,
             "invalid_key": mock_data,
         }
 
-        with self.assertRaises(ElisaAnalyticsTaskError):
+        with pytest.raises(ElisaAnalyticsTaskError):
             RVBinaryAnalyticsTask.data(mixed_data)
 
     def test_data_none_value_in_dict(self) -> None:
@@ -317,10 +321,10 @@ class TestRVBinaryAnalyticsTaskEdgeCases(ElisaTestCase):
         :return: None
         :raises ElisaAnalyticsTaskError: When dict value is None
         """
-        valid_key: str = list(settings.BINARY_COUNTERPARTS.keys())[0]
+        valid_key: str = next(iter(settings.BINARY_COUNTERPARTS.keys()))
         invalid_data: dict = {valid_key: None}
 
-        with self.assertRaises(ElisaAnalyticsTaskError):
+        with pytest.raises(ElisaAnalyticsTaskError):
             RVBinaryAnalyticsTask.data(invalid_data)
 
 
@@ -344,14 +348,14 @@ class TestLCBinaryAnalyticsPropertiesEdgeCases(ElisaTestCase):
         :raises ElisaPassbandError: When any dict key is invalid passband
         """
         mock_data = mock.MagicMock(spec=self.LCData)
-        valid_passband: str = list(settings.PASSBANDS)[0]
+        valid_passband: str = next(iter(settings.PASSBANDS))
 
         mixed_data: dict = {
             valid_passband: mock_data,
             "invalid_passband": mock_data,
         }
 
-        with self.assertRaises(ElisaPassbandError):
+        with pytest.raises(ElisaPassbandError):
             LCBinaryAnalyticsProperties.data(mixed_data)
 
     def test_data_none_value_in_dict(self) -> None:
@@ -363,10 +367,10 @@ class TestLCBinaryAnalyticsPropertiesEdgeCases(ElisaTestCase):
         :return: None
         :raises ElisaAnalyticsTaskError: When dict value is None
         """
-        valid_passband: str = list(settings.PASSBANDS)[0]
+        valid_passband: str = next(iter(settings.PASSBANDS))
         invalid_data: dict = {valid_passband: None}
 
-        with self.assertRaises(ElisaAnalyticsTaskError):
+        with pytest.raises(ElisaAnalyticsTaskError):
             LCBinaryAnalyticsProperties.data(invalid_data)
 
     def test_error_message_includes_available_passbands(self) -> None:
@@ -380,14 +384,13 @@ class TestLCBinaryAnalyticsPropertiesEdgeCases(ElisaTestCase):
         mock_data = mock.MagicMock(spec=self.LCData)
         invalid_data: dict = {"invalid_passband": mock_data}
 
-        with self.assertRaises(ElisaPassbandError) as context:
+        with pytest.raises(ElisaPassbandError) as context:
             LCBinaryAnalyticsProperties.data(invalid_data)
 
-        error_msg: str = str(context.exception)
+        error_msg: str = str(context.value)
         # Should mention available passbands in some form
-        self.assertIn("available", error_msg.lower())
+        assert ("available") in (error_msg.lower())
 
 
 if __name__ == "__main__":
     unittest.main()
-

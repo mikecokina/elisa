@@ -3,26 +3,32 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
 from contextlib import nullcontext
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
-from numpy.typing import ArrayLike
 
 from elisa.analytics.binary_fit import io_tools, mcmc
-from elisa.analytics.binary_fit.lc_fit import LCFitMCMC
 from elisa.analytics.binary_fit.mixins import MCMCMixin
 from elisa.analytics.binary_fit.rv_fit import RVFitMCMC
 from elisa.analytics.params import parameters
 from elisa.analytics.params.parameters import BinaryInitialParameters, InitialParameter
 from elisa.analytics.params.transform import BinaryInitialProperties
-from elisa.base.error import ElisaMonteCarloError, ElisaInitialParametersError
+from elisa.base.error import ElisaInitialParametersError, ElisaMonteCarloError
 from tests.tests_analytics.fitting_helpers import BINARY_PARAMETERS, V, make_lc, rv_problem
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from pathlib import Path
+
+    from numpy.typing import ArrayLike, NDArray
+
+    import elisa.analytics.binary_fit.mcmc
+    from elisa.analytics.binary_fit.lc_fit import LCFitMCMC
+
 
 GAMMA = "system@gamma"
 MASS_RATIO = "system@mass_ratio"
@@ -38,12 +44,14 @@ def posterior_parameters(expression: str = "system@gamma**2 + system@period") ->
             "gamma": {"value": 0.0, "fixed": False, "min": -4.0, "max": 4.0},
             "period": {"value": 2.0, "fixed": True},
             "mass_ratio": {"constraint": expression},
-        }
+        },
     )
 
 
 def summarize_constraint(
-    values: ArrayLike, expression: str, percentiles: Sequence[float] | None = None
+    values: ArrayLike,
+    expression: str,
+    percentiles: Sequence[float] | None = None,
 ) -> dict[str, Any]:
     init = posterior_parameters(expression)
     return MCMCMixin.resolve_constrained_result(
@@ -75,12 +83,19 @@ def assert_posterior_percentiles(
     [
         pytest.param("3*system@gamma + system@period", 3 * GAMMA_SAMPLES + 2, (16, 50, 84), id="linear-fixed-offset"),
         pytest.param(
-            "system@gamma**2 + system@period", GAMMA_SAMPLES**2 + 2, (16, 50, 84), id="quadratic-fixed-offset"
+            "system@gamma**2 + system@period",
+            GAMMA_SAMPLES**2 + 2,
+            (16, 50, 84),
+            id="quadratic-fixed-offset",
         ),
         pytest.param("system@gamma**2", GAMMA_SAMPLES**2, (5, 50, 95), id="custom-percentiles"),
     ],
 )
-def test_constraint_summary_propagates_each_joint_sample(expression, expected_samples, percentiles) -> None:
+def test_constraint_summary_propagates_each_joint_sample(
+    expression: str,
+    expected_samples: NDArray[np.generic],
+    percentiles: tuple[int, ...],
+) -> None:
     result = summarize_constraint(NORMALIZED_CHAIN, expression, percentiles)
     assert_posterior_percentiles(result, expected_samples, percentiles)
     assert result["unit"] == posterior_parameters().get_constrained()[MASS_RATIO].to_dict()["unit"]
@@ -98,16 +113,26 @@ def test_joint_correlations_and_multiple_constraints() -> None:
     chain = np.column_stack((NORMALIZED_CHAIN[:, 0], 1 - NORMALIZED_CHAIN[:, 0]))
     constraints = {
         MASS_RATIO: InitialParameter(
-            BinaryInitialProperties, param="mass_ratio", constraint=f"{GAMMA}+{ASINI}", unit=None
+            BinaryInitialProperties,
+            param="mass_ratio",
+            constraint=f"{GAMMA}+{ASINI}",
+            unit=None,
         ),
         "system@eccentricity": InitialParameter(
-            BinaryInitialProperties, param="eccentricity", constraint=f"{GAMMA}*{ASINI}", unit=None
+            BinaryInitialProperties,
+            param="eccentricity",
+            constraint=f"{GAMMA}*{ASINI}",
+            unit=None,
         ),
     }
     before = chain.copy()
     chain.setflags(write=False)
     results = MCMCMixin.resolve_constrained_result(
-        chain, labels, {GAMMA: (-4.0, 4.0), ASINI: (-4.0, 4.0)}, constraints, {}
+        chain,
+        labels,
+        {GAMMA: (-4.0, 4.0), ASINI: (-4.0, 4.0)},
+        constraints,
+        {},
     )
     assert_posterior_percentiles(results[MASS_RATIO], np.zeros(len(GAMMA_SAMPLES)))
     assert_posterior_percentiles(results["system@eccentricity"], -(GAMMA_SAMPLES**2))
@@ -137,7 +162,7 @@ def test_negative_power_substitution_and_constant_samples() -> None:
 
 
 @pytest.mark.parametrize("expression", ["exp(1000*system@gamma)", "log(system@gamma)"])
-def test_nonfinite_constraints_reject_instead_of_dropping_samples(expression) -> None:
+def test_nonfinite_constraints_reject_instead_of_dropping_samples(expression: str) -> None:
     with (
         np.errstate(over="ignore", invalid="ignore", divide="ignore"),
         pytest.raises(ElisaMonteCarloError, match="Nonfinite posterior constraint"),
@@ -147,7 +172,9 @@ def test_nonfinite_constraints_reject_instead_of_dropping_samples(expression) ->
 
 @pytest.mark.parametrize("structured", [False, True])
 def test_result_chain_reload_discard_filter_and_reserialize(
-    tmp_path: Path, mcmc_result: LCFitMCMC | RVFitMCMC, structured: bool
+    tmp_path: Path,
+    mcmc_result: LCFitMCMC | RVFitMCMC,
+    structured: bool,
 ) -> None:
     fit = mcmc_result
     init = posterior_parameters()
@@ -156,7 +183,7 @@ def test_result_chain_reload_discard_filter_and_reserialize(
         {
             key: {"value": item.value, "fixed": True, "unit": item.to_dict()["unit"]}
             for key, item in init.get_fixed().items()
-        }
+        },
     )
     base[MASS_RATIO] = summarize_constraint(NORMALIZED_CHAIN, "system@gamma**2 + system@period")
     fit.set_result(parameters.serialize_result(base))
@@ -192,7 +219,11 @@ def test_result_chain_reload_discard_filter_and_reserialize(
 
 
 @pytest.mark.parametrize("fit_cls", [mcmc.DetachedLightCurveFit, mcmc.CentralRadialVelocity])
-def test_fit_completion_uses_samplewise_summary(fit_cls) -> None:
+def test_fit_completion_uses_samplewise_summary(
+    fit_cls: type[
+        elisa.analytics.binary_fit.mcmc.CentralRadialVelocity | elisa.analytics.binary_fit.mcmc.DetachedLightCurveFit
+    ],
+) -> None:
     data: dict
     if fit_cls is mcmc.DetachedLightCurveFit:
         config = {
@@ -209,7 +240,7 @@ def test_fit_completion_uses_samplewise_summary(fit_cls) -> None:
             "gamma": {"value": 0.0, "fixed": False, "min": -4.0, "max": 4.0},
             "period": {"value": 2.0, "fixed": True},
             "mass_ratio": {"constraint": "system@gamma**2 + system@period"},
-        }
+        },
     )
     if fit_cls is mcmc.DetachedLightCurveFit:
         # LC has no systemic velocity; use a supported free phase offset for
@@ -233,7 +264,7 @@ def test_fit_completion_uses_samplewise_summary(fit_cls) -> None:
 
 
 @pytest.mark.parametrize("missing", ["flat_result", "flat_chain", "normalization"])
-def test_update_rejects_missing_state(missing) -> None:
+def test_update_rejects_missing_state(missing: str) -> None:
     fit = RVFitMCMC()
     fit.flat_result = {}
     fit.flat_chain = NORMALIZED_CHAIN

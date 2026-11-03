@@ -1,8 +1,11 @@
 """Exact numeric strip reuse, error parity and mutable container isolation."""
 
+from __future__ import annotations
+
 import hashlib
 from copy import deepcopy
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import numpy as np
@@ -12,12 +15,26 @@ from elisa import settings
 from elisa.atm import atm
 from elisa.observer.passband import PassbandContainer
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
-def original_strip(atm_container, left_bandwidth, right_bandwidth, *, inplace=False):
+    from numpy.typing import NDArray
+
+
+def original_strip(
+    atm_container: atm.AtmDataContainer,
+    left_bandwidth: float | np.float64,
+    right_bandwidth: float | np.float64,
+    *,
+    inplace: bool = False,
+) -> atm.AtmDataContainer:
     """Pre-cache strip implementation, retained as an independent reference."""
     container, left, right = atm_container, left_bandwidth, right_bandwidth
-    valid = list(np.where(np.logical_and(np.greater(container.model.wavelength, left),
-                                        np.less(container.model.wavelength, right)))[0])
+    valid = list(
+        np.where(
+            np.logical_and(np.greater(container.model.wavelength, left), np.less(container.model.wavelength, right)),
+        )[0],
+    )
     first = valid[0] - 1 if valid[0] >= 1 else 0
     last = valid[-1] + 1 if valid[-1] < container.model.last_valid_index() else valid[-1]
     result = container if inplace else deepcopy(container)
@@ -25,21 +42,29 @@ def original_strip(atm_container, left_bandwidth, right_bandwidth, *, inplace=Fa
     return atm.extend_atm_container_on_bandwidth_boundary(result, left, right)
 
 
-def spectrum():
+def spectrum() -> atm.AtmDataContainer:
     wave = np.arange(11, dtype=float)
-    c = atm.AtmDataContainer(atm.AtmModel(wavelength=wave, flux=1.123456789123456 + np.sin(wave / 3)),
-                             5000.0, 2.0, 0.0, fpath="source")
+    c = atm.AtmDataContainer(
+        atm.AtmModel(wavelength=wave, flux=1.123456789123456 + np.sin(wave / 3)),
+        5000.0,
+        2.0,
+        0.0,
+        fpath="source",
+    )
     c.extra = {"nested": [1, 2]}
     return c
 
 
-def assert_bits(a, b):
+def assert_bits(
+    a: NDArray[np.float32] | NDArray[np.float64],
+    b: NDArray[np.float32] | NDArray[np.float64],
+) -> None:
     assert a.dtype == b.dtype
     assert a.shape == b.shape
     assert a.tobytes() == b.tobytes()
 
 
-def assert_model(a, b):
+def assert_model(a: atm.AtmDataContainer, b: atm.AtmDataContainer) -> None:
     assert_bits(a.model.wavelength, b.model.wavelength)
     assert_bits(a.model.flux, b.model.flux)
     assert a.left_bandwidth == b.left_bandwidth
@@ -47,13 +72,13 @@ def assert_model(a, b):
 
 
 @pytest.fixture(autouse=True)
-def empty_strip_cache():
+def empty_strip_cache() -> Iterator[None]:
     atm.clear_atm_strip_cache()
     yield
     atm.clear_atm_strip_cache()
 
 
-def test_key_contains_framed_array_digest_and_exact_boundary_bits():
+def test_key_contains_framed_array_digest_and_exact_boundary_bits() -> None:
     source = spectrum()
     digest = hashlib.blake2b(digest_size=16)
     for values in (source.model.wavelength, source.model.flux):
@@ -71,11 +96,16 @@ def test_key_contains_framed_array_digest_and_exact_boundary_bits():
     assert atm._atm_strip_cache_key(swapped, -0.0, 8.75)[0] != key[0]
 
 
-def test_digest_preserves_legacy_combined_payload_limit(monkeypatch):
+def test_digest_preserves_legacy_combined_payload_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     source = spectrum()
     result = original_strip(source, 1.25, 8.75)
-    budget = (source.model.wavelength.nbytes + source.model.flux.nbytes + 16
-              + result.model.wavelength.nbytes + result.model.flux.nbytes)
+    budget = (
+        source.model.wavelength.nbytes
+        + source.model.flux.nbytes
+        + 16
+        + result.model.wavelength.nbytes
+        + result.model.flux.nbytes
+    )
     monkeypatch.setattr(atm, "_STRIP_CACHE_MAX_PAYLOAD", budget - 1)
     atm.strip_to_bandwidth(source, 1.25, 8.75)
     assert atm.atm_strip_cache_info()["currsize"] == 0
@@ -88,7 +118,7 @@ def test_digest_preserves_legacy_combined_payload_limit(monkeypatch):
 
 
 @pytest.mark.parametrize("inplace", [False, True])
-def test_cold_and_warm_results_are_independent_and_exact(inplace):
+def test_cold_and_warm_results_are_independent_and_exact(inplace: bool) -> None:
     source = spectrum()
     before = deepcopy(source)
     expected = original_strip(source, 1.25, 8.75)
@@ -98,7 +128,8 @@ def test_cold_and_warm_results_are_independent_and_exact(inplace):
         result = atm.strip_to_bandwidth(current, 1.25, 8.75, inplace=inplace)
         assert_model(result, expected)
         assert (result is current) == inplace
-        assert result.model.flux.flags.writeable and result.model.wavelength.flags.writeable
+        assert result.model.flux.flags.writeable
+        assert result.model.wavelength.flags.writeable
         assert not np.shares_memory(result.model.flux, source.model.flux)
         if not inplace:
             assert_model(current, before)
@@ -115,14 +146,14 @@ def test_cold_and_warm_results_are_independent_and_exact(inplace):
     assert_model(atm.strip_to_bandwidth(source, 1.25, 8.75), expected)
     assert_model(source, before)
     for wave, flux in atm._STRIP_CACHE.values():
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="WRITEABLE"):
             wave.setflags(write=True)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="read-only"):
             flux[0] = -1
 
 
 @pytest.mark.parametrize("inplace", [False, True])
-def test_metadata_is_taken_from_current_container(inplace):
+def test_metadata_is_taken_from_current_container(inplace: bool) -> None:
     source = spectrum()
     atm.strip_to_bandwidth(source, 1.25, 8.75)
     source.temperature, source.log_g, source.metallicity = 6500.0, 3.5, -0.5
@@ -138,9 +169,9 @@ def test_metadata_is_taken_from_current_container(inplace):
     assert (result is source) == inplace
 
 
-def test_cache_hit_preserves_metadata_deepcopy_errors():
+def test_cache_hit_preserves_metadata_deepcopy_errors() -> None:
     class Uncopyable:
-        def __deepcopy__(self, memo):
+        def __deepcopy__(self, memo: dict[int, object]) -> None:
             raise RuntimeError("metadata cannot be copied")
 
     source = spectrum()
@@ -153,7 +184,7 @@ def test_cache_hit_preserves_metadata_deepcopy_errors():
 
 
 @pytest.mark.parametrize("change", ["flux", "grid", "shape", "left", "right", "dtype"])
-def test_changed_numeric_inputs_do_not_hit(change):
+def test_changed_numeric_inputs_do_not_hit(change: str) -> None:
     source = spectrum()
     atm.strip_to_bandwidth(source, 1.25, 8.75)
     left, right = 1.25, 8.75
@@ -176,7 +207,7 @@ def test_changed_numeric_inputs_do_not_hit(change):
     assert atm.atm_strip_cache_info()["hits"] == 0
 
 
-def test_signed_zero_boundary_bits_are_distinct():
+def test_signed_zero_boundary_bits_are_distinct() -> None:
     source = spectrum()
     for left in (0.0, -0.0):
         assert_model(atm.strip_to_bandwidth(source, left, 8.75), original_strip(source, left, 8.75))
@@ -184,7 +215,7 @@ def test_signed_zero_boundary_bits_are_distinct():
     assert np.signbit(atm.strip_to_bandwidth(source, -0.0, 8.75).model.wavelength[0])
 
 
-def test_strided_readonly_inputs_and_floating_point_context():
+def test_strided_readonly_inputs_and_floating_point_context() -> None:
     source = spectrum()
     for name in ("wavelength", "flux"):
         values = np.repeat(getattr(source.model, name), 2)[::2]
@@ -201,7 +232,7 @@ def test_strided_readonly_inputs_and_floating_point_context():
     assert atm.atm_strip_cache_info()["misses"] == 2
 
 
-def test_coverage_fallback_warnings_are_not_cached():
+def test_coverage_fallback_warnings_are_not_cached() -> None:
     source = spectrum()
     for _ in range(2):
         with pytest.warns(UserWarning, match="argument bandwidth is out of bound"):
@@ -210,7 +241,7 @@ def test_coverage_fallback_warnings_are_not_cached():
     assert atm.atm_strip_cache_info()["hits"] == 1
 
 
-def test_apply_passband_copies_once_and_isolates_each_band():
+def test_apply_passband_copies_once_and_isolates_each_band() -> None:
     source = spectrum()
     before = deepcopy(source)
     first = PassbandContainer.from_name("Generic.Bessell.U")
@@ -232,26 +263,25 @@ def test_apply_passband_copies_once_and_isolates_each_band():
         assert_model(source, before)
 
 
-def test_apply_passband_validates_after_private_copy():
+def test_apply_passband_validates_after_private_copy() -> None:
     source = spectrum()
     band = PassbandContainer.from_name("Generic.Bessell.U")
     band.left_bandwidth, band.right_bandwidth = 1.1, 1.2
-    with patch.object(atm, "deepcopy", wraps=deepcopy) as copies:
-        with pytest.raises(IndexError):
-            atm.apply_passband([source], {"test": band})
+    with patch.object(atm, "deepcopy", wraps=deepcopy) as copies, pytest.raises(IndexError):
+        atm.apply_passband([source], {"test": band})
     assert copies.call_count == 1
     assert copies.call_args.args[0] is source
 
 
-def test_alignment_and_changed_selected_grids_preserve_both_stages():
+def test_alignment_and_changed_selected_grids_preserve_both_stages() -> None:
     models = [spectrum(), spectrum(), spectrum()]
     models[1].model.wavelength += 0.125
     models[2].model.wavelength += 0.25
     band = PassbandContainer.from_name("Generic.Bessell.U")
     band.left_bandwidth, band.right_bandwidth = 2.25, 7.75
-    band.akima = lambda x: np.ones_like(x)
+    band.akima = np.ones_like
 
-    def prepare(selected):
+    def prepare(selected: list[atm.AtmDataContainer]) -> list[atm.AtmDataContainer]:
         trimmed = atm.strip_atm_containers_by_bandwidth(selected, 1.25, 8.75)
         aligned = atm.arange_atm_to_same_wavelength(trimmed)
         return atm.apply_passband(aligned, {"test": band})["test"]
@@ -260,13 +290,13 @@ def test_alignment_and_changed_selected_grids_preserve_both_stages():
         with patch.object(atm, "strip_to_bandwidth", original_strip):
             expected = prepare(selected)
         obtained = prepare(selected)
-        for old, new in zip(expected, obtained):
+        for old, new in zip(expected, obtained, strict=True):
             assert_model(new, old)
         assert all(np.all(np.diff(c.model.wavelength) > 0) for c in obtained)
     assert atm.atm_strip_cache_info()["hits"] > 0
 
 
-def test_lru_eviction_capacity_and_clear():
+def test_lru_eviction_capacity_and_clear() -> None:
     source = spectrum()
     for index in range(128):
         atm.strip_to_bandwidth(source, 1.0 + index / 1024, 8.75)
@@ -284,7 +314,7 @@ def test_lru_eviction_capacity_and_clear():
 
 
 @pytest.mark.parametrize("length", [5000, 10000])
-def test_oversized_key_or_result_is_not_stored(length):
+def test_oversized_key_or_result_is_not_stored(length: int) -> None:
     wave = np.arange(length, dtype=float)
     source = atm.AtmDataContainer(atm.AtmModel(wavelength=wave, flux=1 + np.sin(wave / 100)), 5000, 2, 0)
     expected = original_strip(source, 1.25, length - 2.25)
@@ -295,10 +325,23 @@ def test_oversized_key_or_result_is_not_stored(length):
     assert info["bypasses"] == 2
 
 
-@pytest.mark.parametrize("bad", ["empty", "reversed", "outside", "nan_bound", "nan_flux", "duplicate", "unsorted",
-                                  "shape", "two_dimensional", "none"])
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "empty",
+        "reversed",
+        "outside",
+        "nan_bound",
+        "nan_flux",
+        "duplicate",
+        "unsorted",
+        "shape",
+        "two_dimensional",
+        "none",
+    ],
+)
 @pytest.mark.parametrize("inplace", [False, True])
-def test_error_type_message_and_partial_mutation_match(bad, inplace):
+def test_error_type_message_and_partial_mutation_match(bad: str, inplace: bool) -> None:
     source = spectrum()
     left, right = 1.25, 8.75
     if bad == "empty":
@@ -322,7 +365,7 @@ def test_error_type_message_and_partial_mutation_match(bad, inplace):
     else:
         source.model.flux = None
     old_input, new_input = deepcopy(source), deepcopy(source)
-    with pytest.raises(Exception) as expected:
+    with pytest.raises(Exception) as expected:  # noqa: PT011 - assert type, identity, or reference parity without promising dependency wording
         original_strip(old_input, left, right, inplace=inplace)
     with pytest.raises(type(expected.value)) as obtained:
         atm.strip_to_bandwidth(new_input, left, right, inplace=inplace)
@@ -337,18 +380,30 @@ def test_error_type_message_and_partial_mutation_match(bad, inplace):
 
 
 @pytest.mark.parametrize("atlas", ["ck04", "k93"])
-def test_table_families_and_throughput_remain_uncached(atlas, monkeypatch, tmp_path):
+def test_table_families_and_throughput_remain_uncached(
+    atlas: str,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
     atlas = atm.validated_atlas(atlas)
-    monkeypatch.setattr(settings, "CK04_ATM_TABLES" if atm.validated_atlas(atlas) == "ck" else "K93_ATM_TABLES", tmp_path)
+    monkeypatch.setattr(
+        settings,
+        "CK04_ATM_TABLES" if atm.validated_atlas(atlas) == "ck" else "K93_ATM_TABLES",
+        tmp_path,
+    )
     monkeypatch.setattr(atm.buffer, "ATMOSPHERE_TABLES", {})
     args = np.array([10000.0, 10001.0]), np.repeat(2.0, 2), 0.0, atlas
-    wave = np.arange(2500., 5501., 100.)
+    wave = np.arange(2500.0, 5501.0, 100.0)
     for path in set(atm.NaiveInterpolatedAtm.atm_files(*args)):
-        p = Path(path); p.parent.mkdir(exist_ok=True)
+        p = Path(path)
+        p.parent.mkdir(exist_ok=True)
         np.savetxt(p, np.column_stack((wave, 1 + wave / 1000)), delimiter=",", header="wave,flux", comments="")
     band = PassbandContainer.from_name("Generic.Bessell.U")
-    kwargs = dict(passband={"Generic.Bessell.U": band}, left_bandwidth=band.left_bandwidth,
-                  right_bandwidth=band.right_bandwidth)
+    kwargs = {
+        "passband": {"Generic.Bessell.U": band},
+        "left_bandwidth": band.left_bandwidth,
+        "right_bandwidth": band.right_bandwidth,
+    }
     with patch.object(atm, "strip_to_bandwidth", original_strip):
         expected = atm.NaiveInterpolatedAtm.get_atm_profiles(*args, **kwargs)
     first = atm.NaiveInterpolatedAtm.get_atm_profiles(*args, **kwargs)
@@ -358,7 +413,7 @@ def test_table_families_and_throughput_remain_uncached(atlas, monkeypatch, tmp_p
             assert_bits(first[0][bandname][key], expected[0][bandname][key])
             assert_bits(second[0][bandname][key], expected[0][bandname][key])
     hits = atm.atm_strip_cache_info()["hits"]
-    band.akima = lambda x: np.zeros_like(x)
+    band.akima = np.zeros_like
     third = atm.NaiveInterpolatedAtm.get_atm_profiles(*args, **kwargs)
     assert np.count_nonzero(third[0]["Generic.Bessell.U"]["flux"]) == 0
     assert atm.atm_strip_cache_info()["hits"] > hits

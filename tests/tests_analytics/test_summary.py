@@ -6,7 +6,7 @@ functions used in light curve and radial velocity fitting.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, Mock, patch
 
 import numpy as np
@@ -14,6 +14,7 @@ import pytest
 
 from elisa import settings
 from elisa.analytics.binary_fit.rv_fit import RVFitMCMC
+
 # noinspection PyProtectedMember
 from elisa.analytics.binary_fit.summary import (
     _manage_chain_evaluation,
@@ -24,6 +25,12 @@ from elisa.analytics.binary_fit.summary import (
 )
 from elisa.base.error import ElisaMonteCarloError
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
+    from numpy.typing import NDArray
+
 
 class TestManageChainEvaluation:
     """Test suite for _manage_chain_evaluation function."""
@@ -32,7 +39,7 @@ class TestManageChainEvaluation:
         """Test chain evaluation with single process."""
         mock_chain = np.array([[0.1, 0.2], [0.15, 0.25], [0.2, 0.3]])
 
-        def mock_eval_func(_: str, chain: np.ndarray) -> np.ndarray:
+        def mock_eval_func(_: str, chain: NDArray[np.generic]) -> NDArray[np.generic]:
             """Mock evaluation function."""
             return chain * 2
 
@@ -46,30 +53,32 @@ class TestManageChainEvaluation:
         """Test chain evaluation with multiprocessing."""
         mock_chain = np.array([[0.1, 0.2], [0.15, 0.25], [0.2, 0.3], [0.25, 0.35]])
 
-        def mock_eval_func(_: str, chain: np.ndarray) -> np.ndarray:
+        def mock_eval_func(_: str, chain: NDArray[np.generic]) -> NDArray[np.generic]:
             """Mock evaluation function."""
             return chain * 2
 
-        with patch.object(settings, "NUMBER_OF_MCMC_PROCESSES", 2):
-            with patch("elisa.analytics.binary_fit.summary.get_mp_context") as mock_context:
-                mock_pool_class = mock_context.return_value.Pool
-                mock_pool = MagicMock()
-                mock_pool_class.return_value = mock_pool
+        with (
+            patch.object(settings, "NUMBER_OF_MCMC_PROCESSES", 2),
+            patch("elisa.analytics.binary_fit.summary.get_mp_context") as mock_context,
+        ):
+            mock_pool_class = mock_context.return_value.Pool
+            mock_pool = MagicMock()
+            mock_pool_class.return_value = mock_pool
 
-                # Mock async results
-                mock_result1 = MagicMock()
-                mock_result1.get.return_value = np.array([[0.2, 0.4], [0.3, 0.5]])
-                mock_result2 = MagicMock()
-                mock_result2.get.return_value = np.array([[0.4, 0.6], [0.5, 0.7]])
+            # Mock async results
+            mock_result1 = MagicMock()
+            mock_result1.get.return_value = np.array([[0.2, 0.4], [0.3, 0.5]])
+            mock_result2 = MagicMock()
+            mock_result2.get.return_value = np.array([[0.4, 0.6], [0.5, 0.7]])
 
-                mock_pool.apply_async.side_effect = [mock_result1, mock_result2]
+            mock_pool.apply_async.side_effect = [mock_result1, mock_result2]
 
-                result = _manage_chain_evaluation(mock_chain, mock_eval_func, "test_arg")
+            result = _manage_chain_evaluation(mock_chain, mock_eval_func, "test_arg")
 
-                assert isinstance(result, np.ndarray)
-                mock_pool_class.assert_called_once_with(processes=2)
-                mock_pool.close.assert_called_once()
-                mock_pool.join.assert_called_once()
+            assert isinstance(result, np.ndarray)
+            mock_pool_class.assert_called_once_with(processes=2)
+            mock_pool.close.assert_called_once()
+            mock_pool.join.assert_called_once()
 
     def test_eval_function_called_correctly(self) -> None:
         """Test that evaluation function is called with correct arguments."""
@@ -114,7 +123,7 @@ class TestSimpleLCFitSummary:
     def test_summary_to_stdout(self, mock_lc_fit_instance: Mock) -> None:
         """Test generating summary to stdout."""
         with patch(
-            "elisa.analytics.binary_fit.summary.lc_model.prepare_binary"
+            "elisa.analytics.binary_fit.summary.lc_model.prepare_binary",
         ) as mock_prepare:
             mock_binary = MagicMock()
             mock_binary.mass_ratio = 0.5
@@ -171,7 +180,7 @@ class TestSimpleLCFitSummary:
         output_file = tmp_path / "summary.txt"
 
         with patch(
-            "elisa.analytics.binary_fit.summary.lc_model.prepare_binary"
+            "elisa.analytics.binary_fit.summary.lc_model.prepare_binary",
         ) as mock_prepare:
             mock_binary = MagicMock()
             mock_binary.mass_ratio = 0.5
@@ -227,7 +236,7 @@ class TestSimpleLCFitSummary:
     def test_summary_dimensionless_radii(self, mock_lc_fit_instance: Mock) -> None:
         """Test summary with dimensionless radii."""
         with patch(
-            "elisa.analytics.binary_fit.summary.lc_model.prepare_binary"
+            "elisa.analytics.binary_fit.summary.lc_model.prepare_binary",
         ) as mock_prepare:
             mock_binary = MagicMock()
             mock_binary.mass_ratio = 0.5
@@ -276,7 +285,9 @@ class TestSimpleLCFitSummary:
             with patch("builtins.print"):
                 # Should not raise exception
                 simple_lc_fit_summary(
-                    mock_lc_fit_instance, path=None, dimensionless_radii=True
+                    mock_lc_fit_instance,
+                    path=None,
+                    dimensionless_radii=True,
                 )
 
 
@@ -305,7 +316,9 @@ class TestSimpleRVFitSummary:
             simple_rv_fit_summary(mock_rv_fit_instance, path=None)
 
     def test_rv_summary_to_file(
-        self, mock_rv_fit_instance: Mock, tmp_path: Path
+        self,
+        mock_rv_fit_instance: Mock,
+        tmp_path: Path,
     ) -> None:
         """Test generating RV summary to file."""
         output_file = tmp_path / "rv_summary.txt"
@@ -338,18 +351,20 @@ class TestSimpleRVFitSummary:
             simple_rv_fit_summary(mock_rv_fit_instance, path=None)
 
 
-
-
 # Note: Tests for evaluate_binary_params, fit_lc_summary_with_error_propagation, and
 # fit_rv_summary_with_error_propagation integration scenarios are complex and better
 # tested as integration tests with real or fully-mocked system parameters.
 # The unit tests above cover the main public APIs and data processing pipelines.
 
 
-@pytest.mark.parametrize("summarize", [
-    fit_lc_summary_with_error_propagation, fit_rv_summary_with_error_propagation,
-])
-def test_error_propagation_summary_requires_a_monte_carlo_chain(summarize) -> None:
+@pytest.mark.parametrize(
+    "summarize",
+    [
+        fit_lc_summary_with_error_propagation,
+        fit_rv_summary_with_error_propagation,
+    ],
+)
+def test_error_propagation_summary_requires_a_monte_carlo_chain(summarize: Callable[..., None]) -> None:
     fit = RVFitMCMC()
     fit.result = {"system": {"period": {"value": 1.0, "fixed": False, "min": 0.5, "max": 2.0}}}
     fit.flat_result = {}

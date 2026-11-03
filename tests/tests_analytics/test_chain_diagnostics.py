@@ -2,18 +2,22 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import emcee
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
-from numpy.typing import NDArray
 
-from elisa.base.error import ElisaGraphicsError, ElisaMonteCarloError
 from elisa.analytics.binary_fit import chain_tools as chains
 from elisa.analytics.binary_fit import plot
 from elisa.analytics.binary_fit.rv_fit import RVFitMCMC
+from elisa.base.error import ElisaGraphicsError, ElisaMonteCarloError
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
 
 LABELS = ["primary@t_eff", "secondary@t_eff"]
 
@@ -54,8 +58,9 @@ def test_flattening_correlated_walkers_gives_wrong_answer(correlated: NDArray[np
 
 
 @pytest.mark.parametrize("length", [1, 2, 8, 20])
-def test_insufficient_chain_is_unavailable(length: int, monkeypatch) -> None:
+def test_insufficient_chain_is_unavailable(length: int, monkeypatch: pytest.MonkeyPatch) -> None:
     from elisa import settings
+
     monkeypatch.setattr(settings, "MCMC_AUTOCORR_TOL", 50)
     # Smooth short trajectory has far fewer than 50 autocorrelation times.
     chain = np.broadcast_to(np.arange(length)[:, None, None], (length, 4, 2))
@@ -80,7 +85,7 @@ def test_fully_constant_chain_has_no_runtime_warnings() -> None:
 
 
 @pytest.mark.parametrize("value", [None, [], np.ones((8, 2)), np.full((8, 2, 1), np.nan)])
-def test_unavailable_temporal_structure(value) -> None:
+def test_unavailable_temporal_structure(value: list[object] | NDArray[np.generic] | None) -> None:
     with pytest.raises(ElisaMonteCarloError, match="Temporal autocorrelation"):
         chains.ensemble_autocorrelation(value)
 

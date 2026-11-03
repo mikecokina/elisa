@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
+from elisa import units as u
+from elisa.single_system.graphic.plot import Plot
 from tests import utils as testutils
 from tests.utils import ElisaTestCase, prepare_single_system
-from elisa.single_system.graphic.plot import Plot
-from elisa import units as u
 
 
 class PlotTestCase(ElisaTestCase):
@@ -17,7 +15,7 @@ class PlotTestCase(ElisaTestCase):
     without raising exceptions and return a figure-like object.
     """
 
-    def test_equipotential_returns_figure(self):
+    def test_equipotential_returns_figure(self) -> None:
         """Ensure `equipotential` returns a figure instance.
 
         :returns: None
@@ -29,9 +27,9 @@ class PlotTestCase(ElisaTestCase):
         p = Plot(single)
 
         fig_eq = p.equipotential(axis_unit=u.solRad, return_figure_instance=True)
-        self.assertIsNotNone(fig_eq)
+        assert (fig_eq) is not None
 
-    def test_mesh_returns_figure(self):
+    def test_mesh_returns_figure(self) -> None:
         """Ensure `mesh` returns a figure instance.
 
         :returns: None
@@ -43,9 +41,9 @@ class PlotTestCase(ElisaTestCase):
         p = Plot(single)
 
         fig_mesh = p.mesh(phase=0.0, plot_axis=False, axis_unit=u.solRad, return_figure_instance=True)
-        self.assertIsNotNone(fig_mesh)
+        assert (fig_mesh) is not None
 
-    def test_wireframe_returns_figure(self):
+    def test_wireframe_returns_figure(self) -> None:
         """Ensure `wireframe` returns a figure instance.
 
         :returns: None
@@ -57,4 +55,4 @@ class PlotTestCase(ElisaTestCase):
         p = Plot(single)
 
         fig_wire = p.wireframe(phase=0.0, plot_axis=False, axis_unit=u.solRad, return_figure_instance=True)
-        self.assertIsNotNone(fig_wire)
+        assert (fig_wire) is not None

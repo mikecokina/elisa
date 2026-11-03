@@ -1,14 +1,20 @@
 """Morphology rejection identifies the failed condition and its numerical inputs."""
 
+from __future__ import annotations
+
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
 
 import pytest
 
 from elisa import BinarySystem, Star
 from elisa.base.error import MorphologyError
 
+if TYPE_CHECKING:
+    import elisa.binary_system.system
 
-def test_eccentric_model_reports_surface_and_periastron_critical_potentials():
+
+def test_eccentric_model_reports_surface_and_periastron_critical_potentials() -> None:
     primary = Star(mass=2.15, t_eff=10000.0, surface_potential=3.6, synchronicity=1.0)
     secondary = Star(mass=1.2, t_eff=7000.0, surface_potential=4.0, synchronicity=1.0)
     with pytest.raises(MorphologyError) as caught:
@@ -33,7 +39,7 @@ def test_eccentric_model_reports_surface_and_periastron_critical_potentials():
     assert "  eccentricity: 0.3" in message
 
 
-def contact_model(primary_potential, secondary_potential):
+def contact_model(primary_potential: float, secondary_potential: float) -> elisa.binary_system.system.BinarySystem:
     model = BinarySystem.__new__(BinarySystem)
     model.eccentricity = 0.0
     model.primary = SimpleNamespace(synchronicity=1.0, surface_potential=primary_potential)
@@ -43,7 +49,7 @@ def contact_model(primary_potential, secondary_potential):
     return model
 
 
-def test_overcontact_mismatch_reports_actual_factors_and_tolerance():
+def test_overcontact_mismatch_reports_actual_factors_and_tolerance() -> None:
     model = contact_model(3.5, 3.75)
     with pytest.raises(MorphologyError) as caught:
         model.compute_morphology()
@@ -55,7 +61,7 @@ def test_overcontact_mismatch_reports_actual_factors_and_tolerance():
     assert "inner_potential=4, outer_potential=3" in message
 
 
-def test_excessive_filling_reports_values_exceeding_one():
+def test_excessive_filling_reports_values_exceeding_one() -> None:
     model = contact_model(2.5, 2.5)
     with pytest.raises(MorphologyError) as caught:
         model.compute_morphology()

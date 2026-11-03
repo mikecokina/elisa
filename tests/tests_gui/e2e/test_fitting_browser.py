@@ -1,13 +1,23 @@
 """Real Chromium -> Gradio -> SciPy/emcee integration; opt in with --run-fitting-e2e."""
 
+from __future__ import annotations
+
 import json
 import re
 import time
 from pathlib import Path
-from typing import TypedDict
+from typing import TYPE_CHECKING, TypedDict
 
 import numpy as np
 import pytest
+
+if TYPE_CHECKING:
+    import pathlib
+
+    import playwright.sync_api
+
+    import tests.tests_gui.e2e
+
 
 expect = pytest.importorskip("playwright.sync_api").expect
 
@@ -26,15 +36,19 @@ class FitRecord(TypedDict, total=False):
     r_squared: float | None
 
 
-def component(app, ident):
+def component(app: tests.tests_gui.e2e.Application, ident: int) -> tests.tests_gui.e2e.Component:
     return app["manifest"]["components"][str(ident)]
 
 
-def control(page, app, ident):
+def control(
+    page: playwright.sync_api.Page,
+    app: tests.tests_gui.e2e.Application,
+    ident: int,
+) -> playwright.sync_api.Locator:
     return page.locator(component(app, ident)["selector"])
 
 
-def number(locator, value):
+def number(locator: playwright.sync_api.Locator, value: float | str) -> None:
     box = locator.locator("input").first
     expect(box).to_be_enabled()
     box.fill(str(value))
@@ -42,25 +56,39 @@ def number(locator, value):
     expect(box).to_have_value(str(value))
 
 
-def dropdown(page, locator, value):
+def dropdown(_page: playwright.sync_api.Page, locator: playwright.sync_api.Locator, value: str) -> None:
     locator.locator("input").click()
     locator.get_by_role("option", name=value, exact=True).click()
     locator.locator("input").press("Escape")
     expect(locator.locator("input")).to_have_value(value)
 
 
-def open_ancestors(locator):
+def open_ancestors(locator: playwright.sync_api.Locator) -> None:
     for accordion in locator.locator('xpath=ancestor::*[contains(@class,"gr-accordion")]').all():
         content = accordion.locator(':scope > [data-testid="accordion-content"]')
         if content.count() and content.get_attribute("style") == "display: none;":
             accordion.locator(":scope > button").click()
 
 
-def field(page, app, kind, key):
+def field(
+    page: playwright.sync_api.Page,
+    app: tests.tests_gui.e2e.Application,
+    kind: str,
+    key: str,
+) -> playwright.sync_api.Locator:
     return control(page, app, app["manifest"]["callbacks"][kind]["fields"][key])
 
 
-def set_parameter(page, app, kind, prefix, value=None, mode="fixed", bounds=None, constraint=None):
+def set_parameter(
+    page: playwright.sync_api.Page,
+    app: tests.tests_gui.e2e.Application,
+    kind: str,
+    prefix: str,
+    value: float | None = None,
+    mode: str = "fixed",
+    bounds: tuple[float, float] | None = None,
+    constraint: str | None = None,
+) -> None:
     value_control = field(page, app, kind, prefix + "_value")
     open_ancestors(value_control)
     if value is not None:
@@ -78,7 +106,7 @@ def set_parameter(page, app, kind, prefix, value=None, mode="fixed", bounds=None
         expect(field(page, app, kind, prefix + "_min").locator("input")).to_be_disabled()
 
 
-def prepare_data(work, kind):
+def prepare_data(work: pathlib.Path, kind: str) -> list[pathlib.Path]:
     if kind == "LC":
         data = np.loadtxt(DATA / "synthetic_bessell_U.dat")
         # Copy 20 evenly spaced existing observations, preserving JD, flux and errors.
@@ -101,7 +129,7 @@ def prepare_data(work, kind):
     return paths
 
 
-def events(app):
+def events(app: tests.tests_gui.e2e.Application) -> list[dict[str, object]]:
     path = app["work"] / "backend.jsonl"
     return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
 
@@ -125,7 +153,13 @@ def events(app):
         for approach in ("Community", "Standard")
     ],
 )
-def test_real_fitting(application, browser, kind, method, approach):
+def test_real_fitting(
+    application: tests.tests_gui.e2e.Application,
+    browser: playwright.sync_api.Browser,
+    kind: str,
+    method: str,
+    approach: str,
+) -> None:
     app = application
     scenario = f"{kind}-{method}-{approach}"
     record: FitRecord = {"scenario": scenario}
@@ -258,20 +292,23 @@ def test_real_fitting(application, browser, kind, method, approach):
         before = len(events(app))
         fit_start = time.perf_counter()
         page.get_by_role(
-            "button", name="⚡ Run Least Squares" if method == "least_squares" else "🔬 Run MCMC", exact=True
+            "button",
+            name="⚡ Run Least Squares" if method == "least_squares" else "🔬 Run MCMC",
+            exact=True,
         ).click()
         download = page.get_by_role("button", name=re.compile("Download.*JSON")).or_(
-            page.get_by_role("link", name=re.compile("Download.*JSON"))
+            page.get_by_role("link", name=re.compile("Download.*JSON")),
         )
         error = page.get_by_text(
-            re.compile("Your initial parameters contain|It is not allowed for|Invalid syntax or value in constraint")
+            re.compile("Your initial parameters contain|It is not allowed for|Invalid syntax or value in constraint"),
         )
         expect(download.or_(error)).to_be_visible(timeout=180000)
         assert not error.count(), error.all_text_contents()
         record["workflow_seconds"] = time.perf_counter() - fit_start
         new_events = events(app)[before:]
         fit = next(event for event in new_events if event.get("method") == method and "seconds" in event)
-        assert fit["kind"] == kind and "error" not in fit, fit
+        assert fit["kind"] == kind, fit
+        assert "error" not in fit, fit
         record["backend_seconds"] = fit["seconds"]
         record["workflow_seconds"] = time.perf_counter() - fit_start
         assert len(fit["free"]) == 2
@@ -295,7 +332,8 @@ def test_real_fitting(application, browser, kind, method, approach):
         if method == "mcmc":
             assert fit["chain_shape"] == [100, 2]
             assert fit["chain_finite"]
-            assert fit["options"]["burn_in"] == 0 and fit["options"]["nsteps"] == 10
+            assert fit["options"]["burn_in"] == 0
+            assert fit["options"]["nsteps"] == 10
         for section in ("system", "primary", "secondary", "nuisance"):
             for name, meta in result.get(section, {}).items():
                 if isinstance(meta, dict) and "value" in meta:
@@ -305,7 +343,8 @@ def test_real_fitting(application, browser, kind, method, approach):
             assert result["primary"]["surface_potential"]["value"] == 3.6
             assert abs(result["system"]["inclination"]["value"] - 85) < 1.01
             assert result["secondary"]["t_eff"]["value"] == pytest.approx(
-                0.7 * result["primary"]["t_eff"]["value"], rel=1e-10
+                0.7 * result["primary"]["t_eff"]["value"],
+                rel=1e-10,
             )
             if approach == "Standard":
                 assert result["primary"]["mass"]["value"] == 2.15
@@ -316,7 +355,8 @@ def test_real_fitting(application, browser, kind, method, approach):
             assert result["system"]["period"]["value"] == 4.5
             assert result["system"]["eccentricity"]["value"] == pytest.approx(0, abs=1e-12)
         plots = [event for event in new_events if "plot" in event]
-        assert plots and all(event["finite"] for event in plots), plots
+        assert plots, plots
+        assert all(event["finite"] for event in plots), plots
         # Real output is rendered, not merely returned by a callback.
         expect(page.get_by_text("system@period", exact=True)).to_be_visible()
         constrained_name = "secondary@t_eff" if kind == "LC" else "system@eccentricity"
@@ -345,7 +385,8 @@ def test_real_fitting(application, browser, kind, method, approach):
         if method == "mcmc":
             chain_path = app["work"] / f"{scenario}-chain.json"
             chain = np.asarray(json.loads(chain_path.read_text())["flat_chain"])
-            assert chain.shape == (100, 2) and np.isfinite(chain).all()
+            assert chain.shape == (100, 2)
+            assert np.isfinite(chain).all()
 
         with page.expect_download() as downloaded:
             download.click()

@@ -7,25 +7,22 @@ Forwarding wrappers record the inputs and outputs used by each fitter.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from copy import deepcopy
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
-from numpy.typing import NDArray
 from scipy.interpolate import interp1d
 
 from elisa import const
 from elisa.analytics.binary_fit import least_squares, mcmc, shared
-from elisa.base.error import ElisaPredictionAlignmentError
 from elisa.analytics.binary_fit.shared import AbstractLCFit, lc_r_squared
 from elisa.analytics.models import lc
 from elisa.analytics.params import parameters as p
 from elisa.analytics.tools.utils import time_layer_resolver
-from elisa.base.error import MorphologyError
+from elisa.base.error import ElisaPredictionAlignmentError, MorphologyError
 from elisa.binary_system.system import BinarySystem
 from elisa.conf.enums import SamplingMethod
 from tests.tests_analytics.fitting_helpers import (
@@ -38,6 +35,15 @@ from tests.tests_analytics.fitting_helpers import (
     prepare_lc_fits,
     synthesize_lc,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from numpy.typing import NDArray
+
+    import elisa.conf.enums
+    import elisa.observer.observer
+
 
 REQUIRES_B_LD = pytest.mark.requires_ld(passbands=(B,), laws=("linear",))
 
@@ -52,10 +58,15 @@ def capture_prediction(callback: Callable, *args, **kwargs) -> tuple[Any, dict[s
     captured = {}
     predict = shared.predict_light_curves
 
-    def record_prediction(*prediction_args, **options):
+    def record_prediction(*prediction_args, **options) -> dict[str, NDArray[np.float64]]:
         synthesis = options.pop("synthesis", lc.synthetic_binary)
 
-        def record_synthesis(phases, discretization, observer, **physical):
+        def record_synthesis(
+            phases: NDArray[np.float64],
+            discretization: float,
+            observer: elisa.observer.observer.Observer,
+            **physical,
+        ) -> dict[str, NDArray[np.float64]]:
             captured["support"] = phases.copy()
             captured["physical"] = deepcopy(physical)
             raw = synthesis(phases, discretization, observer, **physical)
@@ -123,7 +134,9 @@ def assert_statistical_cost(
 
 def assert_prediction_r_squared(fit: AbstractLCFit, physical: dict[str, Any], predictions: dict[str, NDArray]) -> None:
     atm_physical = p.extend_json_with_atm_params(
-        physical, atmosphere_model=fit.atmosphere_model, limb_darkening_coefficients=fit.limb_darkening_coefficients
+        physical,
+        atmosphere_model=fit.atmosphere_model,
+        limb_darkening_coefficients=fit.limb_darkening_coefficients,
     )
     r2, score_capture = capture_prediction(
         lc_r_squared,
@@ -196,7 +209,9 @@ def assert_consistent_predictions(
             id="different_equal_lengths",
         ),
         pytest.param(
-            {V: LC_PHASES, B: [0.25]}, marks=REQUIRES_B_LD, id="singleton"
+            {V: LC_PHASES, B: [0.25]},
+            marks=REQUIRES_B_LD,
+            id="singleton",
         ),
         pytest.param(
             {V: [0.5, 0.0, 0.1, 0.1], B: [0.3, 0.1, 0.0]},
@@ -205,7 +220,7 @@ def assert_consistent_predictions(
         ),
     ],
 )
-def test_direct_observation_mapping(grids) -> None:
+def test_direct_observation_mapping(grids: dict[str, list[float]]) -> None:
     assert_consistent_predictions(prepare_lc_fits(grids))
 
 
@@ -222,7 +237,9 @@ def test_direct_observation_mapping(grids) -> None:
         pytest.param(8, SamplingMethod.UNIFORM, id="threshold_boundary"),
     ],
 )
-def test_prepared_support(threshold: int, samples) -> None:
+def test_prepared_support(
+    threshold: int, samples: elisa.conf.enums.SamplingMethod | list[float] | NDArray[np.generic],
+) -> None:
     assert_consistent_predictions(prepare_lc_fits({V: LC_PHASES}, threshold, samples))
 
 
@@ -241,7 +258,7 @@ def test_multiband_phase_and_jd(jd: bool, threshold: int) -> None:
     ],
 )
 @REQUIRES_B_LD
-def test_explicit_atmosphere_and_ld(threshold: int, atmosphere, custom_ld: bool) -> None:
+def test_explicit_atmosphere_and_ld(threshold: int, atmosphere: bool, custom_ld: bool) -> None:
     grids = {V: LC_PHASES, B: SECONDARY_PHASES}
     fits = prepare_lc_fits(
         grids,
@@ -252,7 +269,10 @@ def test_explicit_atmosphere_and_ld(threshold: int, atmosphere, custom_ld: bool)
     caps = assert_consistent_predictions(fits)
     baseline = prepare_lc_fits(grids, threshold)
     physical = p.prepare_properties_set(
-        np.asarray(baseline[0].initial_vector), baseline[0].fitable.keys(), baseline[0].constrained, baseline[0].fixed
+        np.asarray(baseline[0].initial_vector),
+        baseline[0].fitable.keys(),
+        baseline[0].constrained,
+        baseline[0].fixed,
     )
     control = baseline[0].predict_light_curves(physical)
     assert max(np.max(np.abs(caps[0]["prediction"][b] - control[b])) for b in grids) > 1e-5
@@ -311,7 +331,9 @@ def test_default_threshold_equal_length() -> None:
 @REQUIRES_B_LD
 def test_dense_support_approximation() -> None:
     fits = prepare_lc_fits(
-        {V: np.linspace(0.0, 0.99, 41), B: SECONDARY_PHASES}, 4, np.linspace(-0.01, 1.01, 302).tolist()
+        {V: np.linspace(0.0, 0.99, 41), B: SECONDARY_PHASES},
+        4,
+        np.linspace(-0.01, 1.01, 302).tolist(),
     )
     caps = assert_consistent_predictions(fits)
     for band, raw_x in fits[0].x_data.items():
@@ -320,10 +342,11 @@ def test_dense_support_approximation() -> None:
 
 
 @pytest.mark.parametrize(
-    "defect", ["coordinates", "reducer_length", "reducer_bounds", "reducer_type", "uncertainty_length"]
+    "defect",
+    ["coordinates", "reducer_length", "reducer_bounds", "reducer_type", "uncertainty_length"],
 )
 @REQUIRES_B_LD
-def test_invalid_observation_mapping_requires_revalidation(defect) -> None:
+def test_invalid_observation_mapping_requires_revalidation(defect: str) -> None:
     for fit in prepare_lc_fits({V: LC_PHASES, B: [0.25]}):
         if defect == "coordinates":
             fit.x_data_reducer[V] = fit.x_data_reducer[V][::-1]
@@ -349,7 +372,7 @@ def test_invalid_observation_mapping_requires_revalidation(defect) -> None:
     ids=["duplicate", "too_short", "uncovered"],
 )
 @REQUIRES_B_LD
-def test_invalid_support_escapes_physical_penalty_handlers(support) -> None:
+def test_invalid_support_escapes_physical_penalty_handlers(support: NDArray[np.generic]) -> None:
     for fit in prepare_lc_fits({V: LC_PHASES, B: [0.25]}):
         fit.fit_xs = support
         normalized_values = np.asarray(p.vector_normalizer(fit.initial_vector, fit.fitable, fit.normalization))

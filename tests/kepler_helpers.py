@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-import numpy as np
-from numpy.typing import NDArray
+from typing import TYPE_CHECKING
 
-from elisa.binary_system.orbit.orbit import Orbit
+import numpy as np
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+    from elisa.binary_system.orbit.orbit import Orbit
 
 
 def scalar_orbital_motion(orbit: Orbit, phase: NDArray) -> NDArray:
@@ -21,7 +25,7 @@ def scalar_orbital_motion(orbit: Orbit, phase: NDArray) -> NDArray:
     )
     mean_anomalies = orbit.phase_to_mean_anomaly(phase=periastron_phases)
     eccentric_anomalies = np.array(
-        [orbit.mean_anomaly_to_eccentric_anomaly(mean_anomaly) for mean_anomaly in mean_anomalies]
+        [orbit.mean_anomaly_to_eccentric_anomaly(mean_anomaly) for mean_anomaly in mean_anomalies],
     )
     true_anomalies = orbit.eccentric_anomaly_to_true_anomaly(eccentric_anomalies)
     separations = orbit.relative_radius(true_anomalies)

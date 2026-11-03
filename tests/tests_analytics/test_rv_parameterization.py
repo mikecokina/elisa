@@ -6,10 +6,9 @@ from copy import deepcopy
 from typing import Any
 
 import pytest
-from elisa.base.error import ElisaInitialParametersError
 
 from elisa.analytics.params.parameters import BinaryInitialParameters
-
+from elisa.base.error import ElisaInitialParametersError
 
 STANDARD_PARAMETERS = ("primary@mass", "secondary@mass", "system@inclination")
 COMMUNITY_PARAMETERS = ("system@mass_ratio", "system@asini")
@@ -40,7 +39,9 @@ def orbital_config() -> dict[str, Any]:
 
 
 def add_parameters(
-    config: dict[str, Any], names: tuple[str, ...], definition: dict[str, Any],
+    config: dict[str, Any],
+    names: tuple[str, ...],
+    definition: dict[str, Any],
 ) -> BinaryInitialParameters:
     """Build initial metadata without sharing mutable definitions across parameters."""
     for name in names:
@@ -62,7 +63,9 @@ def add_parameters(
     ],
 )
 def test_incomplete_parameterization_is_rejected(
-    orbital_config: dict[str, Any], parameter_definition: dict[str, Any], parameter_names: tuple[str, ...],
+    orbital_config: dict[str, Any],
+    parameter_definition: dict[str, Any],
+    parameter_names: tuple[str, ...],
 ) -> None:
     initial = add_parameters(orbital_config, parameter_names, parameter_definition)
 
@@ -73,15 +76,17 @@ def test_incomplete_parameterization_is_rejected(
 @pytest.mark.parametrize(
     "parameter_names",
     [
-        pytest.param(COMMUNITY_PARAMETERS + ("primary@mass",), id="community-with-primary-mass"),
-        pytest.param(COMMUNITY_PARAMETERS + ("secondary@mass",), id="community-with-secondary-mass"),
-        pytest.param(STANDARD_PARAMETERS + ("system@mass_ratio",), id="standard-with-ratio"),
-        pytest.param(STANDARD_PARAMETERS + ("system@asini",), id="standard-with-asini"),
+        pytest.param((*COMMUNITY_PARAMETERS, "primary@mass"), id="community-with-primary-mass"),
+        pytest.param((*COMMUNITY_PARAMETERS, "secondary@mass"), id="community-with-secondary-mass"),
+        pytest.param((*STANDARD_PARAMETERS, "system@mass_ratio"), id="standard-with-ratio"),
+        pytest.param((*STANDARD_PARAMETERS, "system@asini"), id="standard-with-asini"),
         pytest.param(STANDARD_PARAMETERS + COMMUNITY_PARAMETERS, id="both-complete-parameterizations"),
     ],
 )
 def test_conflicting_parameterizations_are_rejected(
-    orbital_config: dict[str, Any], parameter_definition: dict[str, Any], parameter_names: tuple[str, ...],
+    orbital_config: dict[str, Any],
+    parameter_definition: dict[str, Any],
+    parameter_names: tuple[str, ...],
 ) -> None:
     initial = add_parameters(orbital_config, parameter_names, parameter_definition)
 
@@ -94,11 +99,13 @@ def test_conflicting_parameterizations_are_rejected(
     [
         pytest.param(STANDARD_PARAMETERS, id="standard"),
         pytest.param(COMMUNITY_PARAMETERS, id="community"),
-        pytest.param(COMMUNITY_PARAMETERS + ("system@inclination",), id="community-with-inclination"),
+        pytest.param((*COMMUNITY_PARAMETERS, "system@inclination"), id="community-with-inclination"),
     ],
 )
 def test_complete_parameterization_preserves_optional_orbital_and_nuisance_inputs(
-    orbital_config: dict[str, Any], parameter_definition: dict[str, Any], parameter_names: tuple[str, ...],
+    orbital_config: dict[str, Any],
+    parameter_definition: dict[str, Any],
+    parameter_names: tuple[str, ...],
 ) -> None:
     orbital_config["system"]["primary_minimum_time"] = {"value": 2450000.0, "fixed": True}
     orbital_config["nuisance"] = {"ln_f": {"value": -3.0, "fixed": True}}

@@ -3,17 +3,18 @@ from __future__ import annotations
 import pytest
 
 from elisa.base.error import ElisaSettingsError
+
 # noinspection PyProtectedMember
 from elisa.conf.parsers import _parse_number, parse_tuple_interval
 
 
-def test_parse_number_int():
+def test_parse_number_int() -> None:
     """Test _parse_number returns int for integer string."""
     assert _parse_number("42") == 42
     assert isinstance(_parse_number("42"), int)
 
 
-def test_parse_number_float():
+def test_parse_number_float() -> None:
     """Test _parse_number returns float for float string."""
     assert _parse_number("3.14") == 3.14
     assert isinstance(_parse_number("3.14"), float)
@@ -21,7 +22,7 @@ def test_parse_number_float():
     assert isinstance(_parse_number("2e2"), float)
 
 
-def test_parse_tuple_interval_ints():
+def test_parse_tuple_interval_ints() -> None:
     """Test parse_tuple_interval with two integers."""
     result = parse_tuple_interval("(1, 2)", name="test")
     assert result == (1, 2)
@@ -29,7 +30,7 @@ def test_parse_tuple_interval_ints():
     assert isinstance(result[1], int)
 
 
-def test_parse_tuple_interval_floats():
+def test_parse_tuple_interval_floats() -> None:
     """Test parse_tuple_interval with floats and scientific notation."""
     result = parse_tuple_interval("(1.5, 2.5)", name="test")
     assert result == (1.5, 2.5)
@@ -39,7 +40,7 @@ def test_parse_tuple_interval_floats():
     assert result == (100.0, 200.0)
 
 
-def test_parse_tuple_interval_mixed():
+def test_parse_tuple_interval_mixed() -> None:
     """Test parse_tuple_interval with mixed int and float."""
     result = parse_tuple_interval("(1, 2.5)", name="test")
     assert result == (1, 2.5)
@@ -47,13 +48,13 @@ def test_parse_tuple_interval_mixed():
     assert isinstance(result[1], float)
 
 
-def test_parse_tuple_interval_spaces():
+def test_parse_tuple_interval_spaces() -> None:
     """Test parse_tuple_interval with extra spaces."""
     result = parse_tuple_interval(" (  3 ,  4.0 ) ", name="test")
     assert result == (3, 4.0)
 
 
-def test_parse_tuple_interval_ordered():
+def test_parse_tuple_interval_ordered() -> None:
     """Test parse_tuple_interval require_ordered=True (default)."""
     result = parse_tuple_interval("(1, 2)", name="test")
     assert result == (1, 2)
@@ -61,13 +62,13 @@ def test_parse_tuple_interval_ordered():
         parse_tuple_interval("(2, 1)", name="test")
 
 
-def test_parse_tuple_interval_not_ordered():
+def test_parse_tuple_interval_not_ordered() -> None:
     """Test parse_tuple_interval require_ordered=False."""
     result = parse_tuple_interval("(2, 1)", name="test", require_ordered=False)
     assert result == (2, 1)
 
 
-def test_parse_tuple_interval_invalid_format():
+def test_parse_tuple_interval_invalid_format() -> None:
     """Test parse_tuple_interval with invalid format raises ElisaSettingsError."""
     with pytest.raises(ElisaSettingsError, match="invalid format"):
         parse_tuple_interval("1, 2", name="test")
@@ -77,7 +78,7 @@ def test_parse_tuple_interval_invalid_format():
         parse_tuple_interval("(a, b)", name="test")
 
 
-def test_parse_tuple_interval_missing():
+def test_parse_tuple_interval_missing() -> None:
     """Test parse_tuple_interval with None input raises ElisaSettingsError."""
     with pytest.raises(ElisaSettingsError, match="missing value"):
         parse_tuple_interval(None, name="test")

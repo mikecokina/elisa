@@ -2,18 +2,22 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
-from numpy.typing import NDArray
 
 from elisa import settings
 from elisa.base.error import ElisaMaxIterationError
 from elisa.binary_system.orbit.orbit import Orbit
 from elisa.conf.enums import MeanAnomalySolver
 from tests.kepler_helpers import scalar_orbital_motion
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from numpy.typing import NDArray
 
 
 @pytest.fixture(autouse=True, params=list(MeanAnomalySolver))

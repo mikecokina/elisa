@@ -2,7 +2,7 @@
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from fractions import Fraction as F
+from fractions import Fraction
 from pathlib import Path
 from typing import Any, TypeAlias
 from unittest.mock import patch
@@ -18,17 +18,17 @@ from elisa.binary_system.surface.clipping import (
     convex_polygon_triangle_intersection_area as reference,
 )
 from elisa.binary_system.surface.clipping import (
-    sutherland_hodgman_intersection_areas,
+    optimized_intersection_area as optimized,
 )
 from elisa.binary_system.surface.clipping import (
-    optimized_intersection_area as optimized,
+    sutherland_hodgman_intersection_areas,
 )
 from elisa.binary_system.surface.coverage import _calculate_intersection_areas
 from elisa.conf.enums import IntersectionBackend
 from tests.utils import exact_area, signed_double_area
 
 FloatArray: TypeAlias = NDArray[np.float64]
-Coordinates: TypeAlias = FloatArray | Sequence[Sequence[int | float | F]]
+Coordinates: TypeAlias = FloatArray | Sequence[Sequence[int | float | Fraction]]
 AreaKernel: TypeAlias = Callable[[FloatArray, FloatArray], float | np.floating[Any]]
 BatchAreaKernel: TypeAlias = Callable[[FloatArray, FloatArray], FloatArray]
 
@@ -41,7 +41,7 @@ class KnownAreaCase:
     name: str
     polygon: FloatArray
     triangle: FloatArray
-    expected: F
+    expected: Fraction
     explanation: str
     intersection_vertices: int
     feature_width: float | None = None
@@ -51,7 +51,7 @@ def _known_case(
     name: str,
     polygon: Coordinates,
     triangle: Coordinates,
-    expected: int | F,
+    expected: int | Fraction,
     explanation: str,
     vertices: int,
     feature_width: float | None = None,
@@ -60,7 +60,7 @@ def _known_case(
         name,
         np.asarray(polygon, dtype=np.float64),
         np.asarray(triangle, dtype=np.float64),
-        F(expected),
+        Fraction(expected),
         explanation,
         vertices,
         feature_width,
@@ -76,7 +76,7 @@ KNOWN_AREA_CASES: list[KnownAreaCase] = [
         "identical-right-triangles",
         [[0, 0], [1, 0], [0, 1]],
         [[0, 0], [1, 0], [0, 1]],
-        F(1, 2),
+        Fraction(1, 2),
         "The identical right triangles have base and height 1: area = 1*1/2.",
         3,
     ),
@@ -100,7 +100,7 @@ KNOWN_AREA_CASES: list[KnownAreaCase] = [
         "triangle-inside-square-with-boundary-contact",
         SQUARE,
         [[0, 0], [1, 0], [0, 1]],
-        F(1, 2),
+        Fraction(1, 2),
         "The triangle is one diagonal half of the unit square; area = 1/2.",
         3,
     ),
@@ -131,8 +131,8 @@ KNOWN_AREA_CASES: list[KnownAreaCase] = [
     _known_case(
         "partial-collinear-edge-overlap-quadrilateral",
         SQUARE,
-        [[F(1, 2), 0], [F(3, 2), 0], [F(1, 2), 1]],
-        F(3, 8),
+        [[Fraction(1, 2), 0], [Fraction(3, 2), 0], [Fraction(1, 2), 1]],
+        Fraction(3, 8),
         "A width-1/2 trapezoid has vertical sides 1 and 1/2: area = (1/2)*(1+1/2)/2.",
         4,
     ),
@@ -155,24 +155,24 @@ KNOWN_AREA_CASES: list[KnownAreaCase] = [
     _known_case(
         "triangle-crosses-square-no-triangle-vertex-inside",
         SQUARE,
-        [[-1, F(1, 2)], [2, F(1, 2)], [F(1, 2), 2]],
-        F(1, 2),
+        [[-1, Fraction(1, 2)], [2, Fraction(1, 2)], [Fraction(1, 2), 2]],
+        Fraction(1, 2),
         "All triangle vertices are outside. The overlap is [0,1] x [1/2,1], area = 1/2.",
         4,
     ),
     _known_case(
         "square-crosses-triangle-no-square-vertex-inside",
         [[0, 0], [2, 0], [2, 2], [0, 2]],
-        [[-1, F(1, 2)], [3, F(1, 2)], [1, F(3, 2)]],
-        F(3, 2),
+        [[-1, Fraction(1, 2)], [3, Fraction(1, 2)], [1, Fraction(3, 2)]],
+        Fraction(3, 2),
         "All square vertices are outside. Triangle area 2 minus two exterior right triangles of area 1/4 gives 3/2.",
         5,
     ),
     _known_case(
         "crossing-with-no-vertices-inside-either-operand",
-        [[-2, F(-1, 4)], [2, F(-1, 4)], [2, F(1, 4)], [-2, F(1, 4)]],
+        [[-2, Fraction(-1, 4)], [2, Fraction(-1, 4)], [2, Fraction(1, 4)], [-2, Fraction(1, 4)]],
         [[0, -2], [1, 1], [-1, 1]],
-        F(2, 3),
+        Fraction(2, 3),
         "A height-1/2 trapezoid has widths 7/6 and 3/2: area = (1/2)*(7/6+3/2)/2 = 2/3.",
         4,
     ),
@@ -180,7 +180,7 @@ KNOWN_AREA_CASES: list[KnownAreaCase] = [
         "very-narrow-positive-strip",
         SQUARE,
         [[1 - NARROW_WIDTH, 0], [2 - NARROW_WIDTH, 0], [1 - NARROW_WIDTH, 1]],
-        F(1, 2**30) - F(1, 2**61),
+        Fraction(1, 2**30) - Fraction(1, 2**61),
         "For d=2^-30, the width-d trapezoid has heights 1 and 1-d: area = d-d^2/2.",
         4,
         NARROW_WIDTH,
@@ -189,7 +189,7 @@ KNOWN_AREA_CASES: list[KnownAreaCase] = [
         "very-small-positive-trapezoid",
         SQUARE,
         [[1 - NARROW_WIDTH, 0], [1 + NARROW_WIDTH, 0], [1 - NARROW_WIDTH, NARROW_WIDTH]],
-        F(3, 2**62),
+        Fraction(3, 2**62),
         "For d=2^-30, the width-d trapezoid has heights d and d/2: area = 3*d^2/4.",
         4,
         NARROW_WIDTH,
@@ -197,8 +197,8 @@ KNOWN_AREA_CASES: list[KnownAreaCase] = [
     _known_case(
         "small-triangular-overlap-at-square-corner",
         SQUARE,
-        [[F(3, 4), 1], [1, F(3, 4)], [F(5, 4), F(5, 4)]],
-        F(1, 32),
+        [[Fraction(3, 4), 1], [1, Fraction(3, 4)], [Fraction(5, 4), Fraction(5, 4)]],
+        Fraction(1, 32),
         "The corner overlap has vertices (3/4,1), (1,3/4), (1,1): legs 1/4, area = 1/32.",
         3,
     ),
@@ -206,7 +206,7 @@ KNOWN_AREA_CASES: list[KnownAreaCase] = [
         "square-triangle-pentagonal-overlap",
         [[0, 0], [2, 0], [2, 2], [0, 2]],
         [[-2, -2], [5, -2], [-2, 5]],
-        F(7, 2),
+        Fraction(7, 2),
         "The line x+y=3 removes a unit-leg right triangle from a square of area 4: area = 4-1/2.",
         5,
     ),
@@ -214,7 +214,7 @@ KNOWN_AREA_CASES: list[KnownAreaCase] = [
         "convex-pentagon-triangle-partial-overlap",
         [[0, 0], [4, 0], [4, 2], [2, 4], [0, 4]],
         [[0, 0], [5, 0], [0, 5]],
-        F(23, 2),
+        Fraction(23, 2),
         "The overlap is [0,4]^2 with x+y<=5; subtract a leg-3 right triangle: area = 16-9/2.",
         5,
     ),
@@ -222,7 +222,7 @@ KNOWN_AREA_CASES: list[KnownAreaCase] = [
         "convex-hexagon-triangle-heptagonal-overlap",
         [[0, 0], [3, 0], [4, 1], [4, 4], [1, 4], [0, 3]],
         [[-10, -10], [17, -10], [-10, 17]],
-        F(29, 2),
+        Fraction(29, 2),
         "The hexagon is a 4x4 square minus two unit-leg corner triangles (area 15). x+y<=7 removes one more: 29/2.",
         7,
     ),
@@ -230,7 +230,7 @@ KNOWN_AREA_CASES: list[KnownAreaCase] = [
         "opposing-triangles-hexagonal-overlap",
         [[0, 0], [4, 0], [2, 4]],
         [[0, 3], [2, -1], [4, 3]],
-        F(21, 4),
+        Fraction(21, 4),
         "Split at y=3/2 into two trapezoids, each height 3/2 with widths 1 and 5/2: area = 21/4.",
         6,
     ),
@@ -268,7 +268,7 @@ def _known_area_backend(request: pytest.FixtureRequest) -> BatchAreaKernel:
 
 @pytest.mark.parametrize("case", KNOWN_AREA_CASES, ids=lambda case: case.name)
 @pytest.mark.parametrize(
-    "polygon_cw,triangle_cw",
+    ("polygon_cw", "triangle_cw"),
     [
         pytest.param(False, False, id="ccw-ccw"),
         pytest.param(False, True, id="ccw-cw"),
@@ -327,19 +327,22 @@ def test_explicit_mixed_numba_batch(reverse_batch: bool) -> None:
     cases = [case for case in KNOWN_AREA_CASES if np.array_equal(case.polygon, SQUARE)]
     if reverse_batch:
         cases.reverse()
-    actual = np.asarray(sutherland_hodgman_intersection_areas(SQUARE, np.stack([case.triangle for case in cases])), dtype=np.float64)
+    actual = np.asarray(
+        sutherland_hodgman_intersection_areas(SQUARE, np.stack([case.triangle for case in cases])),
+        dtype=np.float64,
+    )
     assert actual.shape == (len(cases),)
-    for result, case in zip(actual, cases):
+    for result, case in zip(actual, cases, strict=True):
         _assert_known_area(result, case, case.explanation)
 
 
 @pytest.mark.parametrize("kernel", [reference, optimized])
-@pytest.mark.parametrize("p,t,known", CASES)
+@pytest.mark.parametrize(("p", "t", "known"), CASES)
 def test_analytic_and_transformations(
     kernel: AreaKernel,
     p: FloatArray,
     t: Coordinates,
-    known: float | int | None,
+    known: float | None,
 ) -> None:
     triangle = np.asarray(t, dtype=np.float64)
     expected = exact_area(p, triangle)
@@ -364,7 +367,7 @@ def test_analytic_and_transformations(
                 assert (
                     actual
                     <= min(
-                        float(abs(signed_double_area([(F(float(x)), F(float(y))) for x, y in pp])) / 2),
+                        float(abs(signed_double_area([(Fraction(float(x)), Fraction(float(y))) for x, y in pp])) / 2),
                         abs(np.linalg.det(tt[1:] - tt[0])) / 2,
                     )
                     + budget
@@ -397,7 +400,7 @@ def test_invalid_and_empty() -> None:
     for kernel in (reference, optimized):
         with pytest.raises(FloatingPointError):
             kernel(SQUARE, np.full((3, 2), np.nan))
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError):  # noqa: PT011 - assert type, identity, or reference parity without promising dependency wording
             kernel(SQUARE, np.zeros((4, 2)))
         assert kernel(np.empty((0, 2)), SQUARE[:3]) == 0
     assert sutherland_hodgman_intersection_areas(SQUARE, np.empty((0, 3, 2))).shape == (0,)
@@ -471,7 +474,7 @@ def test_configured_backend_preserves_intersection_areas(backend: IntersectionBa
             [[0.1, 0.1], [0.9, 0.1], [0.1, 0.9]],
             [[0.5, 0.2], [1.5, 0.2], [0.5, 1.2]],
             [[2.0, 2.0], [3.0, 2.0], [2.0, 3.0]],
-        ]
+        ],
     )
     # Fully inside, clipped on two sides (1/2 - 1/8 - 1/50), and disjoint.
     expected_areas = np.array([0.32, 0.355, 0.0])

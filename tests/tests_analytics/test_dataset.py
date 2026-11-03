@@ -1,21 +1,19 @@
-# keep it first
-# due to stupid astropy units/constants implementation
-from tests import set_astropy_units
-
+# The tests package selects Astropy constants before test-module imports.
 import numpy as np
-
 from numpy.testing import assert_array_equal
-from tests.utils import ElisaTestCase
-from elisa.analytics.dataset.base import RVData, LCData
+
 from elisa import units as u
+from elisa.analytics.dataset.base import LCData, RVData
+from tests import set_astropy_units
+from tests.utils import ElisaTestCase
 
 set_astropy_units()
 
 
 class RVDatasetTestCase(ElisaTestCase):
     @staticmethod
-    def test_unit_conversion():
-        time = [0.2*86400, 0.5*86400]
+    def test_unit_conversion() -> None:
+        time = [0.2 * 86400, 0.5 * 86400]
         time_unit = u.s
         rv_data = [50.0, 60.0]
         rv_unit = u.km / u.s
@@ -26,7 +24,7 @@ class RVDatasetTestCase(ElisaTestCase):
             y_data=rv_data,
             x_unit=time_unit,
             y_unit=rv_unit,
-            y_err=rv_err
+            y_err=rv_err,
         )
 
         expected_times = [0.2, 0.5]
@@ -37,7 +35,7 @@ class RVDatasetTestCase(ElisaTestCase):
         assert_array_equal(np.round(expected_rv_err, 10), np.round(rv_dataset.y_err, 10))
 
     @staticmethod
-    def test_phase_conversion():
+    def test_phase_conversion() -> None:
         time = [0.2, 0.5]
         time_unit = None
         rv_data = [50.0, 60.0]
@@ -47,7 +45,7 @@ class RVDatasetTestCase(ElisaTestCase):
             x_data=time,
             y_data=rv_data,
             x_unit=time_unit,
-            y_unit=rv_unit
+            y_unit=rv_unit,
         )
 
         expected_times = [0.2, 0.5]
@@ -58,7 +56,7 @@ class RVDatasetTestCase(ElisaTestCase):
 
 class LCDatasetTestCase(ElisaTestCase):
     @staticmethod
-    def test_mag_to_flux_conversion():
+    def test_mag_to_flux_conversion() -> None:
         time = [0.2, 0.5]
         time_unit = u.dimensionless_unscaled
         lc_data = [10, 5]
@@ -69,7 +67,7 @@ class LCDatasetTestCase(ElisaTestCase):
             y_data=lc_data,
             x_unit=time_unit,
             y_unit=lc_unit,
-            reference_magnitude=10.0
+            reference_magnitude=10.0,
         )
 
         expected_times = [0.2, 0.5]
@@ -78,7 +76,7 @@ class LCDatasetTestCase(ElisaTestCase):
         assert_array_equal(np.round(expected_lc, 10), np.round(lc_dataset.y_data, 10))
 
     @staticmethod
-    def test_mag_to_flux_error_conversion():
+    def test_mag_to_flux_error_conversion() -> None:
         time = [0.2, 0.5]
         time_unit = u.dimensionless_unscaled
         lc_data = [10, 5]
@@ -91,7 +89,7 @@ class LCDatasetTestCase(ElisaTestCase):
             x_unit=time_unit,
             y_unit=lc_unit,
             y_err=lc_err,
-            reference_magnitude=10.0
+            reference_magnitude=10.0,
         )
 
         expected_times = [0.2, 0.5]

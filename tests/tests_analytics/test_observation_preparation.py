@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import numpy as np
@@ -14,6 +14,7 @@ from elisa.analytics import LCData, RVData
 from elisa.analytics.binary_fit import least_squares, mcmc, shared
 from elisa.analytics.dataset.utils import convert_flux_error
 from elisa.analytics.params.parameters import BinaryInitialParameters
+
 # noinspection PyProtectedMember
 from elisa.analytics.tools.utils import _radialcurves_mean_error
 from elisa.base.error import ElisaAnalyticsDataError, ElisaAnalyticsTaskError
@@ -28,12 +29,25 @@ from tests.tests_analytics.fitting_helpers import (
     rv_problem,
 )
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    import astropy.units.core
+    import astropy.units.function.mixin
+
+    import elisa.analytics.binary_fit.shared
+    import elisa.analytics.dataset.base
+
+
 LC_CLASSES = (least_squares.DetachedLightCurveFit, mcmc.DetachedLightCurveFit)
 RV_CLASSES = (least_squares.CentralRadialVelocity, mcmc.CentralRadialVelocity)
 
 
 @pytest.mark.parametrize(("unit", "factor"), [(u.mag, 1.0), (u.mmag, 1000.0)])
-def test_pointwise_magnitude_uncertainties(unit, factor) -> None:
+def test_pointwise_magnitude_uncertainties(
+    unit: astropy.units.core.PrefixUnit | astropy.units.function.mixin.RegularFunctionUnit,
+    factor: float,
+) -> None:
     magnitudes = np.array([9.0, 10.0, 11.0])
     sigma_mag = np.array([0.01, 0.02, 0.03])
     data = make_lc(factor * magnitudes, factor * sigma_mag, y_unit=unit, reference_magnitude=10.0)
@@ -56,7 +70,7 @@ def test_magnitude_zero_point_alone_cannot_determine_flux_errors() -> None:
 
 @pytest.mark.parametrize("cls", LC_CLASSES)
 @pytest.mark.parametrize("errors", [None, [0.02, 0.04, 0.03]])
-def test_lc_normalization_and_repeated_setup(cls, errors) -> None:
+def test_lc_normalization_and_repeated_setup(cls: type[shared.AbstractLCFit], errors: list[float] | None) -> None:
     data = make_lc(errors=errors)
     original = data.y_data.copy()
     fit = cls()
@@ -85,7 +99,7 @@ def test_lc_normalization_and_repeated_setup(cls, errors) -> None:
 
 @pytest.mark.parametrize("cls", RV_CLASSES)
 @pytest.mark.parametrize("supplied", [False, True])
-def test_rv_component_scales_and_repeated_setup(cls, supplied: bool) -> None:
+def test_rv_component_scales_and_repeated_setup(cls: type[shared.AbstractRVFit], supplied: bool) -> None:
     cfg, _ = rv_problem()
     values = np.array([-4.0, -2.0, 0.0, 2.0, 4.0])
     data = {
@@ -115,7 +129,7 @@ def test_rv_component_scales_and_repeated_setup(cls, supplied: bool) -> None:
 
 
 @pytest.mark.parametrize("values", [[0.0, 0.0], [12000.0] * 3, [1.0], [], [0.0, np.nan], [0.0, np.inf]])
-def test_uninformative_rv_requires_errors(values) -> None:
+def test_uninformative_rv_requires_errors(values: list[float] | list[object]) -> None:
     with pytest.raises(ElisaAnalyticsDataError, match="supply explicit positive y_err"):
         _radialcurves_mean_error(values)
 
@@ -145,7 +159,7 @@ def test_rv_translation_mad_outliers_and_tied_fallback() -> None:
 
 
 @pytest.mark.parametrize("cls", RV_CLASSES)
-def test_constant_rv_with_explicit_errors(cls) -> None:
+def test_constant_rv_with_explicit_errors(cls: type[shared.AbstractRVFit]) -> None:
     cfg, data = rv_problem()
     data["primary"].y_data[:] = 12000.0
     fit = cls()
@@ -158,19 +172,23 @@ def test_constant_rv_with_explicit_errors(cls) -> None:
 
 @pytest.mark.parametrize(("dataset_cls", "unit"), [(LCData, u.dimensionless_unscaled), (RVData, u.m / u.s)])
 @pytest.mark.parametrize("errors", [[], [0.0, 0.1], [-0.1, 0.1], [np.nan, 0.1], [np.inf, 0.1], [0.1], [[0.1, 0.1]]])
-def test_invalid_supplied_errors(dataset_cls, unit, errors) -> None:
+def test_invalid_supplied_errors(
+    dataset_cls: type[elisa.analytics.dataset.base.LCData | elisa.analytics.dataset.base.RVData],
+    unit: astropy.units.core.CompositeUnit,
+    errors: list[float] | list[list[float]] | list[object],
+) -> None:
     with pytest.raises(ElisaAnalyticsDataError):
         dataset_cls(x_data=[0.0, 0.5], y_data=[1.0, 2.0], y_err=errors, x_unit=u.dimensionless_unscaled, y_unit=unit)
 
 
 @pytest.mark.parametrize("values", [[], [np.nan], [np.inf], [[1.0, 2.0]], 1.0])
-def test_invalid_observation_arrays(values) -> None:
+def test_invalid_observation_arrays(values: float | list[float] | list[list[float]] | list[object]) -> None:
     with pytest.raises(ElisaAnalyticsDataError):
         LCData(x_data=values, y_data=values, x_unit=u.dimensionless_unscaled, y_unit=u.dimensionless_unscaled)
 
 
 @pytest.mark.parametrize("cls", [*LC_CLASSES, *RV_CLASSES])
-def test_setup_rejects_mutated_dataset(cls) -> None:
+def test_setup_rejects_mutated_dataset(cls: type[shared.AbstractLCFit | shared.AbstractRVFit]) -> None:
     if cls in LC_CLASSES:
         data = make_lc(errors=[0.1] * 3)
         assert data.y_err is not None
@@ -186,7 +204,7 @@ def test_setup_rejects_mutated_dataset(cls) -> None:
 
 
 @pytest.mark.parametrize("values", [[-1.0, 1.0], [-2.0, -1.0]])
-def test_lc_invalid_normalization(values) -> None:
+def test_lc_invalid_normalization(values: list[float]) -> None:
     with pytest.raises(ElisaAnalyticsDataError):
         lc_setup(least_squares.DetachedLightCurveFit(), {V: make_lc(values, [0.1, 0.1])})
 
@@ -207,11 +225,13 @@ def test_file_validation_precedes_downselection_and_smoothing_preserves_none(tmp
 
 
 @pytest.mark.parametrize("base", [shared.AbstractLCFit, shared.AbstractRVFit])
-def test_slotted_subclasses_use_declared_attributes(base) -> None:
+def test_slotted_subclasses_use_declared_attributes(
+    base: type[elisa.analytics.binary_fit.shared.AbstractLCFit | elisa.analytics.binary_fit.shared.AbstractRVFit],
+) -> None:
     class Fit(base):
         __slots__ = ()
 
-        def fit(self, *args, **kwargs):
+        def fit(self, *args, **kwargs) -> None:
             raise NotImplementedError
 
     fit = Fit()
@@ -232,7 +252,7 @@ def test_slotted_subclasses_use_declared_attributes(base) -> None:
 
 @pytest.mark.parametrize("cls", RV_CLASSES)
 @pytest.mark.parametrize("supplied", [False, True])
-def test_actual_rv_evaluations_do_not_validate_inputs_again(cls, supplied: bool) -> None:
+def test_actual_rv_evaluations_do_not_validate_inputs_again(cls: type[shared.AbstractRVFit], supplied: bool) -> None:
     cfg, data = rv_problem()
     if not supplied:
         for dataset in data.values():
@@ -251,7 +271,8 @@ def test_actual_rv_evaluations_do_not_validate_inputs_again(cls, supplied: bool)
 
 @pytest.mark.parametrize("supplied", [False, True])
 @pytest.mark.requires_ld(passbands=(V, "bolometric"), laws=("linear",))
-def test_real_lc_evaluations_with_optional_errors(science_settings: None, supplied: bool) -> None:
+@pytest.mark.usefixtures("science_settings")
+def test_real_lc_evaluations_with_optional_errors(supplied: bool) -> None:
     fits = prepare_lc_fits({V: LC_PHASES}, missing_errors=not supplied)
     assert_allclose(fits[0].y_data[V], fits[1].y_data[V])
     assert_allclose(fits[0].y_err[V], fits[1].y_err[V])
@@ -265,7 +286,7 @@ def test_real_lc_evaluations_with_optional_errors(science_settings: None, suppli
 
 
 @pytest.mark.parametrize("cls", RV_CLASSES)
-def test_empty_and_invalid_component_datasets(cls) -> None:
+def test_empty_and_invalid_component_datasets(cls: type[shared.AbstractRVFit]) -> None:
     cfg, data = rv_problem()
     for bad, error_type in (({}, ElisaAnalyticsDataError), ({"tertiary": data["primary"]}, ElisaAnalyticsTaskError)):
         with pytest.raises(error_type):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import Mock, patch
 
 import numpy as np
@@ -19,18 +20,63 @@ from elisa.binary_system.system import BinarySystem
 from elisa.binary_system.transform import RadialVelocityObserverProperties
 from tests.tests_analytics.fitting_helpers import V, lc_parameters, make_lc, normalized, rv_problem
 
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
-@pytest.fixture(params=[
-    least_squares.DetachedLightCurveFit, mcmc.DetachedLightCurveFit,
-    least_squares.CentralRadialVelocity, mcmc.CentralRadialVelocity,
-])
-def fitting_problem(request, monkeypatch):
+    import elisa.analytics.binary_fit.least_squares
+    import elisa.analytics.binary_fit.mcmc
+    import elisa.analytics.dataset.base
+    import elisa.observer.observer
+
+
+@pytest.fixture(
+    params=[
+        least_squares.DetachedLightCurveFit,
+        mcmc.DetachedLightCurveFit,
+        least_squares.CentralRadialVelocity,
+        mcmc.CentralRadialVelocity,
+    ],
+)
+def fitting_problem(
+    request: pytest.FixtureRequest,
+    monkeypatch: pytest.MonkeyPatch,
+) -> (
+    tuple[
+        elisa.analytics.binary_fit.least_squares.CentralRadialVelocity,
+        dict[str, dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.RVData],
+        Mock,
+    ]
+    | tuple[
+        elisa.analytics.binary_fit.least_squares.DetachedLightCurveFit,
+        dict[str, dict[str, dict[str, bool | float] | dict[str, str]] | dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.LCData],
+        Mock,
+    ]
+    | tuple[
+        elisa.analytics.binary_fit.mcmc.CentralRadialVelocity,
+        dict[str, dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.RVData],
+        Mock,
+    ]
+    | tuple[
+        elisa.analytics.binary_fit.mcmc.DetachedLightCurveFit,
+        dict[str, dict[str, dict[str, bool | float] | dict[str, str]] | dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.LCData],
+        Mock,
+    ]
+):
     fit = request.param()
     if isinstance(fit, AbstractLCFit):
         config, _ = lc_parameters()
         data = {V: make_lc(errors=np.full(3, 0.1))}
 
-        def synthesis(phases, discretization, observer, **kwargs):
+        def synthesis(
+            phases: NDArray[np.float64],
+            discretization: float,
+            _observer: elisa.observer.observer.Observer,
+            **kwargs,
+        ) -> dict[str, NDArray[np.float64]]:
             # Keep real serialization, community conversion, constructors and
             # property validation; only skip the surface/table curve calculation.
             lc.prepare_binary(discretization=discretization, **kwargs)
@@ -40,7 +86,11 @@ def fitting_problem(request, monkeypatch):
         monkeypatch.setattr(lc, "synthetic_binary", spy)
         original_predict = AbstractLCFit.predict_light_curves
 
-        def predict(self, model_parameters, **kwargs):
+        def predict(
+            self: AbstractLCFit,
+            model_parameters: dict[str, float | np.float64] | dict[str, object],
+            **kwargs,
+        ) -> dict[str, NDArray[np.float64]]:
             kwargs.setdefault("synthesis", spy)
             return original_predict(self, model_parameters, **kwargs)
 
@@ -52,12 +102,26 @@ def fitting_problem(request, monkeypatch):
     return fit, config, data, spy
 
 
-def prepare_fit(fit, config, data):
+def prepare_fit(
+    fit: elisa.analytics.binary_fit.least_squares.CentralRadialVelocity
+    | elisa.analytics.binary_fit.least_squares.DetachedLightCurveFit
+    | elisa.analytics.binary_fit.mcmc.CentralRadialVelocity
+    | elisa.analytics.binary_fit.mcmc.DetachedLightCurveFit,
+    config: dict[str, dict[str, dict[str, bool | float] | dict[str, str]] | dict[str, dict[str, bool | float]]]
+    | dict[str, dict[str, dict[str, bool | float] | dict[str, str]]]
+    | dict[str, dict[str, dict[str, bool | float]]],
+    data: dict[str, elisa.analytics.dataset.base.LCData] | dict[str, elisa.analytics.dataset.base.RVData],
+) -> None:
     initial = p.BinaryInitialParameters(**config)
     if isinstance(fit, AbstractLCFit):
         fit.set_up(
-            initial, data, passband=data.keys(), discretization=10.0,
-            interp_treshold=100, samples="uniform", observer_system_cls=BinarySystem,
+            initial,
+            data,
+            passband=data.keys(),
+            discretization=10.0,
+            interp_treshold=100,
+            samples="uniform",
+            observer_system_cls=BinarySystem,
         )
     else:
         fit.set_up(initial, data, observer_system_cls=RadialVelocitySystem)
@@ -65,7 +129,13 @@ def prepare_fit(fit, config, data):
         fit.prepare_priors()
 
 
-def evaluate(fit, vector):
+def evaluate(
+    fit: elisa.analytics.binary_fit.least_squares.CentralRadialVelocity
+    | elisa.analytics.binary_fit.least_squares.DetachedLightCurveFit
+    | elisa.analytics.binary_fit.mcmc.CentralRadialVelocity
+    | elisa.analytics.binary_fit.mcmc.DetachedLightCurveFit,
+    vector: NDArray[np.float64],
+) -> float | np.float64 | NDArray[np.float64]:
     if isinstance(fit, mcmc.MCMCFit):
         return fit.ln_probability(vector)
     if isinstance(fit, least_squares.LightCurveFit):
@@ -73,7 +143,15 @@ def evaluate(fit, vector):
     return fit.central_rv_model_to_fit(vector)
 
 
-def assert_evaluation(fit, vector, *, valid):
+def assert_evaluation(
+    fit: elisa.analytics.binary_fit.least_squares.CentralRadialVelocity
+    | elisa.analytics.binary_fit.least_squares.DetachedLightCurveFit
+    | elisa.analytics.binary_fit.mcmc.CentralRadialVelocity
+    | elisa.analytics.binary_fit.mcmc.DetachedLightCurveFit,
+    vector: NDArray[np.float64],
+    *,
+    valid: bool,
+) -> None:
     actual = evaluate(fit, vector)
     if isinstance(fit, mcmc.MCMCFit):
         assert np.isfinite(actual) if valid else actual == -np.inf
@@ -90,7 +168,33 @@ def assert_evaluation(fit, vector, *, valid):
 
 
 @pytest.mark.parametrize("period", [-3.0, 0.0, np.nan, np.inf, -np.inf])
-def test_invalid_fixed_period_is_rejected_in_the_initial_definition(fitting_problem, period):
+def test_invalid_fixed_period_is_rejected_in_the_initial_definition(
+    fitting_problem: tuple[
+        elisa.analytics.binary_fit.least_squares.CentralRadialVelocity,
+        dict[str, dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.RVData],
+        Mock,
+    ]
+    | tuple[
+        elisa.analytics.binary_fit.least_squares.DetachedLightCurveFit,
+        dict[str, dict[str, dict[str, bool | float] | dict[str, str]] | dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.LCData],
+        Mock,
+    ]
+    | tuple[
+        elisa.analytics.binary_fit.mcmc.CentralRadialVelocity,
+        dict[str, dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.RVData],
+        Mock,
+    ]
+    | tuple[
+        elisa.analytics.binary_fit.mcmc.DetachedLightCurveFit,
+        dict[str, dict[str, dict[str, bool | float] | dict[str, str]] | dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.LCData],
+        Mock,
+    ],
+    period: float,
+) -> None:
     _, config, _, synthesis = fitting_problem
     config["system"]["period"] = {"value": period, "fixed": True}
     with pytest.raises(ElisaInitialParametersError, match="period"):
@@ -98,7 +202,32 @@ def test_invalid_fixed_period_is_rejected_in_the_initial_definition(fitting_prob
     synthesis.assert_not_called()
 
 
-def test_free_period_candidates_reject_and_recover_at_the_model_boundary(fitting_problem):
+def test_free_period_candidates_reject_and_recover_at_the_model_boundary(
+    fitting_problem: tuple[
+        elisa.analytics.binary_fit.least_squares.CentralRadialVelocity,
+        dict[str, dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.RVData],
+        Mock,
+    ]
+    | tuple[
+        elisa.analytics.binary_fit.least_squares.DetachedLightCurveFit,
+        dict[str, dict[str, dict[str, bool | float] | dict[str, str]] | dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.LCData],
+        Mock,
+    ]
+    | tuple[
+        elisa.analytics.binary_fit.mcmc.CentralRadialVelocity,
+        dict[str, dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.RVData],
+        Mock,
+    ]
+    | tuple[
+        elisa.analytics.binary_fit.mcmc.DetachedLightCurveFit,
+        dict[str, dict[str, dict[str, bool | float] | dict[str, str]] | dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.LCData],
+        Mock,
+    ],
+) -> None:
     fit, config, data, synthesis = fitting_problem
     config["system"]["period"] = {"value": 3.0, "fixed": False, "min": 1.0, "max": 4.0}
     prepare_fit(fit, config, data)
@@ -117,7 +246,33 @@ def test_free_period_candidates_reject_and_recover_at_the_model_boundary(fitting
 
 
 @pytest.mark.parametrize("expression", ["-1", "0", "1e309", "-1e309", "log(-1)", "3"])
-def test_constrained_period_is_validated_by_the_candidate_model(fitting_problem, expression):
+def test_constrained_period_is_validated_by_the_candidate_model(
+    fitting_problem: tuple[
+        elisa.analytics.binary_fit.least_squares.CentralRadialVelocity,
+        dict[str, dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.RVData],
+        Mock,
+    ]
+    | tuple[
+        elisa.analytics.binary_fit.least_squares.DetachedLightCurveFit,
+        dict[str, dict[str, dict[str, bool | float] | dict[str, str]] | dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.LCData],
+        Mock,
+    ]
+    | tuple[
+        elisa.analytics.binary_fit.mcmc.CentralRadialVelocity,
+        dict[str, dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.RVData],
+        Mock,
+    ]
+    | tuple[
+        elisa.analytics.binary_fit.mcmc.DetachedLightCurveFit,
+        dict[str, dict[str, dict[str, bool | float] | dict[str, str]] | dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.LCData],
+        Mock,
+    ],
+    expression: str,
+) -> None:
     fit, config, data, synthesis = fitting_problem
     config["system"]["period"] = {"constraint": expression}
     with np.errstate(invalid="ignore"):
@@ -127,7 +282,14 @@ def test_constrained_period_is_validated_by_the_candidate_model(fitting_problem,
     synthesis.assert_called_once()
 
 
-def constraint_with_singularity(config, fit):
+def constraint_with_singularity(
+    config: dict[str, dict[str, dict[str, bool | float] | dict[str, str]] | dict[str, dict[str, bool | float]]]
+    | dict[str, dict[str, dict[str, bool | float]]],
+    fit: elisa.analytics.binary_fit.least_squares.CentralRadialVelocity
+    | elisa.analytics.binary_fit.least_squares.DetachedLightCurveFit
+    | elisa.analytics.binary_fit.mcmc.CentralRadialVelocity
+    | elisa.analytics.binary_fit.mcmc.DetachedLightCurveFit,
+) -> tuple[str, float]:
     if isinstance(fit, AbstractLCFit):
         config["secondary"]["t_eff"] = {"constraint": "5000 / (system@inclination - 86)**2"}
         return "system@inclination", 86.0
@@ -135,7 +297,32 @@ def constraint_with_singularity(config, fit):
     return "system@asini", 10.0
 
 
-def test_constraint_arithmetic_rejects_candidate_and_recovers(fitting_problem):
+def test_constraint_arithmetic_rejects_candidate_and_recovers(
+    fitting_problem: tuple[
+        elisa.analytics.binary_fit.least_squares.CentralRadialVelocity,
+        dict[str, dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.RVData],
+        Mock,
+    ]
+    | tuple[
+        elisa.analytics.binary_fit.least_squares.DetachedLightCurveFit,
+        dict[str, dict[str, dict[str, bool | float] | dict[str, str]] | dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.LCData],
+        Mock,
+    ]
+    | tuple[
+        elisa.analytics.binary_fit.mcmc.CentralRadialVelocity,
+        dict[str, dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.RVData],
+        Mock,
+    ]
+    | tuple[
+        elisa.analytics.binary_fit.mcmc.DetachedLightCurveFit,
+        dict[str, dict[str, dict[str, bool | float] | dict[str, str]] | dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.LCData],
+        Mock,
+    ],
+) -> None:
     fit, config, data, synthesis = fitting_problem
     label, singularity = constraint_with_singularity(config, fit)
     prepare_fit(fit, config, data)
@@ -145,7 +332,10 @@ def test_constraint_arithmetic_rejects_candidate_and_recovers(fitting_problem):
     with pytest.raises(ElisaParametersError) as failure:
         p.prepare_properties_set(
             p.vector_renormalizer(invalid, fit.fitable, fit.normalization),
-            fit.fitable, fit.constrained, fit.fixed, raise_initial=False,
+            fit.fitable,
+            fit.constrained,
+            fit.fixed,
+            raise_initial=False,
         )
     assert isinstance(failure.value.__cause__, ZeroDivisionError)
     synthesis.reset_mock()
@@ -155,7 +345,32 @@ def test_constraint_arithmetic_rejects_candidate_and_recovers(fitting_problem):
     synthesis.assert_called_once()
 
 
-def test_same_constraint_failure_in_setup_is_initial_parameter_error(fitting_problem):
+def test_same_constraint_failure_in_setup_is_initial_parameter_error(
+    fitting_problem: tuple[
+        elisa.analytics.binary_fit.least_squares.CentralRadialVelocity,
+        dict[str, dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.RVData],
+        Mock,
+    ]
+    | tuple[
+        elisa.analytics.binary_fit.least_squares.DetachedLightCurveFit,
+        dict[str, dict[str, dict[str, bool | float] | dict[str, str]] | dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.LCData],
+        Mock,
+    ]
+    | tuple[
+        elisa.analytics.binary_fit.mcmc.CentralRadialVelocity,
+        dict[str, dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.RVData],
+        Mock,
+    ]
+    | tuple[
+        elisa.analytics.binary_fit.mcmc.DetachedLightCurveFit,
+        dict[str, dict[str, dict[str, bool | float] | dict[str, str]] | dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.LCData],
+        Mock,
+    ],
+) -> None:
     fit, config, data, synthesis = fitting_problem
     label, singularity = constraint_with_singularity(config, fit)
     config["system"][label.split("@")[1]]["value"] = singularity
@@ -166,12 +381,19 @@ def test_same_constraint_failure_in_setup_is_initial_parameter_error(fitting_pro
 
 
 @pytest.mark.parametrize("raise_initial", [True, False])
-@pytest.mark.parametrize("expression,cause", [
-    ("missing@parameter", None),
-    ("undefined", NameError),
-    ("1 / 0", ZeroDivisionError),
-])
-def test_constraint_errors_follow_evaluation_context(raise_initial, expression, cause):
+@pytest.mark.parametrize(
+    ("expression", "cause"),
+    [
+        ("missing@parameter", None),
+        ("undefined", NameError),
+        ("1 / 0", ZeroDivisionError),
+    ],
+)
+def test_constraint_errors_follow_evaluation_context(
+    raise_initial: bool,
+    expression: str,
+    cause: type[NameError | ZeroDivisionError] | None,
+) -> None:
     error = ElisaInitialParametersError if raise_initial else ElisaParametersError
     with pytest.raises(error) as failure:
         p.constraints_evaluator({"system@period": 3.0}, {"result": expression}, raise_initial=raise_initial)
@@ -181,24 +403,47 @@ def test_constraint_errors_follow_evaluation_context(raise_initial, expression, 
 
 @pytest.mark.parametrize("fit_class", [least_squares.CentralRadialVelocity, mcmc.CentralRadialVelocity])
 @pytest.mark.parametrize("constrained", [False, True])
-def test_asini_is_validated_once_per_rv_candidate(fit_class, constrained):
+def test_asini_is_validated_once_per_rv_candidate(
+    fit_class: type[
+        elisa.analytics.binary_fit.least_squares.CentralRadialVelocity
+        | elisa.analytics.binary_fit.mcmc.CentralRadialVelocity
+    ],
+    constrained: bool,
+) -> None:
     config, data = rv_problem()
     if constrained:
         config["system"]["asini"] = {"constraint": "system@gamma / 1000"}
     fit = fit_class()
     prepare_fit(fit, config, data)
-    with patch.object(RadialVelocityObserverProperties, "asini", wraps=RadialVelocityObserverProperties.asini) as validator:
+    with patch.object(
+        RadialVelocityObserverProperties,
+        "asini",
+        wraps=RadialVelocityObserverProperties.asini,
+    ) as validator:
         assert_evaluation(fit, normalized(fit), valid=True)
     validator.assert_called_once()
 
 
 @pytest.mark.parametrize("fit_class", [least_squares.CentralRadialVelocity, mcmc.CentralRadialVelocity])
-@pytest.mark.parametrize("parameter,expression", [
-    ("asini", "-1"), ("asini", "1e309"),
-    ("mass_ratio", "-1"), ("mass_ratio", "1e309"),
-    ("eccentricity", "1"), ("eccentricity", "-1e309"),
-])
-def test_invalid_community_constraints_are_rejected_without_a_fitter_scan(fit_class, parameter, expression):
+@pytest.mark.parametrize(
+    ("parameter", "expression"),
+    [
+        ("asini", "-1"),
+        ("asini", "1e309"),
+        ("mass_ratio", "-1"),
+        ("mass_ratio", "1e309"),
+        ("eccentricity", "1"),
+        ("eccentricity", "-1e309"),
+    ],
+)
+def test_invalid_community_constraints_are_rejected_without_a_fitter_scan(
+    fit_class: type[
+        elisa.analytics.binary_fit.least_squares.CentralRadialVelocity
+        | elisa.analytics.binary_fit.mcmc.CentralRadialVelocity
+    ],
+    parameter: str,
+    expression: str,
+) -> None:
     config, data = rv_problem()
     config["system"][parameter] = {"constraint": expression}
     fit = fit_class()
@@ -210,14 +455,40 @@ def test_invalid_community_constraints_are_rejected_without_a_fitter_scan(fit_cl
         rv.central_rv_synthetic(fit.x_data_reduced, fit.observer, **physical)
 
 
-@pytest.mark.parametrize("fitting_problem", [
-    least_squares.DetachedLightCurveFit, mcmc.DetachedLightCurveFit,
-], indirect=True)
-@pytest.mark.parametrize("parameter,expression", [
-    ("t_eff", "-1"), ("t_eff", "1e309"), ("t_eff", "log(-1)"),
-    ("surface_potential", "-1"), ("surface_potential", "1e309"),
-])
-def test_invalid_component_constraints_are_rejected_by_star_properties(fitting_problem, parameter, expression):
+@pytest.mark.parametrize(
+    "fitting_problem",
+    [
+        least_squares.DetachedLightCurveFit,
+        mcmc.DetachedLightCurveFit,
+    ],
+    indirect=True,
+)
+@pytest.mark.parametrize(
+    ("parameter", "expression"),
+    [
+        ("t_eff", "-1"),
+        ("t_eff", "1e309"),
+        ("t_eff", "log(-1)"),
+        ("surface_potential", "-1"),
+        ("surface_potential", "1e309"),
+    ],
+)
+def test_invalid_component_constraints_are_rejected_by_star_properties(
+    fitting_problem: tuple[
+        elisa.analytics.binary_fit.least_squares.DetachedLightCurveFit,
+        dict[str, dict[str, dict[str, bool | float] | dict[str, str]] | dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.LCData],
+        Mock,
+    ]
+    | tuple[
+        elisa.analytics.binary_fit.mcmc.DetachedLightCurveFit,
+        dict[str, dict[str, dict[str, bool | float] | dict[str, str]] | dict[str, dict[str, bool | float]]],
+        dict[str, elisa.analytics.dataset.base.LCData],
+        Mock,
+    ],
+    parameter: str,
+    expression: str,
+) -> None:
     fit, config, data, synthesis = fitting_problem
     config["secondary"][parameter] = {"constraint": expression}
     with np.errstate(invalid="ignore"):

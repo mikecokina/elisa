@@ -1,12 +1,11 @@
 """Unit tests for elisa.analytics.tasks module - Task initialization and configuration."""
+
 from __future__ import annotations
 
 import unittest
-from typing import TYPE_CHECKING
-from unittest import mock
 
-from elisa import settings
-from elisa.base.error import ElisaAnalyticsTaskError
+import pytest
+
 from elisa.analytics.tasks import (
     AnalyticsTask,
     LCBinaryAnalyticsTask,
@@ -14,13 +13,13 @@ from elisa.analytics.tasks import (
 )
 from elisa.analytics.transform import (
     LCBinaryAnalyticsProperties,
+)
+from elisa.analytics.transform import (
     RVBinaryAnalyticsTask as RVTransformValidator,
 )
+from elisa.base.error import ElisaAnalyticsTaskError
 from tests import set_astropy_units
 from tests.utils import ElisaTestCase
-
-if TYPE_CHECKING:
-    from elisa.analytics.dataset.base import LCData, RVData
 
 set_astropy_units()
 
@@ -71,11 +70,11 @@ class TestAnalyticsTaskValidation(ElisaTestCase):
         ]
 
         for invalid_method in invalid_methods:
-            with self.assertRaises(ElisaAnalyticsTaskError) as context:
+            with pytest.raises(ElisaAnalyticsTaskError) as context:
                 AnalyticsTask.validate_method(invalid_method)
 
-            error_msg: str = str(context.exception)
-            self.assertIn("Invalid fitting method", error_msg)
+            error_msg: str = str(context.value)
+            assert ("Invalid fitting method") in (error_msg)
 
     def test_allowed_methods_contains_all_variants(self) -> None:
         """Test that ALLOWED_METHODS contains all LS and MCMC variants.
@@ -88,16 +87,10 @@ class TestAnalyticsTaskValidation(ElisaTestCase):
         all_methods: tuple = AnalyticsTask.LS_NAMES + AnalyticsTask.MCMC_NAMES
 
         for method in all_methods:
-            self.assertIn(
-                method,
-                AnalyticsTask.ALLOWED_METHODS,
-                f"Method {method} should be in ALLOWED_METHODS",
-            )
+            assert (method) in (AnalyticsTask.ALLOWED_METHODS), f"Method {method} should be in ALLOWED_METHODS"
 
-        self.assertEqual(
-            len(AnalyticsTask.ALLOWED_METHODS),
-            len(all_methods),
-            "ALLOWED_METHODS should contain only LS and MCMC method names",
+        assert (len(AnalyticsTask.ALLOWED_METHODS)) == (len(all_methods)), (
+            "ALLOWED_METHODS should contain only LS and MCMC method names"
         )
 
 
@@ -120,10 +113,7 @@ class TestLCBinaryAnalyticsTaskInitialization(ElisaTestCase):
 
         :return: None
         """
-        self.assertIs(
-            LCBinaryAnalyticsTask.TRANSFORM_PROPERTIES_CLS,
-            LCBinaryAnalyticsProperties,
-        )
+        assert (LCBinaryAnalyticsTask.TRANSFORM_PROPERTIES_CLS) is (LCBinaryAnalyticsProperties)
 
     def test_lc_task_has_fit_params_combinations(self) -> None:
         """Test that LCBinaryAnalyticsTask defines parameter combinations.
@@ -133,11 +123,11 @@ class TestLCBinaryAnalyticsTaskInitialization(ElisaTestCase):
 
         :return: None
         """
-        self.assertIsNotNone(LCBinaryAnalyticsTask.FIT_PARAMS_COMBINATIONS)
-        self.assertIsInstance(LCBinaryAnalyticsTask.FIT_PARAMS_COMBINATIONS, str)
+        assert (LCBinaryAnalyticsTask.FIT_PARAMS_COMBINATIONS) is not None
+        assert isinstance(LCBinaryAnalyticsTask.FIT_PARAMS_COMBINATIONS, str)
         # Should be JSON format
-        self.assertIn("{", LCBinaryAnalyticsTask.FIT_PARAMS_COMBINATIONS)
-        self.assertIn("}", LCBinaryAnalyticsTask.FIT_PARAMS_COMBINATIONS)
+        assert ("{") in (LCBinaryAnalyticsTask.FIT_PARAMS_COMBINATIONS)
+        assert ("}") in (LCBinaryAnalyticsTask.FIT_PARAMS_COMBINATIONS)
 
     def test_lc_task_fit_params_contains_expected_keys(self) -> None:
         """Test that FIT_PARAMS_COMBINATIONS has expected parameter sets.
@@ -153,7 +143,7 @@ class TestLCBinaryAnalyticsTaskInitialization(ElisaTestCase):
 
         expected_keys: list[str] = ["standard", "community", "spots", "pulsations"]
         for key in expected_keys:
-            self.assertIn(key, params_dict, f"Expected key '{key}' in parameters")
+            assert (key) in (params_dict), f"Expected key '{key}' in parameters"
 
     def test_lc_task_standard_params_includes_system(self) -> None:
         """Test that standard LC parameters include system parameters.
@@ -168,9 +158,9 @@ class TestLCBinaryAnalyticsTaskInitialization(ElisaTestCase):
         params_dict: dict = json.loads(LCBinaryAnalyticsTask.FIT_PARAMS_COMBINATIONS)
         standard_params: dict = params_dict["standard"]
 
-        self.assertIn("system", standard_params)
-        self.assertIn("primary", standard_params)
-        self.assertIn("secondary", standard_params)
+        assert ("system") in (standard_params)
+        assert ("primary") in (standard_params)
+        assert ("secondary") in (standard_params)
 
         system_params: list = standard_params["system"]
         expected_system_params: list[str] = [
@@ -180,7 +170,7 @@ class TestLCBinaryAnalyticsTaskInitialization(ElisaTestCase):
         ]
 
         for param in expected_system_params:
-            self.assertIn(param, system_params)
+            assert (param) in (system_params)
 
     def test_lc_task_defaults_detached_morphology(self) -> None:
         """Test that LCBinaryAnalyticsTask defaults to detached morphology.
@@ -190,11 +180,8 @@ class TestLCBinaryAnalyticsTaskInitialization(ElisaTestCase):
 
         :return: None
         """
-        self.assertEqual(
-            "detached",
-            "detached",  # This verifies the default value
-            "Default morphology should be 'detached'",
-        )
+        task = LCBinaryAnalyticsTask(data={}, method="least_squares")
+        assert task.fit_cls.morphology == "detached", "Default morphology should be 'detached'"
 
 
 class TestRVBinaryAnalyticsTaskInitialization(ElisaTestCase):
@@ -208,10 +195,7 @@ class TestRVBinaryAnalyticsTaskInitialization(ElisaTestCase):
 
         :return: None
         """
-        self.assertIs(
-            RVBinaryAnalyticsTask.TRANSFORM_PROPERTIES_CLS,
-            RVTransformValidator,
-        )
+        assert (RVBinaryAnalyticsTask.TRANSFORM_PROPERTIES_CLS) is (RVTransformValidator)
 
     def test_rv_task_has_fit_params_combinations(self) -> None:
         """Test that RVBinaryAnalyticsTask defines parameter combinations.
@@ -221,11 +205,11 @@ class TestRVBinaryAnalyticsTaskInitialization(ElisaTestCase):
 
         :return: None
         """
-        self.assertIsNotNone(RVBinaryAnalyticsTask.FIT_PARAMS_COMBINATIONS)
-        self.assertIsInstance(RVBinaryAnalyticsTask.FIT_PARAMS_COMBINATIONS, str)
+        assert (RVBinaryAnalyticsTask.FIT_PARAMS_COMBINATIONS) is not None
+        assert isinstance(RVBinaryAnalyticsTask.FIT_PARAMS_COMBINATIONS, str)
         # Should be JSON format
-        self.assertIn("{", RVBinaryAnalyticsTask.FIT_PARAMS_COMBINATIONS)
-        self.assertIn("}", RVBinaryAnalyticsTask.FIT_PARAMS_COMBINATIONS)
+        assert ("{") in (RVBinaryAnalyticsTask.FIT_PARAMS_COMBINATIONS)
+        assert ("}") in (RVBinaryAnalyticsTask.FIT_PARAMS_COMBINATIONS)
 
     def test_rv_task_fit_params_contains_expected_keys(self) -> None:
         """Test that RV FIT_PARAMS_COMBINATIONS has expected parameter sets.
@@ -241,7 +225,7 @@ class TestRVBinaryAnalyticsTaskInitialization(ElisaTestCase):
 
         expected_keys: list[str] = ["standard", "community"]
         for key in expected_keys:
-            self.assertIn(key, params_dict, f"Expected key '{key}' in RV parameters")
+            assert (key) in (params_dict), f"Expected key '{key}' in RV parameters"
 
     def test_rv_task_community_params_includes_mass_ratio(self) -> None:
         """Test that community RV parameters include mass ratio.
@@ -256,8 +240,8 @@ class TestRVBinaryAnalyticsTaskInitialization(ElisaTestCase):
         params_dict: dict = json.loads(RVBinaryAnalyticsTask.FIT_PARAMS_COMBINATIONS)
         community_params: dict = params_dict["community"]
 
-        self.assertIn("system", community_params)
-        self.assertIn("mass_ratio", community_params["system"])
+        assert ("system") in (community_params)
+        assert ("mass_ratio") in (community_params["system"])
 
     def test_rv_task_standard_params_includes_both_masses(self) -> None:
         """Test that standard RV parameters include primary and secondary masses.
@@ -272,10 +256,10 @@ class TestRVBinaryAnalyticsTaskInitialization(ElisaTestCase):
         params_dict: dict = json.loads(RVBinaryAnalyticsTask.FIT_PARAMS_COMBINATIONS)
         standard_params: dict = params_dict["standard"]
 
-        self.assertIn("primary", standard_params)
-        self.assertIn("secondary", standard_params)
-        self.assertIn("mass", standard_params["primary"])
-        self.assertIn("mass", standard_params["secondary"])
+        assert ("primary") in (standard_params)
+        assert ("secondary") in (standard_params)
+        assert ("mass") in (standard_params["primary"])
+        assert ("mass") in (standard_params["secondary"])
 
 
 class TestAnalyticsTaskClassConstants(ElisaTestCase):
@@ -289,7 +273,7 @@ class TestAnalyticsTaskClassConstants(ElisaTestCase):
 
         :return: None
         """
-        self.assertIn("data", AnalyticsTask.MANDATORY_KWARGS)
+        assert ("data") in (AnalyticsTask.MANDATORY_KWARGS)
 
     def test_optional_kwargs_defined(self) -> None:
         """Test that OPTIONAL_KWARGS are properly defined.
@@ -299,8 +283,8 @@ class TestAnalyticsTaskClassConstants(ElisaTestCase):
 
         :return: None
         """
-        self.assertIn("atmosphere_model", AnalyticsTask.OPTIONAL_KWARGS)
-        self.assertIn("limb_darkening_coefficients", AnalyticsTask.OPTIONAL_KWARGS)
+        assert ("atmosphere_model") in (AnalyticsTask.OPTIONAL_KWARGS)
+        assert ("limb_darkening_coefficients") in (AnalyticsTask.OPTIONAL_KWARGS)
 
     def test_all_kwargs_contains_mandatory_and_optional(self) -> None:
         """Test that ALL_KWARGS contains both mandatory and optional kwargs.
@@ -311,15 +295,13 @@ class TestAnalyticsTaskClassConstants(ElisaTestCase):
         :return: None
         """
         for kwarg in AnalyticsTask.MANDATORY_KWARGS:
-            self.assertIn(kwarg, AnalyticsTask.ALL_KWARGS)
+            assert (kwarg) in (AnalyticsTask.ALL_KWARGS)
 
         for kwarg in AnalyticsTask.OPTIONAL_KWARGS:
-            self.assertIn(kwarg, AnalyticsTask.ALL_KWARGS)
+            assert (kwarg) in (AnalyticsTask.ALL_KWARGS)
 
-        expected_length: int = (
-            len(AnalyticsTask.MANDATORY_KWARGS) + len(AnalyticsTask.OPTIONAL_KWARGS)
-        )
-        self.assertEqual(len(AnalyticsTask.ALL_KWARGS), expected_length)
+        expected_length: int = len(AnalyticsTask.MANDATORY_KWARGS) + len(AnalyticsTask.OPTIONAL_KWARGS)
+        assert (len(AnalyticsTask.ALL_KWARGS)) == (expected_length)
 
     def test_constraint_operators_defined(self) -> None:
         """Test that CONSTRAINT_OPERATORS are properly configured.
@@ -329,9 +311,9 @@ class TestAnalyticsTaskClassConstants(ElisaTestCase):
 
         :return: None
         """
-        self.assertIsNotNone(AnalyticsTask.CONSTRAINT_OPERATORS)
-        self.assertIsInstance(AnalyticsTask.CONSTRAINT_OPERATORS, (tuple, list))
-        self.assertGreater(len(AnalyticsTask.CONSTRAINT_OPERATORS), 0)
+        assert (AnalyticsTask.CONSTRAINT_OPERATORS) is not None
+        assert isinstance(AnalyticsTask.CONSTRAINT_OPERATORS, (tuple, list))
+        assert (len(AnalyticsTask.CONSTRAINT_OPERATORS)) > (0)
 
     def test_id_counter_increments(self) -> None:
         """Test that ID counter increments for new instances.
@@ -342,8 +324,8 @@ class TestAnalyticsTaskClassConstants(ElisaTestCase):
         :return: None
         """
         initial_id: int = AnalyticsTask.ID
-        self.assertIsInstance(initial_id, int)
-        self.assertGreater(initial_id, 0)
+        assert isinstance(initial_id, int)
+        assert (initial_id) > (0)
 
 
 class TestAnalyticsTaskMethodNames(ElisaTestCase):
@@ -357,11 +339,11 @@ class TestAnalyticsTaskMethodNames(ElisaTestCase):
 
         :return: None
         """
-        self.assertIsInstance(AnalyticsTask.LS_NAMES, tuple)
-        self.assertGreater(len(AnalyticsTask.LS_NAMES), 0)
+        assert isinstance(AnalyticsTask.LS_NAMES, tuple)
+        assert (len(AnalyticsTask.LS_NAMES)) > (0)
         # Should include at least 'least_squares' and 'ls' variants
         ls_lower: list[str] = [name.lower() for name in AnalyticsTask.LS_NAMES]
-        self.assertTrue(any("least_squares" in name for name in ls_lower))
+        assert any("least_squares" in name for name in ls_lower)
 
     def test_mcmc_names_tuple(self) -> None:
         """Test that MCMC_NAMES is properly configured.
@@ -371,10 +353,10 @@ class TestAnalyticsTaskMethodNames(ElisaTestCase):
 
         :return: None
         """
-        self.assertIsInstance(AnalyticsTask.MCMC_NAMES, tuple)
-        self.assertGreater(len(AnalyticsTask.MCMC_NAMES), 0)
+        assert isinstance(AnalyticsTask.MCMC_NAMES, tuple)
+        assert (len(AnalyticsTask.MCMC_NAMES)) > (0)
         mcmc_lower: list[str] = [name.lower() for name in AnalyticsTask.MCMC_NAMES]
-        self.assertIn("mcmc", mcmc_lower)
+        assert ("mcmc") in (mcmc_lower)
 
     def test_ls_and_mcmc_names_dont_overlap(self) -> None:
         """Test that LS and MCMC method names are distinct.
@@ -388,11 +370,7 @@ class TestAnalyticsTaskMethodNames(ElisaTestCase):
         mcmc_names_lower: set[str] = {name.lower() for name in AnalyticsTask.MCMC_NAMES}
 
         overlap: set[str] = ls_names_lower & mcmc_names_lower
-        self.assertEqual(
-            len(overlap),
-            0,
-            f"LS_NAMES and MCMC_NAMES should not overlap, but found: {overlap}",
-        )
+        assert (len(overlap)) == (0), f"LS_NAMES and MCMC_NAMES should not overlap, but found: {overlap}"
 
 
 class TestLCTaskLoadResultDefaults(ElisaTestCase):
@@ -408,7 +386,7 @@ class TestLCTaskLoadResultDefaults(ElisaTestCase):
         """
         # The signature shows default should be True for LC task
         # vs the base class default of False
-        self.assertTrue(True, "LC task should default to autofill_sma=True")
+        assert True, "LC task should default to autofill_sma=True"
 
     def test_rv_task_set_result_defaults_autofill_sma_false(self) -> None:
         """Test that RVBinaryAnalyticsTask.set_result defaults to autofill_sma=False.
@@ -419,9 +397,8 @@ class TestLCTaskLoadResultDefaults(ElisaTestCase):
         :return: None
         """
         # RV task should keep default autofill_sma=False
-        self.assertFalse(False, "RV task should default to autofill_sma=False")
+        assert not (False), "RV task should default to autofill_sma=False"
 
 
 if __name__ == "__main__":
     unittest.main()
-

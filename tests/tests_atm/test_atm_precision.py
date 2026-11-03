@@ -1,5 +1,7 @@
 """Preserve Akima flux precision through atmosphere bandwidth preparation."""
 
+from __future__ import annotations
+
 from copy import deepcopy
 from pathlib import Path
 from unittest.mock import patch
@@ -13,7 +15,11 @@ from elisa.atm import atm
 from elisa.observer.passband import PassbandContainer
 
 
-def rounded_boundary_extension(container, left, right):
+def rounded_boundary_extension(
+    container: atm.AtmDataContainer,
+    left: float | np.float64,
+    right: float | np.float64,
+) -> atm.AtmDataContainer:
     """Retain the previous boundary implementation solely for before/after comparisons."""
     model = container.model
     interpolator = Akima1DInterpolator(model.wavelength, model.flux)
@@ -27,14 +33,14 @@ def rounded_boundary_extension(container, left, right):
     return container
 
 
-def make_spectrum(scale=1.0):
+def make_spectrum(scale: float = 1.0) -> atm.AtmDataContainer:
     wave = np.arange(11, dtype=float)
     flux = scale * (1.123456789123456 + np.sin(wave / 3.0))
     return atm.AtmDataContainer(atm.AtmModel(flux=flux, wavelength=wave), 5000.0, 2.0, 0.0)
 
 
 @pytest.mark.parametrize("scale", [1e-12, 1.0, 1e8])
-def test_extension_keeps_interior_precision_and_exact_akima_boundaries(scale):
+def test_extension_keeps_interior_precision_and_exact_akima_boundaries(scale: float) -> None:
     original = make_spectrum(scale)
     old = rounded_boundary_extension(deepcopy(original), 0.25, 9.75)
     expected = original.model.flux.copy()
@@ -49,7 +55,7 @@ def test_extension_keeps_interior_precision_and_exact_akima_boundaries(scale):
 
 
 @pytest.mark.parametrize("inplace", [False, True])
-def test_trimming_preserves_ownership_and_unrounded_interior(inplace):
+def test_trimming_preserves_ownership_and_unrounded_interior(inplace: bool) -> None:
     original = make_spectrum()
     initial = deepcopy(original)
     result = atm.strip_to_bandwidth(original, 1.25, 8.75, inplace=inplace)
@@ -66,25 +72,28 @@ def test_trimming_preserves_ownership_and_unrounded_interior(inplace):
         assert not np.shares_memory(result.model.wavelength, original.model.wavelength)
 
 
-@pytest.mark.parametrize("left,right", [(-0.25, 9.75), (0.25, 10.25)])
-def test_nan_boundary_errors_leave_input_untouched(left, right):
+@pytest.mark.parametrize(("left", "right"), [(-0.25, 9.75), (0.25, 10.25)])
+def test_nan_boundary_errors_leave_input_untouched(left: float, right: float) -> None:
     original = make_spectrum()
     before = deepcopy(original)
     for extend in (rounded_boundary_extension, atm.extend_atm_container_on_bandwidth_boundary):
-        with pytest.raises(atm.ElisaAtmosphereError, match="Interpolation on bandwidth boundaries resulted in NaN value."):
+        with pytest.raises(
+            atm.ElisaAtmosphereError,
+            match=r"Interpolation on bandwidth boundaries resulted in NaN value.",
+        ):
             extend(original, left, right)
         np.testing.assert_array_equal(original.model.flux, before.model.flux)
         np.testing.assert_array_equal(original.model.wavelength, before.model.wavelength)
 
 
-def test_tiny_linear_spectrum_stays_continuous_across_grid_boundaries():
+def test_tiny_linear_spectrum_stays_continuous_across_grid_boundaries() -> None:
     wave = np.arange(9, dtype=float)
     flux = (wave + 1) * 2.0**-40
     original = atm.AtmDataContainer(atm.AtmModel(flux=flux, wavelength=wave), 5000.0, 2.0, 0.0)
     left = np.array([np.nextafter(2.0, 0.0), 2.0, np.nextafter(2.0, np.inf)])
     results = [atm.strip_to_bandwidth(original, value, 6.5) for value in left]
     # The exact linear solution exposes quantization without an arbitrary tolerance.
-    for value, result in zip(left, results):
+    for value, result in zip(left, results, strict=True):
         np.testing.assert_array_equal(result.model.flux, (result.model.wavelength + 1) * 2.0**-40)
         assert result.model.wavelength[0] == value
         assert np.all(np.diff(result.model.wavelength) > 0)
@@ -93,10 +102,13 @@ def test_tiny_linear_spectrum_stays_continuous_across_grid_boundaries():
     np.testing.assert_array_equal(old.model.flux, np.zeros_like(flux))
 
 
-def test_repeated_trimming_does_not_quantize_or_drift():
+def test_repeated_trimming_does_not_quantize_or_drift() -> None:
     wave = np.arange(9, dtype=float)
     original = atm.AtmDataContainer(
-        atm.AtmModel(flux=(wave + 1) * 2.0**-40, wavelength=wave), 5000.0, 2.0, 0.0,
+        atm.AtmModel(flux=(wave + 1) * 2.0**-40, wavelength=wave),
+        5000.0,
+        2.0,
+        0.0,
     )
     first = atm.strip_to_bandwidth(original, 1.25, 6.75)
     result = first
@@ -107,15 +119,18 @@ def test_repeated_trimming_does_not_quantize_or_drift():
     np.testing.assert_array_equal(result.model.flux, (result.model.wavelength + 1) * 2.0**-40)
 
 
-def test_absolute_radiance_retains_small_physical_flux():
+def test_absolute_radiance_retains_small_physical_flux() -> None:
     wave = np.arange(9, dtype=float)
     original = atm.AtmDataContainer(
-        atm.AtmModel(flux=(wave + 1) * 2.0**-40, wavelength=wave), 5000.0, 2.0, 0.0,
+        atm.AtmModel(flux=(wave + 1) * 2.0**-40, wavelength=wave),
+        5000.0,
+        2.0,
+        0.0,
     )
     with patch.object(atm, "extend_atm_container_on_bandwidth_boundary", rounded_boundary_extension):
         old = atm.strip_to_bandwidth(original, 1.0, 7.0)
     new = atm.strip_to_bandwidth(original, 1.0, 7.0)
-    kwargs = dict(flux_mult=new.flux_to_si_mult, wave_mult=new.wave_to_si_mult)
+    kwargs = {"flux_mult": new.flux_to_si_mult, "wave_mult": new.wave_to_si_mult}
     old_radiance = atm.compute_normal_intensity(old.model.flux[np.newaxis], old.model.wavelength, **kwargs)
     new_radiance = atm.compute_normal_intensity(new.model.flux[np.newaxis], new.model.wavelength, **kwargs)
     # Integral of (wavelength + 1) from 1 to 7, with the container's SI factors.
@@ -124,7 +139,7 @@ def test_absolute_radiance_retains_small_physical_flux():
     np.testing.assert_array_equal(old_radiance, [0.0])
 
 
-def test_alignment_uses_wavelengths_and_retains_unrounded_akima_values():
+def test_alignment_uses_wavelengths_and_retains_unrounded_akima_values() -> None:
     first = make_spectrum(1e-12)
     second = make_spectrum(1e-12)
     second.model.wavelength += 0.125
@@ -132,21 +147,24 @@ def test_alignment_uses_wavelengths_and_retains_unrounded_akima_values():
     union = np.unique(np.concatenate([c.model.wavelength for c in models]))
     expected = [Akima1DInterpolator(c.model.wavelength, c.model.flux)(union) for c in models]
     aligned = atm.arange_atm_to_same_wavelength(models)
-    for model, flux in zip(aligned, expected):
+    for model, flux in zip(aligned, expected, strict=True):
         np.testing.assert_array_equal(model.model.wavelength, union)
         np.testing.assert_array_equal(model.model.flux, flux)
         assert np.isfinite(model.model.flux).all()
     assert atm.arange_atm_to_same_wavelength(aligned) is aligned
 
 
-def test_ck04_spectra_and_absolute_radiance_match_unrounded_pipeline(monkeypatch):
+def test_ck04_spectra_and_absolute_radiance_match_unrounded_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
     directory = Path(__file__).parents[1] / "data" / "ck04"
     monkeypatch.setattr(settings, "CK04_ATM_TABLES", directory)
     monkeypatch.setattr(atm.buffer, "ATMOSPHERE_TABLES", {})
     band = PassbandContainer.from_name("Generic.Bessell.U")
     args = np.array([10000.0, 10001.0, 10250.0]), np.repeat(2.0, 3), 0.0, "ck"
-    kwargs = dict(passband={"Generic.Bessell.U": band}, left_bandwidth=band.left_bandwidth,
-                  right_bandwidth=band.right_bandwidth)
+    kwargs = {
+        "passband": {"Generic.Bessell.U": band},
+        "left_bandwidth": band.left_bandwidth,
+        "right_bandwidth": band.right_bandwidth,
+    }
     with patch.object(atm, "extend_atm_container_on_bandwidth_boundary", rounded_boundary_extension):
         old, old_flux_mult, old_wave_mult = atm.NaiveInterpolatedAtm.get_atm_profiles(*args, **kwargs)
         old_radiance = atm.NaiveInterpolatedAtm.atlas_radiance(*args, **kwargs)
@@ -164,14 +182,15 @@ def test_ck04_spectra_and_absolute_radiance_match_unrounded_pipeline(monkeypatch
         assert np.isfinite(flux).all()
         assert np.isfinite(old_radiance[name]).all()
         np.testing.assert_array_equal(
-            new_radiance[name], atm.compute_normal_intensity(flux, wave, flux_mult=flux_mult, wave_mult=wave_mult),
+            new_radiance[name],
+            atm.compute_normal_intensity(flux, wave, flux_mult=flux_mult, wave_mult=wave_mult),
         )
 
 
 @pytest.mark.parametrize("normalize", [False, True])
 @pytest.mark.requires_ld(passbands=("bolometric", "Generic.Bessell.V"))
 @pytest.mark.requires_atmosphere(atlas="ck04")
-def test_ck04_raw_and_normalized_eccentric_curves(normalize, monkeypatch):
+def test_ck04_raw_and_normalized_eccentric_curves(normalize: bool, monkeypatch: pytest.MonkeyPatch) -> None:
     """Compare both versions through an eccentric, eclipsing CK04 binary."""
     from elisa import Observer
     from tests.utils import BINARY_SYSTEM_PARAMS, prepare_binary_system

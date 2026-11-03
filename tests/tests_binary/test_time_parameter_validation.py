@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pytest
@@ -12,6 +11,9 @@ from numpy.testing import assert_allclose
 from elisa.analytics.tools.utils import time_layer_resolver
 from elisa.base.error import ElisaParametersError
 from elisa.binary_system import t_layer
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 INVALID_PERIODS = [
@@ -32,7 +34,9 @@ INVALID_PERIODS = [
 )
 @pytest.mark.parametrize(("period", "expected_error"), INVALID_PERIODS)
 def test_period_failure_precedes_invalid_epoch_and_coordinates(
-    convert: Callable[..., Any], period: float, expected_error: type[Exception],
+    convert: Callable[..., Any],
+    period: float,
+    expected_error: type[Exception],
 ) -> None:
     invalid_epoch = -1.0
     invalid_coordinates = object()
@@ -46,7 +50,9 @@ def test_period_failure_precedes_invalid_epoch_and_coordinates(
 @pytest.mark.parametrize("pop", [False, True], ids=["retain-epoch", "remove-epoch"])
 @pytest.mark.parametrize(("period", "expected_error"), INVALID_PERIODS)
 def test_fitting_time_resolver_preserves_period_exception_type(
-    period: float, expected_error: type[Exception], pop: bool,
+    period: float,
+    expected_error: type[Exception],
+    pop: bool,
 ) -> None:
     observation_times = np.array([2450000.0, 2450001.0])
     model_parameters = {

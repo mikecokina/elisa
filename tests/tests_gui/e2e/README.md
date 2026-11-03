@@ -3,19 +3,18 @@
 These tests use Chromium to interact with the Gradio UI and run real SciPy/emcee
 fits. The instructions below assume Linux/Ubuntu and Bash.
 
-## 1. Prepare Python 3.14
+## 1. Prepare Python
 
 Open a terminal in the repository root, where `pyproject.toml`, `src/` and
-`tests/` are located. Activate your Python 3.14 environment, or create one:
+`tests/` are located. Activate a Python 3.11-3.14 environment, or create one:
 
 ```bash
-python3.14 -m venv .venv-e2e
+python3 -m venv .venv-e2e
 source .venv-e2e/bin/activate
 python --version
 ```
 
-The version must be `Python 3.14.x`. If `python3.14` is unavailable, install it
-with `venv` support first. Activate the environment again in each new terminal.
+Any supported version (3.11 or newer) works. If `venv` support is missing, install it first. Activate the environment again in each new terminal.
 
 ## 2. Install dependencies and Chromium
 
@@ -163,7 +162,7 @@ walkers require no more than five free parameters (`nwalkers >= 2 * ndim`).
 | Missing `playwright`, `gradio` or `pytest` | Activate the correct environment and run `python -m pip install -e '.[test,ui]'`. |
 | Browser executable not found | Run `python -m playwright install chromium` as the same user and in the same environment. |
 | Missing browser system libraries | Run `python -m playwright install-deps chromium`. |
-| Wrong Python version | Check `python --version` and activate Python 3.14. |
+| Wrong Python version | Check `python --version` and activate a Python 3.11 or newer environment. |
 | Missing observation files | Restore `tests/tests_gui/e2e/data/` from version control. |
 | Missing scientific tables | Check the asset layout and `ELISA_E2E_ASSETS` setting. |
 | All cases skipped | Check the `--run-fitting-e2e` argument and Playwright installation. |

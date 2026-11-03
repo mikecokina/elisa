@@ -1,24 +1,39 @@
 """Callback mechanics are isolated; RV numeric/state regressions use real synthesis."""
 
+from __future__ import annotations
+
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
 
-from elisa import const, settings, units as u
+from elisa import const, settings
+from elisa import units as u
 from elisa.analytics import RVData
 from elisa.analytics.binary_fit import least_squares, mcmc
-from elisa.analytics.binary_fit.failure_policy import CandidateFailureDiagnostics, SYNTHESIS_FAILURES
+from elisa.analytics.binary_fit.failure_policy import SYNTHESIS_FAILURES, CandidateFailureDiagnostics
 from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.base import error
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from tests.tests_analytics.fitting_helpers import normalized, rv_problem
 
+if TYPE_CHECKING:
+    import collections.abc
+    import types
 
-def callbacks(monkeypatch, exc):
+    from numpy.typing import NDArray
+
+    import elisa.base.error
+
+
+def callbacks(
+    monkeypatch: pytest.MonkeyPatch,
+    exc: BaseException,
+) -> tuple[types.SimpleNamespace, tuple[collections.abc.Callable[..., NDArray[np.generic] | float], ...]]:
     """Inject only at callback boundaries to verify catch mechanics, not model reachability."""
 
-    def fail(*args, **kwargs):
+    def fail(*_args, **_kwargs) -> None:
         raise exc
 
     fit = SimpleNamespace(
@@ -26,7 +41,7 @@ def callbacks(monkeypatch, exc):
         normalization={},
         prepare_synthetic=fail,
         num_of_points={"primary": 3},
-        ln_prior=lambda *args: 0.0,
+        ln_prior=lambda *_args: 0.0,
         norm_init_vector=np.array([]),
         sigmas=np.array([]),
         likelihood=fail,
@@ -40,17 +55,32 @@ def callbacks(monkeypatch, exc):
     )
 
 
-def assert_penalty(result, index):
+def assert_penalty(result: float | NDArray[np.float64], index: int) -> None:
     if index == 2:
+        assert isinstance(result, (float, np.floating))
         assert result == -np.inf
     else:
+        assert isinstance(result, np.ndarray)
         assert result.shape == (3,)
         assert np.isfinite(result).all()
         assert np.dot(result, result) == pytest.approx(const.MAX_USABLE_FLOAT)
 
 
 @pytest.mark.parametrize("kind", SYNTHESIS_FAILURES)
-def test_recognized_failures_rejected_by_all_callbacks(monkeypatch, kind):
+def test_recognized_failures_rejected_by_all_callbacks(
+    monkeypatch: pytest.MonkeyPatch,
+    kind: type[
+        elisa.base.error.ElisaAtmosphereError
+        | elisa.base.error.ElisaLimbDarkeningError
+        | elisa.base.error.ElisaMaxIterationError
+        | elisa.base.error.ElisaNumericError
+        | elisa.base.error.ElisaParametersError
+        | elisa.base.error.ElisaSpotError
+        | elisa.base.error.ElisaTemperatureError
+        | elisa.base.error.MorphologyError
+        | elisa.base.error.PulsationModeError
+    ],
+) -> None:
     fit, calls = callbacks(monkeypatch, kind("candidate"))
     for enabled in (False, True):
         with settings.override(PENALIZE_ALL_EXCEPTIONS=enabled, SUPPRESS_WARNINGS=True):
@@ -78,7 +108,26 @@ def test_recognized_failures_rejected_by_all_callbacks(monkeypatch, kind):
         ValueError,
     ],
 )
-def test_other_exceptions_follow_override(monkeypatch, kind):
+def test_other_exceptions_follow_override(
+    monkeypatch: pytest.MonkeyPatch,
+    kind: type[
+        ValueError
+        | elisa.base.error.ElisaAnalyticsDataError
+        | elisa.base.error.ElisaAnalyticsTaskError
+        | elisa.base.error.ElisaGraphicsError
+        | elisa.base.error.ElisaInitialParametersError
+        | elisa.base.error.ElisaInvalidKwargsError
+        | elisa.base.error.ElisaMissingKwargsError
+        | elisa.base.error.ElisaMonteCarloError
+        | elisa.base.error.ElisaNotImplementedError
+        | elisa.base.error.ElisaNumericSolverError
+        | elisa.base.error.ElisaOperationInputError
+        | elisa.base.error.ElisaPassbandError
+        | elisa.base.error.ElisaPredictionAlignmentError
+        | elisa.base.error.ElisaSettingsError
+        | elisa.base.error.ElisaUnexpectedError
+    ],
+) -> None:
     exc = kind("original")
     fit, calls = callbacks(monkeypatch, exc)
     with settings.override(PENALIZE_ALL_EXCEPTIONS=False):
@@ -98,7 +147,10 @@ def test_other_exceptions_follow_override(monkeypatch, kind):
 
 
 @pytest.mark.parametrize("kind", [KeyboardInterrupt, SystemExit])
-def test_process_control_never_rejected(monkeypatch, kind):
+def test_process_control_never_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+    kind: type[KeyboardInterrupt | SystemExit],
+) -> None:
     fit, calls = callbacks(monkeypatch, kind())
     for enabled in (False, True):
         with settings.override(PENALIZE_ALL_EXCEPTIONS=enabled):
@@ -107,7 +159,7 @@ def test_process_control_never_rejected(monkeypatch, kind):
                     call(fit, np.array([]))
 
 
-def test_lookup_translation_and_emergency_original_diagnostic(monkeypatch):
+def test_lookup_translation_and_emergency_original_diagnostic(monkeypatch: pytest.MonkeyPatch) -> None:
     marker = error.ElisaLookupError("lookup context")
     fit, calls = callbacks(monkeypatch, marker)
     with settings.override(PENALIZE_ALL_EXCEPTIONS=False):
@@ -122,7 +174,7 @@ def test_lookup_translation_and_emergency_original_diagnostic(monkeypatch):
 
 
 @pytest.mark.parametrize("uncertainty", [1e-310, 1e-160])
-def test_real_rv_residual_overflow_is_penalized(uncertainty):
+def test_real_rv_residual_overflow_is_penalized(uncertainty: float) -> None:
     cfg, original = rv_problem()
     data = {
         k: RVData(
@@ -144,7 +196,7 @@ def test_real_rv_residual_overflow_is_penalized(uncertainty):
             assert np.dot(result, result) == pytest.approx(const.MAX_USABLE_FLOAT)
 
 
-def test_real_rv_valid_invalid_valid_and_setup():
+def test_real_rv_valid_invalid_valid_and_setup() -> None:
     cfg, data = rv_problem()
     cfg["system"]["mass_ratio"] = {"constraint": "1 / (system@asini - 10)**2"}
     cfg["nuisance"] = {"ln_f": {"value": -2.0, "fixed": True}}
@@ -177,8 +229,9 @@ def test_real_rv_valid_invalid_valid_and_setup():
                     )
 
 
-def test_setting_ini_default_validation_and_restore():
+def test_setting_ini_default_validation_and_restore() -> None:
     from configparser import ConfigParser
+
     from elisa.conf.settings import Settings
     from elisa.managers.settings_manager import DefaultSettings
 
@@ -198,7 +251,7 @@ def test_setting_ini_default_validation_and_restore():
 
 
 @pytest.mark.parametrize("enabled", [False, True])
-def test_lsq_penalty_warning_remains_concise(monkeypatch, enabled):
+def test_lsq_penalty_warning_remains_concise(monkeypatch: pytest.MonkeyPatch, enabled: bool) -> None:
     from unittest.mock import Mock
 
     warning = Mock()
@@ -213,7 +266,7 @@ def test_lsq_penalty_warning_remains_concise(monkeypatch, enabled):
         assert call.kwargs == {}
 
 
-def test_public_residual_cost_accepts_representable_large_norm():
+def test_public_residual_cost_accepts_representable_large_norm() -> None:
     from elisa.analytics.models.cost_fns import standardized_residuals
 
     # One large residual requires the scaled fallback but its squared norm fits.
@@ -227,8 +280,12 @@ def test_public_residual_cost_accepts_representable_large_norm():
     assert np.dot(result, result) == pytest.approx(1e308)
 
 
-@pytest.mark.parametrize('distance,ratio', [(10**100, .7), (1., 10**100), (10**400, .7)])
-def test_lagrange_numeric_failure_is_penalized_by_all_callbacks(monkeypatch, distance, ratio):
+@pytest.mark.parametrize(("distance", "ratio"), [(10**100, 0.7), (1.0, 10**100), (10**400, 0.7)])
+def test_lagrange_numeric_failure_is_penalized_by_all_callbacks(
+    monkeypatch: pytest.MonkeyPatch,
+    distance: float,
+    ratio: float,
+) -> None:
     from elisa.binary_system.system import BinarySystem
 
     with pytest.raises(error.ElisaNumericError) as caught:

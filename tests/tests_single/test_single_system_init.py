@@ -1,22 +1,35 @@
-# keep it first
-# due to stupid astropy units/constants implementation
-from tests import set_astropy_units
+from __future__ import annotations
+
+# The tests package selects Astropy constants before test-module imports.
+from copy import copy
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
+import pytest
 from numpy.testing import assert_array_equal, assert_equal
-from copy import copy
 
+from elisa import SingleSystem, Star
+from elisa import const as c
+from elisa import units as u
+from elisa.base.error import (
+    ElisaInitialParametersError,
+    ElisaInvalidKwargsError,
+    ElisaMissingKwargsError,
+    ElisaUnexpectedError,
+)
+from tests import set_astropy_units
 from tests.utils import ElisaTestCase, prepare_single_system
-from elisa import units as u, const as c
-from elisa import Star
-from elisa import SingleSystem
+
+if TYPE_CHECKING:
+    import elisa.single_system.system
+
 
 set_astropy_units()
 
 
 class SingleSystemInitTestCase(ElisaTestCase):
-    def setUp(self):
-        super(SingleSystemInitTestCase, self).setUp()
+    def setUp(self) -> None:
+        super().setUp()
         self.params_combination = [
             # solar model
             {
@@ -32,31 +45,29 @@ class SingleSystemInitTestCase(ElisaTestCase):
                 "mass": 1.5,
                 "t_eff": 6500 * u.K,
                 "gravity_darkening": 0.32,
-                "polar_log_g": 4.2 * u.dex(u.cm / u.s ** 2),
+                "polar_log_g": 4.2 * u.dex(u.cm / u.s**2),
                 "gamma": 10 * u.km / u.s,
                 "inclination": 90.0 * u.deg,
                 "rotation_period": 25.38 * u.d,
             },
         ]
 
-    def prepare_systems(self):
+    def prepare_systems(self) -> list[elisa.single_system.system.SingleSystem]:
         return [prepare_single_system(combo) for combo in self.params_combination]
 
-    def test_critical_surface_potential(self):
+    def test_critical_surface_potential(self) -> None:
         expected_potentials = np.round(np.array([-7873152926.098635, -10316748888.181795]), 5)
-        obtained_potentials = list()
-        for system in self.prepare_systems():
-            obtained_potentials.append(system.star.critical_surface_potential)
+        obtained_potentials = [system.star.critical_surface_potential for system in self.prepare_systems()]
         obtained_potentials = np.round(np.array(obtained_potentials), 5)
         assert_array_equal(expected_potentials, obtained_potentials)
 
-    def test_setup_radii(self):
+    def test_setup_radii(self) -> None:
         radii = ["equatorial_radius", "polar_radius", "equivalent_radius"]
 
         expected = {
             "equatorial_radius": [695961708.0, 1120763694.70205],
             "polar_radius": [695954451.0, 1120731159.03338],
-            "equivalent_radius": [695959289.0, 1120752849.37421]
+            "equivalent_radius": [695959289.0, 1120752849.37421],
         }
 
         # obtained = {
@@ -73,10 +84,10 @@ class SingleSystemInitTestCase(ElisaTestCase):
 
 
 class ValidityTestCase(ElisaTestCase):
-    MANDATORY_KWARGS = ['inclination', 'rotation_period']
+    MANDATORY_KWARGS: ClassVar[list[str]] = ["inclination", "rotation_period"]
 
-    def setUp(self):
-        super(ValidityTestCase, self).setUp()
+    def setUp(self) -> None:
+        super().setUp()
         self._initial_params = {
             "mass": 1.0 * u.solMass,
             "t_eff": 5772 * u.K,
@@ -86,73 +97,82 @@ class ValidityTestCase(ElisaTestCase):
             "inclination": 90.0 * u.deg,
             "rotation_period": 25.38 * u.d,
             "phase_shift": 0.1,
-            "reference_time": 0.0 * u.d
+            "reference_time": 0.0 * u.d,
         }
 
-        self._star = Star(mass=self._initial_params["mass"],
-                          t_eff=self._initial_params["t_eff"],
-                          gravity_darkening=self._initial_params["gravity_darkening"],
-                          polar_log_g=self._initial_params["polar_log_g"]
-                          )
+        self._star = Star(
+            mass=self._initial_params["mass"],
+            t_eff=self._initial_params["t_eff"],
+            gravity_darkening=self._initial_params["gravity_darkening"],
+            polar_log_g=self._initial_params["polar_log_g"],
+        )
 
-    def test__star_params_validity_check(self):
-        with self.assertRaises(Exception) as context:
-            SingleSystem(star=42,
-                         gamma=self._initial_params["gamma"],
-                         rotation_period=self._initial_params["rotation_period"],
-                         inclination=self._initial_params["inclination"],
-                         reference_time=self._initial_params["reference_time"],
-                         phase_shift=self._initial_params["phase_shift"])
+    def test__star_params_validity_check(self) -> None:
+        with pytest.raises(ElisaUnexpectedError) as context:
+            SingleSystem(
+                star=42,
+                gamma=self._initial_params["gamma"],
+                rotation_period=self._initial_params["rotation_period"],
+                inclination=self._initial_params["inclination"],
+                reference_time=self._initial_params["reference_time"],
+                phase_shift=self._initial_params["phase_shift"],
+            )
 
-        self.assertTrue('Component `star` is not instance of class' in str(context.exception))
+        assert "Component `star` is not instance of class" in str(context.value)
 
-        star_mandatory_kwargs = ['mass', 't_eff', 'gravity_darkening', 'polar_log_g', 'metallicity']
+        star_mandatory_kwargs = ["mass", "t_eff", "gravity_darkening", "polar_log_g", "metallicity"]
 
         for kw in star_mandatory_kwargs[:1]:
             s = copy(self._star)
             setattr(s, f"{kw}", None)
 
-            with self.assertRaises(Exception) as context:
-                SingleSystem(star=s,
-                             gamma=self._initial_params["gamma"],
-                             rotation_period=self._initial_params["rotation_period"],
-                             inclination=self._initial_params["inclination"],
-                             reference_time=self._initial_params["reference_time"],
-                             phase_shift=self._initial_params["phase_shift"])
+            with pytest.raises(ElisaInitialParametersError) as context:
+                SingleSystem(
+                    star=s,
+                    gamma=self._initial_params["gamma"],
+                    rotation_period=self._initial_params["rotation_period"],
+                    inclination=self._initial_params["inclination"],
+                    reference_time=self._initial_params["reference_time"],
+                    phase_shift=self._initial_params["phase_shift"],
+                )
 
-            self.assertTrue(f'Missing argument(s): `{kw}`' in str(context.exception))
+            assert f"Missing argument(s): `{kw}`" in str(context.value)
 
-    def test_invalid_kwarg_checker(self):
-        with self.assertRaises(Exception) as context:
-            SingleSystem(star=self._star,
-                         gamma=self._initial_params["gamma"],
-                         rotation_period=self._initial_params["rotation_period"],
-                         inclination=self._initial_params["inclination"],
-                         reference_time=self._initial_params["reference_time"],
-                         phase_shift=self._initial_params["phase_shift"],
-                         adhoc_param="xxx")
+    def test_invalid_kwarg_checker(self) -> None:
+        with pytest.raises(ElisaInvalidKwargsError) as context:
+            SingleSystem(
+                star=self._star,
+                gamma=self._initial_params["gamma"],
+                rotation_period=self._initial_params["rotation_period"],
+                inclination=self._initial_params["inclination"],
+                reference_time=self._initial_params["reference_time"],
+                phase_shift=self._initial_params["phase_shift"],
+                adhoc_param="xxx",
+            )
 
-        self.assertTrue('Invalid keyword argument(s): adhoc_param' in str(context.exception))
+        assert "Invalid keyword argument(s): adhoc_param" in str(context.value)
 
-    def test_check_missing_kwargs(self):
-        initial_kwargs = dict(star=self._star,
-                              gamma=self._initial_params["gamma"],
-                              rotation_period=self._initial_params["rotation_period"],
-                              inclination=self._initial_params["inclination"],
-                              reference_time=self._initial_params["reference_time"],
-                              phase_shift=self._initial_params["phase_shift"])
+    def test_check_missing_kwargs(self) -> None:
+        initial_kwargs = {
+            "star": self._star,
+            "gamma": self._initial_params["gamma"],
+            "rotation_period": self._initial_params["rotation_period"],
+            "inclination": self._initial_params["inclination"],
+            "reference_time": self._initial_params["reference_time"],
+            "phase_shift": self._initial_params["phase_shift"],
+        }
 
         for kw in self.MANDATORY_KWARGS:
             kwargs = copy(initial_kwargs)
-            del (kwargs[kw])
-            with self.assertRaises(Exception) as context:
+            del kwargs[kw]
+            with pytest.raises(ElisaMissingKwargsError) as context:
                 SingleSystem(**kwargs)
-            self.assertTrue(f'Missing argument(s): `{kw}`' in str(context.exception))
+            assert f"Missing argument(s): `{kw}`" in str(context.value)
 
 
 class SingleSystemSerializersTestCase(ElisaTestCase):
-    def setUp(self):
-        super(SingleSystemSerializersTestCase, self).setUp()
+    def setUp(self) -> None:
+        super().setUp()
         self.params_combination = [
             # solar model
             {
@@ -168,7 +188,7 @@ class SingleSystemSerializersTestCase(ElisaTestCase):
                 "mass": 1.5,
                 "t_eff": 6500 * u.K,
                 "gravity_darkening": 0.32,
-                "polar_log_g": 4.2 * u.dex(u.cm / u.s ** 2),
+                "polar_log_g": 4.2 * u.dex(u.cm / u.s**2),
                 "gamma": 10 * u.km / u.s,
                 "inclination": 90.0 * u.deg,
                 "rotation_period": 25.38 * u.d,
@@ -177,105 +197,47 @@ class SingleSystemSerializersTestCase(ElisaTestCase):
 
         self._singles = self.prepare_systems()
 
-    def prepare_systems(self):
+    def prepare_systems(self) -> list[elisa.single_system.system.SingleSystem]:
         return [prepare_single_system(combo) for combo in self.params_combination]
 
-    def test_kwargs_serializer(self):
+    def test_kwargs_serializer(self) -> None:
         single = self._singles[-1]
         obtained = single.kwargs_serializer()
 
-        expected = dict(
-            inclination=c.HALF_PI,
-            rotation_period=25.38,
-            reference_time=0,
-            phase_shift=0.0,
-            additional_light=0.0,
-            gamma=10000
-        )
+        expected = {
+            "inclination": c.HALF_PI,
+            "rotation_period": 25.38,
+            "reference_time": 0,
+            "phase_shift": 0.0,
+            "additional_light": 0.0,
+            "gamma": 10000,
+        }
 
-        obtained_array, expectedd_array = list(), list()
+        obtained_array, expectedd_array = [], []
 
-        for o_key, e_key in zip(obtained, expected):
-            if isinstance(obtained[o_key], u.Quantity):
-                obtained[o_key] = obtained[o_key].value
-            obtained_array.append(round(obtained[o_key], 5))
-            expectedd_array.append(round(expected[e_key], 5))
+        for key, expected_value in expected.items():
+            if isinstance(obtained[key], u.Quantity):
+                obtained[key] = obtained[key].value
+            obtained_array.append(round(obtained[key], 5))
+            expectedd_array.append(round(expected_value, 5))
 
         assert_array_equal(expectedd_array, obtained_array)
 
-    def test_properties_serializer(self):
+    def test_properties_serializer(self) -> None:
         single = self._singles[-1]
         obtained = single.properties_serializer()
         expected = ["angular_velocity"]
         for e in expected:
-            self.assertTrue(e in obtained)
+            assert e in obtained
 
     @staticmethod
-    def _get_std(data):
+    def _get_std(
+        data: dict[str, dict[str, float | int]] | dict[str, dict[str, float | str] | dict[str, object]],
+    ) -> elisa.single_system.system.SingleSystem:
         return SingleSystem.from_json(data)
 
     @classmethod
-    def test_init_from_json_std(cls):
-        data = {
-            "system": {
-                "inclination": 90.0,
-                "rotation_period": 10.1,
-                "gamma": 10000,
-                "reference_time": 0.5,
-                "phase_shift": 0.0
-            },
-            "star": {
-                "mass": 1.0,
-                "t_eff": 5772.0,
-                "gravity_darkening": 0.32,
-                "discretization_factor": 5,
-                "metallicity": 0.0,
-                "polar_log_g": 2.43775
-            }
-        }
-        cls._get_std(data)
-
-    @classmethod
-    def test_init_from_json_radius(cls):
-        data = {
-            "system": {
-                "inclination": 90.0,
-                "rotation_period": 10.1,
-                "gamma": 10000,
-                "reference_time": 0.5,
-                "phase_shift": 0.0
-            },
-            "star": {
-                "mass": 1.0,
-                "t_eff": 5772.0,
-                "gravity_darkening": 0.32,
-                "discretization_factor": 5,
-                "equivalent_radius": 1.0
-            }
-        }
-        cls._get_std(data)
-
-    @classmethod
-    def test_init_string_repr(cls):
-        data = {
-            "system": {
-                "inclination": "90.0 deg",
-                "rotation_period": "10.1 d",
-                "gamma": "10 km / s",
-                "reference_time": "0. d",
-                "phase_shift": 0.0
-            },
-            "star": {
-                "mass": "1.0 solMass",
-                "t_eff": "5772.0 K",
-                "discretization_factor": 5,
-                "metallicity": 0.0,
-                "polar_log_g": "4.43775 dex(cm / s2)"
-            }
-        }
-        cls._get_std(data)
-
-    def test_to_json(self):
+    def test_init_from_json_std(cls) -> None:
         data = {
             "system": {
                 "inclination": 90.0,
@@ -283,7 +245,67 @@ class SingleSystemSerializersTestCase(ElisaTestCase):
                 "gamma": 10000,
                 "reference_time": 0.5,
                 "phase_shift": 0.0,
-                "distance": "10 pc"
+            },
+            "star": {
+                "mass": 1.0,
+                "t_eff": 5772.0,
+                "gravity_darkening": 0.32,
+                "discretization_factor": 5,
+                "metallicity": 0.0,
+                "polar_log_g": 2.43775,
+            },
+        }
+        cls._get_std(data)
+
+    @classmethod
+    def test_init_from_json_radius(cls) -> None:
+        data = {
+            "system": {
+                "inclination": 90.0,
+                "rotation_period": 10.1,
+                "gamma": 10000,
+                "reference_time": 0.5,
+                "phase_shift": 0.0,
+            },
+            "star": {
+                "mass": 1.0,
+                "t_eff": 5772.0,
+                "gravity_darkening": 0.32,
+                "discretization_factor": 5,
+                "equivalent_radius": 1.0,
+            },
+        }
+        cls._get_std(data)
+
+    @classmethod
+    def test_init_string_repr(cls) -> None:
+        data = {
+            "system": {
+                "inclination": "90.0 deg",
+                "rotation_period": "10.1 d",
+                "gamma": "10 km / s",
+                "reference_time": "0. d",
+                "phase_shift": 0.0,
+            },
+            "star": {
+                "mass": "1.0 solMass",
+                "t_eff": "5772.0 K",
+                "discretization_factor": 5,
+                "metallicity": 0.0,
+                "polar_log_g": "4.43775 dex(cm / s2)",
+            },
+        }
+        cls._get_std(data)
+
+    def test_to_json(self) -> None:
+        data = {
+            "system": {
+                "inclination": 90.0,
+                "rotation_period": 10.1,
+                "gamma": 10000,
+                "reference_time": 0.5,
+                "phase_shift": 0.0,
+                "distance": "10 pc",
             },
             "star": {
                 "mass": 1.0,
@@ -294,43 +316,43 @@ class SingleSystemSerializersTestCase(ElisaTestCase):
                 "polar_log_g": 2.43775,
                 "spots": [
                     {
-                        'longitude': 90,
-                        'latitude': 90,
-                        'angular_radius': 45,
-                        'temperature_factor': 0.9,
-                        'discretization_factor': 5
+                        "longitude": 90,
+                        "latitude": 90,
+                        "angular_radius": 45,
+                        "temperature_factor": 0.9,
+                        "discretization_factor": 5,
                     },
                     {
-                        'longitude': 30,
-                        'latitude': 80,
-                        'angular_radius': 70,
-                        'temperature_factor': 1.0
-                    }
+                        "longitude": 30,
+                        "latitude": 80,
+                        "angular_radius": 70,
+                        "temperature_factor": 1.0,
+                    },
                 ],
                 "pulsations": [
                     {
-                        'l': 2,
-                        'm': 2,
+                        "l": 2,
+                        "m": 2,
                         # "amplitude": 500,
                         "amplitude": "0.5 km / s",
                         # "frequency": 0.5,
                         "frequency": "0.5 / d",
-                        'start_phase': 0.0 * c.PI,
-                        'mode_axis_theta': 90,
-                        'mode_axis_phi': "0 rad",
-                        'horizontal_to_radial_amplitude_ratio': 0.1,
-                        'temperature_perturbation_phase_shift': f"{c.PI/2} rad",
-                        'temperature_amplitude_factor': 0.03,
-                        'tidally_locked': True
+                        "start_phase": 0.0 * c.PI,
+                        "mode_axis_theta": 90,
+                        "mode_axis_phi": "0 rad",
+                        "horizontal_to_radial_amplitude_ratio": 0.1,
+                        "temperature_perturbation_phase_shift": f"{c.PI / 2} rad",
+                        "temperature_amplitude_factor": 0.03,
+                        "tidally_locked": True,
                     },
                     {
-                        'l': 10,
-                        'm': 5,
+                        "l": 10,
+                        "m": 5,
                         "amplitude": 500,
                         "frequency": 0.5,
-                    }
-                ]
-            }
+                    },
+                ],
+            },
         }
 
         expected = {
@@ -341,7 +363,7 @@ class SingleSystemSerializersTestCase(ElisaTestCase):
                 "reference_time": 0.5,
                 "phase_shift": 0.0,
                 "additional_light": 0.0,
-                "distance": 10
+                "distance": 10,
             },
             "star": {
                 "mass": 1.0,
@@ -352,65 +374,65 @@ class SingleSystemSerializersTestCase(ElisaTestCase):
                 "polar_log_g": 2.43775,
                 "spots": [
                     {
-                        'longitude': 90,
-                        'latitude': 90,
-                        'angular_radius': 45,
-                        'temperature_factor': 0.9,
-                        'discretization_factor': 5
+                        "longitude": 90,
+                        "latitude": 90,
+                        "angular_radius": 45,
+                        "temperature_factor": 0.9,
+                        "discretization_factor": 5,
                     },
                     {
-                        'longitude': 30,
-                        'latitude': 80,
-                        'angular_radius': 70,
-                        'temperature_factor': 1.0,
-                        'discretization_factor': 5
-                    }
+                        "longitude": 30,
+                        "latitude": 80,
+                        "angular_radius": 70,
+                        "temperature_factor": 1.0,
+                        "discretization_factor": 5,
+                    },
                 ],
                 "pulsations": [
                     {
-                        'l': 2,
-                        'm': 2,
+                        "l": 2,
+                        "m": 2,
                         "amplitude": 500,
                         "frequency": 0.5,
-                        'start_phase': 0.0,
-                        'mode_axis_theta': 90,
-                        'mode_axis_phi': 0,
-                        'horizontal_to_radial_amplitude_ratio': 0.1,
-                        'temperature_perturbation_phase_shift': c.PI / 2,
-                        'temperature_amplitude_factor': 0.03,
-                        'tidally_locked': True
+                        "start_phase": 0.0,
+                        "mode_axis_theta": 90,
+                        "mode_axis_phi": 0,
+                        "horizontal_to_radial_amplitude_ratio": 0.1,
+                        "temperature_perturbation_phase_shift": c.PI / 2,
+                        "temperature_amplitude_factor": 0.03,
+                        "tidally_locked": True,
                     },
                     {
-                        'l': 10,
-                        'm': 5,
+                        "l": 10,
+                        "m": 5,
                         "amplitude": 500,
                         "frequency": 0.5,
-                        'start_phase': 0.0,
-                        'mode_axis_theta': 0,
-                        'mode_axis_phi': 0,
-                        'horizontal_to_radial_amplitude_ratio': 2.65874,
-                        'temperature_perturbation_phase_shift': 1.0471975,
-                        'temperature_amplitude_factor': 0.075966,
-                        'tidally_locked': False
-                    }
-                ]
-            }
+                        "start_phase": 0.0,
+                        "mode_axis_theta": 0,
+                        "mode_axis_phi": 0,
+                        "horizontal_to_radial_amplitude_ratio": 2.65874,
+                        "temperature_perturbation_phase_shift": 1.0471975,
+                        "temperature_amplitude_factor": 0.075966,
+                        "tidally_locked": False,
+                    },
+                ],
+            },
         }
 
         s = SingleSystem.from_json(data)
         js = s.to_json()
 
-        for item in js['system']:
-            self.assertEqual(js['system'][item], expected['system'][item])
+        for item in js["system"]:
+            assert (js["system"][item]) == (expected["system"][item])
 
-        for item in js['star']:
-            if item not in ['spots', 'pulsations']:
-                self.assertAlmostEqual(js['star'][item], expected['star'][item], 3)
+        for item in js["star"]:
+            if item not in ["spots", "pulsations"]:
+                self.assertAlmostEqual(js["star"][item], expected["star"][item], 3)
             else:
-                for ii, feature in enumerate(js['star'][item]):
+                for ii, feature in enumerate(js["star"][item]):
                     for fitem in feature:
                         self.assertAlmostEqual(
                             feature[fitem],
-                            expected['star'][item][ii][fitem],
-                            3
+                            expected["star"][item][ii][fitem],
+                            3,
                         )

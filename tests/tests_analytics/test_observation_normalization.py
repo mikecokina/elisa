@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
@@ -10,9 +12,12 @@ from elisa import units as u
 from elisa.analytics import LCData
 from elisa.analytics.binary_fit import least_squares, shared
 from elisa.base.error import ElisaAnalyticsTaskError
-from elisa.observer.utils import normalize_light_curve
 from elisa.conf.enums import NormalizationKind
+from elisa.observer.utils import normalize_light_curve
 from tests.tests_analytics.fitting_helpers import V, lc_setup, make_lc
+
+if TYPE_CHECKING:
+    import elisa.conf.enums
 
 
 @pytest.mark.parametrize(
@@ -22,12 +27,19 @@ from tests.tests_analytics.fitting_helpers import V, lc_setup, make_lc
         pytest.param(True, None, [11.5, 7.5, 56 / 3, 13.5], None, id="cyclic-unweighted"),
         pytest.param(False, [1, 2, 1, 2, 1], [44 / 9, 6, 176 / 9, 28.8], [4 / 3, 1.5, 4 / 3, 1.5], id="open-weighted"),
         pytest.param(
-            True, [1, 2, 1, 2, 1], [172 / 13, 6, 176 / 9, 15.6], [1.25, 1.5, 4 / 3, 1.5], id="cyclic-weighted"
+            True,
+            [1, 2, 1, 2, 1],
+            [172 / 13, 6, 176 / 9, 15.6],
+            [1.25, 1.5, 4 / 3, 1.5],
+            id="cyclic-weighted",
         ),
     ],
 )
 def test_smoothing_preserves_bin_boundaries_and_weighted_means(
-    cyclic: bool, errors, expected_flux, expected_errors
+    cyclic: bool,
+    errors: list[int] | None,
+    expected_flux: list[float | int] | list[float],
+    expected_errors: list[float] | None,
 ) -> None:
     data = LCData(
         x_data=[0.0, 0.25, 0.5, 0.75, 1.0],
@@ -94,7 +106,7 @@ def test_extrema_selection_handles_small_and_full_selections() -> None:
 
 
 @pytest.mark.parametrize("kind", ["maximum", "global_maximum", "minimum"])
-def test_normalization_fraction_boundaries(kind) -> None:
+def test_normalization_fraction_boundaries(kind: str) -> None:
 
     values = {"V": np.array([2.0, 4.0, 8.0]), "B": np.array([6.0, 12.0])}
     for fraction in (0.0, np.nextafter(1.0, np.inf), 1.1, np.nan, np.inf, -np.inf):
@@ -116,7 +128,7 @@ def test_normalization_fraction_boundaries(kind) -> None:
     assert_allclose(fit.y_err[V], errors)
 
 
-def test_unknown_normalization_mode_is_an_internal_contract():
+def test_unknown_normalization_mode_is_an_internal_contract() -> None:
     from elisa.base.error import ElisaOperationInputError
 
     with pytest.raises(ElisaOperationInputError, match="Unsupported light-curve normalization mode"):
@@ -124,7 +136,7 @@ def test_unknown_normalization_mode_is_an_internal_contract():
 
 
 @pytest.mark.parametrize("kind", list(NormalizationKind))
-def test_normalization_enum_matches_existing_string_inputs(kind):
+def test_normalization_enum_matches_existing_string_inputs(kind: elisa.conf.enums.NormalizationKind) -> None:
     values = {"V": np.array([2.0, 4.0, 8.0, 16.0]), "B": np.array([3.0, 6.0])}
     errors = {band: np.ones_like(flux) for band, flux in values.items()}
     shared._validate_lc_normalization(values, kind, 0.5)

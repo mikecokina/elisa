@@ -15,7 +15,6 @@ from elisa.analytics.models.serializers import serialize_system_kwargs
 from elisa.binary_system.orbit.orbit import Orbit
 from elisa.observer.observer import Observer
 
-
 ANGLES = [
     pytest.param(None, np.pi / 2, id="omitted"),
     pytest.param(0.0, 0.0, id="numeric-zero"),
@@ -44,12 +43,14 @@ def test_lc_preparation_periastron(eccentricity: float, supplied: Any, expected:
         "secondary@mass": 0.7,
     }
     for component in ("primary", "secondary"):
-        parameters.update({
-            f"{component}@surface_potential": 100.0,
-            f"{component}@t_eff": 6000.0,
-            f"{component}@gravity_darkening": 0.32,
-            f"{component}@albedo": 0.5,
-        })
+        parameters.update(
+            {
+                f"{component}@surface_potential": 100.0,
+                f"{component}@t_eff": 6000.0,
+                f"{component}@gravity_darkening": 0.32,
+                f"{component}@albedo": 0.5,
+            },
+        )
     if supplied is not None:
         parameters["system@argument_of_periastron"] = supplied
         serialized = serialize_system_kwargs(**parameters)
@@ -59,7 +60,9 @@ def test_lc_preparation_periastron(eccentricity: float, supplied: Any, expected:
     assert_allclose(binary.argument_of_periastron, expected)
     assert_allclose(binary.orbit.argument_of_periastron, expected)
     reference = Orbit(
-        period=3.0, inclination=np.radians(85.0), eccentricity=eccentricity,
+        period=3.0,
+        inclination=np.radians(85.0),
+        eccentricity=eccentricity,
         argument_of_periastron=expected,
     )
     assert_allclose(binary.orbit.orbital_motion(PHASES), reference.orbital_motion(PHASES), atol=1e-12)
@@ -76,7 +79,7 @@ def test_rv_synthesis_periastron(kind: str, eccentricity: float, supplied: Any, 
         parameters.update({"primary@mass": 1.0, "secondary@mass": 0.7, "system@inclination": 85.0})
         inclination = np.radians(85.0)
         total_mass = (1.7 * u.solMass).to_value(u.kg)
-        semi_major_axis = (const.G * total_mass * (3 * 86400)**2 / (4 * np.pi**2))**(1 / 3)
+        semi_major_axis = (const.G * total_mass * (3 * 86400) ** 2 / (4 * np.pi**2)) ** (1 / 3)
         projected_axis = semi_major_axis * np.sin(inclination)
     else:
         parameters.update({"system@mass_ratio": 0.7, "system@asini": 10.0})
@@ -90,7 +93,9 @@ def test_rv_synthesis_periastron(kind: str, eccentricity: float, supplied: Any, 
     assert_allclose(observer._system.orbit.argument_of_periastron, expected)
 
     reference = Orbit(
-        period=3.0, inclination=inclination, eccentricity=eccentricity,
+        period=3.0,
+        inclination=inclination,
+        eccentricity=eccentricity,
         argument_of_periastron=expected,
     )
     true_anomalies = reference.orbital_motion(PHASES)[:, 2]

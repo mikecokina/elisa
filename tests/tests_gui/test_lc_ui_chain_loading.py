@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-# ruff: noqa: S101
 import json
 from pathlib import Path
 from types import SimpleNamespace

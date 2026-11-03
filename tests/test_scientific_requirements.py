@@ -18,6 +18,7 @@ from tests.scientific_requirements import (
 if TYPE_CHECKING:
     from typing import NoReturn
 
+
 TEST_DATA_DIRECTORY = Path(__file__).parent / "data"
 CK04_FIXTURE_DIRECTORY = TEST_DATA_DIRECTORY / "ck04"
 CK04_FIXTURE_MODELS = (

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
@@ -9,6 +11,9 @@ from scipy.stats import norm
 
 from elisa.analytics.models import cost_fns
 from elisa.base.error import ElisaAnalyticsDataError, ElisaNumericError, ElisaUnexpectedError
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 
 @pytest.mark.parametrize("ln_f", [-1000.0, -3.0, 0.0, 3.0, 1000.0])
@@ -84,9 +89,18 @@ def test_prepared_likelihood_matches_standalone_for_extreme_errors(ln_f: float) 
         (0.0, 1.0, 0.0, 1e308, -1e308),
     ],
 )
-def test_representable_densities_survive_intermediate_overflow(observed, error, model, ln_f, expected) -> None:
+def test_representable_densities_survive_intermediate_overflow(
+    observed: float,
+    error: float,
+    model: float,
+    ln_f: float,
+    expected: float | np.float64,
+) -> None:
     actual = cost_fns.likelihood_fn(
-        {"V": np.array([observed])}, {"V": np.array([error])}, {"V": np.array([model])}, ln_f,
+        {"V": np.array([observed])},
+        {"V": np.array([error])},
+        {"V": np.array([model])},
+        ln_f,
     )
     assert np.isfinite(actual)
     assert_allclose(actual, expected, rtol=2e-13)
@@ -99,13 +113,13 @@ def test_standalone_rejects_invalid_uncertainties(error: float) -> None:
 
 
 @pytest.mark.parametrize("ln_f", [np.nan, np.inf, -np.inf])
-def test_standalone_rejects_nonfinite_noise_parameters(ln_f) -> None:
+def test_standalone_rejects_nonfinite_noise_parameters(ln_f: float) -> None:
     with pytest.raises(ElisaNumericError, match="ln_f must be finite"):
         cost_fns.likelihood_fn({"V": np.zeros(1)}, {"V": np.ones(1)}, {"V": np.zeros(1)}, ln_f)
 
 
 @pytest.mark.parametrize("ln_f", [np.array([0.0]), np.array([]), np.zeros((1, 1))])
-def test_standalone_reports_noise_parameter_shape_as_contract_failure(ln_f) -> None:
+def test_standalone_reports_noise_parameter_shape_as_contract_failure(ln_f: NDArray[np.generic]) -> None:
     with pytest.raises(ElisaUnexpectedError, match="ln_f must be scalar"):
         cost_fns.likelihood_fn({"V": np.zeros(1)}, {"V": np.ones(1)}, {"V": np.zeros(1)}, ln_f)
 
@@ -142,30 +156,34 @@ def test_prepared_mcmc_reuses_statistics_and_refreshes_on_lc_normalization() -> 
 
 
 @pytest.mark.parametrize("kind", ["lc", "rv"])
-def test_missing_mcmc_statistics_abort_candidate_evaluation(monkeypatch, kind):
+def test_missing_mcmc_statistics_abort_candidate_evaluation(monkeypatch: pytest.MonkeyPatch, kind: str) -> None:
     from elisa.analytics.binary_fit.mcmc import CentralRadialVelocity, DetachedLightCurveFit
 
     fit = DetachedLightCurveFit() if kind == "lc" else CentralRadialVelocity()
     fit._prepared_observations = None
     fit.norm_init_vector = np.array([])
-    monkeypatch.setattr(fit, "ln_prior", lambda *args: 0.0)
-    monkeypatch.setattr(fit, "likelihood", lambda *args: fit.likelihood_fn({}, 0.0))
+    monkeypatch.setattr(fit, "ln_prior", lambda *_args: 0.0)
+    monkeypatch.setattr(fit, "likelihood", lambda *_args: fit.likelihood_fn({}, 0.0))
     with pytest.raises(ElisaUnexpectedError, match=r"require set_up\(\)"):
         fit.ln_probability(np.array([]))
 
 
 @pytest.mark.parametrize("kind", ["lc", "rv"])
 @pytest.mark.parametrize("error_name", ["ElisaOperationInputError", "ElisaSettingsError"])
-def test_fixed_input_errors_abort_mcmc_instead_of_rejecting_candidate(monkeypatch, kind, error_name):
-    from elisa.base import error
+def test_fixed_input_errors_abort_mcmc_instead_of_rejecting_candidate(
+    monkeypatch: pytest.MonkeyPatch,
+    kind: str,
+    error_name: str,
+) -> None:
     from elisa.analytics.binary_fit.mcmc import CentralRadialVelocity, DetachedLightCurveFit
+    from elisa.base import error
 
     fit = DetachedLightCurveFit() if kind == "lc" else CentralRadialVelocity()
     fit.norm_init_vector = np.array([])
     failure = getattr(error, error_name)("Invalid fixed operation/configuration")
-    monkeypatch.setattr(fit, "ln_prior", lambda *args: 0.0)
+    monkeypatch.setattr(fit, "ln_prior", lambda *_args: 0.0)
 
-    def fail(*args):
+    def fail(*_args) -> None:
         raise failure
 
     monkeypatch.setattr(fit, "likelihood", fail)

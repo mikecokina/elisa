@@ -3,25 +3,29 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
-from numpy.typing import NDArray
 
-from elisa import const, units as u
+from elisa import const
+from elisa import units as u
 from elisa.analytics import LCData, RVData
 from elisa.analytics.binary_fit import least_squares, mcmc
-from elisa.analytics.binary_fit.shared import AbstractFit, AbstractLCFit, AbstractRVFit
 from elisa.analytics.models import lc, rv
 from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.base.error import ElisaInitialParametersError, ElisaParametersError
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
 from elisa.binary_system.transform import RadialVelocityObserverProperties
-from elisa.observer.observer import Observer
 from tests.tests_analytics.fitting_helpers import V, lc_parameters, normalized, physical, rv_problem
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+    from elisa.analytics.binary_fit.shared import AbstractFit, AbstractLCFit, AbstractRVFit
+    from elisa.observer.observer import Observer
 
 
 INVALID_PHYSICAL_CONSTRAINTS = [
@@ -113,7 +117,10 @@ def prepare_rv_fit(fit: AbstractRVFit, config: dict[str, Any], data: dict[str, R
 
 
 def construct_binary_without_surface_synthesis(
-    phases: NDArray[np.float64], discretization: float, _observer: Observer, **model_parameters: Any,
+    phases: NDArray[np.float64],
+    discretization: float,
+    _observer: Observer,
+    **model_parameters: Any,
 ) -> dict[str, NDArray[np.float64]]:
     """Keep real constructor validation while avoiding LC mesh and atmosphere work."""
     lc.prepare_binary(discretization=discretization, **model_parameters)
@@ -136,7 +143,7 @@ def lc_model_fit(
 def rv_model_fit(
     rv_fit: AbstractRVFit,
     rv_inputs: tuple[dict[str, Any], dict[str, RVData]],
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch,  # noqa: ARG001 - retain parametrized case metadata or required setup fixture dependency
 ) -> AbstractRVFit:
     config, data = rv_inputs
     config["system"]["primary_minimum_time"] = {"value": 2450000.0, "fixed": True}
@@ -172,7 +179,9 @@ def assert_physical_rejection(fit: AbstractFit) -> None:
 
 @pytest.mark.parametrize(("parameter", "constraint"), INVALID_PHYSICAL_CONSTRAINTS)
 def test_lc_model_physical_failure_preserves_candidate_rejection(
-    lc_model_fit: AbstractLCFit, parameter: str, constraint: str,
+    lc_model_fit: AbstractLCFit,
+    parameter: str,
+    constraint: str,
 ) -> None:
     lc_model_fit.constrained[f"system@{parameter}"].constraint = constraint
 
@@ -181,7 +190,9 @@ def test_lc_model_physical_failure_preserves_candidate_rejection(
 
 @pytest.mark.parametrize(("parameter", "constraint"), INVALID_PHYSICAL_CONSTRAINTS)
 def test_rv_model_physical_failure_preserves_candidate_rejection(
-    rv_model_fit: AbstractRVFit, parameter: str, constraint: str,
+    rv_model_fit: AbstractRVFit,
+    parameter: str,
+    constraint: str,
 ) -> None:
     rv_model_fit.constrained[f"system@{parameter}"].constraint = constraint
 
@@ -190,7 +201,9 @@ def test_rv_model_physical_failure_preserves_candidate_rejection(
 
 @pytest.mark.parametrize(("parameter", "constraint"), NONFINITE_CONSTRAINTS)
 def test_lc_model_nonfinite_parameter_rejects_candidate(
-    lc_model_fit: AbstractLCFit, parameter: str, constraint: str,
+    lc_model_fit: AbstractLCFit,
+    parameter: str,
+    constraint: str,
 ) -> None:
     lc_model_fit.constrained[f"system@{parameter}"].constraint = constraint
 
@@ -200,7 +213,9 @@ def test_lc_model_nonfinite_parameter_rejects_candidate(
 
 @pytest.mark.parametrize(("parameter", "constraint"), NONFINITE_CONSTRAINTS)
 def test_rv_model_nonfinite_parameter_rejects_candidate(
-    rv_model_fit: AbstractRVFit, parameter: str, constraint: str,
+    rv_model_fit: AbstractRVFit,
+    parameter: str,
+    constraint: str,
 ) -> None:
     rv_model_fit.constrained[f"system@{parameter}"].constraint = constraint
 
@@ -258,7 +273,8 @@ def test_invalid_asini_metadata_uses_the_initial_exception_type(
 
 @pytest.mark.parametrize(("asini", "expected_error"), INVALID_ASINI)
 def test_model_asini_validator_exposes_the_model_exception_type(
-    asini: float, expected_error: type[Exception],
+    asini: float,
+    expected_error: type[Exception],
 ) -> None:
     with pytest.raises(expected_error) as caught:
         RadialVelocityObserverProperties.asini(asini)
@@ -271,7 +287,8 @@ def test_model_asini_validator_accepts_zero() -> None:
 
 
 def test_negative_constrained_asini_is_a_physical_rejection(
-    rv_fit: AbstractRVFit, rv_inputs: tuple[dict[str, Any], dict[str, RVData]],
+    rv_fit: AbstractRVFit,
+    rv_inputs: tuple[dict[str, Any], dict[str, RVData]],
 ) -> None:
     config, data = rv_inputs
     config["system"]["asini"] = {"constraint": "-1"}
@@ -289,7 +306,9 @@ def test_negative_constrained_asini_is_a_physical_rejection(
     ],
 )
 def test_nonfinite_constrained_asini_rejects_candidate(
-    rv_fit: AbstractRVFit, rv_inputs: tuple[dict[str, Any], dict[str, RVData]], constraint: str,
+    rv_fit: AbstractRVFit,
+    rv_inputs: tuple[dict[str, Any], dict[str, RVData]],
+    constraint: str,
 ) -> None:
     config, data = rv_inputs
     config["system"]["asini"] = {"constraint": constraint}
@@ -300,7 +319,8 @@ def test_nonfinite_constrained_asini_rejects_candidate(
 
 
 def test_lc_input_validation_rejects_a_constrained_mass_that_conversion_would_overwrite(
-    lc_fit: AbstractLCFit, lc_inputs: tuple[dict[str, Any], dict[str, LCData]],
+    lc_fit: AbstractLCFit,
+    lc_inputs: tuple[dict[str, Any], dict[str, LCData]],
 ) -> None:
     config, data = lc_inputs
     config["primary"]["mass"] = {"constraint": "-1"}

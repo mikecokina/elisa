@@ -1,25 +1,16 @@
-# keep it first
-# due to stupid astropy units/constants implementation
-from tests import set_astropy_units
+# The tests package selects Astropy constants before test-module imports.
+from pathlib import Path
+from typing import ClassVar
 
-import os.path as op
-import pytest
 import numpy as np
+import pytest
 
 from elisa import settings
+from elisa import umpy as up
+from elisa import units as u
 from elisa.observer.observer import Observer
-from tests.utils import (
-    ElisaTestCase,
-    prepare_single_system,
-    load_light_curve,
-    normalize_lc_for_unittests,
-    SOLAR_MODEL
-)
-from elisa import (
-    units as u,
-    umpy as up,
-    const as c
-)
+from tests import set_astropy_units
+from tests.utils import SOLAR_MODEL, ElisaTestCase, load_light_curve, normalize_lc_for_unittests, prepare_single_system
 
 set_astropy_units()
 
@@ -29,46 +20,35 @@ TOL = 5e-3
 @pytest.mark.requires_ld(passbands=("bolometric", "Generic.Bessell.V"))
 @pytest.mark.requires_atmosphere(atlas="ck04")
 class ComputeLightCurvesTestCase(ElisaTestCase):
-    PARAMS = {
-        'solar':
-            {
-                "mass": 1.0,
-                "t_eff": 5772 * u.K,
-                "gravity_darkening": 0.32,
-                "polar_log_g": 4.43775 * u.dex(u.cm / u.s ** 2),
-                "gamma": 0.0,
-                # "inclination": 82.5 * units.deg,
-                "inclination": 90.0 * u.deg,
-                "rotation_period": 25.38 * u.d,
-            },
+    PARAMS: ClassVar[dict[str, dict[str, float | object]]] = {
+        "solar": {
+            "mass": 1.0,
+            "t_eff": 5772 * u.K,
+            "gravity_darkening": 0.32,
+            "polar_log_g": 4.43775 * u.dex(u.cm / u.s**2),
+            "gamma": 0.0,
+            # "inclination": 82.5 * units.deg,
+            "inclination": 90.0 * u.deg,
+            "rotation_period": 25.38 * u.d,
+        },
     }
 
-    SPOTS_META = {
-        "standard":
-            [
-                {"longitude": 80,
-                 "latitude": 58,
-                 "angular_radius": 5,
-                 "temperature_factor": 0.7},
-                {"longitude": 60,
-                 "latitude": 53,
-                 "angular_radius": 6,
-                 "temperature_factor": 0.68},
-            ],
+    SPOTS_META: ClassVar[dict[str, list[dict[str, float | int]]]] = {
+        "standard": [
+            {"longitude": 80, "latitude": 58, "angular_radius": 5, "temperature_factor": 0.7},
+            {"longitude": 60, "latitude": 53, "angular_radius": 6, "temperature_factor": 0.68},
+        ],
     }
 
-    def setUp(self):
-        super(ComputeLightCurvesTestCase, self).setUp()
-        self.base_path = op.join(op.dirname(op.abspath(__file__)), "../data", "light_curves")
+    def setUp(self) -> None:
+        super().setUp()
+        self.base_path = str(Path(__file__).resolve().parent.joinpath("../data", "light_curves"))
 
-        settings.configure(**{
-            "ATM_ATLAS": "ck04",
-            "LIMB_DARKENING_LAW": "linear"
-        })
+        settings.configure(ATM_ATLAS="ck04", LIMB_DARKENING_LAW="linear")
 
-    def test_clear_single_system(self):
-        s = prepare_single_system(self.PARAMS['solar'])
-        o = Observer(passband=['Generic.Bessell.V'], system=s)
+    def test_clear_single_system(self) -> None:
+        s = prepare_single_system(self.PARAMS["solar"])
+        o = Observer(passband=["Generic.Bessell.V"], system=s)
 
         start_phs, stop_phs, step = -0.2, 1.2, 0.1
 
@@ -80,12 +60,12 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         obtained_phases = obtained[0]
         obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
 
-        self.assertTrue(np.all(up.abs(np.round(obtained_phases, 3) - np.round(expected_phases, 3)) < TOL))
-        self.assertTrue(np.all(up.abs(np.round(obtained_flux, 3) - np.round(expected_flux, 3)) < TOL))
+        assert np.all(up.abs(np.round(obtained_phases, 3) - np.round(expected_phases, 3)) < TOL)
+        assert np.all(up.abs(np.round(obtained_flux, 3) - np.round(expected_flux, 3)) < TOL)
 
-    def test_spotty_single_system(self):
-        s = prepare_single_system(self.PARAMS['solar'], spots=self.SPOTS_META["standard"])
-        o = Observer(passband=['Generic.Bessell.V'], system=s)
+    def test_spotty_single_system(self) -> None:
+        s = prepare_single_system(self.PARAMS["solar"], spots=self.SPOTS_META["standard"])
+        o = Observer(passband=["Generic.Bessell.V"], system=s)
 
         start_phs, stop_phs, step = -0.2, 1.2, 0.1
 
@@ -97,12 +77,12 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         obtained_phases = obtained[0]
         obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
 
-        self.assertTrue(np.all(up.abs(np.round(obtained_phases, 3) - np.round(expected_phases, 3)) < TOL))
-        self.assertTrue(np.all(up.abs(np.round(obtained_flux, 3) - np.round(expected_flux, 3)) < TOL))
+        assert np.all(up.abs(np.round(obtained_phases, 3) - np.round(expected_phases, 3)) < TOL)
+        assert np.all(up.abs(np.round(obtained_flux, 3) - np.round(expected_flux, 3)) < TOL)
 
-    def test_solar_constant(self):
+    def test_solar_constant(self) -> None:
         s = prepare_single_system(SOLAR_MODEL)
-        o = Observer(passband=['bolometric'], system=s)
+        o = Observer(passband=["bolometric"], system=s)
 
         start_phs, stop_phs, step = 0.0, 0.1, 0.1
 

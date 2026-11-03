@@ -5,13 +5,10 @@ from __future__ import annotations
 import inspect
 import json
 import pickle
-from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from copy import deepcopy
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
-
-from elisa.base.error import ElisaPredictionAlignmentError
 
 import numpy as np
 import pytest
@@ -26,7 +23,7 @@ from elisa.analytics.binary_fit import lc_prediction, least_squares, mcmc, share
 from elisa.analytics.binary_fit.shared import lc_r_squared
 from elisa.analytics.models import cost_fns, lc
 from elisa.analytics.params import parameters as p
-from elisa.base.error import ElisaAnalyticsDataError, ElisaAnalyticsTaskError
+from elisa.base.error import ElisaAnalyticsDataError, ElisaAnalyticsTaskError, ElisaPredictionAlignmentError
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
 from elisa.conf.enums import SamplingMethod
@@ -41,6 +38,14 @@ from tests.tests_analytics.fitting_helpers import (
     rv_problem,
     synthesize_lc,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
+
+    import scipy.optimize._optimize
+    from numpy.typing import NDArray
+
+    import elisa.conf.enums
 
 
 @contextmanager
@@ -78,7 +83,7 @@ def capture_fit(callback: Callable, *args, **kwargs) -> tuple[dict[str, Any], Op
     """Run the real SciPy solver and retain its diagnostics alongside ELISA's report."""
     results = []
 
-    def solve_and_record(*solver_args, **solver_options):
+    def solve_and_record(*solver_args, **solver_options) -> scipy.optimize._optimize.OptimizeResult:
         result = solve(*solver_args, **solver_options)
         results.append(result)
         return result
@@ -90,7 +95,8 @@ def capture_fit(callback: Callable, *args, **kwargs) -> tuple[dict[str, Any], Op
 
 
 @pytest.mark.requires_ld(passbands=(V, B, "bolometric"), laws=("linear",))
-def test_static_validation_once_per_setup_and_reused_by_evaluations(science_settings: None) -> None:
+@pytest.mark.usefixtures("science_settings")
+def test_static_validation_once_per_setup_and_reused_by_evaluations() -> None:
     with validation_calls() as calls:
         fits = prepare_lc_fits({V: LC_PHASES, B: [0.25]})
         assert len(calls) == 2
@@ -128,7 +134,8 @@ def test_static_validation_once_per_setup_and_reused_by_evaluations(science_sett
 
 
 @pytest.mark.requires_ld(passbands=(V, B, "bolometric"), laws=("linear",))
-def test_second_setup_replaces_and_validates_data(science_settings: None) -> None:
+@pytest.mark.usefixtures("science_settings")
+def test_second_setup_replaces_and_validates_data() -> None:
     fits = prepare_lc_fits({V: LC_PHASES})
     cfg, data = lc_problem()
     with validation_calls() as calls:
@@ -165,7 +172,8 @@ def test_second_setup_replaces_and_validates_data(science_settings: None) -> Non
 
 
 @pytest.mark.requires_ld(passbands=(V, "bolometric"), laws=("linear",))
-def test_normalization_and_explicit_manual_revalidation(science_settings: None) -> None:
+@pytest.mark.usefixtures("science_settings")
+def test_normalization_and_explicit_manual_revalidation() -> None:
     fit = prepare_lc_fits({V: LC_PHASES})[0]
     with validation_calls() as calls:
         fit.normalize_data(kind="average")
@@ -185,10 +193,11 @@ def test_normalization_and_explicit_manual_revalidation(science_settings: None) 
 
 @pytest.mark.parametrize("defect", ["short", "column", "passband"])
 @pytest.mark.requires_ld(passbands=(V, "bolometric"), laws=("linear",))
-def test_dynamic_malformed_real_synthesis_output_is_rejected(science_settings: None, defect) -> None:
+@pytest.mark.usefixtures("science_settings")
+def test_dynamic_malformed_real_synthesis_output_is_rejected(defect: str) -> None:
     fit = prepare_lc_fits({V: LC_PHASES})[0]
 
-    def malformed(*args, **kwargs):
+    def malformed(*args, **kwargs) -> dict[str, NDArray[np.float64]]:
         raw = lc.synthetic_binary(*args, **kwargs)
         if defect == "passband":
             return {"other": raw[V]}
@@ -201,7 +210,8 @@ def test_dynamic_malformed_real_synthesis_output_is_rejected(science_settings: N
 
 
 @pytest.mark.requires_ld(passbands=(V, B, "bolometric"), laws=("linear",))
-def test_lc_parameter_recovery_result_and_residual_jacobian(science_settings: None) -> None:
+@pytest.mark.usefixtures("science_settings")
+def test_lc_parameter_recovery_result_and_residual_jacobian() -> None:
     cfg, data = lc_problem()
     fit = least_squares.DetachedLightCurveFit()
     fit.atmosphere_model = fit.limb_darkening_coefficients = None
@@ -222,7 +232,9 @@ def test_lc_parameter_recovery_result_and_residual_jacobian(science_settings: No
     assert_allclose(report["system"]["inclination"]["value"], 85.0, atol=0.03)
     assert_allclose(report["primary"]["t_eff"]["value"], 6500.0, atol=5.0)
     assert_allclose(
-        report["secondary"]["t_eff"]["value"], report["primary"]["t_eff"]["value"] * 0.7692307692307693, atol=1e-10
+        report["secondary"]["t_eff"]["value"],
+        report["primary"]["t_eff"]["value"] * 0.7692307692307693,
+        atol=1e-10,
     )
     assert report["system"]["period"]["value"] == 3.0
     assert report["system"]["period"]["fixed"]
@@ -232,7 +244,7 @@ def test_lc_parameter_recovery_result_and_residual_jacobian(science_settings: No
 
 
 @pytest.mark.parametrize("constrained", [False, True])
-def test_rv_residuals_parameter_recovery_and_results(constrained) -> None:
+def test_rv_residuals_parameter_recovery_and_results(constrained: bool) -> None:
     cfg, data = rv_problem(constrained)
     fit = least_squares.CentralRadialVelocity()
     fit.set_up(p.BinaryInitialParameters(**deepcopy(cfg)), data, observer_system_cls=RadialVelocitySystem)
@@ -270,7 +282,8 @@ def test_robust_rv_loss_acts_on_each_standardized_observation() -> None:
 
 
 @pytest.mark.requires_ld(passbands=(V, B, "bolometric"), laws=("linear",))
-def test_lc_invalid_penalty_has_fixed_length_and_finite_linear_cost(science_settings: None) -> None:
+@pytest.mark.usefixtures("science_settings")
+def test_lc_invalid_penalty_has_fixed_length_and_finite_linear_cost() -> None:
     fit = prepare_lc_fits({V: LC_PHASES, B: [0.25]})[0]
     xn = normalized(fit)
     fit.fixed["primary@surface_potential"].value = 0.1
@@ -300,13 +313,18 @@ def test_rv_invalid_physical_synthesis_returns_existing_penalty() -> None:
     fit.set_up(p.BinaryInitialParameters(**cfg), data, observer_system_cls=RadialVelocitySystem)
     fit.fixed["system@eccentricity"].value = 1.1
     count = sum(fit.num_of_points.values())
-    assert_array_equal(fit.central_rv_model_to_fit(normalized(fit)),
-                       np.full(count, np.sqrt(const.MAX_USABLE_FLOAT / count)))
+    assert_array_equal(
+        fit.central_rv_model_to_fit(normalized(fit)),
+        np.full(count, np.sqrt(const.MAX_USABLE_FLOAT / count)),
+    )
 
 
 @pytest.mark.parametrize("strategy", list(SamplingMethod))
 @pytest.mark.requires_ld(passbands=(V, "bolometric"), laws=("linear",))
-def test_sampling_enum_matches_legacy_strings_for_both_fitters(science_settings: None, strategy) -> None:
+@pytest.mark.usefixtures("science_settings")
+def test_sampling_enum_matches_legacy_strings_for_both_fitters(
+    strategy: elisa.conf.enums.SamplingMethod,
+) -> None:
     enum_fits = prepare_lc_fits({V: LC_PHASES}, 4, samples=strategy)
     legacy_fits = prepare_lc_fits({V: LC_PHASES}, 4, samples=strategy.value)
     for enum_fit, legacy_fit in zip(enum_fits, legacy_fits, strict=True):
@@ -317,11 +335,12 @@ def test_sampling_enum_matches_legacy_strings_for_both_fitters(science_settings:
 
 
 @pytest.mark.requires_ld(passbands=(V, "bolometric"), laws=("linear",))
-def test_sampling_enum_defaults_serialization_and_invalid_strategy(science_settings: None) -> None:
+@pytest.mark.usefixtures("science_settings")
+def test_sampling_enum_defaults_serialization_and_invalid_strategy() -> None:
     assert inspect.signature(least_squares.LightCurveFit.fit).parameters["samples"].default is SamplingMethod.UNIFORM
     assert inspect.signature(mcmc.LightCurveFit.fit).parameters["samples"].default is SamplingMethod.UNIFORM
     assert json.dumps(SamplingMethod.ADAPTIVE) == '"adaptive"'
     assert str(SamplingMethod.UNIFORM) == "uniform"
     assert pickle.loads(pickle.dumps(SamplingMethod.ADAPTIVE)) is SamplingMethod.ADAPTIVE
-    with pytest.raises(ElisaAnalyticsTaskError, match="SamplingMethod.UNIFORM"):
+    with pytest.raises(ElisaAnalyticsTaskError, match=r"SamplingMethod.UNIFORM"):
         prepare_lc_fits({V: LC_PHASES}, 4, samples="unknown")

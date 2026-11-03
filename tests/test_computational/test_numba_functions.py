@@ -1,21 +1,23 @@
 import numpy as np
 from numpy.testing import assert_allclose
-from elisa.numba_functions.reflection_effect import gamma_primary, gamma_secondary
 
 from elisa.numba_functions.operations import (
-    create_distance_vector_matrix,
     calculate_lengths_in_3d_array,
+    create_distance_vector_matrix,
     divide_points_in_array_by_constants,
 )
+from elisa.numba_functions.reflection_effect import gamma_primary, gamma_secondary
 
 
-def test_gamma_primary_basic():
+def test_gamma_primary_basic() -> None:
     """Test gamma_primary with small arrays."""
     normals = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
-    join_vector = np.array([
-        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-        [[0.0, 1.0, 0.0], [1.0, 0.0, 0.0]],
-    ])
+    join_vector = np.array(
+        [
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            [[0.0, 1.0, 0.0], [1.0, 0.0, 0.0]],
+        ],
+    )
     # gamma_primary[ii, jj] = normals[ii] . join_vector[ii, jj]
     # [0, 0]: [1,0,0] . [1,0,0] = 1.0
     # [0, 1]: [1,0,0] . [0,1,0] = 0.0
@@ -26,13 +28,15 @@ def test_gamma_primary_basic():
     assert_allclose(result, expected)
 
 
-def test_gamma_secondary_basic():
+def test_gamma_secondary_basic() -> None:
     """Test gamma_secondary with small arrays."""
     normals = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
-    join_vector = np.array([
-        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-        [[0.0, 1.0, 0.0], [1.0, 0.0, 0.0]],
-    ])
+    join_vector = np.array(
+        [
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            [[0.0, 1.0, 0.0], [1.0, 0.0, 0.0]],
+        ],
+    )
     # gamma_secondary[ii, jj] = -normals[jj] . join_vector[ii, jj]
     # [0, 0]: -[1,0,0] . [1,0,0] = -1.0
     # [0, 1]: -[0,1,0] . [0,1,0] = -1.0
@@ -43,7 +47,7 @@ def test_gamma_secondary_basic():
     assert_allclose(result, expected)
 
 
-def test_create_distance_vector_matrix_basic():
+def test_create_distance_vector_matrix_basic() -> None:
     """Test create_distance_vector_matrix with simple known inputs.
 
     :returns: None
@@ -59,16 +63,18 @@ def test_create_distance_vector_matrix_basic():
     # [0, 1]: [0, 1, 0] - [0, 0, 0] = [0, 1, 0]
     # [1, 0]: [1, 0, 0] - [1, 0, 0] = [0, 0, 0]
     # [1, 1]: [0, 1, 0] - [1, 0, 0] = [-1, 1, 0]
-    expected = np.array([
-        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-        [[0.0, 0.0, 0.0], [-1.0, 1.0, 0.0]],
-    ])
+    expected = np.array(
+        [
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            [[0.0, 0.0, 0.0], [-1.0, 1.0, 0.0]],
+        ],
+    )
 
     assert_allclose(result, expected)
     assert result.shape == (2, 2, 3)
 
 
-def test_create_distance_vector_matrix_shape():
+def test_create_distance_vector_matrix_shape() -> None:
     """Test create_distance_vector_matrix output shape is correct.
 
     :returns: None
@@ -82,16 +88,18 @@ def test_create_distance_vector_matrix_shape():
     assert result.shape == (5, 7, 3)
 
 
-def test_calculate_lengths_in_3d_array_basic():
+def test_calculate_lengths_in_3d_array_basic() -> None:
     """Test calculate_lengths_in_3d_array with known vectors.
 
     :returns: None
     :rtype: None
     """
-    matrix = np.array([
-        [[3.0, 4.0, 0.0], [1.0, 0.0, 0.0]],
-        [[0.0, 0.0, 5.0], [2.0, 0.0, 0.0]],
-    ])
+    matrix = np.array(
+        [
+            [[3.0, 4.0, 0.0], [1.0, 0.0, 0.0]],
+            [[0.0, 0.0, 5.0], [2.0, 0.0, 0.0]],
+        ],
+    )
 
     result = calculate_lengths_in_3d_array(matrix)
 
@@ -106,34 +114,42 @@ def test_calculate_lengths_in_3d_array_basic():
     assert result.shape == (2, 2)
 
 
-def test_calculate_lengths_in_3d_array_unit_vectors():
+def test_calculate_lengths_in_3d_array_unit_vectors() -> None:
     """Test calculate_lengths_in_3d_array with unit vectors."""
-    matrix = np.array([
-        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-        [[0.0, 0.0, 1.0], [1.0, 1.0, 0.0]],
-    ])
+    matrix = np.array(
+        [
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            [[0.0, 0.0, 1.0], [1.0, 1.0, 0.0]],
+        ],
+    )
 
     result = calculate_lengths_in_3d_array(matrix)
 
-    expected = np.array([
-        [1.0, 1.0],
-        [1.0, np.sqrt(2.0)],
-    ])
+    expected = np.array(
+        [
+            [1.0, 1.0],
+            [1.0, np.sqrt(2.0)],
+        ],
+    )
 
     assert_allclose(result, expected)
 
 
-def test_divide_points_in_array_by_constants_basic():
+def test_divide_points_in_array_by_constants_basic() -> None:
     """Test divide_points_in_array_by_constants with known values."""
-    matrix = np.array([
-        [[2.0, 4.0, 6.0], [10.0, 20.0, 30.0]],
-        [[4.0, 8.0, 12.0], [5.0, 10.0, 15.0]],
-    ])
+    matrix = np.array(
+        [
+            [[2.0, 4.0, 6.0], [10.0, 20.0, 30.0]],
+            [[4.0, 8.0, 12.0], [5.0, 10.0, 15.0]],
+        ],
+    )
 
-    coefficients = np.array([
-        [2.0, 10.0],
-        [4.0, 5.0],
-    ])
+    coefficients = np.array(
+        [
+            [2.0, 10.0],
+            [4.0, 5.0],
+        ],
+    )
 
     result = divide_points_in_array_by_constants(matrix, coefficients)
 
@@ -142,28 +158,34 @@ def test_divide_points_in_array_by_constants_basic():
     # [0, 1]: [10/10, 20/10, 30/10] = [1, 2, 3]
     # [1, 0]: [4/4, 8/4, 12/4] = [1, 2, 3]
     # [1, 1]: [5/5, 10/5, 15/5] = [1, 2, 3]
-    expected = np.array([
-        [[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]],
-        [[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]],
-    ])
+    expected = np.array(
+        [
+            [[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]],
+            [[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]],
+        ],
+    )
 
     assert_allclose(result, expected)
     assert result.shape == matrix.shape
 
 
-def test_divide_points_in_array_by_constants_normalization():
+def test_divide_points_in_array_by_constants_normalization() -> None:
     """Test divide_points_in_array_by_constants for vector normalization."""
     # Create vectors with known lengths
-    matrix = np.array([
-        [[3.0, 4.0, 0.0], [1.0, 0.0, 0.0]],
-        [[0.0, 0.0, 5.0], [2.0, 0.0, 0.0]],
-    ])
+    matrix = np.array(
+        [
+            [[3.0, 4.0, 0.0], [1.0, 0.0, 0.0]],
+            [[0.0, 0.0, 5.0], [2.0, 0.0, 0.0]],
+        ],
+    )
 
     # Use lengths as coefficients to normalize
-    coefficients = np.array([
-        [5.0, 1.0],  # lengths of vectors in matrix
-        [5.0, 2.0],
-    ])
+    coefficients = np.array(
+        [
+            [5.0, 1.0],  # lengths of vectors in matrix
+            [5.0, 2.0],
+        ],
+    )
 
     result = divide_points_in_array_by_constants(matrix, coefficients)
 
@@ -174,11 +196,13 @@ def test_divide_points_in_array_by_constants_normalization():
     assert_allclose(result_lengths, expected_lengths)
 
 
-def test_divide_points_in_array_by_constants_dtype():
+def test_divide_points_in_array_by_constants_dtype() -> None:
     """Test divide_points_in_array_by_constants returns float64 dtype."""
-    matrix = np.array([
-        [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]],
-    ])
+    matrix = np.array(
+        [
+            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]],
+        ],
+    )
     coefficients = np.array([[2.0, 2.0]])
 
     result = divide_points_in_array_by_constants(matrix, coefficients)

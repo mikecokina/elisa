@@ -2,25 +2,30 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
 from copy import deepcopy
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from numpy.typing import NDArray
 
 from elisa import const
 from elisa import units as u
 from elisa.analytics import LCData, RVData
 from elisa.analytics.binary_fit import least_squares, mcmc
-from elisa.analytics.binary_fit.shared import AbstractFit, AbstractLCFit
 from elisa.analytics.models import lc, rv
 from elisa.analytics.params import parameters as p
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
 from elisa.conf.enums import SamplingMethod
 from elisa.observer.observer import Observer
-from elisa.types import AstropyUnit
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+
+    from numpy.typing import NDArray
+
+    from elisa.analytics.binary_fit.shared import AbstractFit, AbstractLCFit
+    from elisa.types import AstropyUnit
+
 
 V, B = "Generic.Bessell.V", "Generic.Bessell.B"
 LC_PHASES = [0.0, 0.04, 0.12, 0.25, 0.47, 0.5, 0.6, 0.8]
@@ -93,7 +98,11 @@ def rv_problem(constrained: bool = False, *, outlier: bool = False) -> tuple[dic
             curve = curve.copy()
             curve[5] += 20000.0
         data[component] = RVData(
-            x_data=xs, y_data=curve, y_err=np.full(len(xs), 100.0), x_unit=u.dimensionless_unscaled, y_unit=u.m / u.s
+            x_data=xs,
+            y_data=curve,
+            y_err=np.full(len(xs), 100.0),
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.m / u.s,
         )
     return cfg, data
 
@@ -171,8 +180,8 @@ def prepare_lc_fits(
     if free_noise:
         cfg["nuisance"]["ln_f"] = {"value": 0.0, "fixed": False, "min": -5.0, "max": 1.0}
     data = {}
-    for band, xs in grids.items():
-        xs = np.asarray(xs)
+    for band, phases in grids.items():
+        xs = np.asarray(phases)
         raw = synthesize_lc(xs, [band], _physical)[band]
         data[band] = LCData(
             x_data=2450000.0 + 3 * np.asarray(xs) if jd else np.asarray(xs),

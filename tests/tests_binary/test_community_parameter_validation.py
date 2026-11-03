@@ -33,7 +33,8 @@ def community_binary_config() -> dict[str, Any]:
     ],
 )
 def test_nonpositive_ratio_raises_model_error_before_mass_arithmetic(
-    community_binary_config: dict[str, Any], mass_ratio: float,
+    community_binary_config: dict[str, Any],
+    mass_ratio: float,
 ) -> None:
     community_binary_config["system"]["mass_ratio"] = mass_ratio
 
@@ -51,7 +52,8 @@ def test_nonpositive_ratio_raises_model_error_before_mass_arithmetic(
     ],
 )
 def test_nonfinite_ratio_raises_model_error(
-    community_binary_config: dict[str, Any], mass_ratio: float,
+    community_binary_config: dict[str, Any],
+    mass_ratio: float,
 ) -> None:
     community_binary_config["system"]["mass_ratio"] = mass_ratio
 

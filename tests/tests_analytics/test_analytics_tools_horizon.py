@@ -1,4 +1,5 @@
 """Unit tests for elisa.analytics.tools.horizon module."""
+
 from __future__ import annotations
 
 import unittest
@@ -29,10 +30,10 @@ class TestEstimateAnalyticHorizon(ElisaTestCase):
         """
         horizon = estimate_analytic_horizon()
 
-        self.assertIsInstance(horizon, np.ndarray)
-        self.assertEqual(horizon.ndim, 2)
-        self.assertEqual(horizon.shape[1], 2)  # Y and Z coordinates
-        self.assertGreater(horizon.shape[0], 0)  # At least some points
+        assert isinstance(horizon, np.ndarray)
+        assert (horizon.ndim) == (2)
+        assert (horizon.shape[1]) == (2)  # Y and Z coordinates
+        assert (horizon.shape[0]) > (0)  # At least some points
 
     def test_estimate_analytic_horizon_at_phase_zero(self) -> None:
         """Test horizon estimation at primary eclipse phase.
@@ -44,9 +45,9 @@ class TestEstimateAnalyticHorizon(ElisaTestCase):
         """
         horizon = estimate_analytic_horizon(phase=0.0)
 
-        self.assertIsInstance(horizon, np.ndarray)
-        self.assertEqual(horizon.ndim, 2)
-        self.assertGreater(horizon.shape[0], 0)
+        assert isinstance(horizon, np.ndarray)
+        assert (horizon.ndim) == (2)
+        assert (horizon.shape[0]) > (0)
 
     def test_estimate_analytic_horizon_at_phase_half(self) -> None:
         """Test horizon estimation at secondary eclipse phase.
@@ -58,8 +59,8 @@ class TestEstimateAnalyticHorizon(ElisaTestCase):
         """
         horizon = estimate_analytic_horizon(phase=0.5)
 
-        self.assertIsInstance(horizon, np.ndarray)
-        self.assertGreater(horizon.shape[0], 0)
+        assert isinstance(horizon, np.ndarray)
+        assert (horizon.shape[0]) > (0)
 
     def test_estimate_analytic_horizon_polar_coords(self) -> None:
         """Test horizon estimation in polar coordinates.
@@ -71,11 +72,11 @@ class TestEstimateAnalyticHorizon(ElisaTestCase):
         """
         horizon = estimate_analytic_horizon(polar=True)
 
-        self.assertIsInstance(horizon, np.ndarray)
+        assert isinstance(horizon, np.ndarray)
         # Check if angles are sorted
         if horizon.shape[0] > 1:
             angles = horizon[:, 1]
-            self.assertTrue(np.all(angles[:-1] <= angles[1:]))
+            assert np.all(angles[:-1] <= angles[1:])
 
     def test_estimate_analytic_horizon_with_cosine_precision(self) -> None:
         """Test horizon estimation with cosine precision calculation.
@@ -87,11 +88,11 @@ class TestEstimateAnalyticHorizon(ElisaTestCase):
         """
         result = estimate_analytic_horizon(cosine_precision=True)
 
-        self.assertIsInstance(result, tuple)
-        self.assertEqual(len(result), 2)
+        assert isinstance(result, tuple)
+        assert (len(result)) == (2)
         horizon, precision = result
-        self.assertIsInstance(horizon, np.ndarray)
-        self.assertIsInstance(precision, (int, float, type(None)))
+        assert isinstance(horizon, np.ndarray)
+        assert isinstance(precision, (int, float, type(None)))
 
     def test_estimate_analytic_horizon_3d_points(self) -> None:
         """Test horizon estimation returning 3D points.
@@ -102,9 +103,9 @@ class TestEstimateAnalyticHorizon(ElisaTestCase):
         """
         horizon_3d = estimate_analytic_horizon(_3d=True)
 
-        self.assertIsInstance(horizon_3d, np.ndarray)
-        self.assertEqual(horizon_3d.ndim, 2)
-        self.assertEqual(horizon_3d.shape[1], 3)  # X, Y, Z coordinates
+        assert isinstance(horizon_3d, np.ndarray)
+        assert (horizon_3d.ndim) == (2)
+        assert (horizon_3d.shape[1]) == (3)  # X, Y, Z coordinates
 
 
 class TestGetAnalyticsHorizon(ElisaTestCase):
@@ -120,10 +121,10 @@ class TestGetAnalyticsHorizon(ElisaTestCase):
         """
         horizon = get_analytics_horizon()
 
-        self.assertIsInstance(horizon, np.ndarray)
-        self.assertEqual(horizon.ndim, 2)
-        self.assertEqual(horizon.shape[1], 2)  # Y and Z coordinates
-        self.assertGreater(horizon.shape[0], 0)
+        assert isinstance(horizon, np.ndarray)
+        assert (horizon.ndim) == (2)
+        assert (horizon.shape[1]) == (2)  # Y and Z coordinates
+        assert (horizon.shape[0]) > (0)
 
     def test_get_analytics_horizon_at_phase_zero(self) -> None:
         """Test analytics horizon at primary eclipse phase.
@@ -135,8 +136,8 @@ class TestGetAnalyticsHorizon(ElisaTestCase):
         """
         horizon = get_analytics_horizon(phase=0.0)
 
-        self.assertIsInstance(horizon, np.ndarray)
-        self.assertGreater(horizon.shape[0], 0)
+        assert isinstance(horizon, np.ndarray)
+        assert (horizon.shape[0]) > (0)
 
     def test_get_analytics_horizon_at_phase_quarter(self) -> None:
         """Test analytics horizon at quarter orbital phase.
@@ -148,8 +149,8 @@ class TestGetAnalyticsHorizon(ElisaTestCase):
         """
         horizon = get_analytics_horizon(phase=0.25)
 
-        self.assertIsInstance(horizon, np.ndarray)
-        self.assertGreater(horizon.shape[0], 0)
+        assert isinstance(horizon, np.ndarray)
+        assert (horizon.shape[0]) > (0)
 
     def test_get_analytics_horizon_tolerance_effect(self) -> None:
         """Test that tolerance parameter affects horizon computation.
@@ -162,10 +163,10 @@ class TestGetAnalyticsHorizon(ElisaTestCase):
         horizon_loose = get_analytics_horizon(tol=1e-2)
         horizon_tight = get_analytics_horizon(tol=1e-4)
 
-        self.assertIsInstance(horizon_loose, np.ndarray)
-        self.assertIsInstance(horizon_tight, np.ndarray)
-        self.assertGreater(horizon_tight.shape[0], 0)
-        self.assertGreater(horizon_loose.shape[0], 0)
+        assert isinstance(horizon_loose, np.ndarray)
+        assert isinstance(horizon_tight, np.ndarray)
+        assert (horizon_tight.shape[0]) > (0)
+        assert (horizon_loose.shape[0]) > (0)
 
     def test_get_analytics_horizon_polar_coords(self) -> None:
         """Test analytics horizon in polar coordinates.
@@ -177,11 +178,11 @@ class TestGetAnalyticsHorizon(ElisaTestCase):
         """
         horizon = get_analytics_horizon(polar=True)
 
-        self.assertIsInstance(horizon, np.ndarray)
+        assert isinstance(horizon, np.ndarray)
         # Check if angles are sorted
         if horizon.shape[0] > 1:
             angles = horizon[:, 1]
-            self.assertTrue(np.all(angles[:-1] <= angles[1:]))
+            assert np.all(angles[:-1] <= angles[1:])
 
     def test_get_analytics_horizon_density_effect(self) -> None:
         """Test that density parameters affect computation.
@@ -193,8 +194,8 @@ class TestGetAnalyticsHorizon(ElisaTestCase):
         """
         horizon = get_analytics_horizon(phi_density=50, theta_density=500)
 
-        self.assertIsInstance(horizon, np.ndarray)
-        self.assertGreater(horizon.shape[0], 0)
+        assert isinstance(horizon, np.ndarray)
+        assert (horizon.shape[0]) > (0)
 
 
 class TestGetDiscreteHorizon(ElisaTestCase):
@@ -210,12 +211,12 @@ class TestGetDiscreteHorizon(ElisaTestCase):
         """
         result = get_discrete_horizon()
 
-        self.assertIsInstance(result, tuple)
-        self.assertEqual(len(result), 2)
+        assert isinstance(result, tuple)
+        assert (len(result)) == (2)
         horizon, origin_horizon = result
-        self.assertIsInstance(horizon, np.ndarray)
-        self.assertIsInstance(origin_horizon, np.ndarray)
-        self.assertGreater(horizon.shape[0], origin_horizon.shape[0])
+        assert isinstance(horizon, np.ndarray)
+        assert isinstance(origin_horizon, np.ndarray)
+        assert (horizon.shape[0]) > (origin_horizon.shape[0])
 
     def test_get_discrete_horizon_at_phase_zero(self) -> None:
         """Test discrete horizon at primary eclipse phase.
@@ -227,10 +228,10 @@ class TestGetDiscreteHorizon(ElisaTestCase):
         """
         horizon, origin_horizon = get_discrete_horizon(phase=0.0)
 
-        self.assertIsInstance(horizon, np.ndarray)
-        self.assertIsInstance(origin_horizon, np.ndarray)
-        self.assertGreater(horizon.shape[0], 0)
-        self.assertGreater(origin_horizon.shape[0], 0)
+        assert isinstance(horizon, np.ndarray)
+        assert isinstance(origin_horizon, np.ndarray)
+        assert (horizon.shape[0]) > (0)
+        assert (origin_horizon.shape[0]) > (0)
 
     def test_get_discrete_horizon_at_phase_quarter(self) -> None:
         """Test discrete horizon at quarter orbital phase.
@@ -240,10 +241,10 @@ class TestGetDiscreteHorizon(ElisaTestCase):
 
         :return: None
         """
-        horizon, origin_horizon = get_discrete_horizon(phase=0.25)
+        horizon, _origin_horizon = get_discrete_horizon(phase=0.25)
 
-        self.assertIsInstance(horizon, np.ndarray)
-        self.assertGreater(horizon.shape[0], 0)
+        assert isinstance(horizon, np.ndarray)
+        assert (horizon.shape[0]) > (0)
 
     def test_get_discrete_horizon_polar_coords(self) -> None:
         """Test discrete horizon in polar coordinates.
@@ -255,15 +256,15 @@ class TestGetDiscreteHorizon(ElisaTestCase):
         """
         horizon, origin_horizon = get_discrete_horizon(polar=True)
 
-        self.assertIsInstance(horizon, np.ndarray)
-        self.assertIsInstance(origin_horizon, np.ndarray)
+        assert isinstance(horizon, np.ndarray)
+        assert isinstance(origin_horizon, np.ndarray)
         # Check if angles are sorted
         if horizon.shape[0] > 1:
             angles = horizon[:, 1]
-            self.assertTrue(np.all(angles[:-1] <= angles[1:]))
+            assert np.all(angles[:-1] <= angles[1:])
         if origin_horizon.shape[0] > 1:
             angles = origin_horizon[:, 1]
-            self.assertTrue(np.all(angles[:-1] <= angles[1:]))
+            assert np.all(angles[:-1] <= angles[1:])
 
     def test_get_discrete_horizon_cartesian_coords(self) -> None:
         """Test discrete horizon in Cartesian coordinates.
@@ -275,11 +276,10 @@ class TestGetDiscreteHorizon(ElisaTestCase):
         """
         horizon, origin_horizon = get_discrete_horizon(polar=False)
 
-        self.assertIsInstance(horizon, np.ndarray)
-        self.assertEqual(horizon.shape[1], 2)  # Y and Z coordinates
-        self.assertEqual(origin_horizon.shape[1], 2)
+        assert isinstance(horizon, np.ndarray)
+        assert (horizon.shape[1]) == (2)  # Y and Z coordinates
+        assert (origin_horizon.shape[1]) == (2)
 
 
 if __name__ == "__main__":
     unittest.main()
-

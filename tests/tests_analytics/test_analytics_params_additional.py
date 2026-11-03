@@ -1,7 +1,7 @@
 """Additional comprehensive tests for analytics parameters module."""
 
-
 import numpy as np
+import pytest
 
 from elisa import units as u
 from elisa.analytics.params import parameters
@@ -15,7 +15,7 @@ set_astropy_units()
 class InitialParameterTestCase(ElisaTestCase):
     """Unit tests for InitialParameter class."""
 
-    def test_initialization_with_value(self):
+    def test_initialization_with_value(self) -> None:
         """Test basic initialization of InitialParameter with value."""
         from elisa.analytics.params.transform import StarInitialProperties
 
@@ -29,12 +29,12 @@ class InitialParameterTestCase(ElisaTestCase):
             max=6000.0,
         )
 
-        self.assertEqual(param.param, "t_eff")
-        self.assertEqual(param.value, 5000.0)
-        self.assertFalse(param.fixed)
-        self.assertIsNone(param.constraint)
+        assert (param.param) == ("t_eff")
+        assert (param.value) == (5000.0)
+        assert not (param.fixed)
+        assert (param.constraint) is None
 
-    def test_initialization_with_constraint(self):
+    def test_initialization_with_constraint(self) -> None:
         """Test initialization with constraint instead of value."""
         from elisa.analytics.params.transform import BinaryInitialProperties
 
@@ -47,11 +47,11 @@ class InitialParameterTestCase(ElisaTestCase):
             unit=u.solRad,
         )
 
-        self.assertEqual(param.param, "semi_major_axis")
-        self.assertIsNone(param.value)
-        self.assertEqual(param.constraint, "16.0 / sin(system@inclination)")
+        assert (param.param) == ("semi_major_axis")
+        assert (param.value) is None
+        assert (param.constraint) == ("16.0 / sin(system@inclination)")
 
-    def test_unit_conversion(self):
+    def test_unit_conversion(self) -> None:
         """Test that units are converted correctly."""
         from elisa.analytics.params.transform import BinaryInitialProperties
 
@@ -68,7 +68,7 @@ class InitialParameterTestCase(ElisaTestCase):
         # gamma should be converted from km/s to m/s (10 km/s = 10000 m/s)
         self.assertAlmostEqual(param.value, 10000.0, places=2)
 
-    def test_fixed_parameter_clears_bounds(self):
+    def test_fixed_parameter_clears_bounds(self) -> None:
         """Test that fixed parameters have None bounds and sigma."""
         from elisa.analytics.params.transform import StarInitialProperties
 
@@ -83,11 +83,11 @@ class InitialParameterTestCase(ElisaTestCase):
             sigma=0.01,
         )
 
-        self.assertIsNone(param.min)
-        self.assertIsNone(param.max)
-        self.assertIsNone(param.sigma)
+        assert (param.min) is None
+        assert (param.max) is None
+        assert (param.sigma) is None
 
-    def test_copy_method(self):
+    def test_copy_method(self) -> None:
         """Test that copy creates independent deep copy."""
         from elisa.analytics.params.transform import StarInitialProperties
 
@@ -107,10 +107,10 @@ class InitialParameterTestCase(ElisaTestCase):
         copied.value = 6000.0
 
         # Original should be unchanged
-        self.assertEqual(original.value, 5000.0)
-        self.assertEqual(copied.value, 6000.0)
+        assert (original.value) == (5000.0)
+        assert (copied.value) == (6000.0)
 
-    def test_to_dict_method(self):
+    def test_to_dict_method(self) -> None:
         """Test conversion to dictionary."""
         from elisa.analytics.params.transform import StarInitialProperties
 
@@ -127,12 +127,12 @@ class InitialParameterTestCase(ElisaTestCase):
 
         param_dict = param.to_dict()
 
-        self.assertEqual(param_dict["param"], "t_eff")
-        self.assertEqual(param_dict["value"], 5000.0)
-        self.assertFalse(param_dict["fixed"])
-        self.assertEqual(param_dict["sigma"], 100.0)
+        assert (param_dict["param"]) == ("t_eff")
+        assert (param_dict["value"]) == (5000.0)
+        assert not (param_dict["fixed"])
+        assert (param_dict["sigma"]) == (100.0)
 
-    def test_repr_and_str(self):
+    def test_repr_and_str(self) -> None:
         """Test string representation."""
         from elisa.analytics.params.transform import StarInitialProperties
 
@@ -147,14 +147,14 @@ class InitialParameterTestCase(ElisaTestCase):
         )
 
         repr_str = repr(param)
-        self.assertIn("t_eff", repr_str)
-        self.assertIn("5000", repr_str)
+        assert ("t_eff") in (repr_str)
+        assert ("5000") in (repr_str)
 
 
 class ParameterMetaTestCase(ElisaTestCase):
     """Unit tests for ParameterMeta class."""
 
-    def test_initialization(self):
+    def test_initialization(self) -> None:
         """Test ParameterMeta initialization."""
         meta = parameters.ParameterMeta(
             param="t_eff",
@@ -167,12 +167,12 @@ class ParameterMetaTestCase(ElisaTestCase):
             constraint=None,
         )
 
-        self.assertEqual(meta.param, "t_eff")
-        self.assertEqual(meta.value, 5000.0)
-        self.assertEqual(meta.unit, u.K)
-        self.assertFalse(meta.fixed)
+        assert (meta.param) == ("t_eff")
+        assert (meta.value) == (5000.0)
+        assert (meta.unit) == (u.K)
+        assert not (meta.fixed)
 
-    def test_to_dict_method(self):
+    def test_to_dict_method(self) -> None:
         """Test ParameterMeta to_dict conversion."""
         meta = parameters.ParameterMeta(
             param="t_eff",
@@ -187,15 +187,15 @@ class ParameterMetaTestCase(ElisaTestCase):
 
         meta_dict = meta.to_dict()
 
-        self.assertEqual(meta_dict["param"], "t_eff")
-        self.assertEqual(meta_dict["value"], 5000.0)
-        self.assertFalse(meta_dict["fixed"])
+        assert (meta_dict["param"]) == ("t_eff")
+        assert (meta_dict["value"]) == (5000.0)
+        assert not (meta_dict["fixed"])
 
 
 class SpotInitialParametersTestCase(ElisaTestCase):
     """Unit tests for SpotInitialParameters class."""
 
-    def test_initialization(self):
+    def test_initialization(self) -> None:
         """Test SpotInitialParameters initialization."""
         spot_params = {
             "label": "spot1",
@@ -207,12 +207,12 @@ class SpotInitialParametersTestCase(ElisaTestCase):
 
         spot = parameters.SpotInitialParameters(**spot_params)
 
-        self.assertIn("spot", spot.label)
-        self.assertIn("spot1", spot.label)
-        self.assertIsInstance(spot.latitude, parameters.InitialParameter)
-        self.assertEqual(spot.latitude.value, 30.0)
+        assert ("spot") in (spot.label)
+        assert ("spot1") in (spot.label)
+        assert isinstance(spot.latitude, parameters.InitialParameter)
+        assert (spot.latitude.value) == (30.0)
 
-    def test_slot_attributes(self):
+    def test_slot_attributes(self) -> None:
         """Test that all slots are properly initialized."""
         spot_params = {
             "label": "spot1",
@@ -226,9 +226,9 @@ class SpotInitialParametersTestCase(ElisaTestCase):
 
         expected_slots = ["longitude", "latitude", "angular_radius", "temperature_factor", "label"]
         for slot in expected_slots:
-            self.assertTrue(hasattr(spot, slot))
+            assert hasattr(spot, slot)
 
-    def test_validity_check_bounds(self):
+    def test_validity_check_bounds(self) -> None:
         """Test validity check for parameter bounds."""
         invalid_spot_params = {
             "label": "spot1",
@@ -238,14 +238,14 @@ class SpotInitialParametersTestCase(ElisaTestCase):
             "temperature_factor": {"value": 0.95, "fixed": True},
         }
 
-        with self.assertRaises(ElisaInitialParametersError):
+        with pytest.raises(ElisaInitialParametersError):
             parameters.SpotInitialParameters(**invalid_spot_params)
 
 
 class PulsationInitialParametersTestCase(ElisaTestCase):
     """Unit tests for PulsationInitialParameters class."""
 
-    def test_initialization(self):
+    def test_initialization(self) -> None:
         """Test PulsationInitialParameters initialization."""
         pulsation_params = {
             "label": "mode1",
@@ -260,12 +260,12 @@ class PulsationInitialParametersTestCase(ElisaTestCase):
 
         pulsation = parameters.PulsationInitialParameters(**pulsation_params)
 
-        self.assertIn("pulsation", pulsation.label)
-        self.assertIn("mode1", pulsation.label)
-        self.assertEqual(pulsation.l.value, 2)
-        self.assertEqual(pulsation.m.value, 1)
+        assert ("pulsation") in (pulsation.label)
+        assert ("mode1") in (pulsation.label)
+        assert (pulsation.l.value) == (2)
+        assert (pulsation.m.value) == (1)
 
-    def test_default_mode_axis_values(self):
+    def test_default_mode_axis_values(self) -> None:
         """Test that mode_axis angles default to 0."""
         pulsation_params = {
             "label": "mode1",
@@ -277,10 +277,10 @@ class PulsationInitialParametersTestCase(ElisaTestCase):
 
         pulsation = parameters.PulsationInitialParameters(**pulsation_params)
 
-        self.assertEqual(pulsation.mode_axis_phi, 0.0)
-        self.assertEqual(pulsation.mode_axis_theta, 0.0)
+        assert (pulsation.mode_axis_phi) == (0.0)
+        assert (pulsation.mode_axis_theta) == (0.0)
 
-    def test_slot_attributes(self):
+    def test_slot_attributes(self) -> None:
         """Test that all slots are properly initialized."""
         pulsation_params = {
             "label": "mode1",
@@ -295,15 +295,24 @@ class PulsationInitialParametersTestCase(ElisaTestCase):
 
         pulsation = parameters.PulsationInitialParameters(**pulsation_params)
 
-        expected_slots = ["l", "m", "amplitude", "frequency", "start_phase", "mode_axis_theta", "mode_axis_phi", "label"]
+        expected_slots = [
+            "l",
+            "m",
+            "amplitude",
+            "frequency",
+            "start_phase",
+            "mode_axis_theta",
+            "mode_axis_phi",
+            "label",
+        ]
         for slot in expected_slots:
-            self.assertTrue(hasattr(pulsation, slot))
+            assert hasattr(pulsation, slot)
 
 
 class StarInitialParametersTestCase(ElisaTestCase):
     """Unit tests for StarInitialParameters class."""
 
-    def test_initialization_without_phenomena(self):
+    def test_initialization_without_phenomena(self) -> None:
         """Test StarInitialParameters initialization without spots or pulsations."""
         star_params = {
             "t_eff": {"value": 5000.0, "fixed": False, "min": 4000.0, "max": 6000.0},
@@ -314,11 +323,11 @@ class StarInitialParametersTestCase(ElisaTestCase):
 
         star = parameters.StarInitialParameters(**star_params)
 
-        self.assertEqual(star.t_eff.value, 5000.0)
-        self.assertFalse(hasattr(star, "spots") and star.spots)
-        self.assertFalse(hasattr(star, "pulsations") and star.pulsations)
+        assert (star.t_eff.value) == (5000.0)
+        assert not (hasattr(star, "spots") and star.spots)
+        assert not (hasattr(star, "pulsations") and star.pulsations)
 
-    def test_initialization_with_spots(self):
+    def test_initialization_with_spots(self) -> None:
         """Test StarInitialParameters initialization with spots."""
         star_params = {
             "t_eff": {"value": 5000.0, "fixed": False},
@@ -338,11 +347,12 @@ class StarInitialParametersTestCase(ElisaTestCase):
 
         star = parameters.StarInitialParameters(**star_params)
 
-        self.assertTrue(hasattr(star, "spots") and star.spots)
-        self.assertEqual(len(star.spots), 1)
-        self.assertIsInstance(star.spots[0], parameters.SpotInitialParameters)
+        assert hasattr(star, "spots")
+        assert star.spots
+        assert (len(star.spots)) == (1)
+        assert isinstance(star.spots[0], parameters.SpotInitialParameters)
 
-    def test_initialization_with_pulsations(self):
+    def test_initialization_with_pulsations(self) -> None:
         """Test StarInitialParameters initialization with pulsations."""
         star_params = {
             "t_eff": {"value": 5000.0, "fixed": False},
@@ -362,15 +372,16 @@ class StarInitialParametersTestCase(ElisaTestCase):
 
         star = parameters.StarInitialParameters(**star_params)
 
-        self.assertTrue(hasattr(star, "pulsations") and star.pulsations)
-        self.assertEqual(len(star.pulsations), 1)
-        self.assertIsInstance(star.pulsations[0], parameters.PulsationInitialParameters)
+        assert hasattr(star, "pulsations")
+        assert star.pulsations
+        assert (len(star.pulsations)) == (1)
+        assert isinstance(star.pulsations[0], parameters.PulsationInitialParameters)
 
 
 class NuisanceInitialParametersTestCase(ElisaTestCase):
     """Unit tests for NuisanceInitialParameters class."""
 
-    def test_initialization(self):
+    def test_initialization(self) -> None:
         """Test NuisanceInitialParameters initialization."""
         nuisance_params = {
             "ln_f": {"value": -20.0, "fixed": True},
@@ -378,10 +389,10 @@ class NuisanceInitialParametersTestCase(ElisaTestCase):
 
         nuisance = parameters.NuisanceInitialPrameters(**nuisance_params)
 
-        self.assertEqual(nuisance.ln_f.value, -20.0)
-        self.assertTrue(nuisance.ln_f.fixed)
+        assert (nuisance.ln_f.value) == (-20.0)
+        assert nuisance.ln_f.fixed
 
-    def test_slot_attributes(self):
+    def test_slot_attributes(self) -> None:
         """Test that all slots are properly initialized."""
         nuisance_params = {
             "ln_f": {"value": -20.0, "fixed": True},
@@ -389,25 +400,25 @@ class NuisanceInitialParametersTestCase(ElisaTestCase):
 
         nuisance = parameters.NuisanceInitialPrameters(**nuisance_params)
 
-        self.assertTrue(hasattr(nuisance, "ln_f"))
+        assert hasattr(nuisance, "ln_f")
 
 
 class UtilityFunctionsTestCase(ElisaTestCase):
     """Unit tests for utility functions."""
 
-    def test_renormalize_value(self):
+    def test_renormalize_value(self) -> None:
         """Test renormalize_value function."""
         result = parameters.renormalize_value(0.5, 5000.0, 7000.0)
         expected = 6000.0
         self.assertAlmostEqual(result, expected)
 
-    def test_normalize_value(self):
+    def test_normalize_value(self) -> None:
         """Test normalize_value function."""
         result = parameters.normalize_value(6000.0, 5000.0, 7000.0)
         expected = 0.5
         self.assertAlmostEqual(result, expected)
 
-    def test_normalize_denormalize_roundtrip(self):
+    def test_normalize_denormalize_roundtrip(self) -> None:
         """Test that normalize->renormalize gives original value."""
         original = 6000.0
         min_val, max_val = 5000.0, 7000.0
@@ -417,7 +428,7 @@ class UtilityFunctionsTestCase(ElisaTestCase):
 
         self.assertAlmostEqual(original, denormalized, places=10)
 
-    def test_extend_json_with_atm_params_atmosphere(self):
+    def test_extend_json_with_atm_params_atmosphere(self) -> None:
         """Test extending JSON with atmosphere parameters."""
         params = {
             "primary@t_eff": {"value": 5000.0},
@@ -431,10 +442,10 @@ class UtilityFunctionsTestCase(ElisaTestCase):
 
         extended = parameters.extend_json_with_atm_params(params, atmosphere_model=atmosphere_model)
 
-        self.assertEqual(extended["primary@atmosphere"], "bb")
-        self.assertEqual(extended["secondary@atmosphere"], "ck04")
+        assert (extended["primary@atmosphere"]) == ("bb")
+        assert (extended["secondary@atmosphere"]) == ("ck04")
 
-    def test_extend_json_with_atm_params_limb_darkening(self):
+    def test_extend_json_with_atm_params_limb_darkening(self) -> None:
         """Test extending JSON with limb darkening coefficients."""
         params = {
             "primary@t_eff": {"value": 5000.0},
@@ -451,10 +462,10 @@ class UtilityFunctionsTestCase(ElisaTestCase):
             limb_darkening_coefficients=limb_darkening,
         )
 
-        self.assertEqual(extended["primary@limb_darkening_coefficients"], {"bolometric": [0.5, 0.5]})
-        self.assertEqual(extended["secondary@limb_darkening_coefficients"], {"bolometric": [0.6, 0.4]})
+        assert (extended["primary@limb_darkening_coefficients"]) == ({"bolometric": [0.5, 0.5]})
+        assert (extended["secondary@limb_darkening_coefficients"]) == ({"bolometric": [0.6, 0.4]})
 
-    def test_extend_json_with_invalid_component(self):
+    def test_extend_json_with_invalid_component(self) -> None:
         """Test that extending with invalid component raises error."""
         params = {
             "primary@t_eff": {"value": 5000.0},
@@ -464,10 +475,10 @@ class UtilityFunctionsTestCase(ElisaTestCase):
             "tertiary": "bb",  # invalid component
         }
 
-        with self.assertRaises(ElisaOperationInputError):
+        with pytest.raises(ElisaOperationInputError):
             parameters.extend_json_with_atm_params(params, atmosphere_model=atmosphere_model)
 
-    def test_prepare_nuisance_properties_set(self):
+    def test_prepare_nuisance_properties_set(self) -> None:
         """Test prepare_nuisance_properties_set function."""
         xn = np.array([-20.0])
         properties = ["nuisance@ln_f"]
@@ -475,10 +486,10 @@ class UtilityFunctionsTestCase(ElisaTestCase):
 
         result = parameters.prepare_nuisance_properties_set(xn, properties, fixed)
 
-        self.assertIn("nuisance@ln_f", result)
-        self.assertEqual(result["nuisance@ln_f"], 0.0)
+        assert ("nuisance@ln_f") in (result)
+        assert (result["nuisance@ln_f"]) == (0.0)
 
-    def test_check_for_invalid_constraint(self):
+    def test_check_for_invalid_constraint(self) -> None:
         """Test check_for_invalid_constraint function - checks after substitution."""
         # After substitution with values, remaining @ symbols indicate invalid params
         constrained = {
@@ -489,17 +500,17 @@ class UtilityFunctionsTestCase(ElisaTestCase):
         # Should not raise since no @ symbols remain
         parameters.check_for_invalid_constraint(constrained, allowed_params)
 
-    def test_check_for_invalid_constraint_invalid_param(self):
+    def test_check_for_invalid_constraint_invalid_param(self) -> None:
         """Test check_for_invalid_constraint with invalid parameter."""
         constrained = {
             "system@semi_major_axis": "16.0 / sin(invalid@parameter)",
         }
         allowed_params = ["system@inclination", "system@period"]
 
-        with self.assertRaises(ElisaInitialParametersError):
+        with pytest.raises(ElisaInitialParametersError):
             parameters.check_for_invalid_constraint(constrained, allowed_params)
 
-    def test_constraints_evaluator_simple(self):
+    def test_constraints_evaluator_simple(self) -> None:
         """Test constraints_evaluator with simple constraint."""
         substitution = {
             "primary@surface_potential": 3.0,
@@ -510,9 +521,9 @@ class UtilityFunctionsTestCase(ElisaTestCase):
 
         evaluated = parameters.constraints_evaluator(substitution, constrained)
 
-        self.assertEqual(evaluated["secondary@surface_potential"], 6.0)
+        assert (evaluated["secondary@surface_potential"]) == (6.0)
 
-    def test_constraints_evaluator_with_numpy_function(self):
+    def test_constraints_evaluator_with_numpy_function(self) -> None:
         """Test constraints_evaluator with numpy functions."""
         substitution = {
             "system@inclination": 90.0,
@@ -526,7 +537,7 @@ class UtilityFunctionsTestCase(ElisaTestCase):
         # sin(90 degrees) = 1, so 16.0 / 1 = 16.0
         self.assertAlmostEqual(evaluated["system@semi_major_axis"], 16.0, places=5)
 
-    def test_extend_result_with_sma_community_format(self):
+    def test_extend_result_with_sma_community_format(self) -> None:
         """Test extend_result_with_sma for community format."""
         fit_params = {
             "system": {
@@ -540,10 +551,10 @@ class UtilityFunctionsTestCase(ElisaTestCase):
 
         extended = parameters.extend_result_with_sma(fit_params)
 
-        self.assertIn("semi_major_axis", extended["system"])
-        self.assertTrue(extended["system"]["semi_major_axis"]["fixed"])
+        assert ("semi_major_axis") in (extended["system"])
+        assert extended["system"]["semi_major_axis"]["fixed"]
 
-    def test_extend_result_with_sma_already_present(self):
+    def test_extend_result_with_sma_already_present(self) -> None:
         """Test extend_result_with_sma when sma is already present."""
         fit_params = {
             "system": {
@@ -555,9 +566,9 @@ class UtilityFunctionsTestCase(ElisaTestCase):
         extended = parameters.extend_result_with_sma(fit_params)
 
         # Should return unchanged
-        self.assertEqual(extended["system"]["semi_major_axis"]["value"], 16.5)
+        assert (extended["system"]["semi_major_axis"]["value"]) == (16.5)
 
-    def test_extend_result_with_sma_standard_format(self):
+    def test_extend_result_with_sma_standard_format(self) -> None:
         """Test extend_result_with_sma for standard format without mass_ratio."""
         fit_params = {
             "system": {
@@ -568,5 +579,4 @@ class UtilityFunctionsTestCase(ElisaTestCase):
         extended = parameters.extend_result_with_sma(fit_params)
 
         # Should return unchanged
-        self.assertNotIn("semi_major_axis", extended["system"])
-
+        assert ("semi_major_axis") not in (extended["system"])

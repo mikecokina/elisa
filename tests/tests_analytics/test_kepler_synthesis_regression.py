@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -18,9 +18,12 @@ from elisa.observer.observer import Observer
 from tests.kepler_helpers import scalar_orbital_motion
 from tests.tests_analytics.fitting_helpers import V, lc_parameters
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
 
 @pytest.fixture(autouse=True)
-def synthesis_settings(science_settings: None) -> Iterator[None]:
+def synthesis_settings(science_settings: None) -> Iterator[None]:  # noqa: ARG001 - retain parametrized case metadata or required setup fixture dependency
     with settings.override(REFLECTION_EFFECT=False, RV_METHOD="kinematic"):
         yield
 
@@ -62,7 +65,7 @@ def test_real_rv_curves_match_scalar_orbit_and_velocity_formula(
                 "primary@mass": 1.5,
                 "secondary@mass": 1.05,
                 "system@inclination": 85.0,
-            }
+            },
         )
         total_mass = (2.55 * u.solMass).to_value(u.kg)
         semi_major_axis = (const.G * total_mass * (period_days * 86400.0) ** 2 / (4 * np.pi**2)) ** (1.0 / 3.0)
@@ -112,7 +115,7 @@ def test_real_lc_and_binary_positions_match_scalar_orbit(eccentricity: float) ->
         {
             "system@eccentricity": eccentricity,
             "system@argument_of_periastron": 25.0,
-        }
+        },
     )
     phases = np.array([0.5, 0.0, 0.12, 0.04, 0.5, 0.8, 0.25])
     observer = Observer(passband=[V], system=None)

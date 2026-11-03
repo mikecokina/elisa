@@ -18,7 +18,7 @@ class AnimationTestCase(ElisaTestCase):
 
     @pytest.mark.requires_ld(passbands=("bolometric",), laws=("cosine",))
     @pytest.mark.requires_atmosphere
-    def test_rotational_motion_runs_minimal(self):
+    def test_rotational_motion_runs_minimal(self) -> None:
         """Run a minimal (single-frame) animation and ensure it completes.
 
         :returns: None
@@ -39,8 +39,8 @@ class AnimationTestCase(ElisaTestCase):
         # environment stays clean.
         old_show = plt.show
         old_del = getattr(mpa.Animation, "__del__", None)
-        plt.show = lambda *a, **k: None
-        mpa.Animation.__del__ = lambda self: None
+        plt.show = lambda *_a, **_k: None
+        mpa.Animation.__del__ = lambda _self: None
         try:
             # noinspection PyNoneFunctionAssignment
             result = anim.rotational_motion(
@@ -54,7 +54,7 @@ class AnimationTestCase(ElisaTestCase):
                 subtract_equilibrium=False,
                 edges=False,
             )
-            self.assertIsNone(result)
+            assert (result) is None
         finally:
             plt.show = old_show
             # restore original __del__ if present
@@ -64,7 +64,7 @@ class AnimationTestCase(ElisaTestCase):
                 mpa.Animation.__del__ = old_del
             plt.close("all")
 
-    def test_rotational_motion_invalid_range_raises(self):
+    def test_rotational_motion_invalid_range_raises(self) -> None:
         """Providing start_phase > stop_phase must raise ElisaGraphicsError.
 
         :returns: None
@@ -75,5 +75,5 @@ class AnimationTestCase(ElisaTestCase):
 
         anim = Animation(single)
 
-        with self.assertRaises(ElisaGraphicsError):
+        with pytest.raises(ElisaGraphicsError):
             anim.rotational_motion(start_phase=0.5, stop_phase=-0.5, phase_step=0.01)

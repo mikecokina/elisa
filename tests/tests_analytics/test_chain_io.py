@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
-from numpy.typing import NDArray
 
 from elisa.analytics.binary_fit import chain_tools as chains
 from elisa.analytics.binary_fit import io_tools, plot
@@ -24,6 +23,13 @@ from elisa.base.error import ElisaMonteCarloError
 from elisa.conf.enums import DiscardUnit
 from tests.tests_analytics.fitting_helpers import lc_parameters, rv_problem
 
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+    import elisa.base.error
+    import elisa.conf.enums
+
+
 LABELS = ["primary@t_eff", "secondary@t_eff"]
 
 
@@ -34,7 +40,7 @@ def chain_payload(chain: NDArray[np.float64] | None = None) -> dict[str, Any]:
         "chain_shape": list(chain.shape),
         "chain_order": "step,walker,parameter",
         "fitable_parameters": LABELS[: chain.shape[-1]],
-        "normalization": {key: (0.0, 1.0) for key in LABELS[: chain.shape[-1]]},
+        "normalization": dict.fromkeys(LABELS[: chain.shape[-1]], (0.0, 1.0)),
         "fitable": {},
     }
 
@@ -49,7 +55,10 @@ def chain_payload(chain: NDArray[np.float64] | None = None) -> dict[str, Any]:
         ("rows", DiscardUnit.ROWS),
     ],
 )
-def test_discard_unit_normalization(value, expected) -> None:
+def test_discard_unit_normalization(
+    value: elisa.conf.enums.DiscardUnit | str | None,
+    expected: elisa.conf.enums.DiscardUnit | None,
+) -> None:
     assert chains.validate_discard(0, value) is expected
 
 
@@ -97,7 +106,11 @@ def test_explicit_row_discard_preserves_only_complete_ensembles(discard: int, re
         (100, "rows", ElisaMonteCarloError),
     ],
 )
-def test_invalid_or_excessive_discard(discard: int, unit, exception) -> None:
+def test_invalid_or_excessive_discard(
+    discard: int,
+    unit: str | None,
+    exception: type[elisa.base.error.ElisaMonteCarloError],
+) -> None:
     with pytest.raises(exception):
         chains.prepare_chain_samples(chain_payload(), discard, unit)
 
@@ -116,7 +129,13 @@ def test_invalid_or_excessive_discard(discard: int, unit, exception) -> None:
         {"chain_order": None},
     ],
 )
-def test_invalid_temporal_metadata(metadata) -> None:
+def test_invalid_temporal_metadata(
+    metadata: dict[str, None]
+    | dict[str, list[bool | int]]
+    | dict[str, list[float | int]]
+    | dict[str, list[int]]
+    | dict[str, str],
+) -> None:
     data = chain_payload()
     data.update(metadata)
     with pytest.raises(ElisaMonteCarloError, match="temporal chain metadata"):
@@ -124,7 +143,7 @@ def test_invalid_temporal_metadata(metadata) -> None:
 
 
 @pytest.mark.parametrize("missing", ["chain_shape", "chain_order"])
-def test_partial_metadata_is_rejected(missing) -> None:
+def test_partial_metadata_is_rejected(missing: str) -> None:
     data = chain_payload()
     data.pop(missing)
     with pytest.raises(ElisaMonteCarloError, match="temporal chain metadata"):
@@ -132,7 +151,9 @@ def test_partial_metadata_is_rejected(missing) -> None:
 
 
 @pytest.mark.parametrize("samples", [[], [1, 2], [[np.nan, 0]], [[np.inf, 0]], [[[1, 2]]]])
-def test_invalid_sample_matrix(samples) -> None:
+def test_invalid_sample_matrix(
+    samples: list[int] | list[list[float | int]] | list[list[list[int]]] | list[object],
+) -> None:
     data = chain_payload()
     data["flat_chain"] = samples
     with pytest.raises(ElisaMonteCarloError, match="finite nonempty matrix"):
@@ -140,7 +161,7 @@ def test_invalid_sample_matrix(samples) -> None:
 
 
 @pytest.mark.parametrize("labels", [[], ["a"], ["a", "a"], ["a", 2]])
-def test_invalid_labels(labels) -> None:
+def test_invalid_labels(labels: list[int | str] | list[object] | list[str]) -> None:
     data = chain_payload()
     data["fitable_parameters"] = labels
     with pytest.raises(ElisaMonteCarloError, match="labels"):
@@ -157,13 +178,17 @@ def save_chain(tmp_path: Path, structured: bool = True) -> tuple[NDArray[np.floa
             value=6000.0,
             fixed=False,
             min=1000.0,
-            max=10000.0
+            max=10000.0,
         )
         for label in LABELS
     }
     kwargs = {"chain_shape": original.shape} if structured else {}
     path = MCMCMixin.save_flat_chain(
-        original.reshape(-1, 2), fitable, dict.fromkeys(LABELS, (0.0, 1.0)), str(tmp_path / "chain.json"), **kwargs
+        original.reshape(-1, 2),
+        fitable,
+        dict.fromkeys(LABELS, (0.0, 1.0)),
+        str(tmp_path / "chain.json"),
+        **kwargs,
     )
     return original, path
 
@@ -193,7 +218,12 @@ def test_invalid_export_does_not_overwrite_saved_file(tmp_path: Path) -> None:
             dict.fromkeys(
                 LABELS,
                 InitialParameter(
-                    StarInitialProperties, param="t_eff", value=6000.0, fixed=False, min=1000.0, max=10000.0
+                    StarInitialProperties,
+                    param="t_eff",
+                    value=6000.0,
+                    fixed=False,
+                    min=1000.0,
+                    max=10000.0,
                 ),
             ),
             {},
@@ -248,7 +278,7 @@ def test_filtering_invalidates_temporal_diagnostics() -> None:
     fit.flat_chain = original.reshape(-1, 2)
     fit.variable_labels = LABELS
     fit.normalization = dict.fromkeys(LABELS, (0.0, 1.0))
-    fit.flat_result = dict.fromkeys(LABELS, {})
+    fit.flat_result = {label: {} for label in LABELS}
     with patch.object(io_tools, "_update_solution"):
         flat = io_tools.filter_chain(fit, **{LABELS[0]: (0.2, 0.8)})
     expected = original.reshape(-1, 2)
@@ -294,7 +324,7 @@ def test_public_fit_extracts_ensemble_without_synthesis(mcmc_result: LCFitMCMC |
 
 
 @pytest.mark.parametrize("unit", [DiscardUnit.STEPS, DiscardUnit.ROWS, "steps", "rows"])
-def test_task_forwards_explicit_discard_unit(unit) -> None:
+def test_task_forwards_explicit_discard_unit(unit: elisa.conf.enums.DiscardUnit | str) -> None:
     _, data = rv_problem()
     task = RVBinaryAnalyticsTask(method="mcmc", data=data)
     with patch.object(task.fit_cls, "load_chain") as load:

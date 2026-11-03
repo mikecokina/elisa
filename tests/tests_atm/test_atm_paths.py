@@ -1,20 +1,25 @@
 """Path-selection parity with the pre-deduplication atmosphere implementation."""
+
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
 import pytest
-from numpy.typing import NDArray
 
 from elisa import settings, utils
 from elisa.atm import atm
 from elisa.atm.atm import atm_file_prefix_to_quantity_list, get_atm_directory, validated_atlas
 from elisa.base.error import ElisaAtmosphereError
 from elisa.observer.passband import PassbandContainer
-from elisa.types import Float
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+    from elisa.types import Float
 
 
 def original_atm_files(
@@ -66,18 +71,22 @@ def original_atm_files(
     log_g_name = np.char.add("g", np.char.zfill(logg_int.astype(str), 2))
 
     # Build filenames
-    fnames = [f"{atlas}{mh}_{temp}_{g}" for mh, temp, g in zip(mh_name, temp_name, log_g_name)]
+    fnames = [f"{atlas}{mh}_{temp}_{g}" for mh, temp, g in zip(mh_name, temp_name, log_g_name, strict=True)]
 
     return [str(Path(settings.ATLAS_TO_BASE_DIR[atlas]) / directory / (fname + ".csv")) for fname in fnames]
 
 
 @pytest.mark.parametrize("atlas", ["castelli", "castelli-kurucz", "ck", "ck04", "kurucz", "k93", "k"])
-@pytest.mark.parametrize(("selection", "metallicity"), [
-    (selection, metallicity)
-    for selection in ("duplicates", "mixed", "boundaries")
-    for metallicity in (-2.5, -0.1, -0.0, 0.05, 0.5, 10.0, np.nan)
-] + [("ties", None)])
-def test_atm_files_matches_original(atlas, metallicity, selection):
+@pytest.mark.parametrize(
+    ("selection", "metallicity"),
+    [
+        (selection, metallicity)
+        for selection in ("duplicates", "mixed", "boundaries")
+        for metallicity in (-2.5, -0.1, -0.0, 0.05, 0.5, 10.0, np.nan)
+    ]
+    + [("ties", None)],
+)
+def test_atm_files_matches_original(atlas: str, metallicity: float | None, selection: str) -> None:
     """Preserve ordering, nearest-grid ties, aliases and grid endpoints."""
     # Input boundaries resolve aliases; the selector consumes canonical names.
     atlas = validated_atlas(atlas)
@@ -108,7 +117,7 @@ def test_atm_files_matches_original(atlas, metallicity, selection):
 
 @pytest.mark.parametrize("atlas", ["ck04", "k93"])
 @pytest.mark.parametrize("dtype", [np.float32, np.float64, np.int64])
-def test_mixed_strided_input_dtypes(atlas, dtype):
+def test_mixed_strided_input_dtypes(atlas: str, dtype: type[np.float32 | np.float64 | np.int64]) -> None:
     atlas = validated_atlas(atlas)
     grid = np.asarray(atm.atm_file_prefix_to_quantity_list("temperature", atlas))
     rng = np.random.default_rng(42)
@@ -120,28 +129,43 @@ def test_mixed_strided_input_dtypes(atlas, dtype):
 
 
 @pytest.mark.parametrize("atlas", ["ck04", "k93"])
-def test_atm_files_empty_selection(atlas):
-    assert atm.NaiveInterpolatedAtm.atm_files(
-        np.asarray([]), np.asarray([]), 0.0, validated_atlas(atlas),
-    ) == []
+def test_atm_files_empty_selection(atlas: str) -> None:
+    assert (
+        atm.NaiveInterpolatedAtm.atm_files(
+            np.asarray([]),
+            np.asarray([]),
+            0.0,
+            validated_atlas(atlas),
+        )
+        == []
+    )
 
 
-@pytest.mark.parametrize("atlas,temperature,gravity,metallicity", [
-    (atlas, temperature, gravity, metallicity)
-    for atlas in ("ck04", "k93", "unsupported", "bb")
-    for temperature, gravity, metallicity in [
-        ([3499.0], [2.0], 0.0),
-        ([50001.0], [2.0], 0.0),
-        ([np.nan], [2.0], 0.0),
-        ([np.inf], [2.0], 0.0),
-        ([5000.0, 6000.0], [2.0], 0.0),
-        ([5000.0], [], 0.0),
-        ([[5000.0, 6000.0]], [2.0], 0.0),
+@pytest.mark.parametrize(
+    ("atlas", "temperature", "gravity", "metallicity"),
+    [
+        (atlas, temperature, gravity, metallicity)
+        for atlas in ("ck04", "k93", "unsupported", "bb")
+        for temperature, gravity, metallicity in [
+            ([3499.0], [2.0], 0.0),
+            ([50001.0], [2.0], 0.0),
+            ([np.nan], [2.0], 0.0),
+            ([np.inf], [2.0], 0.0),
+            ([5000.0, 6000.0], [2.0], 0.0),
+            ([5000.0], [], 0.0),
+            ([[5000.0, 6000.0]], [2.0], 0.0),
+        ]
     ]
-] + [(atlas, [], [], 0.0) for atlas in ("unsupported", "bb")])
-def test_atm_files_preserves_errors(atlas, temperature, gravity, metallicity):
+    + [(atlas, [], [], 0.0) for atlas in ("unsupported", "bb")],
+)
+def test_atm_files_preserves_errors(
+    atlas: str,
+    temperature: list[float] | list[list[float]] | list[object],
+    gravity: list[float] | list[object],
+    metallicity: float,
+) -> None:
     args = np.asarray(temperature), np.asarray(gravity), metallicity, atlas
-    with pytest.raises(Exception) as expected:
+    with pytest.raises(Exception) as expected:  # noqa: PT011 - assert type, identity, or reference parity without promising dependency wording
         original_atm_files(*args)
     with pytest.raises((type(expected.value), ElisaAtmosphereError)) as obtained:
         atm.NaiveInterpolatedAtm.atm_files(*args[:3], validated_atlas(atlas))
@@ -149,7 +173,7 @@ def test_atm_files_preserves_errors(atlas, temperature, gravity, metallicity):
 
 
 @pytest.mark.parametrize("atlas", ["ck04", "k93"])
-def test_paths_are_formatted_once_per_selected_identity(atlas):
+def test_paths_are_formatted_once_per_selected_identity(atlas: str) -> None:
     atlas = validated_atlas(atlas)
     temperature = np.tile([4999.0, 10000.0, 10001.0], 100)
     gravity = np.tile([1.5, 2.0, 2.0], 100)
@@ -163,10 +187,14 @@ def test_paths_are_formatted_once_per_selected_identity(atlas):
 
 
 @pytest.mark.parametrize("atlas", ["ck04", "k93"])
-def test_base_directory_changes_and_missing_files(atlas, monkeypatch, tmp_path):
+def test_base_directory_changes_and_missing_files(atlas: str, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     prefix = atm.validated_atlas(atlas)
     args = np.array([10000.0]), np.array([2.0]), 0.0, prefix
-    monkeypatch.setattr(settings, "CK04_ATM_TABLES" if prefix == "ck" else "K93_ATM_TABLES", tmp_path / "first directory")
+    monkeypatch.setattr(
+        settings,
+        "CK04_ATM_TABLES" if prefix == "ck" else "K93_ATM_TABLES",
+        tmp_path / "first directory",
+    )
     first = atm.NaiveInterpolatedAtm.atm_files(*args)
     assert first == original_atm_files(*args)
     monkeypatch.setattr(settings, "CK04_ATM_TABLES" if prefix == "ck" else "K93_ATM_TABLES", tmp_path / "second")
@@ -185,10 +213,18 @@ def test_base_directory_changes_and_missing_files(atlas, monkeypatch, tmp_path):
 
 
 @pytest.mark.parametrize("atlas", ["ck04", "k93"])
-def test_selected_tables_preserve_spectra_and_radiances(atlas, monkeypatch, tmp_path):
+def test_selected_tables_preserve_spectra_and_radiances(
+    atlas: str,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
     """Exercise both filename families through loading and spectral interpolation."""
     atlas = validated_atlas(atlas)
-    monkeypatch.setattr(settings, "CK04_ATM_TABLES" if atm.validated_atlas(atlas) == "ck" else "K93_ATM_TABLES", tmp_path)
+    monkeypatch.setattr(
+        settings,
+        "CK04_ATM_TABLES" if atm.validated_atlas(atlas) == "ck" else "K93_ATM_TABLES",
+        tmp_path,
+    )
     monkeypatch.setattr(atm.buffer, "ATMOSPHERE_TABLES", {})
     args = np.array([10000.0, 10001.0, 10250.0, 10001.0]), np.repeat(2.0, 4), 0.0, atlas
     wave = np.linspace(1000.0, 8000.0, 29)
@@ -199,10 +235,12 @@ def test_selected_tables_preserve_spectra_and_radiances(atlas, monkeypatch, tmp_
         pd.DataFrame({"wave": wave, "flux": (wave / 1000.0) ** 2 * temperature}).to_csv(path, index=False)
 
     band = PassbandContainer(
-        table=pd.DataFrame({
-            settings.PASSBAND_DATAFRAME_WAVE: [3000.0, 3500.0, 4000.0, 4500.0],
-            settings.PASSBAND_DATAFRAME_THROUGHPUT: [0.0, 1.0, 0.8, 0.0],
-        }),
+        table=pd.DataFrame(
+            {
+                settings.PASSBAND_DATAFRAME_WAVE: [3000.0, 3500.0, 4000.0, 4500.0],
+                settings.PASSBAND_DATAFRAME_THROUGHPUT: [0.0, 1.0, 0.8, 0.0],
+            },
+        ),
         passband="test",
     )
     kwargs = {"passband": {"test": band}, "left_bandwidth": 3000.0, "right_bandwidth": 4500.0}

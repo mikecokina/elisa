@@ -1,4 +1,5 @@
 """Fork context, configuration inheritance and production pool integration."""
+
 from __future__ import annotations
 
 import multiprocessing
@@ -6,6 +7,7 @@ import os
 import subprocess
 import sys
 from types import MethodType, SimpleNamespace
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import numpy as np
@@ -17,35 +19,48 @@ from elisa.analytics.binary_fit.mixins import MCMCMixin
 from elisa.analytics.binary_fit.summary import _manage_chain_evaluation
 from elisa.observer import mp_manager
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from numpy.typing import NDArray
+
 
 FORK_AVAILABLE = "fork" in multiprocessing.get_all_start_methods()
 requires_fork = pytest.mark.skipif(not FORK_AVAILABLE, reason="fork is unavailable")
 
 
-def _worker_state():
+def _worker_state() -> tuple[str, int, int]:
     return multiprocessing.get_start_method(), settings.REFLECTION_EFFECT_ITERATIONS, os.getpid()
 
 
-def _observe_state(_system, _curve, positions, _kwargs):
+def _observe_state(
+    _system: None,
+    _curve: None,
+    positions: NDArray[np.int64],
+    _kwargs: dict[object, object],
+) -> dict[str, NDArray[np.int64] | NDArray[np.str_]]:
     method, value, pid = _worker_state()
-    return {"method": np.full(len(positions), method),
-            "value": np.full(len(positions), value), "pid": np.full(len(positions), pid)}
+    return {
+        "method": np.full(len(positions), method),
+        "value": np.full(len(positions), value),
+        "pid": np.full(len(positions), pid),
+    }
 
 
-def _summarize_state(chain):
+def _summarize_state(chain: NDArray[np.float64]) -> NDArray[np.float64]:
     method, value, pid = _worker_state()
     assert method == "fork"
     return np.column_stack((chain[:, 0], np.full(len(chain), value), np.full(len(chain), pid)))
 
 
-def _probability(vector):
+def _probability(vector: NDArray[np.float64]) -> float:
     if multiprocessing.current_process().name != "MainProcess":
         assert multiprocessing.get_start_method() == "fork"
     return -float(np.sum((vector - settings.REFLECTION_EFFECT_ITERATIONS / 100.0) ** 2))
 
 
 @requires_fork
-def test_fork_pool_inherits_configuration_at_creation():
+def test_fork_pool_inherits_configuration_at_creation() -> None:
     original = settings.REFLECTION_EFFECT_ITERATIONS
     try:
         settings.configure(REFLECTION_EFFECT_ITERATIONS=11)
@@ -64,10 +79,12 @@ def test_fork_pool_inherits_configuration_at_creation():
 
 
 @requires_fork
-def test_observations_and_summaries_use_fork():
-    with patch.object(settings, "NUMBER_OF_PROCESSES", 2), \
-            patch.object(settings, "NUMBER_OF_MCMC_PROCESSES", 2), \
-            patch.object(settings, "REFLECTION_EFFECT_ITERATIONS", 23):
+def test_observations_and_summaries_use_fork() -> None:
+    with (
+        patch.object(settings, "NUMBER_OF_PROCESSES", 2),
+        patch.object(settings, "NUMBER_OF_MCMC_PROCESSES", 2),
+        patch.object(settings, "REFLECTION_EFFECT_ITERATIONS", 23),
+    ):
         observed = mp_manager.manage_observations(_observe_state, (None, None), np.arange(4))
         summary = _manage_chain_evaluation(np.arange(4).reshape(-1, 1), _summarize_state)
     np.testing.assert_array_equal(observed["method"], ["fork"] * 4)
@@ -101,7 +118,7 @@ def test_mcmc_sampling_with_real_emcee(workers: int) -> None:
         patch.object(settings, "REFLECTION_EFFECT_ITERATIONS", 37),
         patch("elisa.analytics.binary_fit.mcmc.get_mp_context", wraps=mp_manager.get_mp_context) as context,
     ):
-        sampler = MCMCFit._fit(  # noqa: SLF001 - exercise the production sampling entry point
+        sampler = MCMCFit._fit(
             fit,
             nwalkers=4,
             ndim=1,
@@ -120,17 +137,16 @@ def test_mcmc_sampling_with_real_emcee(workers: int) -> None:
     assert sampler.get_chain().shape == (3, 4, 1)
     np.testing.assert_allclose(sampler.get_log_prob(), -np.sum((sampler.get_chain() - 0.37) ** 2, axis=2))
     if workers > 1:
-        assert sampler.pool._ctx.get_start_method() == "fork"  # noqa: SLF001 - verify the actual pool context
+        assert sampler.pool._ctx.get_start_method() == "fork"
     else:
         assert sampler.pool is None
 
 
-def test_unavailable_fork_is_explicit_and_serial_still_works():
+def test_unavailable_fork_is_explicit_and_serial_still_works() -> None:
     with patch.object(mp_manager.multiprocessing, "get_context", side_effect=ValueError("no fork")):
-        with pytest.raises(RuntimeError, match="requires the 'fork'.*Use serial execution"):
+        with pytest.raises(RuntimeError, match=r"requires the 'fork'.*Use serial execution"):
             mp_manager.get_mp_context()
-        with patch.object(settings, "NUMBER_OF_PROCESSES", 1), \
-                patch.object(settings, "NUMBER_OF_MCMC_PROCESSES", 1):
+        with patch.object(settings, "NUMBER_OF_PROCESSES", 1), patch.object(settings, "NUMBER_OF_MCMC_PROCESSES", 1):
             with patch.object(mp_manager, "get_mp_context", side_effect=AssertionError("serial requested a pool")):
                 observed = mp_manager.manage_observations(_observe_state, (None, None), np.arange(3))
             chain = np.arange(3).reshape(-1, 1)
@@ -139,7 +155,7 @@ def test_unavailable_fork_is_explicit_and_serial_still_works():
 
 
 @pytest.mark.parametrize("preset", [None, "forkserver"])
-def test_imports_and_context_leave_application_start_method_unchanged(tmp_path, preset):
+def test_imports_and_context_leave_application_start_method_unchanged(tmp_path: Path, preset: str | None) -> None:
     if preset is not None and preset not in multiprocessing.get_all_start_methods():
         pytest.skip(f"{preset} is unavailable")
     config = tmp_path / "elisa.ini"
@@ -162,23 +178,31 @@ if 'fork' in mp.get_all_start_methods():
 assert mp.get_start_method(allow_none=True) == before
 """
     env = {**os.environ, "ELISA_CONFIG": str(config), "PYTHONDONTWRITEBYTECODE": "1"}
-    subprocess.run([sys.executable, "-c", code, str(preset)], env=env, check=True, timeout=30,
-                   capture_output=True, text=True)
+    subprocess.run(
+        [sys.executable, "-c", code, str(preset)],
+        env=env,
+        check=True,
+        timeout=30,
+        capture_output=True,
+        text=True,
+    )
 
 
-def _fail(*args):
+def _fail(*_args) -> None:
     raise ValueError("worker failed")
 
 
 @requires_fork
 @pytest.mark.parametrize("operation", ["observation", "summary"])
-def test_worker_exceptions_still_reach_caller(operation):
+def test_worker_exceptions_still_reach_caller(operation: str) -> None:
     previous_children = {child.pid for child in multiprocessing.active_children()}
-    with patch.object(settings, "NUMBER_OF_PROCESSES", 2), \
-            patch.object(settings, "NUMBER_OF_MCMC_PROCESSES", 2):
-        with pytest.raises(ValueError, match="worker failed"):
-            if operation == "observation":
-                mp_manager.manage_observations(_fail, (None, None), np.arange(4))
-            else:
-                _manage_chain_evaluation(np.arange(4).reshape(-1, 1), _fail)
+    with (  # noqa: PT012 - scenario includes context cleanup or selection of the operation under test
+        patch.object(settings, "NUMBER_OF_PROCESSES", 2),
+        patch.object(settings, "NUMBER_OF_MCMC_PROCESSES", 2),
+        pytest.raises(ValueError, match="worker failed"),
+    ):
+        if operation == "observation":
+            mp_manager.manage_observations(_fail, (None, None), np.arange(4))
+        else:
+            _manage_chain_evaluation(np.arange(4).reshape(-1, 1), _fail)
     assert {child.pid for child in multiprocessing.active_children()} == previous_children
