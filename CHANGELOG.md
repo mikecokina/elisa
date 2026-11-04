@@ -71,6 +71,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 #### Fixed
 
+- Fixed rebuild-mask indexing in the eccentric similar-neighbour synthesis
+  approximation: geometry and irradiation decisions now follow original orbital
+  position indices after separation sorting and multiprocessing partitioning,
+  preventing stale surface physics in LC and radiometric RV synthesis.
 - Corrected eccentric surface-potential reference geometry and phase-dependent
   volume conservation: input `surface_potential` now refers to periastron rather
   than unit separation; reusing old numerical potentials can change radii and

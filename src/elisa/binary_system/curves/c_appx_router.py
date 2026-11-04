@@ -458,7 +458,10 @@ def eval_similar_neighbours_approximation(
     new_build_mask = np.logical_or(new_geometry_mask, new_irrad_mask)
 
     approx_test = not new_build_mask.all()
-    return approx_test, new_build_mask, sorted_all_orbital_pos_arr
+    # Workers retain original position indices, including across process batches.
+    original_order_mask = np.empty_like(new_build_mask)
+    original_order_mask[sorted_all_orbital_pos_arr[:, 0].astype(int)] = new_build_mask
+    return approx_test, original_order_mask, sorted_all_orbital_pos_arr
 
 
 def integrate_eccentric_curve_interp_appx(
