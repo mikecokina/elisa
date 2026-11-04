@@ -8,6 +8,10 @@ from elisa import units as u
 from elisa import utils
 from elisa.base.body import Body
 from elisa.base.container import StarPropertiesContainer
+from elisa.base.parameter_tracking import (
+    preserve_explicit_inputs_during_reinitialization,
+    suspend_tracking_during_initialization,
+)
 from elisa.base.transform import StarProperties
 from elisa.logger import getLogger
 from elisa.pulse.mode import PulsationMode
@@ -194,10 +198,13 @@ class Star(Body):
     )
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
+    @suspend_tracking_during_initialization
     def __init__(self, *, name: str | None = None, **kwargs: Any) -> None:
         utils.invalid_kwarg_checker(kwargs, Star.ALL_KWARGS, Star)
+        transformed_kwargs = self.transform_input(**kwargs)
+
         super().__init__(name, **kwargs)
-        kwargs = self.transform_input(**kwargs)
+        kwargs = transformed_kwargs
 
         # default values of properties
         self.filling_factor = up.NaN
@@ -266,6 +273,7 @@ class Star(Body):
         """
         return StarProperties.transform_input(**kwargs)
 
+    @suspend_tracking_during_initialization
     def init_parameters(self, **kwargs) -> None:
         """Set initial attribute values from transformed keyword args.
 
@@ -312,7 +320,7 @@ class Star(Body):
                     value = [spot.kwargs_serializer() for spot in spots_attr]
             elif kwarg == "pulsations":
                 modes = self.pulsations.values() if hasattr(self.pulsations, "values") else self.pulsations
-                value = [mode.reinitialization_kwargs() for mode in modes]
+                value = [mode.kwargs_serializer() for mode in modes]
             elif kwarg in default_units:
                 value = getattr(self, kwarg)
                 if not isinstance(value, u.Quantity):
@@ -324,23 +332,31 @@ class Star(Body):
         return serialized_kwargs
 
     def reinitialization_kwargs(self) -> dict[str, Any]:
-        """Return current constructor parameters, omitting original optional sentinels.
-
-        Reassigning the same NaN singleton to an originally omitted parameter
-        is indistinguishable from leaving its default untouched. Newly computed
-        NaNs and explicitly supplied parameters are never omitted.
-        """
-        kwargs = self.kwargs_serializer()
-        for kwarg in ("surface_potential", "synchronicity", "albedo", "polar_log_g", "gravity_darkening"):
-            # Identity restricts omission to the original default sentinel. A NaN
-            # produced by arithmetic must still reach the Properties validator.
-            if kwarg not in self.kwargs and getattr(self, kwarg) is up.NaN:
-                del kwargs[kwarg]
+        """Return explicitly supplied current scalar inputs in constructor units."""
+        kwargs = self._explicit_kwargs(self.kwargs_serializer())
+        for key, collection in (("spots", self.spots), ("pulsations", self.pulsations)):
+            if collection or key in kwargs:
+                items = collection.values() if hasattr(collection, "values") else collection
+                kwargs[key] = [item.reinitialization_kwargs() for item in items]
         return kwargs
 
+    @preserve_explicit_inputs_during_reinitialization
     def init(self) -> None:
-        """Re-initialize the instance from its serialized kwargs."""
-        self.__init__(**self.reinitialization_kwargs())
+        """Rebuild inputs and nested objects without promoting computed defaults."""
+        spots, modes = self.spots, self.pulsations
+        kwargs = self.reinitialization_kwargs()
+        kwargs.pop("spots", None)
+        kwargs.pop("pulsations", None)
+        try:
+            self.__init__(**kwargs)
+        finally:
+            # Keep the user's collections reachable even if scalar validation fails.
+            self._spots, self._pulsations = spots, modes
+        for index, spot in self.spots.items():
+            spot.init()
+            self.setup_spot_instance_discretization_factor(spot, index)
+        for mode in self.pulsations.values() if hasattr(self.pulsations, "values") else self.pulsations:
+            mode.init()
 
     def has_pulsations(self) -> bool:
         """Return True when the star has defined pulsation modes.

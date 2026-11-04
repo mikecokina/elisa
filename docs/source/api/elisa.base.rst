@@ -39,6 +39,14 @@ elisa.base.error module
    :show-inheritance:
    :undoc-members:
 
+elisa.base.parameter\_tracking module
+-------------------------------------
+
+.. automodule:: elisa.base.parameter_tracking
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 elisa.base.spot module
 ----------------------
 

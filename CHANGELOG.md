@@ -42,6 +42,13 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
   recognized physical and numerical failures reject candidates; unexpected errors
   propagate. The option can hide programming errors and does not cover fit setup
   or process-control exceptions.
+- Explicit-input tracking (`elisa.base.parameter_tracking`) for stars, spots, pulsation
+  modes, and binary/single systems: constructor arguments and later user assignments are
+  recorded as explicit, while omitted parameters stay automatic. `init()` now preserves
+  explicit values and recalculates automatic ones (e.g. albedo, discretization factor,
+  gamma) after related inputs change. Spots and pulsation modes gained `init()`, and
+  `Star.init()` rebuilds nested spots and modes. See
+  `src/elisa/base/README_PARAMETER_TRACKING.md`.
 
 #### Changed
 
@@ -58,6 +65,9 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
   individual sample rows; use `discard_unit` to select steps or rows explicitly.
 - Made settings updates atomic and validated, and preserved host logging handlers
   when applying built-in logging profiles.
+- `reinitialization_kwargs()` on stars, systems, spots, and pulsation modes now returns only
+  explicit inputs; `PulsationMode.reinitialization_kwargs()` serialization moved to
+  `PulsationMode.kwargs_serializer()`.
 
 #### Fixed
 

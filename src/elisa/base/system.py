@@ -13,6 +13,11 @@ from elisa.base.error import (
     raise_elisa_initial_parameters_error,
     raise_elisa_unexpected_error,
 )
+from elisa.base.parameter_tracking import (
+    ParameterTracking,
+    parameter_is_explicit,
+    suspend_tracking_during_initialization,
+)
 from elisa.base.surface.temperature import interpolate_bolometric_gravity_darkening
 from elisa.base.transform import scalar_transform
 from elisa.logger import getLogger
@@ -29,7 +34,7 @@ TBody = TypeVar("TBody", bound=Body)
 logger = getLogger(__name__)
 
 
-class System(Generic[TBody], metaclass=ABCMeta):
+class System(ParameterTracking, Generic[TBody], metaclass=ABCMeta):
     """Abstract base class representing a celestial system.
 
     Concrete system implementations (binary, single star) extend this class
@@ -229,6 +234,7 @@ class System(Generic[TBody], metaclass=ABCMeta):
 
         return json_data
 
+    @suspend_tracking_during_initialization
     def assign_pulsations_amplitudes(self, normalisation_constant: Float = 1.0) -> None:
         """Assign pulsation amplitudes to component modes using RV amplitude.
 
@@ -241,6 +247,7 @@ class System(Generic[TBody], metaclass=ABCMeta):
             if component_instance.has_pulsations():
                 pulsations.assign_amplitudes(component_instance, normalisation_constant)
 
+    @suspend_tracking_during_initialization
     def init_properties(self, **kwargs: Any) -> None:
         """Initialise system attributes from keyword arguments.
 
@@ -274,7 +281,7 @@ class System(Generic[TBody], metaclass=ABCMeta):
         """Validate that provided component objects are correctly initialised.
 
         Current attributes are authoritative, including values assigned after
-        construction. Original kwargs only distinguish omitted default NaNs from
+        construction. Explicit input provenance distinguishes omitted default NaNs from
         explicitly supplied or subsequently computed invalid numerical values.
 
         :param components: Mapping of component name to component instance.
@@ -311,10 +318,10 @@ class System(Generic[TBody], metaclass=ABCMeta):
                 raise_elisa_unexpected_error(msg)
             value = getattr(instance, name)
             # Body/Star initialize omitted properties with the np.nan singleton.
-            # As in Star.reinitialization_kwargs, only identity and provenance
+            # Only identity and explicit input provenance
             # identify an untouched sentinel. Never use is_empty/isnan here:
             # a new NaN from arithmetic is an invalid candidate, not omission.
-            untouched_default = name not in instance.kwargs and value is up.NaN
+            untouched_default = not parameter_is_explicit(instance, name) and value is up.NaN
             if value is None or untouched_default:
                 missing.append(f"`{name}`")
             else:
@@ -352,6 +359,7 @@ class System(Generic[TBody], metaclass=ABCMeta):
                 serialized_kwargs[kwarg] = value if def_unit == u.dimensionless_unscaled else value * def_unit
         return serialized_kwargs
 
+    @suspend_tracking_during_initialization
     def setup_betas(self) -> None:
         """Set up default gravity darkening parameters for components.
 

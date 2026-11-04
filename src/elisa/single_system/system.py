@@ -16,6 +16,11 @@ from elisa.base.error import (
     raise_elisa_operation_input_error,
     raise_elisa_parameters_error,
 )
+from elisa.base.parameter_tracking import (
+    parameter_is_explicit,
+    preserve_explicit_inputs_during_reinitialization,
+    suspend_tracking_during_initialization,
+)
 from elisa.base.star import Star
 from elisa.base.system import System
 from elisa.base.types import INT
@@ -242,6 +247,7 @@ class SingleSystem(System[Star]):
     STAR_OPTIONAL_KWARGS = ("metallicity", "gravity_darkening")
     STAR_ALL_KWARGS = STAR_MANDATORY_KWARGS + STAR_OPTIONAL_KWARGS
 
+    @suspend_tracking_during_initialization
     def __init__(self, star: Star, name: str | None = None, **kwargs: Any) -> None:
         """Initialize a :class:`SingleSystem` instance.
 
@@ -441,24 +447,15 @@ class SingleSystem(System[Star]):
         """Return formatted summary information about the system."""
 
     def reinitialization_kwargs(self) -> dict[str, Any]:
-        """Return current system parameters, omitting the original default gamma.
+        """Return current explicit system parameters in constructor units."""
+        return self._explicit_kwargs(self.kwargs_serializer())
 
-        As with Star, reassignment of the same NaN singleton to an originally
-        omitted parameter cannot be distinguished from its untouched default.
-        """
-        kwargs = self.kwargs_serializer()
-        # As for Star, newly computed nonfinite values must be validated.
-        if not self._gamma_was_supplied and self.gamma is up.NaN:
-            del kwargs["gamma"]
-        return kwargs
-
+    @preserve_explicit_inputs_during_reinitialization
     def init(self) -> None:
         """Re-initialize the instance after parameter changes."""
         logger.info("re/initialising class instance %s", SingleSystem.__name__)
         self.object_params_validity_check({"star": self.star}, self.STAR_MANDATORY_KWARGS)
-        # Rebuild modes without reconstructing the star's derived surface potential.
-        if self.star.has_pulsations():
-            self.star.pulsations = self.star.kwargs_serializer()["pulsations"]
+        self.star.init()
         self.__init__(star=self.star, **self.reinitialization_kwargs())
 
     def init_orbit(self) -> None:
@@ -467,11 +464,12 @@ class SingleSystem(System[Star]):
         orbit_kwargs = {key: getattr(self, key) for key in orbit.Orbit.ALL_KWARGS}
         self.orbit = orbit.Orbit(**orbit_kwargs)
 
+    @suspend_tracking_during_initialization
     def setup_discretisation_factor(self) -> None:
-        """Propagate star discretisation factor to spots without explicit value."""
+        """Propagate star discretization factor to spots without explicit value."""
         if self.star.has_spots():
             for spot in self.star.spots.values():
-                if not spot.kwargs.get("discretization_factor"):
+                if not parameter_is_explicit(spot, "discretization_factor"):
                     spot.discretization_factor = self.star.discretization_factor
 
     @staticmethod
@@ -580,7 +578,13 @@ class SingleSystem(System[Star]):
         :returns: Serialized and transformed property mapping.
         :rtype: dict[str, object]
         """
-        props = SingleSystemProperties.transform_input(**self.reinitialization_kwargs())
+        # Numerical containers need all current defaults, not only the inputs
+        # retained for reconstruction. Only the untouched gamma sentinel bypasses
+        # validation, as it did before provenance filtering was introduced.
+        kwargs = self.kwargs_serializer()
+        if not parameter_is_explicit(self, "gamma") and self.gamma is up.NaN:
+            del kwargs["gamma"]
+        props = SingleSystemProperties.transform_input(**kwargs)
         props.setdefault("gamma", self.gamma)
         props.update(
             {

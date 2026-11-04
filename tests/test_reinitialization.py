@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -290,7 +291,18 @@ def test_system_pulsations_preserve_calculated_amplitudes_and_current_configurat
     star = system.primary if owner == "binary" else system.star
     star.pulsations[0].frequency = 20.0 / 86400
     star.pulsations[0].amplitude = 3.0
-    expected = mode_state(star)
+    # A fresh system with the edited inputs supplies an independent reference.
+    descriptors = deepcopy(MODES)
+    descriptors[0].update(frequency=20.0, amplitude=3.0)
+    if owner == "binary":
+        reference = make_binary(pulsations=descriptors).primary
+    else:
+        reference = SingleSystem(
+            star=Star(mass=1.0, t_eff=6000.0, polar_log_g=4.4, spots=SPOTS, pulsations=descriptors),
+            inclination=80.0,
+            rotation_period=25.0,
+        ).star
+    expected = mode_state(reference)
     for _ in range(3):
         system.init()
         assert len(star.pulsations) == 2

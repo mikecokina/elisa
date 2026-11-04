@@ -18,6 +18,11 @@ from elisa.base.error import (
     raise_elisa_operation_input_error,
     raise_elisa_unexpected_error,
 )
+from elisa.base.parameter_tracking import (
+    parameter_is_explicit,
+    preserve_explicit_inputs_during_reinitialization,
+    suspend_tracking_during_initialization,
+)
 from elisa.base.star import Star
 from elisa.base.system import System
 from elisa.base.types import FLOAT
@@ -228,6 +233,7 @@ class BinarySystem(System[Star]):
     STAR_OPTIONAL_KWARGS = ("metallicity", "gravity_darkening", "albedo")
     STAR_ALL_KWARGS = STAR_MANDATORY_KWARGS + STAR_OPTIONAL_KWARGS
 
+    @suspend_tracking_during_initialization
     def __init__(self, primary: Star, secondary: Star, name: str | None = None, **kwargs: Any) -> None:
         """Initialize the binary system.
 
@@ -548,6 +554,11 @@ class BinarySystem(System[Star]):
         )
         return orbital_position_container
 
+    def reinitialization_kwargs(self) -> dict[str, Any]:
+        """Return current explicit system parameters in constructor units."""
+        return self._explicit_kwargs(self.kwargs_serializer())
+
+    @preserve_explicit_inputs_during_reinitialization
     def init(self) -> None:
         """Reinitialize the system after changing binary-system parameters.
 
@@ -567,7 +578,7 @@ class BinarySystem(System[Star]):
         for component in settings.BINARY_COUNTERPARTS:
             getattr(self, component).init()
 
-        self.__init__(primary=self.primary, secondary=self.secondary, **self.kwargs_serializer())
+        self.__init__(primary=self.primary, secondary=self.secondary, **self.reinitialization_kwargs())
 
     @property
     def components(self) -> dict[str, Star]:
@@ -751,6 +762,7 @@ class BinarySystem(System[Star]):
 
         return morphology
 
+    @suspend_tracking_during_initialization
     def setup_discretisation_factor(self) -> None:  # noqa: C901
         """Adjust discretization factors of both components to similar sizes.
 
@@ -776,8 +788,8 @@ class BinarySystem(System[Star]):
         ref: Star | None = None
 
         if (
-            self.primary.kwargs.get("discretization_factor") is None
-            and self.secondary.kwargs.get("discretization_factor") is None
+            not parameter_is_explicit(self.primary, "discretization_factor")
+            and not parameter_is_explicit(self.secondary, "discretization_factor")
         ):
             cond_a = self.secondary.equivalent_radius * self.secondary.t_eff**2
             cond_b = self.primary.equivalent_radius * self.primary.t_eff**2
@@ -789,11 +801,11 @@ class BinarySystem(System[Star]):
                 adj = self.primary
                 ref = self.secondary
                 adj_comp = "primary"
-        elif self.secondary.kwargs.get("discretization_factor") is None:
+        elif not parameter_is_explicit(self.secondary, "discretization_factor"):
             adj = self.secondary
             ref = self.primary
             adj_comp = "secondary"
-        elif self.primary.kwargs.get("discretization_factor") is None:
+        elif not parameter_is_explicit(self.primary, "discretization_factor"):
             adj = self.primary
             ref = self.secondary
             adj_comp = "primary"
@@ -817,7 +829,7 @@ class BinarySystem(System[Star]):
             instance = getattr(self, component)
             if instance.has_spots():
                 for spot in instance.spots.values():
-                    if not spot.kwargs.get("discretization_factor"):
+                    if not parameter_is_explicit(spot, "discretization_factor"):
                         spot.discretization_factor = instance.discretization_factor
 
     def transform_input(self, **kwargs: Any) -> dict[str, Any]:
@@ -1311,6 +1323,7 @@ class BinarySystem(System[Star]):
                 narrowed_component = cast("ComponentSelection", component)
                 instance.equivalent_radius = self.calculate_equivalent_radius(narrowed_component)[component]
 
+    @suspend_tracking_during_initialization
     def setup_albedos(self) -> None:
         """Set up default component albedos.
 

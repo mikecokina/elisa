@@ -9,6 +9,11 @@ from elisa import umpy as up
 from elisa import units as u
 from elisa import utils
 from elisa.base.error import raise_elisa_spot_error
+from elisa.base.parameter_tracking import (
+    ParameterTracking,
+    preserve_explicit_inputs_during_reinitialization,
+    suspend_tracking_during_initialization,
+)
 from elisa.base.transform import SpotProperties
 from elisa.base.types import INT
 from elisa.logger import getLogger
@@ -28,7 +33,7 @@ logger = getLogger(__name__)
 _IS_ZERO_TOLERANCE = 1e-9
 
 
-class Spot:
+class Spot(ParameterTracking):
     """Container describing a circular spot on a stellar surface.
 
     The spot stores its input parameters (longitude, latitude, angular radius,
@@ -67,6 +72,7 @@ class Spot:
     OPTIONAL_KWARGS = ("discretization_factor",)
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
+    @suspend_tracking_during_initialization
     def __init__(self, **kwargs) -> None:
         utils.invalid_kwarg_checker(kwargs=kwargs, kwarglist=Spot.ALL_KWARGS, instance=Spot)
         utils.check_missing_kwargs(Spot.MANDATORY_KWARGS, kwargs, instance_of=Spot)
@@ -126,6 +132,15 @@ class Spot:
         """
         return SpotProperties.transform_input(**kwargs)
 
+    def reinitialization_kwargs(self) -> dict:
+        """Serialize explicit spot inputs, omitting inherited discretization."""
+        return self._explicit_kwargs(self.kwargs_serializer())
+
+    @preserve_explicit_inputs_during_reinitialization
+    def init(self) -> None:
+        """Rebuild the spot; inherited defaults require its parent afterward."""
+        self.__init__(**self.reinitialization_kwargs())
+
     def calculate_areas(self) -> NDArray[Float]:
         """Compute areas of faces defined for this spot.
 
@@ -134,6 +149,7 @@ class Spot:
         """
         return utils.triangle_areas(triangles=self.faces, points=self.points)
 
+    @suspend_tracking_during_initialization
     def init_properties(self, **kwargs) -> None:
         """Initialise instance attributes from provided kwargs.
 

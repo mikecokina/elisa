@@ -8,6 +8,7 @@ import numpy as np
 
 from elisa import settings
 from elisa import umpy as up
+from elisa.base.parameter_tracking import ParameterTracking, suspend_tracking_during_initialization
 from elisa.base.spot import Spot
 from elisa.logger import getLogger
 from elisa.utils import is_empty
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 logger = getLogger(__name__)
 
 
-class Body(metaclass=ABCMeta):
+class Body(ParameterTracking, metaclass=ABCMeta):
     """Abstract base class for physical bodies modelled by ELISa.
 
     The :class:`Body` class defines the minimal interface and shared
@@ -132,6 +133,7 @@ class Body(metaclass=ABCMeta):
         """
         del self._spots[spot_index]
 
+    @suspend_tracking_during_initialization
     def setup_spot_instance_discretization_factor(self, spot_instance: Spot, spot_index: int) -> Spot:
         """Apply discretization-factor rules to a spot instance.
 

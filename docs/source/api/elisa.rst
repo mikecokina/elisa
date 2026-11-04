@@ -112,7 +112,6 @@ Module contents
 ---------------
 
 .. automodule:: elisa
-   :no-index:
    :members:
    :show-inheritance:
    :undoc-members:

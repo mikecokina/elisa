@@ -9,6 +9,12 @@ Welcome to elisa's documentation!
 .. automodule:: elisa
    :no-index:
 
+Usage
+~~~~~
+
+.. toctree::
+   :maxdepth: 1
+
 Module Index
 ~~~~~~~~~~~~
 

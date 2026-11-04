@@ -10,6 +10,11 @@ from elisa import const as c
 from elisa import settings, units, utils
 from elisa import umpy as up
 from elisa.base.error import raise_elisa_parameters_error
+from elisa.base.parameter_tracking import (
+    ParameterTracking,
+    preserve_explicit_inputs_during_reinitialization,
+    suspend_tracking_during_initialization,
+)
 from elisa.logger import getLogger
 from elisa.pulse.transform import PulsationModeProperties
 
@@ -19,7 +24,7 @@ if TYPE_CHECKING:
 logger = getLogger(__name__)
 
 
-class PulsationMode:
+class PulsationMode(ParameterTracking):
     """Container for pulsation mode parameters and computed properties.
 
     Stores all parameters defining a single pulsation mode including spherical
@@ -88,6 +93,7 @@ class PulsationMode:
     )
     ALL_KWARGS: tuple[str, ...] = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
+    @suspend_tracking_during_initialization
     def __init__(self, **kwargs: Any) -> None:
         """Initialize a PulsationMode instance.
 
@@ -236,7 +242,7 @@ class PulsationMode:
         """
         return PulsationModeProperties.transform_input(**kwargs)
 
-    def reinitialization_kwargs(self) -> dict[str, Any]:
+    def kwargs_serializer(self) -> dict[str, Any]:
         """Return current mode descriptors with their internal physical units."""
         kwargs: dict[str, Any] = {}
         for kwarg in self.ALL_KWARGS:
@@ -250,6 +256,20 @@ class PulsationMode:
                 value = value * unit
             kwargs[kwarg] = value
         return kwargs
+
+    def reinitialization_kwargs(self) -> dict[str, Any]:
+        """Serialize explicit mode inputs without parent-computed factors."""
+        values = self.kwargs_serializer()
+        # Explicit None must still reach validation, including the ratio.
+        for key in self._explicit_parameters:
+            if key not in values:
+                values[key] = getattr(self, key)
+        return self._explicit_kwargs(values)
+
+    @preserve_explicit_inputs_during_reinitialization
+    def init(self) -> None:
+        """Rebuild independent mode state; the parent calculates amplitudes."""
+        self.__init__(**self.reinitialization_kwargs())
 
     def validate_mode(self) -> None:
         """Validate that azimuthal order constraint ``|m| <= l`` is satisfied.
@@ -266,6 +286,7 @@ class PulsationMode:
             )
             raise_elisa_parameters_error(error_msg)
 
+    @suspend_tracking_during_initialization
     def init_properties(self, **kwargs) -> None:
         """Initialize pulsation mode properties from input keyword arguments.
 
