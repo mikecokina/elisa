@@ -455,6 +455,9 @@ class SingleSystem(System[Star]):
         """Re-initialize the instance after parameter changes."""
         logger.info("re/initialising class instance %s", SingleSystem.__name__)
         self.object_params_validity_check({"star": self.star}, self.STAR_MANDATORY_KWARGS)
+        # SingleSystem owns this dimensional, negative potential. It is not a
+        # Roche-potential constructor input, even if Star originally supplied one.
+        self.star._explicit_parameters.discard("surface_potential")  # noqa: SLF001 - parent owns this derived input
         self.star.init()
         self.__init__(star=self.star, **self.reinitialization_kwargs())
 

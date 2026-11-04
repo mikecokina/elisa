@@ -427,6 +427,9 @@ class Star(Body):
             {
                 "name": self.name,
                 "spots": deepcopy(self.spots),
+                # Modes hold mutable synthesis arrays as well as amplitudes;
+                # numerical snapshots must own both independently of Star.init().
+                "pulsations": deepcopy(self.pulsations),
             },
         )
         return props
