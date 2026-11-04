@@ -71,6 +71,13 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 #### Fixed
 
+- Fixed phase-dependent Roche geometry in binary `plot.mesh()`, `plot.wireframe()`,
+  and `build_container(phase=... / time=...)`: eccentric snapshots now apply
+  volume-corrected instantaneous surface potentials before mesh construction,
+  preserving stored periastron reference potentials and matching `plot.surface()`.
+  Mesh plots and public containers also update spot longitudes for the requested
+  phase; mesh and wireframe plotting remain independent of atmosphere and
+  limb-darkening tables.
 - Fixed rebuild-mask indexing in the eccentric similar-neighbour synthesis
   approximation: geometry and irradiation decisions now follow original orbital
   position indices after separation sorting and multiprocessing partitioning,

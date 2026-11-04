@@ -26,7 +26,7 @@ from elisa.base.parameter_tracking import (
 from elisa.base.star import Star
 from elisa.base.system import System
 from elisa.base.types import FLOAT
-from elisa.binary_system import graphic, model
+from elisa.binary_system import dynamic, graphic, model
 from elisa.binary_system import radius as bsradius
 from elisa.binary_system import utils as bsutils
 from elisa.binary_system._radius_solver import RocheRay, bracket_root
@@ -47,6 +47,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from elisa.binary_system.orbit.orbit import Orbit
+    from elisa.const import Position
     from elisa.types import ComponentName, Float
     from elisa.units import _DefaultBinarySystemInputUnits, _DefaultBinarySystemUnits
 
@@ -520,7 +521,9 @@ class BinarySystem(System[Star]):
         """Build an :class:`OrbitalPositionContainer` at a given phase or time.
 
         The method returns a fully built model binary system at user-defined
-        photometric phase or time of observation.
+        photometric phase or time of observation. Eccentric snapshots use
+        volume-corrected instantaneous potentials; stored reference potentials
+        remain unchanged.
 
         :param phase: Photometric phase.
         :type phase: Float | None
@@ -546,6 +549,7 @@ class BinarySystem(System[Star]):
             calculate_from="phase",
         )[0]
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self, position)
+        self._set_container_phase_geometry(orbital_position_container, position, resolved_phase)
         orbital_position_container.build(build_pulsations=build_pulsations)
 
         logger.info(
@@ -553,6 +557,20 @@ class BinarySystem(System[Star]):
             resolved_phase,
         )
         return orbital_position_container
+
+    def _set_container_phase_geometry(
+        self, container: OrbitalPositionContainer, position: Position, phase: Float,
+    ) -> None:
+        """Set volume-corrected eccentric potentials and phase-specific spots.
+
+        Potentials preserve periastron reference volumes; spot longitudes track
+        stellar rotation and orbital libration without changing reference inputs.
+        """
+        if self.eccentricity > 0:
+            potentials = self.correct_potentials(phases=[phase])
+            container.set_on_position_params(position, potentials["primary"][0], potentials["secondary"][0])
+        spots_longitudes = dynamic.calculate_spot_longitudes(self, phase, component="all")
+        dynamic.assign_spot_longitudes(container, spots_longitudes, index=None, component="all")
 
     def reinitialization_kwargs(self) -> dict[str, Any]:
         """Return current explicit system parameters in constructor units."""

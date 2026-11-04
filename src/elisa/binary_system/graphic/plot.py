@@ -166,6 +166,22 @@ class Plot:
         )
         return graphics.equipotential(**equipotential_kwargs)
 
+    def _prepare_mesh_container(self, position: Position, phase: Float) -> OrbitalPositionContainer:
+        """Set instantaneous potentials and spot longitudes before meshing.
+
+        Eccentric potentials preserve reference volumes; spot longitudes account
+        for rotation and orbital libration at the requested phase.
+        """
+        container = OrbitalPositionContainer.from_binary_system(self.binary, position)
+        if self.binary.eccentricity > 0:
+            potentials = self.binary.correct_potentials(phases=[phase])
+            container.set_on_position_params(position, potentials["primary"][0], potentials["secondary"][0])
+
+        # recalculating spot latitudes
+        spots_longitudes = dynamic.calculate_spot_longitudes(self.binary, phase, component="all")
+        dynamic.assign_spot_longitudes(container, spots_longitudes, index=None, component="all")
+        return container
+
     def mesh(
         self,
         phase: Float = 0.0,
@@ -194,7 +210,8 @@ class Plot:
             if inclination is not None
             else up.degrees(self.binary.inclination)
         )
-        components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
+        position = self.binary.calculate_orbital_motion(phase)[0]
+        components_distance, azim = position.distance, position.azimuth
 
         azimuth = (
             transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64)
@@ -202,7 +219,7 @@ class Plot:
             else up.degrees(azim) - 90
         )
 
-        orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
+        orbital_position_container = self._prepare_mesh_container(position, phase)
         orbital_position_container.build_mesh(components_distance=components_distance)
         orbital_position_container.build_perturbations(
             component=components_to_plot, components_distance=components_distance,
@@ -262,19 +279,15 @@ class Plot:
             if inclination is not None
             else up.degrees(self.binary.inclination)
         )
-        components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
+        position = self.binary.calculate_orbital_motion(phase)[0]
+        components_distance, azim = position.distance, position.azimuth
         azimuth = (
             transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64)
             if azimuth is not None
             else up.degrees(azim) - 90
         )
 
-        orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
-
-        # recalculating spot latitudes
-        spots_longitudes = dynamic.calculate_spot_longitudes(self.binary, phase, component="all")
-        dynamic.assign_spot_longitudes(orbital_position_container, spots_longitudes, index=None, component="all")
-
+        orbital_position_container = self._prepare_mesh_container(position, phase)
         orbital_position_container.build_mesh(components_distance=components_distance)
         orbital_position_container.build_faces(components_distance=components_distance)
 
