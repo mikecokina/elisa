@@ -6,7 +6,6 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import animation, cm, gridspec
-from mpl_toolkits.mplot3d import axes3d
 
 from elisa import umpy as up
 from elisa import units, utils
@@ -256,7 +255,7 @@ def single_star_surface(**kwargs) -> Figure | None:
         * **colorbar_size** * -- float; relative size of the colorbar, default 0.7
     """
     fig = plt.figure(figsize=(7, 7))
-    ax = axes3d.Axes3D(fig)
+    ax = fig.add_subplot(111, projection="3d")
     ax.set_box_aspect([1, 1, 1])
     ax.elev = kwargs["elevation"]
     ax.azim = kwargs["azimuth"]
