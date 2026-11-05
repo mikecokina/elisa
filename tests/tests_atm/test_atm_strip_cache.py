@@ -394,8 +394,9 @@ def test_table_families_and_throughput_remain_uncached(
     monkeypatch.setattr(atm.buffer, "ATMOSPHERE_TABLES", {})
     args = np.array([10000.0, 10001.0]), np.repeat(2.0, 2), 0.0, atlas
     wave = np.arange(2500.0, 5501.0, 100.0)
-    for path in set(atm.NaiveInterpolatedAtm.atm_files(*args)):
-        p = Path(path)
+    paths = [Path(path) for path in set(atm.NaiveInterpolatedAtm.atm_files(*args))]
+    assert all(path.resolve().is_relative_to(tmp_path.resolve()) for path in paths)
+    for p in paths:
         p.parent.mkdir(exist_ok=True)
         np.savetxt(p, np.column_stack((wave, 1 + wave / 1000)), delimiter=",", header="wave,flux", comments="")
     band = PassbandContainer.from_name("Generic.Bessell.U")
@@ -417,3 +418,25 @@ def test_table_families_and_throughput_remain_uncached(
     third = atm.NaiveInterpolatedAtm.get_atm_profiles(*args, **kwargs)
     assert np.count_nonzero(third[0]["Generic.Bessell.U"]["flux"]) == 0
     assert atm.atm_strip_cache_info()["hits"] > hits
+
+
+@pytest.mark.parametrize("symlink", [False, True])
+def test_synthetic_paths_rejected_before_writing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, symlink: bool,
+) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    escaped = outside / "table.csv"
+    escaped.write_text("original")
+    if symlink:
+        (root / "link").symlink_to(outside, target_is_directory=True)
+        escaped = root / "link" / "table.csv"
+    monkeypatch.setattr(
+        atm.NaiveInterpolatedAtm, "atm_files", lambda *_: [str(root / "new" / "safe.csv"), str(escaped)],
+    )
+    with pytest.raises(AssertionError):
+        test_table_families_and_throughput_remain_uncached("ck04", monkeypatch, root)
+    assert escaped.read_text() == "original"
+    assert not (root / "new").exists()

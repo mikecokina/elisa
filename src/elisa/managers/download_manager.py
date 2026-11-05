@@ -16,14 +16,92 @@ from tqdm import tqdm
 from elisa.base.error import raise_elisa_settings_error
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
-
     from elisa.conf.settings import Settings
 
 logger = getLogger(__name__)
 
 # HTTP status threshold used to detect client/server errors
 HTTP_ERROR_STATUS = 400
+
+
+def _validated_members(
+    archive: tarfile.TarFile, destination: Path, prefix: str,
+) -> list[tuple[tarfile.TarInfo, Path]]:
+    """Validate the entire archive before creating installation resources."""
+    members = []
+    for member in archive.getmembers():
+        name = member.name.removeprefix(prefix) if prefix else member.name
+        relative = Path(name)
+        target = destination / relative
+        try:
+            resolved = target.resolve()
+        except Exception as err:  # noqa: BLE001 - preserve the original cause
+            raise_elisa_settings_error(f"Invalid member path {name}: {err}", err)
+        if relative.is_absolute() or ".." in relative.parts or not resolved.is_relative_to(destination.resolve()):
+            raise_elisa_settings_error("Attempted Path Traversal in Tar File")
+        if not (member.isfile() or member.isdir()) or (relative == Path() and not member.isdir()):
+            raise_elisa_settings_error(f"Invalid archive member: {member.name}")
+        if any(path.is_symlink() for path in (target, *target.parents)):
+            raise_elisa_settings_error(f"Unsafe destination link: {name}")
+        members.append((member, relative))
+    return members
+
+
+def _stage_dataset(
+    archive: tarfile.TarFile,
+    members: list[tuple[tarfile.TarInfo, Path]],
+    destination: Path,
+    stage: Path,
+) -> None:
+    """Build the complete replacement without writing to installed tables."""
+    if destination.exists():
+        # Keep unrelated user files and their metadata in the replacement.
+        shutil.copytree(destination, stage, symlinks=True)
+    else:
+        stage.mkdir()
+    for member, relative in members:
+        target = stage / relative
+        if member.isdir():
+            target.mkdir(parents=True, exist_ok=True)
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        # Validation above rejects existing symlink escapes as well.
+        mode = target.stat().st_mode if target.exists() else None
+        with archive.extractfile(member) as source, target.open("wb") as output:
+            shutil.copyfileobj(source, output)
+        if mode is not None:
+            target.chmod(mode)
+
+
+def _publish_dataset(stage: Path, destination: Path) -> None:
+    """Publish a completed directory, restoring the previous one on failure.
+
+    Portable rename cannot replace a nonempty directory in one step.
+    Readers can see a missing root between this renames; they never
+    see partially extracted tables. Concurrent installers are unsupported.
+    """
+    # Keep the backup outside staging cleanup so failed rollback cannot delete it.
+    backup = destination.with_name(f".{destination.name}-previous-{stage.parent.name}")
+    had_destination = destination.exists()
+    if had_destination:
+        destination.replace(backup)
+    try:
+        stage.replace(destination)
+    except BaseException:
+        if had_destination:
+            _restore_dataset(backup, destination)
+        raise
+    else:
+        if had_destination:
+            shutil.rmtree(backup)
+
+
+def _restore_dataset(backup: Path, destination: Path) -> None:
+    """Attempt rollback; leave the original data recoverable if it fails."""
+    try:
+        backup.replace(destination)
+    except OSError:
+        logger.exception("Original dataset retained at %s", backup)
 
 
 class DownloadManager:
@@ -71,49 +149,15 @@ class DownloadManager:
         :rtype: None
         :raises ElisaSettingsError: If an archive member path is invalid or escapes the destination.
         """
-
-        def truncate_members(_archive: tarfile.TarFile) -> Iterable[tarfile.TarInfo]:
-            truncate_length = len(truncate_tarfile_path)
-            for member_ in _archive.getmembers():
-                if truncate_tarfile_path and member_.path.startswith(truncate_tarfile_path):
-                    member_.path = member_.path[truncate_length:]
-                yield member_
-
         logger.info("extract files to %s", destination_path)
+        destination = Path(destination_path).absolute()
         with tarfile.open(archive_path, "r") as archive:
-            members = list(truncate_members(archive))
-
-            # Manual safe extraction: write members one by one and prevent
-            # path traversal by resolving the target path.
-            dest_path = Path(destination_path)
-            dest_path.mkdir(parents=True, exist_ok=True)
-
-            for member in members:
-                target = dest_path / member.name
-                try:
-                    target_resolved = target.resolve()
-                except Exception as err:  # noqa: BLE001 - helper preserves the original cause
-                    msg = f"Invalid member path {member.name}: {err}"
-                    raise_elisa_settings_error(msg, err)
-
-                if dest_path.resolve() not in target_resolved.parents and dest_path.resolve() != target_resolved:
-                    msg = "Attempted Path Traversal in Tar File"
-                    raise_elisa_settings_error(msg)
-
-                if member.isdir():
-                    target.mkdir(parents=True, exist_ok=True)
-                elif member.issym() or member.islnk():
-                    # skip links for safety
-                    continue
-                else:
-                    # ensure parent directory exists
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    fobj = archive.extractfile(member)
-                    if fobj is None:
-                        continue
-                    with target.open("wb") as out_f:
-                        # noinspection PyTypeChecker
-                        shutil.copyfileobj(fobj, out_f)
+            members = _validated_members(archive, destination, truncate_tarfile_path)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.TemporaryDirectory(prefix=f".{destination.name}-", dir=destination.parent) as temporary:
+                stage = Path(temporary) / "staged"
+                _stage_dataset(archive, members, destination, stage)
+                _publish_dataset(stage, destination)
 
     @classmethod
     def _download_and_process(cls, url: str, destination_path: str, truncate_tarfile_path: str = "") -> None:

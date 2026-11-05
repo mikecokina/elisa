@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import configparser
+import os
 import sys
+import tempfile
 from pathlib import Path
 from typing import ClassVar, Final
 
@@ -81,6 +83,22 @@ class DefaultSettings:
     MAGNITUDE_SYSTEM: str = "vega"
 
 
+def _write_ini_file(config: configparser.ConfigParser, destination: Path) -> None:
+    """Publish a complete INI file without replacing an existing destination."""
+    # ensure parent directory exists
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=destination.parent, delete=False) as output:
+            temporary = Path(output.name)
+            config.write(output)
+        # Refuse replacement, including a file created while the wizard ran.
+        os.link(temporary, destination)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
 class SettingsManager:
     """Interactive helper to create a first-time configuration file.
 
@@ -101,13 +119,6 @@ class SettingsManager:
 
         def _create_configuration_path_input(_directory: str) -> None:
             Path(_directory).mkdir(parents=True, exist_ok=True)
-
-        def _write_ini_file(_config: configparser.ConfigParser, _path: str) -> None:
-            p = Path(_path)
-            # ensure parent directory exists
-            p.parent.mkdir(parents=True, exist_ok=True)
-            with p.open("w") as _f:
-                _config.write(_f)
 
         def _system_exit(exit_code: int) -> None:
             sys.exit(exit_code)
@@ -149,6 +160,8 @@ class SettingsManager:
             f"[ hit enter for default {default_config_path} ]: "
         )
         configuration_file = input(file_prompt) or default_config_path
+        if Path(configuration_file).exists() or Path(configuration_file).is_symlink():
+            raise FileExistsError(configuration_file)
         _create_configuration_path_input(str(Path(configuration_file).parent))
         config.set(section_general, "home", str(Path(configuration_file).parent))
 
@@ -180,4 +193,4 @@ class SettingsManager:
         config.set(section_support, "kurucz_93_atm_tables", k93_atm_tables)
 
         # write file
-        _write_ini_file(config, default_config_path)
+        _write_ini_file(config, Path(configuration_file))

@@ -12,6 +12,7 @@ import pytest
 import requests
 
 from elisa.base.error import ElisaError, ElisaSettingsError, raise_elisa_settings_error
+from elisa.managers import download_manager
 from elisa.managers.download_manager import DownloadManager
 
 if TYPE_CHECKING:
@@ -91,3 +92,92 @@ def test_network_exceptions_are_not_reclassified_in_this_step(tmp_path: Path) ->
     ):
         DownloadManager.download_file("https://example.com/assets.tar", str(tmp_path / "download"))
     assert caught.value is cause
+
+
+@pytest.mark.parametrize("failure", ["invalid", "staging", "publication", "none"])
+def test_replacement_is_staged(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str) -> None:
+    destination = tmp_path / "installed"
+    destination.mkdir()
+    (destination / "table.dat").write_bytes(b"old")
+    (destination / "personal").write_bytes(b"keep")
+    path = archive(tmp_path, "table.dat")
+    if failure == "invalid":
+        with tarfile.open(path, "a") as output:
+            output.addfile(tarfile.TarInfo("../escape"))
+    replace = download_manager.os.replace
+
+    def publish(source: Path, target: Path) -> None:
+        if Path(source).name == "staged":
+            assert not destination.exists()
+            raise OSError("publication")
+        replace(source, target)
+
+    if failure == "staging":
+        monkeypatch.setattr(download_manager.shutil, "copyfileobj", Mock(side_effect=OSError("staging")))
+    elif failure == "publication":
+        monkeypatch.setattr(download_manager.os, "replace", publish)
+
+    if failure == "none":
+        DownloadManager.extract(path, str(destination))
+        assert (destination / "table.dat").read_bytes() == b"table data"
+    else:
+        with pytest.raises((OSError, ElisaSettingsError)):
+            DownloadManager.extract(path, str(destination))
+        assert (destination / "table.dat").read_bytes() == b"old"
+    assert (destination / "personal").read_bytes() == b"keep"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["assets.tar", "installed"]
+
+
+@pytest.mark.parametrize("kind", [tarfile.SYMTYPE, tarfile.LNKTYPE, tarfile.FIFOTYPE])
+def test_unsafe_member_types(tmp_path: Path, kind: bytes) -> None:
+    path = archive(tmp_path, "table.dat")
+    with tarfile.open(path, "a") as output:
+        member = tarfile.TarInfo("link")
+        member.type = kind
+        member.linkname = "table.dat"
+        output.addfile(member)
+    with pytest.raises(ElisaSettingsError):
+        DownloadManager.extract(path, str(tmp_path / "installed"))
+    assert not (tmp_path / "installed").exists()
+
+
+def test_download_failure_cleans_archive(tmp_path: Path) -> None:
+    temporary = tmp_path / "download"
+    temporary.touch()
+    with (
+        patch.object(DownloadManager, "temp_file", return_value=str(temporary)),
+        patch.object(DownloadManager, "download_file", side_effect=OSError("download")),
+        pytest.raises(OSError, match="download"),
+    ):
+        DownloadManager._download_and_process("mock", str(tmp_path / "installed"))
+    assert not temporary.exists()
+
+
+@pytest.mark.parametrize("rollback_fails", [False, True])
+def test_publication_failure_retains_original_dataset(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, rollback_fails: bool,
+) -> None:
+    destination = tmp_path / "installed"
+    destination.mkdir()
+    (destination / "table.dat").write_bytes(b"original")
+    path = archive(tmp_path, "table.dat")
+    replace = download_manager.os.replace
+
+    def fail_replace(source: Path, target: Path) -> None:
+        if rollback_fails and Path(source) == destination:
+            replace(source, target)
+        else:
+            raise OSError("rename failed")
+
+    monkeypatch.setattr(download_manager.os, "replace", fail_replace)
+    with pytest.raises(OSError, match="rename failed"):
+        DownloadManager.extract(path, str(destination))
+    if rollback_fails:
+        backups = list(tmp_path.glob(".installed-previous-*"))
+        assert len(backups) == 1
+        assert (backups[0] / "table.dat").read_bytes() == b"original"
+        assert not destination.exists()
+    else:
+        assert (destination / "table.dat").read_bytes() == b"original"
+    staging = [path for path in tmp_path.glob(".installed-*") if "-previous-" not in path.name]
+    assert staging == []

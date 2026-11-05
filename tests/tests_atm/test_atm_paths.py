@@ -229,8 +229,9 @@ def test_selected_tables_preserve_spectra_and_radiances(
     monkeypatch.setattr(atm.buffer, "ATMOSPHERE_TABLES", {})
     args = np.array([10000.0, 10001.0, 10250.0, 10001.0]), np.repeat(2.0, 4), 0.0, atlas
     wave = np.linspace(1000.0, 8000.0, 29)
-    for filename in set(original_atm_files(*args)):
-        path = Path(filename)
+    paths = [Path(filename) for filename in set(original_atm_files(*args))]
+    assert all(path.resolve().is_relative_to(tmp_path.resolve()) for path in paths)
+    for path in paths:
         path.parent.mkdir(exist_ok=True)
         temperature = atm.parse_domain_quantities_from_atm_table_filename(path.name)[0]
         pd.DataFrame({"wave": wave, "flux": (wave / 1000.0) ** 2 * temperature}).to_csv(path, index=False)
