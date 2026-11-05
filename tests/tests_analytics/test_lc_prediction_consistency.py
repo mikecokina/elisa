@@ -182,7 +182,7 @@ def assert_consistent_predictions(
         assert_statistical_cost(fit, physical, normalized_values, value, captured["prediction"])
         assert_prediction_r_squared(fit, physical, captured["prediction"])
         if fit.atmosphere_model:
-            assert captured["physical"]["primary@atmosphere"] == "ck"
+            assert captured["physical"]["primary@atmosphere"] == "bb"
         if fit.limb_darkening_coefficients:
             assert captured["physical"]["primary@limb_darkening_coefficients"][V] == [0.1]
         captures.append(captured)
@@ -263,11 +263,15 @@ def test_explicit_atmosphere_and_ld(threshold: int, atmosphere: bool, custom_ld:
     fits = prepare_lc_fits(
         grids,
         threshold,
-        atmosphere={"primary": "ck04", "secondary": "ck04"} if atmosphere else None,
+        atmosphere={"primary": "bb", "secondary": "bb"} if atmosphere else None,
         custom_ld=custom_ld,
     )
     caps = assert_consistent_predictions(fits)
-    baseline = prepare_lc_fits(grids, threshold)
+    baseline = prepare_lc_fits(
+        grids,
+        threshold,
+        atmosphere={"primary": "ck04", "secondary": "ck04"} if atmosphere else None,
+    )
     physical = p.prepare_properties_set(
         np.asarray(baseline[0].initial_vector),
         baseline[0].fitable.keys(),

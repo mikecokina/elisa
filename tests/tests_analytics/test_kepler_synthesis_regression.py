@@ -113,6 +113,8 @@ def test_real_lc_and_binary_positions_match_scalar_orbit(eccentricity: float) ->
     _, model_parameters = lc_parameters()
     model_parameters.update(
         {
+            "primary@atmosphere": "bb",
+            "secondary@atmosphere": "bb",
             "system@eccentricity": eccentricity,
             "system@argument_of_periastron": 25.0,
         },

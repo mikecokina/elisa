@@ -9,7 +9,7 @@ from packaging import version
 
 from elisa import const, settings
 from elisa import units as u
-from elisa.atm.const import normalize_atlas
+from elisa.atm.const import Atmosphere, normalize_atlas
 from elisa.base.error import raise_elisa_initial_parameters_error, raise_elisa_parameters_error
 from elisa.base.types import FLOAT, INT
 from elisa.ld import CustomLimbDarkeningCoefficients
@@ -426,14 +426,11 @@ class BodyProperties(TransformProperties):
 
 class StarProperties(BodyProperties):
     @staticmethod
-    def atmosphere(value: Any) -> str | None:
-        """Resolve fixed atlas configuration when a star is created or reinitialized."""
+    def atmosphere(value: Any) -> Atmosphere:
+        """Resolve a supported atmosphere alias to its canonical identifier."""
         # Despite living among model property validators, invalid atlas names raise
         # ElisaInitialParametersError: the atlas is fixed configuration, not a value
         # that drifts during fitting. Abort the fit rather than penalizing proposals.
-        # Empty/None retain the existing request to use settings.ATM_ATLAS.
-        if value is None or (isinstance(value, str) and value == ""):
-            return value
         return normalize_atlas(value)
 
     @staticmethod

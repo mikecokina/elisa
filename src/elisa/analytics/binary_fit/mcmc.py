@@ -43,6 +43,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from elisa.analytics.dataset.base import LCData, RVData
+    from elisa.observer.observer import Observer
     from elisa.types import Float
 
 # Precomputed constant: 0.5 * log(2*pi) = log(sqrt(2*pi))
@@ -66,9 +67,9 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
     initial_vector: list[Any]
     normalization: dict[str, tuple[Any, ...]]
     flat_result: dict[str, Any]
-    observer: Any
-    atmosphere_model: None
-    limb_darkening_coefficients: None
+    observer: Observer
+    atmosphere_model: dict[str, Any] | None
+    limb_darkening_coefficients: dict[str, Any] | None
     interp_treshold: int
     discretization: float
     norm_init_vector: NDArray[Float]

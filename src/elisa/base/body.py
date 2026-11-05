@@ -8,6 +8,7 @@ import numpy as np
 
 from elisa import settings
 from elisa import umpy as up
+from elisa.atm.const import DEFAULT_ATM, Atmosphere
 from elisa.base.parameter_tracking import ParameterTracking, suspend_tracking_during_initialization
 from elisa.base.spot import Spot
 from elisa.logger import getLogger
@@ -63,7 +64,7 @@ class Body(ParameterTracking, metaclass=ABCMeta):
         self.polar_radius: float = np.nan
         self._spots: dict[int, Spot] = {}
         self.equatorial_radius: float = np.nan
-        self.atmosphere: str = ""
+        self.atmosphere: Atmosphere = DEFAULT_ATM
         self.limb_darkening_coefficients: dict[str, dict[str, Any]] | None = None
 
     @abstractmethod

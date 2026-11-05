@@ -43,7 +43,6 @@ def synthesis_settings(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setattr(rv, "prepare_central_rv_binary", configured_binary)
     previous = settings.settings_serializer()
     settings.configure(
-        ATM_ATLAS="bb",
         LIMB_DARKENING_LAW="linear",
         NUMBER_OF_PROCESSES=1,
         REFLECTION_EFFECT=True,

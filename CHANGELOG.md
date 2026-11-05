@@ -136,6 +136,8 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 - Deprecated `[support].atlas` INI option and the first-run atmosphere-selection
   prompt; select atmospheres per star or through fitting's `atmosphere_model` mapping.
+- Global `settings.ATM_ATLAS`. `Star.atmosphere` (default `ck04`) is the only atmosphere selection;
+  canonical identifiers are `ck04`, `k93` and `bb`.
 
 ### GUI
 

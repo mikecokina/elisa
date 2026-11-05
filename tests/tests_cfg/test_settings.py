@@ -906,11 +906,9 @@ def test_legacy_ini_atlas_is_ignored_without_deprecation(elisa_ini: IniFixture, 
     configuration = configuration.replace("[support]", f"[support]\natlas = {legacy_atlas}")
     ini_path.write_text(configuration)
 
-    settings.configure(ATM_ATLAS=settings.DEFAULT_SETTINGS["ATM_ATLAS"])
-
     with warnings.catch_warnings():
         warnings.simplefilter("error", DeprecationWarning)
         settings.read_and_update_config(conf_path=str(ini_path))
         loaded_settings = settings
 
-    assert loaded_settings.DEFAULT_SETTINGS["ATM_ATLAS"] == loaded_settings.ATM_ATLAS
+    assert not hasattr(loaded_settings, "ATM_ATLAS")

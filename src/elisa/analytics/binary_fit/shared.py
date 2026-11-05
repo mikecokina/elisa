@@ -221,7 +221,7 @@ class AbstractFit(metaclass=ABCMeta):
     interp_treshold: int
     normalization: dict[str, tuple[Any, ...]]
     num_of_points: dict[str, int]
-    observer: Any
+    observer: Observer
     x_data: dict[str, Any]
     x_data_reduced: NDArray
     x_data_reducer: dict[str, NDArray]
@@ -470,7 +470,7 @@ class AbstractRVFit(AbstractFit):
     y_data: dict[str, NDArray]
     x_data_reducer: dict[str, NDArray]
     x_data_reduced: NDArray
-    observer: Any
+    observer: Observer
     fitable: dict[str, Any]
     constrained: dict[str, Any]
     fixed: dict[str, Any]

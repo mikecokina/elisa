@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from elisa.analytics.dataset.base import LCData, RVData
+    from elisa.observer.observer import Observer
     from elisa.types import Float
 
 logger = getPersistentLogger(__name__)
@@ -106,9 +107,9 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
     x_data_reduced: NDArray
     interp_treshold: int
     discretization: float
-    observer: Any
-    atmosphere_model: None
-    limb_darkening_coefficients: None
+    observer: Observer
+    atmosphere_model: dict[str, Any] | None
+    limb_darkening_coefficients: dict[str, Any] | None
     fitable: dict[str, Any]
     constrained: dict[str, Any]
     fixed: dict[str, Any]
@@ -312,7 +313,7 @@ class CentralRadialVelocity(AbstractRVFit):
     y_data: dict[str, NDArray]
     x_data_reducer: dict[str, NDArray]
     x_data_reduced: NDArray
-    observer: Any
+    observer: Observer
     fitable: dict[str, Any]
     constrained: dict[str, Any]
     fixed: dict[str, Any]

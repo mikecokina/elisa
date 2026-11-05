@@ -3,9 +3,9 @@ from datetime import UTC
 
 import numpy as np
 
-from elisa import settings
 from elisa import units as u
-from elisa.atm.atm import atm_file_prefix_to_quantity_list, validated_atlas
+from elisa.atm.atm import atm_file_prefix_to_quantity_list
+from elisa.atm.const import Atmosphere
 from elisa.utils import jd_from_datetime
 
 PARAM_PARSER = "@"
@@ -50,16 +50,16 @@ DEFAULT_NORMALIZATION_STAR = {
 
 
 def get_default_normalization_star() -> dict:
-    """Return independent stellar defaults for the currently selected atlas.
+    """Return independent CK04 numerical fitting defaults for every atmosphere.
 
-    Blackbody spectra have no tabulated temperature/metallicity domain. Use
-    CK04, ELISA's default atlas, as the legacy fitting normalization fallback;
-    these are finite fitting defaults, not physical limits on blackbodies.
+    These finite fitting defaults do not limit the physical atmosphere domain.
+    Supply explicit parameter endpoints when different fitting bounds are needed.
+
+    :returns: Default parameter bounds.
+    :rtype: dict
     """
-    atlas = validated_atlas(settings.ATM_ATLAS)
-    atlas = "ck" if atlas == "bb" else atlas
-    temperatures = atm_file_prefix_to_quantity_list("temperature", atlas)
-    metallicity = atm_file_prefix_to_quantity_list("metallicity", atlas)
+    temperatures = atm_file_prefix_to_quantity_list("temperature", Atmosphere.CK04)
+    metallicity = atm_file_prefix_to_quantity_list("metallicity", Atmosphere.CK04)
     return {
         **DEFAULT_NORMALIZATION_STAR,
         "t_eff": (np.min(temperatures), np.max(temperatures)),

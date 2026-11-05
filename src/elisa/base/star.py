@@ -19,6 +19,7 @@ from elisa.pulse.mode import PulsationMode
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    from elisa.atm.const import Atmosphere
     from elisa.types import Float
     from elisa.units import _DefaultStarInputUnits, _DefaultStarUnits
 
@@ -163,11 +164,13 @@ class Star(Body):
         mapping index → :class:`PulsationMode` internally.
     :type pulsations: list[dict[str, float]]
 
-    :param atmosphere: Atmosphere identifier used for spectral models.
-        Supported aliases include::
+    :param atmosphere: Atmosphere identifier used for spectral models (default ``ck04``). Stored as one of
+        the canonical identifiers ``ck04``, ``k93`` or ``bb`` (:class:`elisa.atm.const.Atmosphere`).
+        Supported aliases are normalized on input::
 
             - ``castelli``, ``castelli-kurucz``, ``ck``, ``ck04``
             - ``kurucz``, ``k``, ``k93``
+            - ``bb``, ``black_body``, ``black-body``
 
     :type atmosphere: str
 
@@ -249,6 +252,15 @@ class Star(Body):
         :rtype: elisa.units.DefaultStarUnits
         """
         return u.DefaultStarUnits
+
+    @property
+    def atmosphere(self) -> Atmosphere:
+        """Return the canonical atmosphere identifier (``ck04`` by default)."""
+        return self._atmosphere
+
+    @atmosphere.setter
+    def atmosphere(self, value: str) -> None:
+        self._atmosphere = StarProperties.atmosphere(value)
 
     @property
     def limb_darkening_coefficients(self) -> dict[str, list[float]] | None:

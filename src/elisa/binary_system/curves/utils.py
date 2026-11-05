@@ -110,7 +110,7 @@ def _get_normal_radiance(
                 temperature=temperatures[component_name],
                 log_g=log_g[component_name],
                 metallicity=comp.metallicity,
-                atlas=(comp.atmosphere or settings.ATM_ATLAS),
+                atlas=comp.atmosphere,
                 **kwargs,
             ),
         )

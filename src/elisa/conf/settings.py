@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 
-from elisa.atm.const import ATLAS_TO_ATM_FILE_PREFIX, normalize_atlas
+from elisa.atm.const import ATLAS_TO_ATM_FILE_PREFIX
 from elisa.base.error import raise_elisa_settings_error
 from elisa.conf.enums import (
     IntersectionBackend,
@@ -183,7 +183,6 @@ class Settings(_Const):
     LD_TABLES: str
     CK04_ATM_TABLES: str
     K93_ATM_TABLES: str
-    ATM_ATLAS: str
     MESH_GENERATOR: str
     DEFORMATION_TOL: float
     PULSATION_MODEL: str
@@ -234,7 +233,6 @@ class Settings(_Const):
         "LD_TABLES",
         "CK04_ATM_TABLES",
         "K93_ATM_TABLES",
-        "ATM_ATLAS",
         "MESH_GENERATOR",
         "DEFORMATION_TOL",
         "PULSATION_MODEL",
@@ -250,7 +248,6 @@ class Settings(_Const):
     )
     _defaults: ClassVar = {name: getattr(DefaultSettings, name) for name in _fields if name != "CONFIG_FILE"}
     _defaults["CONFIG_FILE"] = config_file
-    _defaults["ATM_ATLAS"] = normalize_atlas(_defaults["ATM_ATLAS"])
     DEFAULT_SETTINGS = MappingProxyType(_defaults)
 
     def __new__(cls) -> Settings:  # noqa: PYI034
@@ -380,7 +377,6 @@ class Settings(_Const):
         candidate = self.settings_serializer()
         candidate.update(kwargs)
         self._validate_candidate(candidate)
-        candidate["ATM_ATLAS"] = normalize_atlas(candidate["ATM_ATLAS"])
         candidate["ATLAS_TO_BASE_DIR"] = self._atlas_to_base_dir(candidate)
         if "HOME" in kwargs:
             _create_settings_directory(candidate["HOME"])

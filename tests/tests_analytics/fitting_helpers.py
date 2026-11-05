@@ -113,6 +113,8 @@ def lc_setup(fit: AbstractLCFit, data: dict[str, LCData]) -> None:
         for group, values in deepcopy(BINARY_PARAMETERS).items()
     }
     cfg["system"]["inclination"] = {"value": 85.0, "fixed": False, "min": 80.0, "max": 90.0}
+    if getattr(fit, "atmosphere_model", None) is None:
+        fit.atmosphere_model = {"primary": "bb", "secondary": "bb"}
     fit.set_up(
         p.BinaryInitialParameters(**cfg),
         data,
@@ -159,7 +161,10 @@ def lc_parameters(standard: bool = False) -> tuple[dict[str, Any], dict[str, Any
 def synthesize_lc(xs: NDArray, bands: Iterable[str], physical: dict[str, Any]) -> dict[str, NDArray[np.float64]]:
     obs = Observer(passband=list(bands), system=None)
     obs.system_cls = BinarySystem
-    return lc.synthetic_binary(np.asarray(xs), 10.0, obs, **physical)
+    return lc.synthetic_binary(
+        np.asarray(xs), 10.0, obs,
+        **{"primary@atmosphere": "bb", "secondary@atmosphere": "bb", **physical},
+    )
 
 
 def prepare_lc_fits(
@@ -175,6 +180,11 @@ def prepare_lc_fits(
     missing_errors: bool = False,
 ) -> tuple[least_squares.DetachedLightCurveFit, mcmc.DetachedLightCurveFit]:
     cfg, _physical = lc_parameters(standard)
+    atmosphere = {"primary": "bb", "secondary": "bb"} if atmosphere is None else atmosphere
+    _physical.update({
+        f"{component}@atmosphere": atmosphere.get(component, "ck04")
+        for component in ("primary", "secondary")
+    })
     if jd:
         cfg["system"]["primary_minimum_time"] = {"value": 2450000.0, "fixed": True}
     if free_noise:

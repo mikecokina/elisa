@@ -8,6 +8,7 @@ import numpy as np
 
 from elisa import const, utils
 from elisa import umpy as up
+from elisa.atm.const import DEFAULT_ATM
 from elisa.base.error import (
     raise_elisa_not_implemented_error,
     raise_elisa_unexpected_error,
@@ -428,7 +429,7 @@ class StarContainer:
         self.surface_potential = None
         self.albedo = up.NaN
         self.polar_log_g = up.NaN
-        self.atmosphere = ""
+        self.atmosphere = DEFAULT_ATM
         self.synchronicity = None
         # --------------------------------------------------------------------------------------------------------------
 

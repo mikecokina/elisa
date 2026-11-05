@@ -306,7 +306,7 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
 
         for cpu_core in [-1, 2]:
             for law in laws:
-                settings.configure(NUMBER_OF_PROCESSES=cpu_core, LIMB_DARKENING_LAW=law, ATM_ATLAS="ck04")
+                settings.configure(NUMBER_OF_PROCESSES=cpu_core, LIMB_DARKENING_LAW=law)
                 self.write_default_support(ld_tables=settings.LD_TABLES, atm_tables=settings.CK04_ATM_TABLES)
                 with Path(self.CONFIG_FILE).open("a") as f:
                     f.write(content_tempalte.format(ld_law=law, cpu=cpu_core))

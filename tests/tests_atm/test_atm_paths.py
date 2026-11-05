@@ -12,7 +12,7 @@ import pytest
 
 from elisa import settings, utils
 from elisa.atm import atm
-from elisa.atm.atm import atm_file_prefix_to_quantity_list, get_atm_directory, validated_atlas
+from elisa.atm.atm import atm_file_prefix, atm_file_prefix_to_quantity_list, get_atm_directory, validated_atlas
 from elisa.base.error import ElisaAtmosphereError
 from elisa.observer.passband import PassbandContainer
 
@@ -71,7 +71,8 @@ def original_atm_files(
     log_g_name = np.char.add("g", np.char.zfill(logg_int.astype(str), 2))
 
     # Build filenames
-    fnames = [f"{atlas}{mh}_{temp}_{g}" for mh, temp, g in zip(mh_name, temp_name, log_g_name, strict=True)]
+    prefix = atm_file_prefix(atlas)
+    fnames = [f"{prefix}{mh}_{temp}_{g}" for mh, temp, g in zip(mh_name, temp_name, log_g_name, strict=True)]
 
     return [str(Path(settings.ATLAS_TO_BASE_DIR[atlas]) / directory / (fname + ".csv")) for fname in fnames]
 
@@ -192,12 +193,12 @@ def test_base_directory_changes_and_missing_files(atlas: str, monkeypatch: pytes
     args = np.array([10000.0]), np.array([2.0]), 0.0, prefix
     monkeypatch.setattr(
         settings,
-        "CK04_ATM_TABLES" if prefix == "ck" else "K93_ATM_TABLES",
+        "CK04_ATM_TABLES" if prefix == atm.Atmosphere.CK04 else "K93_ATM_TABLES",
         tmp_path / "first directory",
     )
     first = atm.NaiveInterpolatedAtm.atm_files(*args)
     assert first == original_atm_files(*args)
-    monkeypatch.setattr(settings, "CK04_ATM_TABLES" if prefix == "ck" else "K93_ATM_TABLES", tmp_path / "second")
+    monkeypatch.setattr(settings, "CK04_ATM_TABLES" if prefix == atm.Atmosphere.CK04 else "K93_ATM_TABLES", tmp_path / "second")
     second = atm.NaiveInterpolatedAtm.atm_files(*args)
     assert second == original_atm_files(*args)
     assert first != second
@@ -222,7 +223,7 @@ def test_selected_tables_preserve_spectra_and_radiances(
     atlas = validated_atlas(atlas)
     monkeypatch.setattr(
         settings,
-        "CK04_ATM_TABLES" if atm.validated_atlas(atlas) == "ck" else "K93_ATM_TABLES",
+        "CK04_ATM_TABLES" if atm.validated_atlas(atlas) == atm.Atmosphere.CK04 else "K93_ATM_TABLES",
         tmp_path,
     )
     monkeypatch.setattr(atm.buffer, "ATMOSPHERE_TABLES", {})

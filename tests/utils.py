@@ -417,7 +417,6 @@ _SCIENTIFIC_SETTINGS = {
     "LD_TABLES": settings.LD_TABLES,
     "CK04_ATM_TABLES": settings.CK04_ATM_TABLES,
     "K93_ATM_TABLES": settings.K93_ATM_TABLES,
-    "ATM_ATLAS": settings.ATM_ATLAS,
 }
 
 

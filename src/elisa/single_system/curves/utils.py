@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from elisa import settings
 from elisa.atm import atm
 from elisa.base.curves.utils import get_component_limbdarkening_cfs
 from elisa.observer.passband import init_bolometric_passband
@@ -103,7 +102,7 @@ def get_normal_radiance(system: SinglePositionContainer, **kwargs: Any) -> dict[
             temperature=temperatures,
             log_g=log_g,
             metallicity=star.metallicity,
-            atlas=(star.atmosphere or settings.ATM_ATLAS),
+            atlas=star.atmosphere,
             **kwargs,
         ),
     }

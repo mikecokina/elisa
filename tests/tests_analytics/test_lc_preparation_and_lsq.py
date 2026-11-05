@@ -63,6 +63,7 @@ def lc_problem() -> tuple[dict[str, Any], dict[str, LCData]]:
     cfg, flat = lc_parameters()
     cfg["system"]["inclination"]["value"] = 83.0
     cfg["primary"]["t_eff"]["value"] = 6300.0
+    flat["primary@atmosphere"] = flat["secondary@atmosphere"] = "bb"
     data = {}
     for band, xs in {
         V: np.linspace(0.0, 0.98, 31),
@@ -128,6 +129,7 @@ def test_static_validation_once_per_setup_and_reused_by_evaluations() -> None:
             fit.interp_treshold,
             BinarySystem,
             **physical(fit),
+            **{f"{component}@atmosphere": atlas for component, atlas in fit.atmosphere_model.items()},
         )
         assert_allclose(score, fit.prediction_r_squared(physical(fit)), atol=2e-12)
         assert len(calls) == 3
@@ -214,7 +216,7 @@ def test_dynamic_malformed_real_synthesis_output_is_rejected(defect: str) -> Non
 def test_lc_parameter_recovery_result_and_residual_jacobian() -> None:
     cfg, data = lc_problem()
     fit = least_squares.DetachedLightCurveFit()
-    fit.atmosphere_model = fit.limb_darkening_coefficients = None
+    fit.atmosphere_model, fit.limb_darkening_coefficients = {"primary": "bb", "secondary": "bb"}, None
     report, result = capture_fit(
         fit.fit,
         data,

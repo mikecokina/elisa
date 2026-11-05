@@ -36,7 +36,7 @@ def _replay(*_args: Any, curves: dict, **_kwargs: Any) -> dict:
 
 def benchmark(number: int, repeat: int) -> list[dict]:
     """Return median warmed timings in microseconds for direct/interpolated cases."""
-    settings.configure(NUMBER_OF_PROCESSES=1, ATM_ATLAS="bb", LIMB_DARKENING_LAW="linear",
+    settings.configure(NUMBER_OF_PROCESSES=1, LIMB_DARKENING_LAW="linear",
                        USE_SINGLE_LD_COEFFICIENTS=True, MESH_GENERATOR="auto")
     physical = {
         "system@inclination": 85., "system@eccentricity": 0.,
@@ -46,7 +46,7 @@ def benchmark(number: int, repeat: int) -> list[dict]:
     for component, temperature in [("primary", 6500.), ("secondary", 5000.)]:
         physical.update({f"{component}@{key}": value for key, value in {
             "t_eff": temperature, "surface_potential": 6., "gravity_darkening": .32,
-            "albedo": .5, "metallicity": 0.}.items()})
+            "albedo": .5, "metallicity": 0., "atmosphere": "bb"}.items()})
     bands = ["Generic.Bessell.V", "Generic.Bessell.B"]
     prepared = "_validated_reducers" in inspect.signature(lc_prediction.predict_light_curves).parameters
     validate = getattr(lc_prediction, "validate_observations", None)

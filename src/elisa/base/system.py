@@ -201,7 +201,7 @@ class System(ParameterTracking, Generic[TBody], metaclass=ABCMeta):
                 if getattr(instance, attr) is not None
             }
 
-            if getattr(instance, "atmosphere", None):
+            if parameter_is_explicit(instance, "atmosphere"):
                 comp_dict["atmosphere"] = instance.atmosphere
             if getattr(instance, "limb_darkening_coefficients", None):
                 comp_dict["limb_darkening_coefficients"] = instance.limb_darkening_coefficients

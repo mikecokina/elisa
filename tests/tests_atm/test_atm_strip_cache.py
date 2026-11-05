@@ -388,7 +388,7 @@ def test_table_families_and_throughput_remain_uncached(
     atlas = atm.validated_atlas(atlas)
     monkeypatch.setattr(
         settings,
-        "CK04_ATM_TABLES" if atm.validated_atlas(atlas) == "ck" else "K93_ATM_TABLES",
+        "CK04_ATM_TABLES" if atm.validated_atlas(atlas) == atm.Atmosphere.CK04 else "K93_ATM_TABLES",
         tmp_path,
     )
     monkeypatch.setattr(atm.buffer, "ATMOSPHERE_TABLES", {})

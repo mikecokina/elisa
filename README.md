@@ -177,7 +177,6 @@ When ELISa is executed for the first time and no configuration file is detected,
 The wizard will prompt you to:
 
 - Select directories for storing atmosphere models and limb darkening tables  
-- Choose a default atmosphere atlas  
 - Optionally download required data files automatically  
 
 This allows most users to get started without any manual configuration.
@@ -229,7 +228,6 @@ With minimal content such as:
 [support]
 ld_tables = /home/user/ld
 castelli_kurucz_04_atm_tables = /home/user/castelli_kurucz/ck04
-atlas = ck04
 ```
 
 A complete configuration reference is available here:

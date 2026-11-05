@@ -83,13 +83,13 @@ def atmosphere_unavailability_reason(
     files: Sequence[str] | None = None,
 ) -> str | None:
     """Check an atlas installation or the exact model files required by a case."""
-    prefix = atm_const.ATM_ATLAS_NORMALIZER.get(atlas)
-    if prefix is None:
+    canonical = atm_const.ATM_ATLAS_NORMALIZER.get(atlas)
+    if canonical is None:
         return f"Atmosphere atlas {atlas!r} is not supported"
-    if prefix == "bb":
+    if canonical == atm_const.Atmosphere.BB:
         return None
 
-    setting_name = "CK04_ATM_TABLES" if prefix == "ck" else "K93_ATM_TABLES"
+    setting_name = "CK04_ATM_TABLES" if canonical == atm_const.Atmosphere.CK04 else "K93_ATM_TABLES"
     label = f"{atlas} atmosphere models ({setting_name})"
     directory, reason = _configured_directory(table_directory, label)
     if directory is None:
@@ -98,6 +98,7 @@ def atmosphere_unavailability_reason(
     if files is None:
         # Preflight establishes that an atlas is installed, not that it covers
         # every model a test may request. Later reader failures must propagate.
+        prefix = atm_const.atm_file_prefix(canonical)
         model_pattern = f"{prefix}[mp]*/{prefix}[mp]*_g*.csv"
         sample_model = next(directory.glob(model_pattern), None)
         if sample_model is None:
@@ -131,7 +132,7 @@ def require_scientific_data(item: pytest.Item) -> None:
 
     for marker in item.iter_markers("requires_atmosphere"):
         options = dict(marker.kwargs)
-        atlas = options.pop("atlas", None) or settings.ATM_ATLAS
+        atlas = options.pop("atlas", None) or "ck04"
         directory = settings.ATLAS_TO_BASE_DIR.get(atlas)
         reason = atmosphere_unavailability_reason(directory, atlas=atlas, **options)
         if reason is not None:

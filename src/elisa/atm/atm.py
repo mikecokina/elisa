@@ -25,7 +25,7 @@ from elisa import (
 from elisa import (
     umpy as up,
 )
-from elisa.atm.const import ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX, normalize_atlas
+from elisa.atm.const import ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX, Atmosphere, atm_file_prefix, normalize_atlas
 from elisa.base.error import (
     ElisaAtmosphereError,
     ElisaLookupError,
@@ -328,7 +328,7 @@ class NaiveInterpolatedAtm:
         :return: List;
         """
         # Star construction / fit setup already resolved this fixed configuration.
-        if atlas == "bb":
+        if atlas == Atmosphere.BB:
             return NaiveInterpolatedAtm.black_body_radiance(temperature, **kwargs)
         return NaiveInterpolatedAtm.atlas_radiance(
             temperature,
@@ -658,7 +658,7 @@ class NaiveInterpolatedAtm:
         :param temperature: Iterable[float];
         :param log_g: Iterable[float];
         :param metallicity: float;
-        :param atlas: str; atmosphere model identificator (see elisa.atm.const.ATLAS_TO_ATM_FILE_PREFIX.keys())
+        :param atlas: str; canonical atmosphere identifier (see elisa.atm.const.Atmosphere)
         :return: List[str]; lower-temperature paths followed by upper-temperature paths.
         """
         log_g = utils.convert_gravity_acceleration_array(log_g, "log_cgs")
@@ -701,7 +701,8 @@ class NaiveInterpolatedAtm:
         log_g_name = np.char.add("g", np.char.zfill(logg_int.astype(str), 2))
 
         # Build filenames
-        fnames = [f"{atlas}{mh}_{temp}_{g}" for mh, temp, g in zip(mh_name, temp_name, log_g_name, strict=True)]
+        prefix = atm_file_prefix(atlas)
+        fnames = [f"{prefix}{mh}_{temp}_{g}" for mh, temp, g in zip(mh_name, temp_name, log_g_name, strict=True)]
 
         base_directory = Path(settings.ATLAS_TO_BASE_DIR[atlas]) / directory
         paths = [str(base_directory / (fname + ".csv")) for fname in fnames]
@@ -1218,21 +1219,21 @@ def atm_file_prefix_to_quantity_list(qname: str, atlas: str) -> list:
     """
     return getattr(
         const,
-        f"{str(atlas).upper()}_{ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX[qname]!s}",
+        f"{atm_file_prefix(atlas).upper()}_{ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX[qname]!s}",
     )
 
 
-def validated_atlas(atlas: str) -> str:
+def validated_atlas(atlas: str) -> Atmosphere:
     """Normalize and validate atmosphere atlas identifier.
 
-    Converts various atlas name formats (e.g., 'castelli', 'ck04', 'k93')
-    to their canonical short forms ('ck', 'k', etc.) used for file paths
-    and prefixes.
+    Converts supported atlas aliases (e.g., 'castelli', 'kurucz', 'ck')
+    to canonical identifiers ('ck04', 'k93', 'bb'). File name prefixes are
+    resolved separately by :func:`elisa.atm.const.atm_file_prefix`.
 
     :param atlas: Atmosphere atlas name (e.g., 'castelli', 'ck04').
     :type atlas: str
-    :returns: Canonical atlas identifier.
-    :rtype: str
+    :returns: Canonical atmosphere identifier.
+    :rtype: elisa.atm.const.Atmosphere
     :raises ElisaInitialParametersError: If atlas is not in the supported list.
     """
     return normalize_atlas(atlas)
@@ -1325,7 +1326,7 @@ def get_atm_table_filename(
     :returns: Filename for the atmosphere table.
     :rtype: str
     """
-    prefix = atlas
+    prefix = atm_file_prefix(atlas)
     return (
         f"{prefix}{utils.numeric_metallicity_to_string(metallicity)}_"
         f"{int(temperature)}_{utils.numeric_logg_to_string(log_g)}.csv"
@@ -1345,7 +1346,7 @@ def get_atm_directory(metallicity: Float, atlas: str) -> str:
     :returns: Directory name for the atmosphere table.
     :rtype: str
     """
-    prefix = atlas
+    prefix = atm_file_prefix(atlas)
     return f"{prefix}{utils.numeric_metallicity_to_string(metallicity)}"
 
 

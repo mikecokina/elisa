@@ -66,7 +66,6 @@ class DefaultSettings:
     CK04_ATM_TABLES: str = str(Path(HOME) / "atmosphere" / "ck04")
     K93_ATM_TABLES: str = str(Path(HOME) / "atmosphere" / "k93")
 
-    ATM_ATLAS: str = "ck04"
     # Atlas mapping (kept mutable because other startup code updates it at runtime)
     ATLAS_TO_BASE_DIR: ClassVar[dict[str, str]] = {
         "castelli": CK04_ATM_TABLES,

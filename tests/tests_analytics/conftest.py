@@ -20,7 +20,6 @@ if TYPE_CHECKING:
 def science_settings() -> Iterator[None]:
     previous = settings.settings_serializer()
     settings.configure(
-        ATM_ATLAS="bb",
         LIMB_DARKENING_LAW="linear",
         USE_SINGLE_LD_COEFFICIENTS=True,
         NUMBER_OF_PROCESSES=1,

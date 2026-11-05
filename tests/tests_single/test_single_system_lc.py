@@ -44,7 +44,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         super().setUp()
         self.base_path = str(Path(__file__).resolve().parent.joinpath("../data", "light_curves"))
 
-        settings.configure(ATM_ATLAS="ck04", LIMB_DARKENING_LAW="linear")
+        settings.configure(LIMB_DARKENING_LAW="linear")
 
     def test_clear_single_system(self) -> None:
         s = prepare_single_system(self.PARAMS["solar"])
