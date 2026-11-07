@@ -36,3 +36,6 @@ docs/build/
 
 # Alternative Sphinx build directory
 /docs/_build/
+
+# Demo 12 chain cache downloaded by the notebook (see jupyter_tutorials/demo12-lc_fitting.ipynb)
+/jupyter_tutorials/demo_data/demo12/chains/

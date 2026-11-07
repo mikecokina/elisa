@@ -253,9 +253,13 @@ def test_structured_public_reload_preserves_plots(tmp_path: Path) -> None:
     assert_array_equal(loaded.flat_chain, fit.flat_chain)
 
 
-def test_existing_saved_fixture_stays_flat_and_unmodified() -> None:
-    path = Path(__file__).resolve().parents[2] / "jupyter_tutorials/demo_data/assets/lc_mcmc_chain.json"
-    data = json.loads(path.read_text())
+def test_legacy_flat_fixture_stays_flat_and_unmodified() -> None:
+    labels = ["primary@t_eff", "secondary@t_eff"]
+    data = {
+        "flat_chain": np.linspace(0.0, 1.0, 40).reshape(20, 2).tolist(),
+        "fitable_parameters": labels,
+        "normalization": {label: [1000.0, 10000.0] for label in labels},
+    }
     flat, chain = chain_tools.prepare_chain_samples(data, 7)
     before = flat.copy()
     fit = RVFitMCMC()

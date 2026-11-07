@@ -233,8 +233,18 @@ def test_invalid_export_does_not_overwrite_saved_file(tmp_path: Path) -> None:
     assert Path(path).read_bytes() == before
 
 
-def test_existing_saved_json_fixture_loads_unchanged() -> None:
-    fixture = Path(__file__).resolve().parents[2] / "jupyter_tutorials/demo_data/assets/lc_mcmc_chain.json"
+def legacy_flat_chain() -> dict[str, Any]:
+    """Return a legacy export: flattened samples without temporal metadata."""
+    return {
+        "flat_chain": np.linspace(0.0, 1.0, 40).reshape(20, 2).tolist(),
+        "fitable_parameters": LABELS,
+        "normalization": {label: [1000.0, 10000.0] for label in LABELS},
+    }
+
+
+def test_legacy_flat_json_fixture_loads_unchanged(tmp_path: Path) -> None:
+    fixture = tmp_path / "legacy_chain.json"
+    fixture.write_text(json.dumps(legacy_flat_chain()))
     original = json.loads(fixture.read_text())
     loaded = MCMCMixin.load_flat_chain(str(fixture))
     assert loaded == original
