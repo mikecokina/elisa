@@ -1,0 +1,194 @@
+{
+    "primary": {
+        "surface_potential": {
+            "value": 6.741286412139937,
+            "confidence_interval": {
+                "min": 6.71988090632093,
+                "max": 6.8634406465031335
+            },
+            "fixed": false,
+            "min": 5.0,
+            "max": 10.0,
+            "unit": ""
+        },
+        "t_eff": {
+            "value": 6236.181297048016,
+            "confidence_interval": {
+                "min": 6046.598891317173,
+                "max": 6555.61205946679
+            },
+            "fixed": false,
+            "min": 3500.0,
+            "max": 10000.0,
+            "unit": "K"
+        },
+        "albedo": {
+            "value": 1.0,
+            "fixed": true,
+            "unit": ""
+        },
+        "gravity_darkening": {
+            "value": 1.0,
+            "fixed": true,
+            "unit": ""
+        },
+        "metallicity": {
+            "value": 0.0,
+            "fixed": true,
+            "unit": ""
+        },
+        "synchronicity": {
+            "value": 1.0637002316914272,
+            "confidence_interval": {
+                "min": 1.0635918686762276,
+                "max": 1.0641684704537768
+            },
+            "constraint": "(1 + system@eccentricity)**2 / (1 - system@eccentricity**2)**(3.0/2.0)",
+            "unit": "",
+            "estimate": "marginal percentiles of joint posterior samples"
+        }
+    },
+    "secondary": {
+        "surface_potential": {
+            "value": 5.283665739134397,
+            "confidence_interval": {
+                "min": 5.264910475093083,
+                "max": 5.337912761678881
+            },
+            "fixed": false,
+            "min": 4.0,
+            "max": 10.0,
+            "unit": ""
+        },
+        "t_eff": {
+            "value": 6183.882968026502,
+            "confidence_interval": {
+                "min": 6002.145550423715,
+                "max": 6492.435015414492
+            },
+            "fixed": false,
+            "min": 3500.0,
+            "max": 10000.0,
+            "unit": "K"
+        },
+        "albedo": {
+            "value": 1.0,
+            "fixed": true,
+            "unit": ""
+        },
+        "gravity_darkening": {
+            "value": 1.0,
+            "fixed": true,
+            "unit": ""
+        },
+        "metallicity": {
+            "value": 0.0,
+            "fixed": true,
+            "unit": ""
+        },
+        "synchronicity": {
+            "value": 1.0637002316914272,
+            "confidence_interval": {
+                "min": 1.0635918686762276,
+                "max": 1.0641684704537768
+            },
+            "constraint": "(1 + system@eccentricity)**2 / (1 - system@eccentricity**2)**(3.0/2.0)",
+            "unit": "",
+            "estimate": "marginal percentiles of joint posterior samples"
+        }
+    },
+    "system": {
+        "eccentricity": {
+            "value": 0.030632522303506323,
+            "confidence_interval": {
+                "min": 0.03058239770268653,
+                "max": 0.03084903703307317
+            },
+            "fixed": false,
+            "min": 0.0,
+            "max": 0.1,
+            "unit": ""
+        },
+        "argument_of_periastron": {
+            "value": 171.25934165831566,
+            "confidence_interval": {
+                "min": 169.0740785633053,
+                "max": 171.45448813986303
+            },
+            "fixed": false,
+            "min": 0.0,
+            "max": 360.0,
+            "unit": "deg"
+        },
+        "inclination": {
+            "value": 77.32742536404758,
+            "confidence_interval": {
+                "min": 77.22483195927167,
+                "max": 77.4678419961461
+            },
+            "fixed": false,
+            "min": 65.0,
+            "max": 90.0,
+            "unit": "deg"
+        },
+        "mass_ratio": {
+            "value": 1.0522335583496576,
+            "confidence_interval": {
+                "min": 1.045176337813494,
+                "max": 1.074478230451665
+            },
+            "fixed": false,
+            "min": 0.001,
+            "max": 2.0,
+            "unit": ""
+        },
+        "additional_light": {
+            "value": 0.052183188623464216,
+            "confidence_interval": {
+                "min": 0.03703518961992228,
+                "max": 0.06376629439405834
+            },
+            "fixed": false,
+            "min": 0.0,
+            "max": 0.5,
+            "unit": ""
+        },
+        "period": {
+            "value": 2.47028,
+            "fixed": true,
+            "unit": "d"
+        },
+        "phase_shift": {
+            "value": -0.00017604529709729436,
+            "fixed": true,
+            "unit": ""
+        },
+        "semi_major_axis": {
+            "value": 11.4796480797056,
+            "confidence_interval": {
+                "min": 11.47335998635807,
+                "max": 11.48429037287532
+            },
+            "constraint": "11.2 / sin(radians(system@inclination))",
+            "unit": "solRad",
+            "estimate": "marginal percentiles of joint posterior samples"
+        }
+    },
+    "nuisance": {
+        "ln_f": {
+            "value": 3.4810235733187866,
+            "confidence_interval": {
+                "min": 3.467297174719288,
+                "max": 3.5017708294460856
+            },
+            "fixed": false,
+            "min": -10.0,
+            "max": 6.0,
+            "unit": null
+        }
+    },
+    "r_squared": {
+        "value": 0.9995141245010724,
+        "unit": null
+    }
+}
