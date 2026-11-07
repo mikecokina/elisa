@@ -109,7 +109,7 @@ def deserialize_result(result_dict: dict) -> dict:  # noqa: C901, PLR0912
     """
     data = {}
 
-    if "r_quared" in result_dict:
+    if "r_squared" in result_dict:
         data["r_squared"] = result_dict["r_squared"]
 
     for system_slot in BinaryInitialParameters.__slots__:

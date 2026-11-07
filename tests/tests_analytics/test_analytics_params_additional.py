@@ -580,3 +580,15 @@ class UtilityFunctionsTestCase(ElisaTestCase):
 
         # Should return unchanged
         assert ("semi_major_axis") not in (extended["system"])
+
+
+def test_deserialize_result_keeps_r_squared() -> None:
+    from elisa.analytics.params.parameters import deserialize_result
+
+    result = {
+        "system": {"inclination": {"value": 85.0, "fixed": True}},
+        "r_squared": {"value": 0.99, "unit": None},
+    }
+    flat = deserialize_result(result)
+    assert flat["r_squared"] == {"value": 0.99, "unit": None}
+    assert flat["system@inclination"]["value"] == 85.0

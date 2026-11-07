@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 from abc import ABCMeta
+from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 
 from elisa import settings, utils
@@ -372,9 +373,10 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
         :return: R² value (coefficient of determination)
         :rtype: float
         """
-        model_parameters = (
-            self.get_result() if model_parameters is None else model_parameters
+        model_parameters = deepcopy(
+            self.get_result() if model_parameters is None else model_parameters,
         )
+        model_parameters.pop("r_squared", None)
         interpolation_treshold = (
             settings.MAX_CURVE_DATAPOINTS
             if interpolation_treshold is None
@@ -387,7 +389,7 @@ class AnalyticsTask(metaclass=ABCMeta):  # noqa: B024
             discretization,
             interpolation_treshold,
         )
-        model_parameters["r_squared"] = r2
+        model_parameters["r_squared"] = {"value": r2, "unit": None}
         self.set_result(model_parameters)
 
         return r2
