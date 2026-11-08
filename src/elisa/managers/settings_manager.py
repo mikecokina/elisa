@@ -54,6 +54,7 @@ class DefaultSettings:
     MESH_GENERATOR: str = "auto"
     DEFORMATION_TOL: float = 0.05
     MCMC_SAVE_INTERVAL: int = 1800
+    MCMC_INITIAL_WALKER_MAX_ATTEMPTS: int = 100
     MCMC_AUTOCORR_TOL: int = 0
     USE_SINGLE_LD_COEFFICIENTS: bool = False
     USE_INTERPOLATION_APPROXIMATION: bool = True

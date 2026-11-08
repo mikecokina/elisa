@@ -329,7 +329,9 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         :rtype: emcee.EnsembleSampler
         """
         self.prepare_priors()
+        supplied = p0 is not None
         p0 = self.generate_initial_states(p0, nwalkers, ndim, x0_vector=self.norm_init_vector)
+        p0 = self._initialize_ensemble(p0, supplied=supplied)
 
         logger.info("starting mcmc")
         kwargs: dict[str, Any] = {
@@ -380,6 +382,10 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
             )
 
         return sampler
+
+    def _initialize_ensemble(self, ensemble: NDArray[Float], *, supplied: bool) -> NDArray[Float]:  # noqa: ARG002
+        """Leave initialization unchanged unless a physical fitter supplies preflight."""
+        return ensemble
 
     @staticmethod
     def generate_initial_states(
@@ -436,6 +442,12 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
     """
 
     MORPHOLOGY: str | None = None
+
+    def _initialize_ensemble(self, ensemble: NDArray[Float], *, supplied: bool) -> NDArray[Float]:
+        """Validate LC walkers once, before constructing the sampler."""
+        from elisa.analytics.binary_fit.initial_ensemble import initialize_lc_ensemble  # noqa: PLC0415
+
+        return initialize_lc_ensemble(self, ensemble, supplied=supplied)
 
     def likelihood(self, xn: NDArray[Float]) -> Float:
         """Likelihood function for given set of model variables.

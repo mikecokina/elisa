@@ -61,6 +61,7 @@ def elisa_ini(tmp_path: Path) -> Iterator[tuple[Path, dict[str, object]]]:
         "MAX_SOLVER_ITERS": 100,
         "MCMC_SAVE_INTERVAL": 1800,
         "MCMC_AUTOCORR_TOL": 50,
+        "MCMC_INITIAL_WALKER_MAX_ATTEMPTS": 7,
         "MAX_CURVE_DATAPOINTS": 300,
         "MIN_POINTS_IN_ECLIPSE": 10,
         "MESH_GENERATOR": "auto",
@@ -109,6 +110,7 @@ def elisa_ini(tmp_path: Path) -> Iterator[tuple[Path, dict[str, object]]]:
         max_solver_iters = {expected["MAX_SOLVER_ITERS"]}
         mcmc_save_interval = {expected["MCMC_SAVE_INTERVAL"]}
         mcmc_autocorr_tol = {expected["MCMC_AUTOCORR_TOL"]}
+        mcmc_initial_walker_max_attempts = {expected["MCMC_INITIAL_WALKER_MAX_ATTEMPTS"]}
         max_curve_datapoints = {expected["MAX_CURVE_DATAPOINTS"]}
         min_points_in_eclipse = {expected["MIN_POINTS_IN_ECLIPSE"]}
         mesh_generator = {expected["MESH_GENERATOR"]}
@@ -137,7 +139,7 @@ def elisa_ini(tmp_path: Path) -> Iterator[tuple[Path, dict[str, object]]]:
 
 def test_elisa_config_ini_types_do_not_raise(elisa_ini: IniFixture) -> None:
     ini_path, _ = elisa_ini
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, "-c", "from elisa import settings\nassert hasattr(settings, 'HOME')\n"],
         env={**os.environ, "ELISA_CONFIG": str(ini_path)},
         capture_output=True,
@@ -158,7 +160,8 @@ IGNORE_ATTRS = {
 }
 
 
-def test_elisa_settings_values_match_ini(elisa_ini: IniFixture) -> None:
+# Keep the strict scalar and tuple type checks together in this INI regression.
+def test_elisa_settings_values_match_ini(elisa_ini: IniFixture) -> None:  # noqa: C901, PLR0912
     ini_path, expected = elisa_ini
     settings.read_and_update_config(conf_path=str(ini_path))
     s = settings
@@ -353,7 +356,7 @@ def test_process_parallelism_partial_update_is_transactional(
 def test_process_parallelism_conflict_rejected_at_startup(elisa_ini: IniFixture, tmp_path: Path) -> None:
     ini, _ = elisa_ini
     ini.write_text("[computational]\nnumber_of_processes=2\nnumber_of_mcmc_processes=2\n", encoding="utf-8")
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, "-c", "from elisa import settings"],
         env={**os.environ, "ELISA_CONFIG": str(ini), "HOME": str(tmp_path)},
         capture_output=True,
@@ -821,7 +824,7 @@ class SettingsIsolationTestCase(ElisaTestCase):
                     raise RuntimeError("initial reset failed")
                 super().reset_test_settings()
 
-            def runTest(self) -> None:
+            def runTest(self) -> None:  # noqa: N802 - unittest entry point
                 self.fail("test should not run")
 
         probe = Probe()
@@ -863,13 +866,13 @@ def test_elisa_class_cleanup_restores_logging_threshold(previous_disable: int, f
             if failure == "class_setup":
                 raise RuntimeError("class setup failed")
 
-        def runTest(self) -> None:
+        def runTest(self) -> None:  # noqa: N802 - unittest entry point
             assert (logging.root.manager.disable) == (logging.CRITICAL)
             if failure == "body":
                 raise RuntimeError("test body failed")
 
     class FollowingClass(unittest.TestCase):
-        def runTest(self) -> None:
+        def runTest(self) -> None:  # noqa: N802 - unittest entry point
             observed.append(logging.root.manager.disable)
             assert (logging.root.manager.disable) == (previous_disable)
 
@@ -1012,3 +1015,43 @@ def test_legacy_ini_atlas_is_ignored_without_deprecation(elisa_ini: IniFixture, 
         loaded_settings = settings
 
     assert not hasattr(loaded_settings, "ATM_ATLAS")
+
+
+@pytest.mark.parametrize("attempts", [1, 7, 100])
+@pytest.mark.usefixtures("elisa_ini")
+def test_initial_walker_attempts_configure_and_serialize(attempts: int) -> None:
+    settings.configure(MCMC_INITIAL_WALKER_MAX_ATTEMPTS=attempts)
+    assert attempts == settings.MCMC_INITIAL_WALKER_MAX_ATTEMPTS
+    assert settings.settings_serializer()["MCMC_INITIAL_WALKER_MAX_ATTEMPTS"] == attempts
+
+
+def test_initial_walker_attempts_ini_and_default(elisa_ini: IniFixture) -> None:
+    ini_path, _ = elisa_ini
+    settings.read_and_update_config(conf_path=str(ini_path))
+    assert settings.MCMC_INITIAL_WALKER_MAX_ATTEMPTS == 7
+    ini_path.write_text(ini_path.read_text().replace("mcmc_initial_walker_max_attempts = 7", ""))
+    settings.configure(MCMC_INITIAL_WALKER_MAX_ATTEMPTS=settings.DEFAULT_SETTINGS["MCMC_INITIAL_WALKER_MAX_ATTEMPTS"])
+    settings.read_and_update_config(conf_path=str(ini_path))
+    assert settings.MCMC_INITIAL_WALKER_MAX_ATTEMPTS == 100
+
+
+@pytest.mark.parametrize("value", [0, -1, 1.5, True, "3", None])
+@pytest.mark.usefixtures("elisa_ini")
+def test_initial_walker_attempts_reject_invalid_configure(value: object) -> None:
+    previous = settings.MCMC_INITIAL_WALKER_MAX_ATTEMPTS
+    with pytest.raises(ElisaSettingsError, match="MCMC_INITIAL_WALKER_MAX_ATTEMPTS"):
+        settings.configure(MCMC_INITIAL_WALKER_MAX_ATTEMPTS=value)
+    assert previous == settings.MCMC_INITIAL_WALKER_MAX_ATTEMPTS
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "1.5", "true", "invalid"])
+def test_initial_walker_attempts_reject_invalid_ini(elisa_ini: IniFixture, value: str) -> None:
+    ini_path, _ = elisa_ini
+    ini_path.write_text(
+        ini_path.read_text().replace("mcmc_initial_walker_max_attempts = 7",
+                                     f"mcmc_initial_walker_max_attempts = {value}"),
+    )
+    previous = settings.MCMC_INITIAL_WALKER_MAX_ATTEMPTS
+    with pytest.raises(ElisaSettingsError):
+        settings.read_and_update_config(conf_path=str(ini_path))
+    assert previous == settings.MCMC_INITIAL_WALKER_MAX_ATTEMPTS

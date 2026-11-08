@@ -337,11 +337,19 @@ def produce_ecc_curves_no_spots(
     # curve has to have enough point on orbit and have to span at least in 0.8 phase
 
     # this will remove large gap in phases
-    max_diff = np.max(np.diff(np.sort(phases), n=1))
-    phases_span_test = np.max(phases) - np.min(phases) - max_diff >= PHASE_SPAN_TEST_THRESHOLD
+    # Phase coverage and curve approximations require multiple sampled phases.
+    has_multiple_phases = len(phases) > 1
+
+    # this will remove large gap in phases
+    phase_gaps = np.diff(np.sort(phases))
+    max_diff = np.max(phase_gaps, initial=0.0)
+
+    phases_span_test = has_multiple_phases and np.ptp(phases) - max_diff >= PHASE_SPAN_TEST_THRESHOLD
 
     position_method = kwargs.pop("position_method")
-    try_to_find_appx = c_appx_router.look_for_approximation(not_pulsations_test=not binary.has_pulsations())
+    try_to_find_appx = has_multiple_phases and c_appx_router.look_for_approximation(
+        not_pulsations_test=not binary.has_pulsations(),
+    )
 
     args = (
         binary,

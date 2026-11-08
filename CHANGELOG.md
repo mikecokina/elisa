@@ -13,6 +13,16 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 #### Added
 
+- Physical validation of initial LC MCMC walkers before sampling: each candidate
+  initializes the fitted binary, checks its morphology, and synthesizes one
+  unnormalized LC point at periastron (a deterministic reference phase for circular
+  orbits), requiring finite, positive fluxes in every fitted passband. Valid `x0`
+  values are retained; invalid automatic candidates are replaced by uniform draws.
+  `MCMC_INITIAL_WALKER_MAX_ATTEMPTS` / `[computational].mcmc_initial_walker_max_attempts`
+  sets a positive per-walker attempt limit (default `100`, including the original
+  candidate), with rejection diagnostics on exhaustion. Supplied ensembles are
+  validated without changing their coordinates. RV initialization and MCMC sampling
+  behavior remain unchanged.
 - Configurable Kepler solving through `MEAN_ANOMALY_SOLVER` or
   `[computational].mean_anomaly_solver`: `vectorized` (default) solves arrays of
   orbital phases together for supported float64 arrays, with scalar fallback
@@ -71,6 +81,8 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 #### Fixed
 
+- Fixed single-phase eccentric LC synthesis to use exact integration without
+  attempting curve approximations that require multiple orbital phases.
 - Fixed phase-dependent Roche geometry in binary `plot.mesh()`, `plot.wireframe()`,
   and `build_container(phase=... / time=...)`: eccentric snapshots now apply
   volume-corrected instantaneous surface potentials before mesh construction,

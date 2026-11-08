@@ -188,6 +188,7 @@ class Settings(_Const):
     PULSATION_MODEL: str
     PENALIZE_ALL_EXCEPTIONS: bool
     MCMC_SAVE_INTERVAL: int
+    MCMC_INITIAL_WALKER_MAX_ATTEMPTS: int
     MCMC_AUTOCORR_TOL: int
     CUDA: bool
     USE_SINGLE_LD_COEFFICIENTS: bool
@@ -238,6 +239,7 @@ class Settings(_Const):
         "PULSATION_MODEL",
         "PENALIZE_ALL_EXCEPTIONS",
         "MCMC_SAVE_INTERVAL",
+        "MCMC_INITIAL_WALKER_MAX_ATTEMPTS",
         "MCMC_AUTOCORR_TOL",
         "CUDA",
         "USE_SINGLE_LD_COEFFICIENTS",
@@ -443,6 +445,8 @@ class Settings(_Const):
         solvers = tuple(solver.value for solver in MeanAnomalySolver)
         if values["MEAN_ANOMALY_SOLVER"] not in solvers:
             raise_elisa_settings_error(f"MEAN_ANOMALY_SOLVER must be one of: {', '.join(solvers)}")
+        if values["MCMC_INITIAL_WALKER_MAX_ATTEMPTS"] <= 0:
+            raise_elisa_settings_error("MCMC_INITIAL_WALKER_MAX_ATTEMPTS must be a positive integer")
         if values["NUMBER_OF_THREADS"] <= 0:
             raise_elisa_settings_error("Invalid value for `number_of_threads`, allowed >= 1")
         if values["NUMBER_OF_PROCESSES"] > 1 and values["NUMBER_OF_MCMC_PROCESSES"] > 1:
@@ -579,6 +583,10 @@ class Settings(_Const):
             )
             candidate.MCMC_SAVE_INTERVAL = parser.getint(
                 "computational", "mcmc_save_interval", fallback=candidate.MCMC_SAVE_INTERVAL,
+            )
+            candidate.MCMC_INITIAL_WALKER_MAX_ATTEMPTS = parser.getint(
+                "computational", "mcmc_initial_walker_max_attempts",
+                fallback=candidate.MCMC_INITIAL_WALKER_MAX_ATTEMPTS,
             )
             candidate.MCMC_AUTOCORR_TOL = parser.getint(
                 "computational", "mcmc_autocorr_tol", fallback=candidate.MCMC_AUTOCORR_TOL,
