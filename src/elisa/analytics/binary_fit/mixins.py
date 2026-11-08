@@ -356,11 +356,13 @@ class MCMCMixin:
             sampling; None disables reporting here.
         :type diagnostics: RunDiagnostics | None
         """
-        logger.info("running burn-in...")
         if nsteps_burn_in > 0:
+            logger.info("running burn-in...")
             p0, _, _ = sampler.run_mcmc(p0, nsteps_burn_in, progress=progress, store=False)
             if diagnostics is not None:
                 diagnostics.report("burn_in", nsteps_burn_in, nsteps_burn_in)
+        else:
+            logger.info("no burn-in (0 steps); skipping")
         if diagnostics is not None:
             diagnostics.begin_production()
         sampler.reset()
