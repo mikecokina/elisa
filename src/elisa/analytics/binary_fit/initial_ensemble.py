@@ -147,7 +147,13 @@ def initialize_lc_ensemble(
         f"Initial LC ensemble: attempted={attempted}, accepted={accepted}, rejected={attempted - accepted}; "
         f"requested={nwalkers}; failures={dict(reasons)}; last failure={last_failure}"
     )
-    logger.info(summary)
+    fit._initialization_diagnostics = {  # noqa: SLF001
+        "attempted": attempted,
+        "accepted": accepted,
+        "rejected": attempted - accepted,
+        "failures": dict(reasons),
+    }
+    logger.info("Initial ensemble: %s/%s valid, %s rejected", accepted, nwalkers, attempted - accepted)
     if invalid:
         raise_elisa_monte_carlo_error(f"Invalid supplied initial walkers (zero-based): {invalid}. {summary}")
     if exhausted_walker is not None:

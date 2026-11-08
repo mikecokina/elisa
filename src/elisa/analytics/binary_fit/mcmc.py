@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
 
 import emcee
@@ -40,6 +41,9 @@ from elisa.logger import getPersistentLogger
 from elisa.observer.mp_manager import get_mp_context
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+    from multiprocessing.pool import Pool
+
     from numpy.typing import NDArray
 
     from elisa.analytics.dataset.base import LCData, RVData
@@ -51,6 +55,18 @@ if TYPE_CHECKING:
 _HALF_LOG_2PI: float = 0.5 * float(np.log(2.0 * np.pi))
 
 logger = getPersistentLogger(__name__)
+
+
+@contextmanager
+def _mcmc_pool() -> Iterator[Pool | None]:
+    """Keep the optional fork pool alive for the entire sampling phase."""
+    if settings.NUMBER_OF_MCMC_PROCESSES > 1:
+        with get_mp_context().Pool(processes=settings.NUMBER_OF_MCMC_PROCESSES) as pool:
+            logger.info("Starting parallel MCMC with %s workers", settings.NUMBER_OF_MCMC_PROCESSES)
+            yield pool
+    else:
+        logger.info("starting singlecore mcmc")
+        yield None
 
 
 class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
@@ -307,6 +323,10 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         Implements sampler from the emcee package. Handles both parallel and single-core
         execution based on the settings.NUMBER_OF_MCMC_PROCESSES configuration.
 
+        The parent resolves one absolute output destination shared by chain saves
+        and best-effort diagnostics. Diagnostics activates before the fork pool,
+        so counters are inherited without being serialized on the fitter.
+
         :param nwalkers: The number of walkers in the ensemble. Minimum is 2 * number
             of free parameters.
         :type nwalkers: int
@@ -328,6 +348,7 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         :return: MCMC ensemble sampler with results.
         :rtype: emcee.EnsembleSampler
         """
+        self._initialization_diagnostics = {}
         self.prepare_priors()
         supplied = p0 is not None
         p0 = self.generate_initial_states(p0, nwalkers, ndim, x0_vector=self.norm_init_vector)
@@ -339,24 +360,14 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
             "ndim": ndim,
             "log_prob_fn": self.ln_probability,
         }
-        if settings.NUMBER_OF_MCMC_PROCESSES > 1:
-            with get_mp_context().Pool(processes=settings.NUMBER_OF_MCMC_PROCESSES) as pool:
-                logger.info("starting parallel mcmc")
-                sampler = emcee.EnsembleSampler(pool=pool, **kwargs)  # type: ignore[arg-type]
-                self.worker(
-                    sampler,
-                    p0,
-                    nsteps,
-                    nsteps_burn_in,
-                    save=save,
-                    fit_id=fit_id,
-                    fitable=self.fitable,
-                    normalization=self.normalization,
-                    progress=progress,
-                )
-        else:
-            logger.info("starting singlecore mcmc")
-            sampler = emcee.EnsembleSampler(**kwargs)
+        from elisa.analytics.binary_fit.mcmc_diagnostics import RunDiagnostics  # noqa: PLC0415
+
+        if save:
+            fit_id = str(self.chain_path(fit_id).absolute())
+        with RunDiagnostics(
+            None, self._initialization_diagnostics, fit_id if save else None,
+        ) as diagnostics, _mcmc_pool() as pool:
+            sampler = emcee.EnsembleSampler(pool=pool, **kwargs)  # type: ignore[arg-type]
             self.worker(
                 sampler,
                 p0,
@@ -367,6 +378,7 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
                 fitable=self.fitable,
                 normalization=self.normalization,
                 progress=progress,
+                diagnostics=diagnostics,
             )
 
         self.last_sampler = sampler

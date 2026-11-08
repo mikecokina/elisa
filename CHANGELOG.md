@@ -13,6 +13,13 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 #### Added
 
+- Aggregated MCMC synthesis-failure diagnostics across all workers, with concise
+  periodic INFO summaries instead of individual candidate warnings and tracebacks.
+  `MCMC_DIAGNOSTICS_INTERVAL_STEPS` /
+  `[computational].mcmc_diagnostics_interval_steps` sets a positive reporting interval
+  (default `100` steps). With `save=True`, a separate atomic `.diagnostics.json`
+  file records initialization, burn-in, and production statistics with interval
+  history. Diagnostics are best-effort and do not alter sampling or chain saving.
 - Physical validation of initial LC MCMC walkers before sampling: each candidate
   initializes the fitted binary, checks its morphology, and synthesizes one
   unnormalized LC point at periastron (a deterministic reference phase for circular

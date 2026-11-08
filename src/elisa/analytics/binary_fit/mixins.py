@@ -18,6 +18,7 @@ from elisa.logger import getPersistentLogger
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
+    from elisa.analytics.binary_fit.mcmc_diagnostics import RunDiagnostics
     from elisa.types import Float
 
 logger = getPersistentLogger(__name__)
@@ -206,6 +207,10 @@ class MCMCMixin:
         Optional ``chain_shape`` asserts step-major, walker-major ordering and
         preserves temporal axes without changing the legacy flat sample field.
 
+        Runs in the parent. Absolute JSON destinations resolved by ``_fit`` are
+        used directly; other identifiers retain the legacy path conventions.
+        Chain persistence errors propagate independently of optional diagnostics.
+
         :param flat_chain: Flattened array of parameter values in each MCMC step.
             Shape: (n_samples, n_parameters).
         :type flat_chain: NDArray[Float]
@@ -224,22 +229,11 @@ class MCMCMixin:
         :return: Path to the saved file.
         :rtype: str
         """
-        home = Path(settings.HOME)
-        if fit_id is not None:
-            fit_path = Path(fit_id)
-            if fit_path.parent.is_dir():
-                fdir = fit_path.parent
-                fname = fit_path.name if fit_path.suffix == ".json" else f"{fit_path.name}.json"
-                home = Path()
-            else:
-                fdir = fit_path
-                fname = f"{fit_id}.json" if not fit_id.endswith(".json") else fit_id
-        else:
-            now = datetime.now(tz=UTC)
-            fdir = Path(now.strftime(settings.DATE_MASK))
-            fname = f"{now.strftime(settings.DATETIME_MASK)}.json"
-
-        fpath = home / fdir / fname
+        destination = Path(fit_id) if fit_id is not None else None
+        fpath = (
+            destination if destination is not None and destination.is_absolute() and destination.suffix == ".json"
+            else MCMCMixin.chain_path(fit_id)
+        )
         fpath.parent.mkdir(parents=True, exist_ok=True)
 
         data: dict[str, Any] = {
@@ -259,6 +253,31 @@ class MCMCMixin:
 
         logger.info("MCMC chain, variable's fitable and normalization constants were stored in: %s", fpath)
         return str(fpath)
+
+    @staticmethod
+    def chain_path(fit_id: str | None = None) -> Path:
+        """Resolve a fit identifier using the legacy filename/directory conventions.
+
+        The parent calls this once per saved run, then makes the result absolute
+        before passing it to chain saves and diagnostics. Direct callers may
+        receive a relative path when HOME is relative; no files are created here.
+        """
+        home = Path(settings.HOME)
+        if fit_id is not None:
+            fit_path = Path(fit_id)
+            if fit_path.parent.is_dir():
+                fdir = fit_path.parent
+                fname = fit_path.name if fit_path.suffix == ".json" else f"{fit_path.name}.json"
+                home = Path()
+            else:
+                fdir = fit_path
+                fname = f"{fit_id}.json" if not fit_id.endswith(".json") else fit_id
+        else:
+            now = datetime.now(tz=UTC)
+            fdir = Path(now.strftime(settings.DATE_MASK))
+            fname = f"{now.strftime(settings.DATETIME_MASK)}.json"
+
+        return home / fdir / fname
 
     @staticmethod
     def load_flat_chain(fit_id: str) -> dict[str, Any]:
@@ -302,11 +321,15 @@ class MCMCMixin:
         fitable: dict[str, Any] | None = None,
         normalization: dict[str, tuple[Float, Float]] | None = None,
         progress: bool = False,
+        diagnostics: RunDiagnostics | None = None,
     ) -> None:
         """Multiprocessor worker for MCMC sampling routine.
 
         Executes MCMC sampling with optional burn-in phase and periodic chain saving.
-        Handles both single-process and multi-process scenarios.
+        Handles both single-process and multi-process scenarios. This orchestration
+        runs in the parent; only likelihood evaluation uses pool workers. Optional
+        diagnostics handles its own failures and reports burn-in once after the
+        original ``run_mcmc`` call, without changing its coordinate handling.
 
         :param sampler: MCMC ensemble sampler from emcee.
         :type sampler: Any
@@ -328,17 +351,27 @@ class MCMCMixin:
         :type normalization: dict[str, tuple[Float, Float]] | None
         :param progress: Display the progress bar of the sampling.
         :type progress: bool
+        :param diagnostics: Optional active run diagnostics for parent-only burn-in
+            and production reporting. Handles its own failures without interrupting
+            sampling; None disables reporting here.
+        :type diagnostics: RunDiagnostics | None
         """
         logger.info("running burn-in...")
         if nsteps_burn_in > 0:
             p0, _, _ = sampler.run_mcmc(p0, nsteps_burn_in, progress=progress, store=False)
+            if diagnostics is not None:
+                diagnostics.report("burn_in", nsteps_burn_in, nsteps_burn_in)
+        if diagnostics is not None:
+            diagnostics.begin_production()
         sampler.reset()
         logger.info("running production...")
 
-        if save:
+        if save or diagnostics is not None:
             t_between_dumps = time()
-            for _ in sampler.sample(p0, iterations=nsteps, progress=progress):
-                if time() - t_between_dumps > settings.MCMC_SAVE_INTERVAL:
+            for step, _ in enumerate(sampler.sample(p0, iterations=nsteps, progress=progress), 1):
+                if diagnostics is not None:
+                    diagnostics.report("production", step, nsteps)
+                if save and time() - t_between_dumps > settings.MCMC_SAVE_INTERVAL:
                     MCMCMixin.save_flat_chain(
                         sampler.get_chain(flat=True),
                         fitable=fitable,

@@ -78,19 +78,24 @@ class CandidateFailureDiagnostics:
     last: dict[str, str] = field(default_factory=dict)
 
 
-def record_candidate_failure(
+def _record_candidate_failure(
     fit: MCMCFit,
     xn: NDArray[Float],
     exc: Exception,
     *,
     stage: str = "likelihood",
 ) -> None:
-    """Record an MCMC rejection and warn once per retained exception category.
+    """Update local rejection totals in a worker or serial parent.
 
+    Active runs also update shared counters and skip detailed payloads/warnings.
+    Outside sampling, warn once per retained exception category.
     Warning suppression does not disable in-memory diagnostics. Normalized
     candidate values and their parameter order use bounded representations;
     traceback text includes the original exception chain when available.
     """
+    from elisa.analytics.binary_fit.mcmc_diagnostics import count_failure  # noqa: PLC0415
+
+    active = count_failure(exc)
     # noinspection PyProtectedMember
     diagnostics = fit._candidate_failure_diagnostics  # noqa: SLF001
     error_type = f"{type(exc).__module__}.{type(exc).__qualname__}"[:256]
@@ -99,6 +104,8 @@ def record_candidate_failure(
         category = "other"
     diagnostics.total += 1
     diagnostics.counts[category] = diagnostics.counts.get(category, 0) + 1
+    if active:
+        return
     diagnostics.last = {
         "stage": stage,
         "exception_type": error_type,
@@ -117,3 +124,23 @@ def record_candidate_failure(
             category,
             diagnostics.last["traceback"],
         )
+
+
+def record_candidate_failure(
+    fit: MCMCFit,
+    xn: NDArray[Float],
+    exc: Exception,
+    *,
+    stage: str = "likelihood",
+) -> None:
+    """Record optional worker/serial diagnostics without changing the rejection.
+
+    Called only after the failure policy selects a penalty. Ordinary diagnostic
+    failures are contained here; synthesis and posterior errors are not handled.
+    """
+    try:
+        _record_candidate_failure(fit, xn, exc, stage=stage)
+    except Exception as failure:  # noqa: BLE001 - optional instrumentation boundary
+        from elisa.analytics.binary_fit.mcmc_diagnostics import diagnostics_failed  # noqa: PLC0415
+
+        diagnostics_failed(failure)
