@@ -80,12 +80,9 @@ def test_fork_pool_inherits_configuration_at_creation() -> None:
 
 @requires_fork
 def test_observations_and_summaries_use_fork() -> None:
-    with (
-        patch.object(settings, "NUMBER_OF_PROCESSES", 2),
-        patch.object(settings, "NUMBER_OF_MCMC_PROCESSES", 2),
-        patch.object(settings, "REFLECTION_EFFECT_ITERATIONS", 23),
-    ):
+    with settings.override(NUMBER_OF_PROCESSES=2, NUMBER_OF_MCMC_PROCESSES=1, REFLECTION_EFFECT_ITERATIONS=23):
         observed = mp_manager.manage_observations(_observe_state, (None, None), np.arange(4))
+    with settings.override(NUMBER_OF_PROCESSES=1, NUMBER_OF_MCMC_PROCESSES=2, REFLECTION_EFFECT_ITERATIONS=23):
         summary = _manage_chain_evaluation(np.arange(4).reshape(-1, 1), _summarize_state)
     np.testing.assert_array_equal(observed["method"], ["fork"] * 4)
     np.testing.assert_array_equal(observed["value"], [23] * 4)
@@ -114,8 +111,7 @@ def test_mcmc_sampling_with_real_emcee(workers: int) -> None:
     fit.normalized_sigma = MethodType(MCMCFit.normalized_sigma, fit)
     fit.prepare_priors = MethodType(MCMCFit.prepare_priors, fit)
     with (
-        patch.object(settings, "NUMBER_OF_MCMC_PROCESSES", workers),
-        patch.object(settings, "REFLECTION_EFFECT_ITERATIONS", 37),
+        settings.override(NUMBER_OF_PROCESSES=1, NUMBER_OF_MCMC_PROCESSES=workers, REFLECTION_EFFECT_ITERATIONS=37),
         patch("elisa.analytics.binary_fit.mcmc.get_mp_context", wraps=mp_manager.get_mp_context) as context,
     ):
         sampler = MCMCFit._fit(
@@ -146,7 +142,7 @@ def test_unavailable_fork_is_explicit_and_serial_still_works() -> None:
     with patch.object(mp_manager.multiprocessing, "get_context", side_effect=ValueError("no fork")):
         with pytest.raises(RuntimeError, match=r"requires the 'fork'.*Use serial execution"):
             mp_manager.get_mp_context()
-        with patch.object(settings, "NUMBER_OF_PROCESSES", 1), patch.object(settings, "NUMBER_OF_MCMC_PROCESSES", 1):
+        with settings.override(NUMBER_OF_PROCESSES=1, NUMBER_OF_MCMC_PROCESSES=1):
             with patch.object(mp_manager, "get_mp_context", side_effect=AssertionError("serial requested a pool")):
                 observed = mp_manager.manage_observations(_observe_state, (None, None), np.arange(3))
             chain = np.arange(3).reshape(-1, 1)
@@ -197,8 +193,10 @@ def _fail(*_args) -> None:
 def test_worker_exceptions_still_reach_caller(operation: str) -> None:
     previous_children = {child.pid for child in multiprocessing.active_children()}
     with (  # noqa: PT012 - scenario includes context cleanup or selection of the operation under test
-        patch.object(settings, "NUMBER_OF_PROCESSES", 2),
-        patch.object(settings, "NUMBER_OF_MCMC_PROCESSES", 2),
+        settings.override(
+            NUMBER_OF_PROCESSES=2 if operation == "observation" else 1,
+            NUMBER_OF_MCMC_PROCESSES=2 if operation == "summary" else 1,
+        ),
         pytest.raises(ValueError, match="worker failed"),
     ):
         if operation == "observation":

@@ -58,7 +58,7 @@ class TestManageChainEvaluation:
             return chain * 2
 
         with (
-            patch.object(settings, "NUMBER_OF_MCMC_PROCESSES", 2),
+            settings.override(NUMBER_OF_PROCESSES=1, NUMBER_OF_MCMC_PROCESSES=2),
             patch("elisa.analytics.binary_fit.summary.get_mp_context") as mock_context,
         ):
             mock_pool_class = mock_context.return_value.Pool

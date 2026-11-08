@@ -7,6 +7,7 @@ import sys
 import textwrap
 import unittest
 import warnings
+from configparser import ConfigParser
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeAlias
 from unittest.mock import patch
@@ -51,9 +52,9 @@ def elisa_ini(tmp_path: Path) -> Iterator[tuple[Path, dict[str, object]]]:
         "MIN_DISCRETIZATION_FACTOR": 1.0,
         "DEFAULT_DISCRETIZATION_FACTOR": 5,
         "NUMBER_OF_THREADS": 1,
-        "NUMBER_OF_PROCESSES": -1,
+        "NUMBER_OF_PROCESSES": 1,
         "INTERSECTION_BACKEND": "sutherland_hodgman",
-        "NUMBER_OF_MCMC_PROCESSES": -1,
+        "NUMBER_OF_MCMC_PROCESSES": 1,
         "MAX_NU_SEPARATION": 0.045,
         "MAX_D_FLUX": 0.0,
         "MAX_SPOT_D_LONGITUDE": 0.01745329252,
@@ -136,7 +137,7 @@ def elisa_ini(tmp_path: Path) -> Iterator[tuple[Path, dict[str, object]]]:
 
 def test_elisa_config_ini_types_do_not_raise(elisa_ini: IniFixture) -> None:
     ini_path, _ = elisa_ini
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603
         [sys.executable, "-c", "from elisa import settings\nassert hasattr(settings, 'HOME')\n"],
         env={**os.environ, "ELISA_CONFIG": str(ini_path)},
         capture_output=True,
@@ -250,7 +251,7 @@ def test_number_of_processes_clamped_and_warns(elisa_ini: IniFixture, monkeypatc
     """
     ini_path, _ = elisa_ini
     text = ini_path.read_text(encoding="utf-8")
-    text = text.replace("number_of_processes = -1", "number_of_processes = 9999")
+    text = text.replace("number_of_processes = 1", "number_of_processes = 9999")
     text = text.replace("suppress_warnings = True", "suppress_warnings = False")
     ini_path.write_text(text, encoding="utf-8")
 
@@ -263,6 +264,105 @@ def test_number_of_processes_clamped_and_warns(elisa_ini: IniFixture, monkeypatc
 
     assert isinstance(s.NUMBER_OF_PROCESSES, int)
     assert s.NUMBER_OF_PROCESSES == 4
+
+
+def test_process_defaults_are_serial() -> None:
+    assert settings.DEFAULT_SETTINGS["NUMBER_OF_PROCESSES"] == 1
+    assert settings.DEFAULT_SETTINGS["NUMBER_OF_MCMC_PROCESSES"] == 1
+    assert settings.DEFAULT_SETTINGS["NUMBER_OF_THREADS"] == 1
+
+
+@pytest.mark.parametrize(("synthesis", "mcmc"), [(1, 1), (2, 1), (1, 2)])
+@pytest.mark.parametrize("entry_point", ["configure", "override", "ini", "parser"])
+def test_process_parallelism_valid(
+    elisa_ini: IniFixture, monkeypatch: pytest.MonkeyPatch, synthesis: int, mcmc: int, entry_point: str,
+) -> None:
+    monkeypatch.setattr(os, "cpu_count", lambda: 4)
+    ini, _ = elisa_ini
+    with settings.override(NUMBER_OF_PROCESSES=1, NUMBER_OF_MCMC_PROCESSES=1):
+        if entry_point == "configure":
+            settings.configure(NUMBER_OF_PROCESSES=synthesis, NUMBER_OF_MCMC_PROCESSES=mcmc)
+        elif entry_point == "override":
+            with settings.override(NUMBER_OF_PROCESSES=synthesis, NUMBER_OF_MCMC_PROCESSES=mcmc):
+                assert (synthesis, mcmc) == (settings.NUMBER_OF_PROCESSES, settings.NUMBER_OF_MCMC_PROCESSES)
+            assert (settings.NUMBER_OF_PROCESSES, settings.NUMBER_OF_MCMC_PROCESSES) == (1, 1)
+            return
+        else:
+            content = f"[computational]\nnumber_of_processes={synthesis}\nnumber_of_mcmc_processes={mcmc}\n"
+            if entry_point == "ini":
+                ini.write_text(content, encoding="utf-8")
+                settings.read_and_update_config(conf_path=str(ini))
+            else:
+                parser = ConfigParser()
+                parser.read_string(content)
+                settings.update_config(parser)
+        assert (synthesis, mcmc) == (settings.NUMBER_OF_PROCESSES, settings.NUMBER_OF_MCMC_PROCESSES)
+
+
+@pytest.mark.parametrize("entry_point", ["configure", "override", "ini", "parser"])
+@pytest.mark.parametrize("cores", [1, 4])
+def test_process_parallelism_conflict_is_transactional(
+    elisa_ini: IniFixture, monkeypatch: pytest.MonkeyPatch, entry_point: str, cores: int,
+) -> None:
+    monkeypatch.setattr(os, "cpu_count", lambda: cores)
+    ini, _ = elisa_ini
+    with settings.override(NUMBER_OF_PROCESSES=1, NUMBER_OF_MCMC_PROCESSES=1):
+        before = settings.__dict__
+        snapshot = settings.settings_serializer()
+        with pytest.raises(ElisaSettingsError, match="Parallel MCMC and parallel synthesis cannot be enabled"):  # noqa: PT012
+            if entry_point == "configure":
+                settings.configure(NUMBER_OF_PROCESSES=2, NUMBER_OF_MCMC_PROCESSES=2, REFLECTION_EFFECT_ITERATIONS=19)
+            elif entry_point == "override":
+                with settings.override(
+                    NUMBER_OF_PROCESSES=2, NUMBER_OF_MCMC_PROCESSES=2, REFLECTION_EFFECT_ITERATIONS=19,
+                ):
+                    pytest.fail("invalid override entered")
+            else:
+                content = (
+                    "[physics]\nreflection_effect_iterations=19\n"
+                    "[computational]\nnumber_of_processes=2\nnumber_of_mcmc_processes=2\n"
+                )
+                if entry_point == "ini":
+                    ini.write_text(content, encoding="utf-8")
+                    settings.read_and_update_config(conf_path=str(ini))
+                else:
+                    parser = ConfigParser()
+                    parser.read_string(content)
+                    settings.update_config(parser)
+        assert settings.__dict__ is before
+        assert settings.settings_serializer() == snapshot
+
+
+@pytest.mark.parametrize(("parallel", "conflict"), [
+    ("NUMBER_OF_PROCESSES", "NUMBER_OF_MCMC_PROCESSES"),
+    ("NUMBER_OF_MCMC_PROCESSES", "NUMBER_OF_PROCESSES"),
+])
+@pytest.mark.usefixtures("elisa_ini")
+def test_process_parallelism_partial_update_is_transactional(
+    monkeypatch: pytest.MonkeyPatch, parallel: str, conflict: str,
+) -> None:
+    monkeypatch.setattr(os, "cpu_count", lambda: 4)
+    with settings.override(NUMBER_OF_PROCESSES=1, NUMBER_OF_MCMC_PROCESSES=1):
+        settings.configure(**{parallel: 2})
+        before = settings.__dict__
+        with pytest.raises(ElisaSettingsError, match="Parallel MCMC and parallel synthesis"):
+            setattr(settings, conflict, 2)
+        assert settings.__dict__ is before
+
+
+def test_process_parallelism_conflict_rejected_at_startup(elisa_ini: IniFixture, tmp_path: Path) -> None:
+    ini, _ = elisa_ini
+    ini.write_text("[computational]\nnumber_of_processes=2\nnumber_of_mcmc_processes=2\n", encoding="utf-8")
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", "from elisa import settings"],
+        env={**os.environ, "ELISA_CONFIG": str(ini), "HOME": str(tmp_path)},
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    assert result.returncode != 0
+    assert "Parallel MCMC and parallel synthesis cannot be enabled simultaneously" in result.stderr
 
 
 def test_missing_tables_warn(elisa_ini: IniFixture) -> None:
@@ -839,7 +939,7 @@ def test_mean_anomaly_solver_invalid_ini_is_atomic(elisa_ini: IniFixture) -> Non
         assert type(caught.value).__name__ == "ElisaSettingsError"
         assert type(caught.value).__module__ == "elisa.base.error"
     """)
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603
         [sys.executable, "-c", code],
         env={**os.environ, "ELISA_CONFIG": str(ini_path)},
         capture_output=True,

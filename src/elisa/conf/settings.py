@@ -445,6 +445,8 @@ class Settings(_Const):
             raise_elisa_settings_error(f"MEAN_ANOMALY_SOLVER must be one of: {', '.join(solvers)}")
         if values["NUMBER_OF_THREADS"] <= 0:
             raise_elisa_settings_error("Invalid value for `number_of_threads`, allowed >= 1")
+        if values["NUMBER_OF_PROCESSES"] > 1 and values["NUMBER_OF_MCMC_PROCESSES"] > 1:
+            raise_elisa_settings_error("Parallel MCMC and parallel synthesis cannot be enabled simultaneously.")
         for name in ("NUMBER_OF_PROCESSES", "NUMBER_OF_MCMC_PROCESSES"):
             cores = os.cpu_count() or 1
             if values[name] > cores:

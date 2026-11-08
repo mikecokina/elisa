@@ -60,24 +60,24 @@ def test_rebuild_decisions(
 @pytest.mark.requires_ld(passbands=("bolometric", "Generic.Bessell.V"))
 @pytest.mark.requires_atmosphere
 @pytest.mark.parametrize("observable", ["lc", "rv"])
-def test_observer_phase_order(monkeypatch: pytest.MonkeyPatch, observable: str) -> None:
+def test_observer_phase_order(observable: str) -> None:
     from elisa.observer.observer import Observer
 
-    for key, value in {
-        "NUMBER_OF_PROCESSES": 3,
-        "USE_INTERPOLATION_APPROXIMATION": False,
-        "USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION": False,
-        "USE_SIMILAR_NEIGHBOURS_APPROXIMATION": True,
-        "MAX_D_FLUX": 0.001,
-    }.items():
-        monkeypatch.setattr(settings, key, value)
-    binary = prepare_binary_system(BINARY_SYSTEM_PARAMS["detached.ecc"])
-    observer = Observer(system=binary, passband=["Generic.Bessell.V"])
-    phases = np.linspace(0, 1, 31, endpoint=False)
-    permutation = np.random.default_rng(42).permutation(len(phases))
-    kwargs = {"method": "radiometric"} if observable == "rv" else {}
-    compute = getattr(observer, observable)
-    baseline = compute(phases=phases, **kwargs)[1]
-    reordered = compute(phases=phases[permutation], **kwargs)[1]
+    with settings.override(
+        NUMBER_OF_PROCESSES=3,
+        NUMBER_OF_MCMC_PROCESSES=1,
+        USE_INTERPOLATION_APPROXIMATION=False,
+        USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION=False,
+        USE_SIMILAR_NEIGHBOURS_APPROXIMATION=True,
+        MAX_D_FLUX=0.001,
+    ):
+        binary = prepare_binary_system(BINARY_SYSTEM_PARAMS["detached.ecc"])
+        observer = Observer(system=binary, passband=["Generic.Bessell.V"])
+        phases = np.linspace(0, 1, 31, endpoint=False)
+        permutation = np.random.default_rng(42).permutation(len(phases))
+        kwargs = {"method": "radiometric"} if observable == "rv" else {}
+        compute = getattr(observer, observable)
+        baseline = compute(phases=phases, **kwargs)[1]
+        reordered = compute(phases=phases[permutation], **kwargs)[1]
     for label, values in baseline.items():
         assert_array_equal(values, reordered[label][np.argsort(permutation)])

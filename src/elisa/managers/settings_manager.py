@@ -43,8 +43,8 @@ class DefaultSettings:
     MIN_DISCRETIZATION_FACTOR: int = 3
     DEFAULT_DISCRETIZATION_FACTOR: int = 5
     NUMBER_OF_THREADS: int = 1
-    NUMBER_OF_PROCESSES: int = -1  # int(os.cpu_count())
-    NUMBER_OF_MCMC_PROCESSES: int = -1
+    NUMBER_OF_PROCESSES: int = 1
+    NUMBER_OF_MCMC_PROCESSES: int = 1
     MAX_NU_SEPARATION: float = 0.08
     MAX_D_FLUX: float = 2e-4
     MAX_SPOT_D_LONGITUDE: float = np.pi / 180.0  # in radians
