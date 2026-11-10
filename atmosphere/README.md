@@ -65,3 +65,8 @@ Flux is stored in `flam` units and `wave` in Angstromes.
 ## Kurucz 1993
 
 **url:** https://github.com/mikecokina/elisa-assets/blob/main/atmosphere/k93.tar.gz
+
+## PHOENIX v1.0 R10000
+
+Original-data acquisition and provenance are documented in [phoenix/README.md](phoenix/README.md).
+This tooling does not install or convert ELISA atmosphere tables.

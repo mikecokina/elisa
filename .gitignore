@@ -42,3 +42,8 @@ docs/build/
 
 # Demo 13 locally generated chain cache
 /jupyter_tutorials/demo_data/demo13/chains/
+
+# Original PHOENIX acquisition files
+/atmosphere/phoenix/data/
+/atmosphere/phoenix/**/*.fits
+/atmosphere/phoenix/**/*.part
