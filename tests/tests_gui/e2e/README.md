@@ -68,8 +68,8 @@ needed:
 The LC scenarios require `ck04` atmosphere tables and limb-darkening tables for
 `Generic.Bessell.U` and bolometric at metallicity 0. Empty directories or
 unextracted archives are insufficient. For installation instructions, see
-[atmosphere/README.rst](../../../atmosphere/README.rst) and
-[limbdarkening/README.rst](../../../limbdarkening/README.rst).
+[atmosphere/README.md](../../../atmosphere/README.md) and
+[limbdarkening/README.md](../../../limbdarkening/README.md).
 
 If the tables are installed elsewhere, configure their common parent directory:
 

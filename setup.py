@@ -21,7 +21,7 @@ Pre-release steps
     `setup.py` in variable `install_requires`
 
 5.  make sure a latest docstsring documentation is generated and there is no error during Sphinx HTML build
-    (for more comprehensive information take a look into `docs/README.rst`)
+    (for more comprehensive information take a look into `docs/README.md`)
 
 6.  make sure setup.cfg contains all supported Python versions
 
