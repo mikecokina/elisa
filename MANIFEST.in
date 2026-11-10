@@ -1,11 +1,7 @@
-include data/**
-include passband/**
-include conf/**
-include version.py
-include setup.py
-include pyproject.toml
-include setup.cfg
-include LICENCE
-include README.md
-include schema_registry/**
-include ui/assets/**
+include pyproject.toml setup.py setup.cfg LICENCE README.md
+recursive-include src/elisa/data *
+recursive-include src/elisa/passband *.csv
+recursive-include src/elisa/conf *.ini *.json
+recursive-include src/elisa/schema_registry *.sc
+recursive-include src/elisa/ui/assets *
+global-exclude __pycache__ *.py[cod]

@@ -111,7 +111,6 @@ long_description = (
 
 setup(
     name="elisa",
-    src_root="src",
     version=read_version(),
 
     python_requires=">=3.11",
@@ -177,16 +176,16 @@ setup(
         'scipy>=1.17.1',
 
         # Common deps
-        "corner>=2.2.1",
-        "emcee>=3.0.1",
-        "jsonschema>=3.2.0",
-        "matplotlib>=3.3.2",
-        "packaging>=20.0",
-        "python-dateutil>=2.6.1",
-        "tqdm>=4.43.0",
-        "parameterized>=0.7.4",
-        "numba>=0.51.2",
-        "requests>=2.26.0",
+        "corner>=2.2.3",
+        "emcee>=3.1.6",
+        "jsonschema>=4.26.0",
+        "matplotlib>=3.10.8",
+        "packaging>=26.0",
+        "python-dateutil>=2.9.0.post0",
+        "tqdm>=4.67.3",
+        "parameterized>=0.9.0",
+        "numba>=0.64.0",
+        "requests>=2.32.5",
     ],
 
     # List additional groups of dependencies here (e.g. development
@@ -205,14 +204,14 @@ setup(
             "playwright>=1.56",
             "coverage",
             "pytest>=9.0.2",
-            "parameterized>=0.7.4",
+            "parameterized>=0.9.0",
         ],
         "ui": [
             "gradio~=6.10.0",
             # UI runtime dependencies used by the Gradio desktop app
             # pandas and matplotlib are already listed in install_requires
             'pandas>=3.0.1',
-            "matplotlib>=3.3.2",
+            "matplotlib>=3.10.8",
             "pillow>=9.0.0",
         ],
     },
