@@ -228,6 +228,12 @@ def test_lc_parameter_recovery_result_and_residual_jacobian() -> None:
         gtol=1e-15,
         # max_nfev=80,
     )
+    # The independent per-band observations must agree with joint synthesis at truth.
+    truth = p.vector_normalizer(
+        [85.0 if key == "system@inclination" else 6500.0 for key in fit.fitable],
+        fit.fitable.keys(), fit.normalization,
+    )
+    assert_allclose(fit.model_to_fit(np.asarray(truth)), 0.0, atol=1e-10)
     assert result.success
     assert result.jac.shape == (40, 2)
     assert np.linalg.matrix_rank(result.jac) == 2

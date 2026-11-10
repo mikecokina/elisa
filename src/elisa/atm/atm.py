@@ -376,9 +376,8 @@ class NaiveInterpolatedAtm:
         localized_atms = {}
         standard_wavelength = get_standard_wavelengths()
 
-        # build temperature mask and avoid repeative computation
-        # temperature values where decimal points are basicaly useless
-        temperature = np.round(temperature, 0)
+        # Reuse identical temperatures without quantizing the Planck flux.
+        # Whole-kelvin rounding destroys temperature derivatives used in fitting.
         temperature, reverse_map = np.unique(temperature, return_inverse=True)
 
         for band, pb_container in passband_containers.items():

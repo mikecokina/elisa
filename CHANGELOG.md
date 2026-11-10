@@ -104,6 +104,13 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 #### Fixed
 
+- Removed whole-kelvin rounding from blackbody surface temperatures so
+  least-squares finite differences retain the Planck-flux temperature
+  response and recover noiseless light-curve parameters after the passband
+  limb-darkening correction. Preserved the solver and recovery tolerances.
+- Updated the obsolete single-star V-band pulsation reference for
+  passband-specific limb-darkening normalization, with a reproducible
+  generator that checks the historical bolometric-normalization shape.
 - Corrected photometric surface-flux normalization to use each passband's
   limb-darkening coefficients for both binary and single stars, preserving
   hemispheric passband flux conservation. Bolometric limb darkening remains
