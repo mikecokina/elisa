@@ -1,6 +1,5 @@
 import logging
 from copy import deepcopy
-from pathlib import Path
 
 # The tests package selects Astropy constants before test-module imports.
 import numpy as np
@@ -51,7 +50,7 @@ passband = ["Generic.Bessell.U", "Generic.Bessell.B", "Generic.Bessell.V", "Gene
 expected = np.array([0.164, 0.629, 0.387, 0.712])
 
 
-# Retain the historical diagnostic export and verify that usable finite photometry is produced.
+# Verify that the temperature sweep produces usable finite photometry.
 @pytest.mark.requires_ld(passbands=("Generic.Bessell.B", "Generic.Bessell.V", "bolometric"))
 @pytest.mark.requires_atmosphere
 class SunTestCase(utils.ElisaTestCase):
@@ -81,11 +80,6 @@ class SunTestCase(utils.ElisaTestCase):
 
         assert res, "The temperature sweep must produce usable photometry"
         assert np.isfinite(res).all()
-        x, y = np.array(res).T[1], np.array(res).T[0]
-
-        with Path("cosine.sun.dat").open("a") as f:
-            f.write(f"{x!r}\n")
-            f.write(f"{y!r}\n")
         # u_b = pogsons_formula(lc[1]['Generic.Bessell.U'][-1], lc[1]['Generic.Bessell.B'][-1])
         # b_v = pogsons_formula(lc[1]['Generic.Bessell.B'][-1], lc[1]['Generic.Bessell.V'][-1])
         # v_r = pogsons_formula(lc[1]['Generic.Bessell.V'][-1], lc[1]['Generic.Bessell.R'][-1])
