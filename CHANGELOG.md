@@ -69,6 +69,17 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 #### Changed
 
+- Optimized binary surface coverage outside eclipses by skipping geometric
+  projections and partial-eclipse preparation, reducing allocations and light-curve
+  synthesis time while preserving identical coverage and flux values.
+- Added default Sutherland-Hodgman eclipse clipping without legacy coordinate
+  rounding; `INTERSECTION_BACKEND` also supports `pypex` and `reference`.
+- Reduced orbital calculation overhead with vectorized Kepler solving and cached
+  collinear Lagrange points.
+- Reused limb-darkening interpolators and atmospheric bandwidth strips, deduplicated
+  atmosphere table lookups, and avoided redundant bolometric passband preparation.
+- Reduced repeated LC fitting validation, observation mapping, and R² preparation,
+  and skipped unused reflection calculations.
 - Moved atmosphere APIs from `elisa.atm` to `elisa.atm.atm`.
 - Replaced legacy exception names and many generic validation errors with explicit
   domain exceptions in `elisa.base.error`; callers must update imports and handlers.
@@ -139,17 +150,6 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
   sources.
 - Fixed Pypex 2D point-side checks for NumPy 2.5, parallel-line classification,
   and orientation-independent collinear segment overlap detection.
-
-#### Performance
-
-- Added default Sutherland-Hodgman eclipse clipping without legacy coordinate
-  rounding; `INTERSECTION_BACKEND` also supports `pypex` and `reference`.
-- Reduced orbital calculation overhead with vectorized Kepler solving and cached
-  collinear Lagrange points.
-- Reused limb-darkening interpolators and atmospheric bandwidth strips, deduplicated
-  atmosphere table lookups, and avoided redundant bolometric passband preparation.
-- Reduced repeated LC fitting validation, observation mapping, and R² preparation,
-  and skipped unused reflection calculations.
 
 #### Removed
 

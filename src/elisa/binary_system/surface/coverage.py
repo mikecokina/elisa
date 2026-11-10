@@ -376,24 +376,24 @@ def compute_surface_coverage(
     # TODO: add unittests  # noqa: FIX002, TD002, TD003
     logger.debug("computing surface coverage for %s", system.position)
 
-    bb_path = None
     cover_component: ComponentName = "secondary" if 0.0 < system.position.azimuth < const.PI else "primary"
     cover_object = getattr(system, cover_component)
     undercover_component = settings.BINARY_COUNTERPARTS[cover_component]
     undercover_object = getattr(system, undercover_component)
 
-    # all surface values in sma unit which are smaller than following threshold
-    # are discarded (set to 0.0)
-    surface_noise_threshold = (
-        2.0 * np.pi * undercover_object.polar_radius**2 / len(undercover_object.faces)
-    ) / 1e6
-
-    cover_object_obs_visible_projection = utils.get_visible_projection(cover_object)
-    undercover_object_obs_visible_projection = utils.get_visible_projection(
-        undercover_object,
-    )
-
     if in_eclipse:
+        # Expensive projections are only required for eclipse geometry.
+        # all surface values in sma unit which are smaller than following threshold
+        # are discarded (set to 0.0)
+        surface_noise_threshold = (
+            2.0 * np.pi * undercover_object.polar_radius**2 / len(undercover_object.faces)
+        ) / 1e6
+
+        cover_object_obs_visible_projection = utils.get_visible_projection(cover_object)
+        undercover_object_obs_visible_projection = utils.get_visible_projection(
+            undercover_object,
+        )
+
         # indices of points on near side
         undercover_visible_point_indices = np.unique(
             undercover_object.faces[undercover_object.indices],
@@ -412,22 +412,17 @@ def compute_surface_coverage(
         full_visible, _invisible, partial_visible = (
             visibility_disimilar_objects(*args) if similar_size_test else visibility_similar_objects(*args)
         )
-    else:
-        full_visible, _invisible, partial_visible = visibility_out_of_eclipse(
-            undercover_object,
+
+        # process partial and full visible faces (get surface area of 3d polygon)
+        # of undercover object
+        partial_visible_faces = undercover_object.faces[partial_visible]
+        partial_visible_normals = undercover_object.normals[partial_visible]
+        undercover_object_pts_projection = utils.plane_projection(
+            undercover_object.points,
+            "yz",
+            keep_3d=False,
         )
 
-    # process partial and full visible faces (get surface area of 3d polygon)
-    # of undercover object
-    partial_visible_faces = undercover_object.faces[partial_visible]
-    partial_visible_normals = undercover_object.normals[partial_visible]
-    undercover_object_pts_projection = utils.plane_projection(
-        undercover_object.points,
-        "yz",
-        keep_3d=False,
-    )
-
-    if in_eclipse:
         if bb_path is None:
             # The earlier in_eclipse branch must create this path or raise.
             # A degenerate projection may fail there, but cannot legitimately
@@ -444,6 +439,9 @@ def compute_surface_coverage(
         )
         partial_coverage[partial_coverage < surface_noise_threshold] = 0.0
     else:
+        full_visible, _invisible, partial_visible = visibility_out_of_eclipse(
+            undercover_object,
+        )
         partial_coverage = None
 
     # discard values of surface which are under threshold
