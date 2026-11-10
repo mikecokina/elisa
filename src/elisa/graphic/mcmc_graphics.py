@@ -66,9 +66,14 @@ class Plot:
         :return: ``None``.
         :rtype: None
         """
-        figure = _corner(flat_chain, labels=labels, **kwargs)
-
         ndim = flat_chain.shape[1]
+        # corner's truth overlay indexes a scalar Axes for one-dimensional chains.
+        # Draw that marker ourselves while preserving its normal multi-panel path.
+        single_truths = kwargs.pop("truths", None) if ndim == 1 else None
+        figure = _corner(flat_chain, labels=labels, **kwargs)
+        if single_truths is not None and single_truths[0] is not None:
+            figure.axes[0].axvline(single_truths[0], color=kwargs.get("truth_color", "#4682b4"))
+
         axes = np.array(figure.axes).reshape((ndim, ndim))
 
         for index, label in enumerate(variable_labels):
