@@ -441,6 +441,39 @@ class NaiveInterpolatedAtm:
         :return: Tuple[dict, numpy.float, numpy.float]; atmosphere profiles for each passband, flux multiplicator,
                                                         wave multiplicator;
         """
+        passbanded_atm_containers, containers_map, flux_mult, wave_mult = NaiveInterpolatedAtm._prepare_atlas_spectra(
+            temperature,
+            log_g,
+            metallicity,
+            atlas,
+            **kwargs,
+        )
+
+        flux_matrices = remap_passbanded_unique_atms_to_matrix(
+            passbanded_atm_containers,
+            containers_map,
+        )
+        atm_containers = remap_passbanded_unique_atms_to_origin(
+            passbanded_atm_containers,
+            containers_map,
+        )
+        localized_atms = NaiveInterpolatedAtm.interpolate_spectra(
+            atm_containers,
+            flux_matrices,
+            temperature=temperature,
+        )
+
+        return localized_atms, flux_mult, wave_mult
+
+    @staticmethod
+    def _prepare_atlas_spectra(
+        temperature: NDArray[Float],
+        log_g: NDArray[Float],
+        metallicity: Float,
+        atlas: str,
+        **kwargs,
+    ) -> tuple[dict, dict, Float, Float]:
+        """Prepare unique aligned, passbanded spectra without expanding faces."""
         l_bandw, r_bandw = kwargs["left_bandwidth"], kwargs["right_bandwidth"]
         passband_containers = kwargs["passband"]
         # related atmospheric files for each face (upper and lower)
@@ -470,21 +503,7 @@ class NaiveInterpolatedAtm:
             global_right=global_right,
         )
 
-        flux_matrices = remap_passbanded_unique_atms_to_matrix(
-            passbanded_atm_containers,
-            containers_map,
-        )
-        atm_containers = remap_passbanded_unique_atms_to_origin(
-            passbanded_atm_containers,
-            containers_map,
-        )
-        localized_atms = NaiveInterpolatedAtm.interpolate_spectra(
-            atm_containers,
-            flux_matrices,
-            temperature=temperature,
-        )
-
-        return localized_atms, flux_mult, wave_mult
+        return passbanded_atm_containers, containers_map, flux_mult, wave_mult
 
     @staticmethod
     def atlas_radiance(
@@ -494,7 +513,11 @@ class NaiveInterpolatedAtm:
         atlas: str,
         **kwargs,
     ) -> dict[str, NDArray[Float]]:
-        """Compute integrated normal radiance per face for each passband from atlas models.
+        """Compute passband-integrated surface flux per face from atlas models.
+
+        The historical name denotes passband-integrated surface flux in W/m² here;
+        the downstream limb-darkening correction converts it to normal intensity.
+        Unique spectra are integrated in float64 after all wavelength preparation.
 
         :param temperature: Iterable of temperatures (K).
         :type temperature: NDArray[Float]
@@ -506,21 +529,56 @@ class NaiveInterpolatedAtm:
             :data:`elisa.atm.const.ATLAS_TO_ATM_FILE_PREFIX`).
         :type atlas: str
         :param kwargs: Additional parameters forwarded to
-            :meth:`NaiveInterpolatedAtm.get_atm_profiles` (e.g. passband,
+            :meth:`NaiveInterpolatedAtm._prepare_atlas_spectra` (e.g. passband,
             left_bandwidth, right_bandwidth).
-        :returns: Mapping passband → 1D numpy array of integrated normal
-            radiances (one value per face).
+        :returns: Mapping passband → 1D numpy array of integrated surface
+            fluxes in W/m² (one value per face).
         :rtype: dict[str, numpy.typing.NDArray[elisa.types.Float]]
         """
-        args = temperature, log_g, metallicity, atlas
-        localized_atms, flux_mult, wave_mult = NaiveInterpolatedAtm.get_atm_profiles(*args, **kwargs)
-        return compute_normal_radiances(localized_atms, flux_mult=flux_mult, wave_mult=wave_mult)
+        # Load each atmosphere once, align wavelengths and apply each passband response.
+        spectra_by_band, face_indices_by_path, flux_mult, wave_mult = NaiveInterpolatedAtm._prepare_atlas_spectra(
+            temperature, log_g, metallicity, atlas, **kwargs,
+        )
+        surface_flux_by_band = {}
+        face_count = len(temperature)
+        for band, unique_atmospheres in spectra_by_band.items():
+            # Integrate U unique spectra, not N face spectra: (U, wavelengths) -> (U,).
+            # Quadrature is linear only after wavelength alignment and passband processing.
+            unique_integrated_fluxes = compute_normal_intensity(
+                np.asarray([atmosphere.model.flux for atmosphere in unique_atmospheres]),
+                find_atm_defined_wavelength(unique_atmospheres),
+                flux_mult=flux_mult,
+                wave_mult=wave_mult,
+            )
+
+            # Each face needs two bracketing models. The existing map stores them as:
+            # [lower model for faces 0..N-1, upper model for faces 0..N-1].
+            # A single atmosphere can supply many of these positions.
+            bracket_fluxes = np.empty(2 * face_count, dtype=FLOAT)
+            for atmosphere, flux in zip(unique_atmospheres, unique_integrated_fluxes, strict=True):
+                bracket_fluxes[face_indices_by_path[atmosphere.fpath]] = flux
+            lower_fluxes = bracket_fluxes[:face_count]
+            upper_fluxes = bracket_fluxes[face_count:]
+
+            # Put model metadata in the same order to obtain each face's bracketing temperatures.
+            bracket_atmospheres = remap_unique_atm_container_to_origin(unique_atmospheres, face_indices_by_path)
+            lower_atmospheres = bracket_atmospheres[:face_count]
+            upper_atmospheres = bracket_atmospheres[face_count:]
+            weights = NaiveInterpolatedAtm.compute_interpolation_weights(
+                temperature, upper_atmospheres, lower_atmospheres,
+            )
+
+            # w = (T_face^4 - T_lower^4) / (T_upper^4 - T_lower^4), in full precision.
+            # Equal bracketing temperatures give w=1 in the helper; both fluxes then coincide.
+            # One interpolated surface flux in W/m² per face, in the original face order.
+            surface_flux_by_band[band] = lower_fluxes + weights * (upper_fluxes - lower_fluxes)
+        return surface_flux_by_band
 
     @staticmethod
     def compute_interpolation_weights(
         temperatures: NDArray[Float],
-        top_atm_containers: list[AtmDataContainer],
-        bottom_atm_containers: list[AtmDataContainer],
+        top_atm_containers: Iterable[AtmDataContainer],
+        bottom_atm_containers: Iterable[AtmDataContainer],
     ) -> NDArray[Float]:
         """Compute interpolation weights between two models of atmoshperes.
 

@@ -69,6 +69,11 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 #### Changed
 
+- Optimized tabulated-atmosphere radiances by integrating unique aligned,
+  passbanded spectra before mapping and temperature interpolation across surface
+  faces. Integrated fluxes and T^4 interpolation weights use float64 precision,
+  reducing temporary atmosphere allocations by about 88% and complete light-curve
+  synthesis time by 4-11% in representative benchmarks.
 - Optimized binary surface coverage outside eclipses by skipping geometric
   projections and partial-eclipse preparation, reducing allocations and light-curve
   synthesis time while preserving identical coverage and flux values.

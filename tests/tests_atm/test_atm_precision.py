@@ -181,9 +181,12 @@ def test_ck04_spectra_and_absolute_radiance_match_unrounded_pipeline(monkeypatch
         assert np.all(np.diff(wave) > 0)
         assert np.isfinite(flux).all()
         assert np.isfinite(old_radiance[name]).all()
-        np.testing.assert_array_equal(
+        # get_atm_profiles retains historical Tensor float32 spectra. Scalar radiances
+        # use float64; analytical and commutation references live in test_integrated_radiance.
+        np.testing.assert_allclose(
             new_radiance[name],
             atm.compute_normal_intensity(flux, wave, flux_mult=flux_mult, wave_mult=wave_mult),
+            rtol=1e-7, atol=0.0,
         )
 
 
