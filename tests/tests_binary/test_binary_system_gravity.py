@@ -243,8 +243,8 @@ class GravityUtilsTestCase(ElisaTestCase):
             * 100
         )
 
-        assert (round(expected_g_cgs_primary, 4)) == (round(obtained_g_cgs_primary, 4))
-        assert (round(expected_g_cgs_secondary, 4)) == (round(obtained_g_cgs_secondary, 4))
+        assert round(expected_g_cgs_primary, 4) == round(obtained_g_cgs_primary, 4)
+        assert round(expected_g_cgs_secondary, 4) == round(obtained_g_cgs_secondary, 4)
 
     def test_calculate_polar_gravity_acceleration_eccentric(self) -> None:
         bs = self._binaries[1]
@@ -253,7 +253,7 @@ class GravityUtilsTestCase(ElisaTestCase):
             position = bs.calculate_orbital_motion([phase])[0]
             orbital_position_container = OrbitalPositionContainer.from_binary_system(bs, position)
             distance = position.distance
-            assert (distance) != (1.0)
+            assert distance != 1.0
 
             for component, companion in (("primary", "secondary"), ("secondary", "primary")):
                 with self.subTest(phase=phase, component=component):

@@ -48,7 +48,7 @@ class TestPulsationsFunctions(ElisaTestCase):
         result = pulsations.spherical_harmonics(mode, points, exponential)
 
         # Result should have same length as points
-        assert (result.shape[0]) == (points.shape[0])
+        assert result.shape[0] == points.shape[0]
 
         # Result should be finite (no NaNs or infs)
         assert np.all(np.isfinite(result))
@@ -137,7 +137,7 @@ class TestPulsationsFunctions(ElisaTestCase):
         result = pulsations.diff_spherical_harmonics_by_phi(mode, [harmonics_0, harmonics_1])
 
         # Result should have same length as points
-        assert (result.shape[0]) == (points.shape[0])
+        assert result.shape[0] == points.shape[0]
 
         # Result should be finite
         assert np.all(np.isfinite(result))
@@ -206,7 +206,7 @@ class TestPulsationsFunctions(ElisaTestCase):
         )
 
         # Result should have same length as points
-        assert (result.shape[0]) == (points.shape[0])
+        assert result.shape[0] == points.shape[0]
 
         # Result should be finite
         assert np.all(np.isfinite(result))
@@ -306,15 +306,15 @@ class TestPulsationsFunctions(ElisaTestCase):
         mode = system_container.star.pulsations[0]
 
         # Radial amplitude should be assigned and positive
-        assert (mode.radial_amplitude) is not None
+        assert mode.radial_amplitude is not None
         assert mode.radial_amplitude > 0.0
 
         # Horizontal amplitude should be assigned and positive
-        assert (mode.horizontal_amplitude) is not None
+        assert mode.horizontal_amplitude is not None
         assert mode.horizontal_amplitude > 0.0
 
         # Temperature amplitude factor should be assigned
-        assert (mode.temperature_amplitude_factor) is not None
+        assert mode.temperature_amplitude_factor is not None
 
     def test_assign_amplitudes_with_custom_ratio(self) -> None:
         """Test assign_amplitudes respects custom horizontal_to_radial_amplitude_ratio."""
@@ -363,8 +363,8 @@ class TestPulsationsFunctions(ElisaTestCase):
         mode = system_container.star.pulsations[0]
 
         # Amplitudes should be assigned
-        assert (mode.radial_amplitude) is not None
-        assert (mode.horizontal_amplitude) is not None
+        assert mode.radial_amplitude is not None
+        assert mode.horizontal_amplitude is not None
 
     def test_temp_amplitude_basic(self) -> None:
         """Test temp_amplitude calculates temperature amplitude."""

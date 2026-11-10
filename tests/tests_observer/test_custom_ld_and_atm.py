@@ -146,10 +146,10 @@ class BinarySystemSeparatedAtmospheres(ElisaTestCase):
         with pytest.raises(ElisaInitialParametersError) as context:
             o.lc(phases=[0.0])
 
-        assert ("TESS") in (str(context.value))
-        assert ("limb-darkening factors") in (str(context.value))
+        assert "TESS" in str(context.value)
+        assert "limb-darkening factors" in str(context.value)
         assert isinstance(context.value.__cause__, KeyError)
-        assert (context.value.__cause__.args) == (("TESS",))
+        assert context.value.__cause__.args == ("TESS",)
 
     def test_raise_missing_bolometric_passband_lds(self) -> None:
         definition = get_default_binary_definition()
@@ -249,7 +249,7 @@ class TestCurvesUtilsCachingAndBroadcast(ElisaTestCase):
                 # noinspection PyTypeChecker
                 _ = curves_utils.get_component_limbdarkening_cfs(comp, passbands=["bolometric"], symmetry_test=False)
 
-                assert (mock_interp.call_count) == (1), "LD interpolation should be called only once due to caching"
+                assert mock_interp.call_count == 1, "LD interpolation should be called only once due to caching"
         finally:
             settings.USE_SINGLE_LD_COEFFICIENTS = old_single
 
@@ -313,7 +313,7 @@ class CustomLDLawSafetyTestCase(ElisaTestCase):
             container = StarContainer.from_star_instance(model.primary)
             container.temperatures = np.array([5000.0, 6000.0])
             coefficients = container.limb_darkening_coefficients
-            assert (coefficients.law) == (original)
+            assert coefficients.law == original
             np.testing.assert_array_equal(
                 get_component_limbdarkening_cfs(container, ["bolometric"], symmetry_test=False)["bolometric"],
                 [[0.5, 0.2], [0.5, 0.2]],
@@ -338,13 +338,13 @@ class CustomLDLawSafetyTestCase(ElisaTestCase):
             pickle.loads(pickle.dumps(star.limb_darkening_coefficients)),
         ]
         kwargs = star.reinitialization_kwargs()
-        assert ("polar_log_g") not in (kwargs)
+        assert "polar_log_g" not in kwargs
         reconstructed = Star(**kwargs)
-        assert (reconstructed.limb_darkening_coefficients.law) == ("logarithmic")
+        assert reconstructed.limb_darkening_coefficients.law == "logarithmic"
         definition = model.to_json()
         settings.configure(LIMB_DARKENING_LAW="square_root")
         for coefficients in copies:
-            assert (coefficients.law) == ("logarithmic")
+            assert coefficients.law == "logarithmic"
             with pytest.raises(ElisaInitialParametersError):
                 StarProperties.limb_darkening_coefficients(coefficients)
         with pytest.raises(ElisaInitialParametersError):
@@ -362,12 +362,12 @@ class CustomLDLawSafetyTestCase(ElisaTestCase):
         snapshot = deepcopy(supplied)
         for star in (model.primary, model.secondary):
             star.limb_darkening_coefficients = supplied
-            assert (star.limb_darkening_coefficients.law) == ("square_root")
+            assert star.limb_darkening_coefficients.law == "square_root"
         Observer(system=model, passband=["bolometric"]).lc(phases=SINGLE_PHASE)
-        assert (supplied) == (snapshot)
-        assert (old.law) == ("logarithmic")
+        assert supplied == snapshot
+        assert old.law == "logarithmic"
         model.primary.limb_darkening_coefficients = None
-        assert (model.primary.limb_darkening_coefficients) is None
+        assert model.primary.limb_darkening_coefficients is None
 
     def test_linear_cosine_alias_and_incompatible_coefficient_count(self) -> None:
         model = self.binary("linear")
@@ -377,7 +377,7 @@ class CustomLDLawSafetyTestCase(ElisaTestCase):
         self.assert_curves_equal(first, observer.lc(phases=SINGLE_PHASE))
         for star in (model.primary, model.secondary):
             star.init()
-            assert (star.limb_darkening_coefficients.law) == ("linear")
+            assert star.limb_darkening_coefficients.law == "linear"
         settings.configure(LIMB_DARKENING_LAW="logarithmic")
         with pytest.raises(ElisaInitialParametersError):
             observer.lc(phases=SINGLE_PHASE)
@@ -411,7 +411,7 @@ class CustomLDLawSafetyTestCase(ElisaTestCase):
                 phases=INTERPOLATION_PHASES,
             )
             self.assert_curves_equal(current, reference)
-            assert (model.primary.limb_darkening_coefficients) is None
+            assert model.primary.limb_darkening_coefficients is None
             curves.append(current)
         self.assert_curves_equal(curves[0], curves[2])
-        assert not (np.array_equal(curves[0][1]["bolometric"], curves[1][1]["bolometric"]))
+        assert not np.array_equal(curves[0][1]["bolometric"], curves[1][1]["bolometric"])

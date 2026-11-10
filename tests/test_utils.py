@@ -59,12 +59,12 @@ class TestElisaEngineUtils(ElisaTestCase):
         assert utils.is_plane(given=given, expected=expected)
 
         given, expected = "xy", "xz"
-        assert not (utils.is_plane(given=given, expected=expected))
+        assert not utils.is_plane(given=given, expected=expected)
 
     def test_find_nearest_dist_3d(self) -> None:
         points = np.array([[0.0, 0.0, 0.0], [0.5, 0.5, 1.0], [0.0, 0.3, 0.0]])
         nearest = utils.find_nearest_dist_3d(points)
-        assert (round(nearest, 4)) == (0.3)
+        assert round(nearest, 4) == 0.3
 
     def test_cartesian_to_spherical(self) -> None:
         input1 = np.array([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
@@ -203,7 +203,7 @@ class TestElisaEngineUtils(ElisaTestCase):
         expected = [[1.5, 0.3], [2.1213, 1.2], [1.2166, 1.9849]]
         obtained = np.round(v, 4)
         assert_array_equal(expected, obtained)
-        assert (d) is None
+        assert d is None
 
         _, d = utils.calculate_distance_matrix(points1, points2, return_join_vector_matrix=True)
         d = np.round(d, 4)
@@ -333,13 +333,13 @@ class TestElisaEngineUtils(ElisaTestCase):
         r_1 = utils.cosine_similarity(vs_2d_1[0], vs_2d_1[1])
         r_2 = utils.cosine_similarity(vs_2d_2[0], vs_2d_2[1])
 
-        assert (round(r_1, 4)) == (0)
-        assert (round(r_2, 4)) == (0)
+        assert round(r_1, 4) == 0
+        assert round(r_2, 4) == 0
 
         vs_3d = np.array([[1.0, 1.0, 1.33], [-1, 0.0, -3.1]])
         r_3 = utils.cosine_similarity(vs_3d[0], vs_3d[1])
 
-        assert (round(r_3, 4)) == (-0.8101)
+        assert round(r_3, 4) == -0.8101
 
     def test_is_empty(self) -> None:
         empty = [None, {}, [], np.array([]), np.nan, pd.NaT]
@@ -388,7 +388,7 @@ class TestElisaEngineUtils(ElisaTestCase):
                 assert "Any value in `look_for` is out of bound of `look_in`" in str(context.value)
             else:
                 obtained = utils.find_surrounded(look_in, look_for)
-                assert (obtained) == (expect)
+                assert obtained == expect
 
     def test_find_idx_of_nearest(self) -> None:
         values = np.array([0.951, 0.851])
@@ -426,13 +426,13 @@ class TestElisaEngineUtils(ElisaTestCase):
         string = "Hello there, how are you."
         expected = "Hello there, how are MIKE."
         obtained = utils.str_repalce(string, "you", "MIKE")
-        assert (expected) == (obtained)
+        assert expected == obtained
 
     def test_str_repalce_vector(self) -> None:
         string = "Hello there, how are you."
         expected = "Hi there, how are MIKE."
         obtained = utils.str_repalce(string, ["you", "Hello"], ["MIKE", "Hi"])
-        assert (expected) == (obtained)
+        assert expected == obtained
 
     def test_ret_derot_in_spherical(self) -> None:
         phis = np.linspace(0.001, const.FULL_ARC - 0.001)
@@ -470,9 +470,9 @@ class TestElisaEngineUtils(ElisaTestCase):
         result = utils.rotate_item(vector, position, inclination)
 
         # Result should be a valid 3D vector
-        assert (result.shape) == ((3,))
+        assert result.shape == (3,)
         # Should not contain NaN values
-        assert not (np.any(np.isnan(result)))
+        assert not np.any(np.isnan(result))
 
     def test_rotate_item_array_vectors(self) -> None:
         """Test rotate_item with array of vectors.
@@ -486,9 +486,9 @@ class TestElisaEngineUtils(ElisaTestCase):
         result = utils.rotate_item(vectors, position, inclination)
 
         # Result should have same shape as input
-        assert (result.shape) == (vectors.shape)
+        assert result.shape == vectors.shape
         # Should not contain NaN values
-        assert not (np.any(np.isnan(result)))
+        assert not np.any(np.isnan(result))
 
     def test_around_axis_rotation_z_axis_90_degrees(self) -> None:
         """Test rotation around Z-axis by 90 degrees.
@@ -529,7 +529,7 @@ class TestElisaEngineUtils(ElisaTestCase):
         result = utils.calculate_cos_theta(normals, los_vector)
 
         # Cosine of angle between parallel vectors should be 1
-        assert (result[0]) == (1.0)
+        assert result[0] == 1.0
 
     def test_calculate_cos_theta_multiple_vectors(self) -> None:
         """Test cosine calculation with multiple normals.
@@ -562,8 +562,8 @@ class TestElisaEngineUtils(ElisaTestCase):
         value, idx = utils.find_nearest_value(look_in, look_for)
 
         # Nearest to 4.0 in the array is 3.0 or 5.0, idx should be valid
-        assert (idx) in ([1, 2])
-        assert (value) in ([3.0, 5.0])
+        assert idx in [1, 2]
+        assert value in [3.0, 5.0]
 
     def test_find_nearest_value_exact_match(self) -> None:
         """Test finding exact value in array.
@@ -576,8 +576,8 @@ class TestElisaEngineUtils(ElisaTestCase):
         value, idx = utils.find_nearest_value(look_in, look_for)
 
         # Should find exact match
-        assert (value) == (3.0)
-        assert (idx) == (2)
+        assert value == 3.0
+        assert idx == 2
 
     def test_plane_projection_xy_plane(self) -> None:
         """Test projection onto XY plane.
@@ -634,11 +634,11 @@ class TestElisaEngineUtils(ElisaTestCase):
         phi_new, theta_new = utils.rotation_in_spherical(phi, theta, phi_rotation, theta_rotation)
 
         # Results should be valid spherical coordinates
-        assert (len(phi_new)) == (len(phi))
-        assert (len(theta_new)) == (len(theta))
+        assert len(phi_new) == len(phi)
+        assert len(theta_new) == len(theta)
         # No NaN values
-        assert not (np.any(np.isnan(phi_new)))
-        assert not (np.any(np.isnan(theta_new)))
+        assert not np.any(np.isnan(phi_new))
+        assert not np.any(np.isnan(theta_new))
 
     def test_calculate_distance_matrix_single_points(self) -> None:
         """Test distance matrix calculation between point sets.
@@ -659,7 +659,7 @@ class TestElisaEngineUtils(ElisaTestCase):
         expected = np.array([[1.0, 1.0]])
         assert_array_equal(np.round(distance_matrix, 5), np.round(expected, 5))
         # vector_matrix should be None when not requested
-        assert (vector_matrix) is None
+        assert vector_matrix is None
 
     def test_calculate_distance_matrix_with_vectors(self) -> None:
         """Test distance matrix with join vectors.
@@ -676,8 +676,8 @@ class TestElisaEngineUtils(ElisaTestCase):
         )
 
         # Should return both distances and vectors
-        assert (distance_matrix.shape) == ((1, 2))
-        assert (vector_matrix.shape) == ((1, 2, 3))
+        assert distance_matrix.shape == (1, 2)
+        assert vector_matrix.shape == (1, 2, 3)
         # Vectors should be normalized (magnitude ~ 1)
         magnitudes = np.linalg.norm(vector_matrix, axis=2)
         assert_array_equal(np.round(magnitudes, 5), np.round(np.ones_like(magnitudes), 5))
@@ -730,7 +730,7 @@ class TestElisaEngineUtils(ElisaTestCase):
         Verify non-empty collections are not flagged as empty.
         """
         result = utils.is_empty([1, 2, 3])
-        assert not (result)
+        assert not result
 
     def test_is_empty_with_nan(self) -> None:
         """Test is_empty with numpy NaN.
@@ -747,7 +747,7 @@ class TestElisaEngineUtils(ElisaTestCase):
         """
         for _ in range(100):
             result = utils.random_sign()
-            assert (result) in ([-1, 1])
+            assert result in [-1, 1]
 
     def test_magnitude_to_flux_conversion(self) -> None:
         """Test magnitude to flux conversion.

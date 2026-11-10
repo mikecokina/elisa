@@ -423,7 +423,7 @@ class SingleSystemSerializersTestCase(ElisaTestCase):
         js = s.to_json()
 
         for item in js["system"]:
-            assert (js["system"][item]) == (expected["system"][item])
+            assert js["system"][item] == expected["system"][item]
 
         for item in js["star"]:
             if item not in ["spots", "pulsations"]:

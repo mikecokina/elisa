@@ -189,7 +189,7 @@ class SupportMethodsTestCase(ElisaTestCase):
         potential, l_points = 100.0, [2.4078, 2.8758, 2.5772]
         expected = -325.2652
         obtained = round(BinarySystem.compute_filling_factor(potential, l_points), 4)
-        assert (expected) == (obtained)
+        assert expected == obtained
 
     def test_darkside_filter(self) -> None:
         normals = np.array([[1, 1, 1], [0.3, 0.1, -5], [-2, -3, -4.1]])

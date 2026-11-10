@@ -13,11 +13,11 @@ class BaseTestCase(ElisaTestCase):
 
     def test_polygon_validity_check_invalid(self) -> None:
         invalid_hull = [[0, 0], [1], [0.5, 1]]
-        assert not (shape.Shape2D.polygon_validity_check(invalid_hull, _raise=False))
+        assert not shape.Shape2D.polygon_validity_check(invalid_hull, _raise=False)
         invalid_hull = [[0.5, 1]]
-        assert not (shape.Shape2D.polygon_validity_check(invalid_hull, _raise=False))
+        assert not shape.Shape2D.polygon_validity_check(invalid_hull, _raise=False)
         invalid_hull = [0.5, 1]
-        assert not (shape.Shape2D.polygon_validity_check(invalid_hull, _raise=False))
+        assert not shape.Shape2D.polygon_validity_check(invalid_hull, _raise=False)
 
     @staticmethod
     def test_2d_projection() -> None:

@@ -10,15 +10,15 @@ from tests.utils import ElisaTestCase
 
 class TestComponentToList(ElisaTestCase):
     def test_component_none_returns_empty(self) -> None:
-        assert (bsutils.component_to_list(None)) == ([])
+        assert bsutils.component_to_list(None) == []
 
     def test_component_all_returns_both(self) -> None:
-        assert (bsutils.component_to_list("all")) == (["primary", "secondary"])
-        assert (bsutils.component_to_list("both")) == (["primary", "secondary"])
+        assert bsutils.component_to_list("all") == ["primary", "secondary"]
+        assert bsutils.component_to_list("both") == ["primary", "secondary"]
 
     def test_component_single_returns_list(self) -> None:
-        assert (bsutils.component_to_list("primary")) == (["primary"])
-        assert (bsutils.component_to_list("secondary")) == (["secondary"])
+        assert bsutils.component_to_list("primary") == ["primary"]
+        assert bsutils.component_to_list("secondary") == ["secondary"]
 
     def test_component_invalid_raises(self) -> None:
         with pytest.raises(ElisaOperationInputError):
@@ -36,9 +36,9 @@ class TestJsonKindContract(ElisaTestCase):
         for data, use_asini, expected in cases:
             with self.subTest(kind=expected, use_asini=use_asini):
                 kind = bsutils.resolve_json_kind(data, _sin=use_asini)
-                assert (kind) is (expected)
-                assert (kind) == (expected.value)
-                assert (json.loads(json.dumps({"kind": kind}))) == ({"kind": expected.value})
+                assert kind is expected
+                assert kind == expected.value
+                assert json.loads(json.dumps({"kind": kind})) == {"kind": expected.value}
 
     def test_incomplete_parameter_pair_is_unexpected(self) -> None:
         for use_asini, separation in [(False, "semi_major_axis"), (True, "asini")]:
@@ -47,6 +47,6 @@ class TestJsonKindContract(ElisaTestCase):
                 with pytest.raises(ElisaUnexpectedError) as caught:
                     bsutils.resolve_json_kind(data, _sin=use_asini)
                 message = str(caught.value)
-                assert (f"Found parameters: primary.mass, system.{separation}.") in (message)
-                assert ("missing secondary.mass") in (message)
-                assert ("missing system.mass_ratio") in (message)
+                assert f"Found parameters: primary.mass, system.{separation}." in message
+                assert "missing secondary.mass" in message
+                assert "missing system.mass_ratio" in message

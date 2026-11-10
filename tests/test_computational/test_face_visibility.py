@@ -87,14 +87,14 @@ class VisibilityTestCase(ElisaTestCase):
         expected_values = {"primary": 1674, "secondary": 416}
         primary_vis_faces = np.count_nonzero(retval["primary"])
         secondary_vis_faces = np.count_nonzero(retval["secondary"])
-        assert (primary_vis_faces) == (expected_values["primary"])
-        assert (secondary_vis_faces) == (expected_values["secondary"])
+        assert primary_vis_faces == expected_values["primary"]
+        assert secondary_vis_faces == expected_values["secondary"]
 
         expected_sums = {"primary": 3.3529083384789416e16, "secondary": 2.093212371790947e19}
         vis_area_p = np.sum(retval["primary"])
         vis_area_s = np.sum(retval["secondary"])
-        assert (vis_area_p) == (expected_sums["primary"]), "Visible area must match exactly"
-        assert (vis_area_s) == (expected_sums["secondary"]), "Visible area must match exactly"
+        assert vis_area_p == expected_sums["primary"], "Visible area must match exactly"
+        assert vis_area_s == expected_sums["secondary"], "Visible area must match exactly"
 
     def test_visibility_similar_comp_eclipse(self) -> None:
         retval = self.eval_coverage(0.01)
@@ -102,8 +102,8 @@ class VisibilityTestCase(ElisaTestCase):
         expected_values = {"primary": 0, "secondary": 415}
         primary_vis_faces = np.count_nonzero(retval["primary"])
         secondary_vis_faces = np.count_nonzero(retval["secondary"])
-        assert (primary_vis_faces) == (expected_values["primary"])
-        assert (secondary_vis_faces) == (expected_values["secondary"])
+        assert primary_vis_faces == expected_values["primary"]
+        assert secondary_vis_faces == expected_values["secondary"]
 
         expected_sums = {"primary": 0.0, "secondary": 2.0890992190449648e19}
         vis_area_p = np.sum(retval["primary"])
@@ -118,8 +118,8 @@ class VisibilityTestCase(ElisaTestCase):
         expected_values = {"primary": 1674, "secondary": 416}
         primary_vis_faces = np.count_nonzero(retval["primary"])
         secondary_vis_faces = np.count_nonzero(retval["secondary"])
-        assert (primary_vis_faces) == (expected_values["primary"])
-        assert (secondary_vis_faces) == (expected_values["secondary"])
+        assert primary_vis_faces == expected_values["primary"]
+        assert secondary_vis_faces == expected_values["secondary"]
 
         expected_sums = {"primary": 3.352908353932797e16, "secondary": 2.0909670552161714e19}
         vis_area_p = np.sum(retval["primary"])

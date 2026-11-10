@@ -54,7 +54,7 @@ class AnimationTestCase(ElisaTestCase):
                 subtract_equilibrium=False,
                 edges=False,
             )
-            assert (result) is None
+            assert result is None
         finally:
             plt.show = old_show
             # restore original __del__ if present

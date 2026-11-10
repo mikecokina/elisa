@@ -347,7 +347,7 @@ class TestPulsationModule(ElisaTestCase):
         assert np.all(np.abs(np.round(obtained_phases, 3) - np.round(expected_phases, 3)) < TOL)
         np.testing.assert_allclose(obtained_flux, expected_flux, rtol=1e-10)
         assert np.all(np.isfinite(obtained_flux))
-        assert (np.ptp(obtained_flux)) > (0.0)
+        assert np.ptp(obtained_flux) > 0.0
 
         # o.plot.phase_curve()
         # plt.plot(obtained_phases, obtained_flux)

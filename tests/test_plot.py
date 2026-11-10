@@ -140,7 +140,7 @@ class TestAddColormapToPltKwargs(ElisaTestCase):
             const.Position(0, np.nan, 0.0, np.nan, 0.0),
         )
         result = add_colormap_to_plt_kwargs(*args)
-        assert (result) is None
+        assert result is None
 
 
 class TestHorizonatalDisplacementCmap(ElisaTestCase):

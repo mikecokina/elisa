@@ -734,28 +734,28 @@ class SettingsOverrideTestCase(ElisaTestCase):
                 pytest.raises(RuntimeError, match="inner"),
                 settings.override(LIMB_DARKENING_LAW="square_root", CK04_ATM_TABLES="inner-ck"),
             ):
-                assert (settings.ATLAS_TO_BASE_DIR["ck04"]) == ("inner-ck")
+                assert settings.ATLAS_TO_BASE_DIR["ck04"] == "inner-ck"
                 settings.RV_LAMBDA_INTERVAL = (6000, 6500)
                 raise RuntimeError("inner")
-            assert (settings.settings_serializer()) == (outer)
-            assert (settings.ATLAS_TO_BASE_DIR["ck04"]) == ("outer-ck")
-        assert (id(settings)) == (identity)
-        assert (settings.settings_serializer()) == (original)
-        assert (settings.ATLAS_TO_BASE_DIR["ck04"]) == (original["CK04_ATM_TABLES"])
+            assert settings.settings_serializer() == outer
+            assert settings.ATLAS_TO_BASE_DIR["ck04"] == "outer-ck"
+        assert id(settings) == identity
+        assert settings.settings_serializer() == original
+        assert settings.ATLAS_TO_BASE_DIR["ck04"] == original["CK04_ATM_TABLES"]
 
     def test_exception_restores_additional_settings_and_logging(self) -> None:
         original = settings.settings_serializer()
         with pytest.raises(RuntimeError, match="body"), settings.override(LOG_CONFIG="fit"):  # noqa: PT012 - scenario includes context cleanup or selection of the operation under test
             settings.configure(NUMBER_OF_THREADS=2, K93_ATM_TABLES="temporary-k")
             raise RuntimeError("body")
-        assert (settings.settings_serializer()) == (original)
-        assert (settings.ATLAS_TO_BASE_DIR["k93"]) == (original["K93_ATM_TABLES"])
+        assert settings.settings_serializer() == original
+        assert settings.ATLAS_TO_BASE_DIR["k93"] == original["K93_ATM_TABLES"]
 
     def test_invalid_override_does_not_enter_or_publish(self) -> None:
         original = settings.__dict__
         with pytest.raises(ElisaSettingsError), settings.override(REFLECTION_EFFECT=False, NUMBER_OF_THREADS=0):
             self.fail("invalid context entered")
-        assert (settings.__dict__) is (original)
+        assert settings.__dict__ is original
 
 
 class SettingsIsolationTestCase(ElisaTestCase):
@@ -793,7 +793,7 @@ class SettingsIsolationTestCase(ElisaTestCase):
                 self.fail("test should not run")
 
             def clean(self) -> None:
-                assert (settings.settings_serializer()) == (expected)
+                assert settings.settings_serializer() == expected
 
         orders = [
             ["mutate", "body_error", "clean", "setup_error", "assertion_failure", "clean"],
@@ -805,10 +805,10 @@ class SettingsIsolationTestCase(ElisaTestCase):
                 settings.configure(MAX_CURVE_DATAPOINTS=99, MESH_GENERATOR="auto")
                 result = unittest.TestResult()
                 Probe(name).run(result)
-                assert (len(result.errors)) == (int(name in ("body_error", "setup_error")))
-                assert (len(result.failures)) == (int(name == "assertion_failure"))
-                assert (settings.settings_serializer()) == (expected)
-                assert (settings.ATLAS_TO_BASE_DIR["ck04"]) == (expected["CK04_ATM_TABLES"])
+                assert len(result.errors) == int(name in ("body_error", "setup_error"))
+                assert len(result.failures) == int(name == "assertion_failure")
+                assert settings.settings_serializer() == expected
+                assert settings.ATLAS_TO_BASE_DIR["ck04"] == expected["CK04_ATM_TABLES"]
         assert all(state == expected for state in observed)
 
     def test_cleanup_registered_before_initial_reset_can_fail(self) -> None:
@@ -830,9 +830,9 @@ class SettingsIsolationTestCase(ElisaTestCase):
         probe = Probe()
         result = unittest.TestResult()
         probe.run(result)
-        assert (len(result.errors)) == (1)
-        assert (probe.attempts) == (2)
-        assert (settings.settings_serializer()) == (expected)
+        assert len(result.errors) == 1
+        assert probe.attempts == 2
+        assert settings.settings_serializer() == expected
 
     def test_reset_loads_test_ini_over_defaults(self) -> None:
         # Prove the INI is actually parsed; omitted values still use built-ins.
@@ -840,8 +840,8 @@ class SettingsIsolationTestCase(ElisaTestCase):
         with patch.object(self, "touch_default_config"):
             Path(self.CONFIG_FILE).write_text("[computational]\nmesh_generator = improved_trapezoidal\n")
             self.reset_test_settings()
-        assert (settings.MESH_GENERATOR) == ("improved_trapezoidal")
-        assert (settings.DEFAULT_SETTINGS["MAX_CURVE_DATAPOINTS"]) == (settings.MAX_CURVE_DATAPOINTS)
+        assert settings.MESH_GENERATOR == "improved_trapezoidal"
+        assert settings.DEFAULT_SETTINGS["MAX_CURVE_DATAPOINTS"] == settings.MAX_CURVE_DATAPOINTS
 
     def test_mocked_scientific_results_do_not_survive_cleanup(self) -> None:
         from tests.tests_observer.test_custom_ld_and_atm import TestCurvesUtilsCachingAndBroadcast
@@ -849,7 +849,7 @@ class SettingsIsolationTestCase(ElisaTestCase):
         result = unittest.TestResult()
         TestCurvesUtilsCachingAndBroadcast("test_interpolated_ld_cached").run(result)
         assert result.wasSuccessful(), result.errors or result.failures
-        assert (interpolate_on_ld_grid_cached.cache_info().currsize) == (0)
+        assert interpolate_on_ld_grid_cached.cache_info().currsize == 0
 
 
 @pytest.mark.parametrize("previous_disable", [logging.NOTSET, 27])
@@ -867,14 +867,14 @@ def test_elisa_class_cleanup_restores_logging_threshold(previous_disable: int, f
                 raise RuntimeError("class setup failed")
 
         def runTest(self) -> None:  # noqa: N802 - unittest entry point
-            assert (logging.root.manager.disable) == (logging.CRITICAL)
+            assert logging.root.manager.disable == logging.CRITICAL
             if failure == "body":
                 raise RuntimeError("test body failed")
 
     class FollowingClass(unittest.TestCase):
         def runTest(self) -> None:  # noqa: N802 - unittest entry point
             observed.append(logging.root.manager.disable)
-            assert (logging.root.manager.disable) == (previous_disable)
+            assert logging.root.manager.disable == previous_disable
 
     try:
         logging.disable(previous_disable)

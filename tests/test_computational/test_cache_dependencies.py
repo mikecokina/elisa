@@ -371,3 +371,20 @@ def test_actual_mesh_correction_round_trip_matches_uncached_resource(
         results.append(star.points.copy())
     np.testing.assert_array_equal(results[0], results[2])
     assert not np.array_equal(results[0], results[1])
+
+
+def test_rv_interval_override_restores_results_and_retained_object() -> None:
+    with settings.override(RV_LAMBDA_INTERVAL=(5500.0, 5600.0)):
+        original = curves._get_rv_passband()
+        with settings.override(RV_LAMBDA_INTERVAL=(6000.0, 6200.0)):
+            changed = curves._get_rv_passband()
+            expected = init_rv_passband()
+            assert changed is curves._get_rv_passband()
+            assert changed[1:] == expected[1:]
+            pd.testing.assert_frame_equal(changed[0].table, expected[0].table)
+        restored = curves._get_rv_passband()
+        assert restored[1:] == original[1:]
+        pd.testing.assert_frame_equal(restored[0].table, original[0].table)
+        # A retained B object keeps the interval with which it was constructed.
+        assert changed[0].get_bandwidth() == (6000.0, 6200.0)
+        assert original[0].get_bandwidth() == (5500.0, 5600.0)

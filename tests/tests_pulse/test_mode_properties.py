@@ -19,19 +19,19 @@ class TestPulsationModeProperties(ElisaTestCase):
     def test_l_valid_int(self) -> None:
         """Test l property with valid integer input."""
         result = self.props.l(2)
-        assert (result) == (2)
+        assert result == 2
         assert isinstance(result, (int, np.integer))
 
     def test_l_valid_float_convertible_to_int(self) -> None:
         """Test l property with float that can be converted to int."""
         result = self.props.l(2.0)
-        assert (result) == (2)
+        assert result == 2
         assert isinstance(result, (int, np.integer))
 
     def test_l_valid_numpy_int(self) -> None:
         """Test l property with numpy integer."""
         result = self.props.l(np.int32(3))
-        assert (result) == (3)
+        assert result == 3
 
     def test_l_invalid_float(self) -> None:
         """Test l property raises ElisaParametersError for non-integer float."""
@@ -46,19 +46,19 @@ class TestPulsationModeProperties(ElisaTestCase):
     def test_m_valid_int(self) -> None:
         """Test m property with valid integer input."""
         result = self.props.m(1)
-        assert (result) == (1)
+        assert result == 1
         assert isinstance(result, (int, np.integer))
 
     def test_m_valid_float_convertible_to_int(self) -> None:
         """Test m property with float that can be converted to int."""
         result = self.props.m(1.0)
-        assert (result) == (1)
+        assert result == 1
         assert isinstance(result, (int, np.integer))
 
     def test_m_valid_numpy_int(self) -> None:
         """Test m property with numpy integer."""
         result = self.props.m(np.int64(-1))
-        assert (result) == (-1)
+        assert result == -1
 
     def test_m_invalid_float(self) -> None:
         """Test m property raises ElisaParametersError for non-integer float."""
@@ -254,7 +254,7 @@ class TestPulsationModeProperties(ElisaTestCase):
     def test_tidally_locked_false(self) -> None:
         """Test tidally_locked property with False."""
         result = self.props.tidally_locked(False)
-        assert not (result)
+        assert not result
         assert isinstance(result, bool)
 
     def test_tidally_locked_invalid_int(self) -> None:

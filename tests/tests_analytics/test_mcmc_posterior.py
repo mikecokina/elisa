@@ -67,7 +67,7 @@ def test_physical_rejection_is_independent_of_previous_proposals() -> None:
     invalid = np.array([0.1])
     assert fit.ln_probability(invalid) == -np.inf
     for value in (0.5, 1.0, 0.25):
-        assert fit.ln_probability(np.array([value])) == -(value**2)
+        assert fit.ln_probability(np.array([value])) == -value**2
         assert fit.ln_probability(invalid) == -np.inf
 
 

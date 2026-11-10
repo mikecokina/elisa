@@ -111,11 +111,11 @@ class TestPulseUtils(ElisaTestCase):
         result = putils.tilt_mode_coordinates(points, phi, theta)
 
         # Result should have same shape and first column (radius) unchanged
-        assert (result.shape) == (points.shape)
+        assert result.shape == points.shape
         assert_array_equal(result[:, 0], points[:, 0])
 
         # Phi and theta should be modified
-        assert not (np.array_equal(result[:, 1:], points[:, 1:]))
+        assert not np.array_equal(result[:, 1:], points[:, 1:])
 
     def test_derotate_surface_points_no_rotation(self) -> None:
         """Test derotate_surface_points when phi and theta are zero (no rotation)."""
@@ -136,11 +136,11 @@ class TestPulseUtils(ElisaTestCase):
         result = putils.derotate_surface_points(points, phi, theta)
 
         # Result should have same shape and first column (radius) unchanged
-        assert (result.shape) == (points.shape)
+        assert result.shape == points.shape
         assert_array_equal(result[:, 0], points[:, 0])
 
         # Phi and theta should be modified
-        assert not (np.array_equal(result[:, 1:], points[:, 1:]))
+        assert not np.array_equal(result[:, 1:], points[:, 1:])
 
     def test_derotate_surface_displacements_no_rotation(self) -> None:
         """Test derotate_surface_displacements when axis_phi and axis_theta are zero."""
@@ -165,7 +165,7 @@ class TestPulseUtils(ElisaTestCase):
         result = putils.derotate_surface_displacements(velocity, tilted_points, points, axis_phi, axis_theta)
 
         # Result should have same shape and first column (radial) unchanged
-        assert (result.shape) == (velocity.shape)
+        assert result.shape == velocity.shape
         assert_array_equal(result[:, 0], velocity[:, 0])
 
     def test_transform_spherical_displacement_to_cartesian_simple(self) -> None:
@@ -177,7 +177,7 @@ class TestPulseUtils(ElisaTestCase):
         result = putils.transform_spherical_displacement_to_cartesian(sph_displacement, surf_points, com_x)
 
         # Result should have same shape
-        assert (result.shape) == ((3, 3))
+        assert result.shape == (3, 3)
 
         # Result should be finite (no NaNs or infs)
         assert np.all(np.isfinite(result))
@@ -191,7 +191,7 @@ class TestPulseUtils(ElisaTestCase):
         result = putils.transform_spherical_displacement_to_cartesian(sph_displacement, surf_points, com_x)
 
         # Result should have same shape
-        assert (result.shape) == ((2, 3))
+        assert result.shape == (2, 3)
 
         # Result should be finite
         assert np.all(np.isfinite(result))
@@ -260,8 +260,8 @@ class TestPulseUtils(ElisaTestCase):
         putils.pole_neighbours(star)
 
         # Check that pole indices were assigned
-        assert (star.pole_idx) is not None
-        assert (star.pole_idx_neighbour) is not None
+        assert star.pole_idx is not None
+        assert star.pole_idx_neighbour is not None
 
         # Check that pole indices are valid
         assert len(star.pole_idx) == 2
@@ -293,7 +293,7 @@ class TestPulseUtils(ElisaTestCase):
         putils.pole_neighbours(star)
 
         # The two poles should be different
-        assert (star.pole_idx[0]) != (star.pole_idx[1])
+        assert star.pole_idx[0] != star.pole_idx[1]
 
     def test_generate_tilt_coordinates_without_tidally_locked(self) -> None:
         """Test generate_tilt_coordinates with non-tidally-locked modes."""
@@ -319,8 +319,8 @@ class TestPulseUtils(ElisaTestCase):
         phi, theta = putils.generate_tilt_coordinates(star, phase)
 
         # Phi should include the correction
-        assert (phi) is not None
-        assert (theta) is not None
+        assert phi is not None
+        assert theta is not None
         assert np.isfinite(phi)
         assert np.isfinite(theta)
 

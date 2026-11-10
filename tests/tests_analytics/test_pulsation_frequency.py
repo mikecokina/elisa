@@ -124,9 +124,9 @@ class PulsationFrequencyTestCase(ElisaTestCase):
                     )
                     for key, expected in (("value", 1.0), ("min", 0.5), ("max", 2.0), ("sigma", 0.1)):
                         self.assertAlmostEqual(getattr(parameter, key), expected)
-                    assert (parameter.unit) == (u.d**-1)
+                    assert parameter.unit == u.d**-1
                     metadata = parameter.to_dict()
-                    assert (u.Unit(metadata["unit"])) == (u.d**-1)
+                    assert u.Unit(metadata["unit"]) == u.d**-1
                     self.assertAlmostEqual(metadata["value"], 1.0)
 
     def test_free_and_fixed_frequencies_survive_model_construction(self) -> None:
@@ -139,8 +139,8 @@ class PulsationFrequencyTestCase(ElisaTestCase):
                     self.assertAlmostEqual(serialized["pulsations"][0]["frequency"], 1.0)
                     self.assertAlmostEqual(binary.primary.pulsations[0].frequency, 1 / 86400, places=14)
                     if fixed:
-                        assert (fit.primary.pulsations[0].frequency.min) is None
-                        assert (fit.primary.pulsations[0].frequency.sigma) is None
+                        assert fit.primary.pulsations[0].frequency.min is None
+                        assert fit.primary.pulsations[0].frequency.sigma is None
 
     def test_repeated_candidates_keep_initial_frequency_in_cycles_per_day(self) -> None:
         for fixed in (False, True):
@@ -172,7 +172,7 @@ class PulsationFrequencyTestCase(ElisaTestCase):
             with self.subTest(value=value):
                 mode = PulsationMode(l=1, m=1, amplitude=1.0, frequency=value)
                 self.assertAlmostEqual(mode.frequency, 1 / 86400, places=14)
-        assert (PulsationMode(l=1, m=1, amplitude=1.0, frequency=1 * u.Hz).frequency) == (1.0)
+        assert PulsationMode(l=1, m=1, amplitude=1.0, frequency=1 * u.Hz).frequency == 1.0
 
     def test_existing_frequency_validation_is_preserved(self) -> None:
         for value in (-1.0, -1 / u.d, -1 * u.Hz):
@@ -182,5 +182,5 @@ class PulsationFrequencyTestCase(ElisaTestCase):
             PulsationModeInitialProperties.frequency(object())
         with pytest.raises(ElisaInitialParametersError) as caught:
             PulsationModeInitialProperties.frequency(1 * u.m)
-        assert (type(caught.value.__cause__)) is (ElisaParametersError)
+        assert type(caught.value.__cause__) is ElisaParametersError
         assert isinstance(caught.value.__cause__.__cause__, u.UnitConversionError)

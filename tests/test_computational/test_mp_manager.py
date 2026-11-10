@@ -175,7 +175,7 @@ if 'fork' in mp.get_all_start_methods():
 assert mp.get_start_method(allow_none=True) == before
 """
     env = {**os.environ, "ELISA_CONFIG": str(config), "PYTHONDONTWRITEBYTECODE": "1"}
-    subprocess.run(
+    subprocess.run(  # noqa: S603 - Executes this test's code with the current Python interpreter.
         [sys.executable, "-c", code, str(preset)],
         env=env,
         check=True,

@@ -484,15 +484,15 @@ class BinarySystemPlotIntegrationTestCase(ElisaTestCase):
     def test_plot_class_initialization(self) -> None:
         """Test Plot class initialization - happy path."""
         plot = Plot(self.binary)
-        assert (plot.binary) is not None
-        assert (plot.binary) == (self.binary)
+        assert plot.binary is not None
+        assert plot.binary == self.binary
 
     def test_plot_default_position(self) -> None:
         """Test Plot class has correct default position - happy path."""
         plot = Plot(self.binary)
-        assert (plot.defpos) is not None
-        assert (plot.defpos.idx) == (0)
-        assert (plot.defpos.distance) == (1.0)
+        assert plot.defpos is not None
+        assert plot.defpos.idx == 0
+        assert plot.defpos.distance == 1.0
 
 
 if __name__ == "__main__":

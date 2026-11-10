@@ -76,10 +76,10 @@ class TestAtmDataContainer(ElisaTestCase):
         assert_array_equal([10, 50], [self.container.left_bandwidth, self.container.right_bandwidth])
 
     def test_flux_to_si_mult(self) -> None:
-        assert (self.container.flux_to_si_mult) == (1e-7 * 1e4 * 1e10)
+        assert self.container.flux_to_si_mult == 1e-7 * 1e4 * 1e10
 
     def test_wave_to_si_mult(self) -> None:
-        assert (self.container.wave_to_si_mult) == (1e-10)
+        assert self.container.wave_to_si_mult == 1e-10
 
 
 class TestAtmModuleGeneral(ElisaTestCase):
@@ -827,8 +827,8 @@ class TestAtmDataContainerEdgeCases(ElisaTestCase):
         container = AtmDataContainer(df, 5000, 4.0, 0.0)
 
         # Should find min and max
-        assert (container.left_bandwidth) == (1.0)
-        assert (container.right_bandwidth) == (5.0)
+        assert container.left_bandwidth == 1.0
+        assert container.right_bandwidth == 5.0
 
     def test_container_model_setter_with_dataframe(self) -> None:
         """Test that model setter correctly handles DataFrame input."""

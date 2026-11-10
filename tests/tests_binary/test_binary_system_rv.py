@@ -286,8 +286,8 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
         # plt.show()
 
         assert np.all(up.abs(obt_phs - np.round(exp_phs, 3)) < TOL)
-        assert np.all((up.abs(obt_p - exp_p) / np.abs(np.max(obt_p))) < TOL)
-        assert np.all((up.abs(obt_s - exp_s) / np.abs(np.max(obt_s))) < TOL)
+        assert np.all(up.abs(obt_p - exp_p) / np.abs(np.max(obt_p)) < TOL)
+        assert np.all(up.abs(obt_s - exp_s) / np.abs(np.max(obt_s)) < TOL)
 
     @pytest.mark.requires_ld(
         passbands=("Generic.Bessell.V", "bolometric"),
@@ -414,8 +414,8 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         mp_p = mp_p[~np.isnan(mp_p)]
         mp_s = mp_s[~np.isnan(mp_s)]
 
-        assert np.all((up.abs(sp_p - mp_p) / np.abs(np.max(sp_p))) < tol)
-        assert np.all((up.abs(sp_s - mp_s) / np.abs(np.max(sp_s))) < tol)
+        assert np.all(up.abs(sp_p - mp_p) / np.abs(np.max(sp_p)) < tol)
+        assert np.all(up.abs(sp_s - mp_s) / np.abs(np.max(sp_s)) < tol)
 
     def test_circular_sync_rv(self) -> None:
         bs = prepare_binary_system(PARAMS["detached"])
@@ -531,8 +531,8 @@ class CompareApproxVsExact(ElisaTestCase):
         # plt.legend()
         # plt.show()
 
-        assert np.all((up.abs(ex_p - ap_p) / np.abs(np.max(ex_p))) < 3e-3)
-        assert np.all((up.abs(ex_s - ap_s) / np.abs(np.max(ex_s))) < 3e-3)
+        assert np.all(up.abs(ex_p - ap_p) / np.abs(np.max(ex_p)) < 3e-3)
+        assert np.all(up.abs(ex_s - ap_s) / np.abs(np.max(ex_s)) < 3e-3)
 
     @skip
     def test_approximation_two(self) -> None:
@@ -565,8 +565,8 @@ class CompareApproxVsExact(ElisaTestCase):
         # plt.legend()
         # plt.show()
 
-        assert np.all((up.abs(ex_p - ap_p) / np.abs(np.max(ex_s))) < 3e-3)
-        assert np.all((up.abs(ex_s - ap_s) / np.abs(np.max(ex_s))) < 3e-3)
+        assert np.all(up.abs(ex_p - ap_p) / np.abs(np.max(ex_s)) < 3e-3)
+        assert np.all(up.abs(ex_s - ap_s) / np.abs(np.max(ex_s)) < 3e-3)
 
     @skip
     def test_approximation_three(self) -> None:
@@ -595,8 +595,8 @@ class CompareApproxVsExact(ElisaTestCase):
         # plt.legend()
         # plt.show()
 
-        assert np.all((up.abs(ex_p - ap_p) / np.abs(np.max(ex_p))) < 3e-3)
-        assert np.all((up.abs(ex_s - ap_s) / np.abs(np.max(ex_s))) < 3e-3)
+        assert np.all(up.abs(ex_p - ap_p) / np.abs(np.max(ex_p)) < 3e-3)
+        assert np.all(up.abs(ex_s - ap_s) / np.abs(np.max(ex_s)) < 3e-3)
 
 
 COMMUNITY_RV_TOL = 5e-3

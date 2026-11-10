@@ -30,15 +30,15 @@ class SeparatingAxisTheoremTestCase(ElisaTestCase):
         """Test two overlapping squares."""
         poly1 = np.array([[0, 0], [2, 0], [2, 2], [0, 2]])
         poly2 = np.array([[1, 1], [3, 1], [3, 3], [1, 3]])
-        assert not (sat.separating_axis_theorem(poly1, poly2, touch_is_separated=False))
-        assert not (sat.separating_axis_theorem(poly1, poly2, touch_is_separated=True))
+        assert not sat.separating_axis_theorem(poly1, poly2, touch_is_separated=False)
+        assert not sat.separating_axis_theorem(poly1, poly2, touch_is_separated=True)
 
     def test_touching_squares_edge_to_edge(self) -> None:
         """Test two squares touching edge to edge."""
         poly1 = np.array([[0, 0], [1, 0], [1, 1], [0, 1]])
         poly2 = np.array([[1, 0], [2, 0], [2, 1], [1, 1]])
         # touch_is_separated=False: touching counts as NOT separated
-        assert not (sat.separating_axis_theorem(poly1, poly2, touch_is_separated=False))
+        assert not sat.separating_axis_theorem(poly1, poly2, touch_is_separated=False)
         # touch_is_separated=True: touching counts as separated
         assert sat.separating_axis_theorem(poly1, poly2, touch_is_separated=True)
 
@@ -47,7 +47,7 @@ class SeparatingAxisTheoremTestCase(ElisaTestCase):
         poly1 = np.array([[0, 0], [1, 0], [1, 1], [0, 1]])
         poly2 = np.array([[1, 1], [2, 1], [2, 2], [1, 2]])
         # touch_is_separated=False: touching counts as NOT separated
-        assert not (sat.separating_axis_theorem(poly1, poly2, touch_is_separated=False))
+        assert not sat.separating_axis_theorem(poly1, poly2, touch_is_separated=False)
         # touch_is_separated=True: touching counts as separated
         assert sat.separating_axis_theorem(poly1, poly2, touch_is_separated=True)
 
@@ -55,8 +55,8 @@ class SeparatingAxisTheoremTestCase(ElisaTestCase):
         """Test square completely inside another square."""
         poly1 = np.array([[0, 0], [4, 0], [4, 4], [0, 4]])
         poly2 = np.array([[1, 1], [3, 1], [3, 3], [1, 3]])
-        assert not (sat.separating_axis_theorem(poly1, poly2, touch_is_separated=False))
-        assert not (sat.separating_axis_theorem(poly1, poly2, touch_is_separated=True))
+        assert not sat.separating_axis_theorem(poly1, poly2, touch_is_separated=False)
+        assert not sat.separating_axis_theorem(poly1, poly2, touch_is_separated=True)
 
     def test_invalid_polygon_too_few_vertices(self) -> None:
         """Test that error is raised for polygons with fewer than 3 vertices."""
@@ -75,7 +75,7 @@ class SeparatingAxisTheoremTestCase(ElisaTestCase):
         """Test two overlapping triangles."""
         poly1 = np.array([[0, 0], [2, 0], [1, 2]])
         poly2 = np.array([[1, 0], [3, 0], [2, 2]])
-        assert not (sat.separating_axis_theorem(poly1, poly2, touch_is_separated=False))
+        assert not sat.separating_axis_theorem(poly1, poly2, touch_is_separated=False)
 
     def test_complex_polygons_separated(self) -> None:
         """Test two separated complex (non-square) polygons."""
@@ -87,7 +87,7 @@ class SeparatingAxisTheoremTestCase(ElisaTestCase):
         """Test two overlapping complex polygons."""
         poly1 = np.array([[0, 0], [3, 0], [3, 2], [0, 2]])
         poly2 = np.array([[2, 0], [5, 0], [5, 2], [2, 2]])
-        assert not (sat.separating_axis_theorem(poly1, poly2, touch_is_separated=False))
+        assert not sat.separating_axis_theorem(poly1, poly2, touch_is_separated=False)
 
 
 class SeparatingAxisTheoremLineAdaptTestCase(ElisaTestCase):
@@ -98,8 +98,8 @@ class SeparatingAxisTheoremLineAdaptTestCase(ElisaTestCase):
         line1 = np.array([[0, 0], [2, 0]])
         line2 = np.array([[1, 0], [3, 0]])
         # Overlapping: not separated
-        assert not (sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=False))
-        assert not (sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=True))
+        assert not sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=False)
+        assert not sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=True)
 
     def test_separated_collinear_segments(self) -> None:
         """Test two separated collinear line segments."""
@@ -114,7 +114,7 @@ class SeparatingAxisTheoremLineAdaptTestCase(ElisaTestCase):
         line1 = np.array([[0, 0], [1, 0]])
         line2 = np.array([[1, 0], [2, 0]])
         # touch_is_separated=False: touching counts as NOT separated
-        assert not (sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=False))
+        assert not sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=False)
 
     def test_touching_collinear_segments_in_touch_true(self) -> None:
         """Test two touching collinear line segments with in_touch=True."""
@@ -128,32 +128,32 @@ class SeparatingAxisTheoremLineAdaptTestCase(ElisaTestCase):
         line1 = np.array([[0, 0], [4, 0]])
         line2 = np.array([[1, 0], [3, 0]])
         # One inside another: they overlap, not separated
-        assert not (sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=False))
-        assert not (sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=True))
+        assert not sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=False)
+        assert not sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=True)
 
     def test_vertical_segments(self) -> None:
         """Test two overlapping vertical line segments."""
         line1 = np.array([[0, 0], [0, 2]])
         line2 = np.array([[0, 1], [0, 3]])
         # Overlapping vertically: not separated
-        assert not (sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=False))
-        assert not (sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=True))
+        assert not sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=False)
+        assert not sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=True)
 
     def test_diagonal_segments(self) -> None:
         """Test two overlapping diagonal line segments."""
         line1 = np.array([[0, 0], [2, 2]])
         line2 = np.array([[1, 1], [3, 3]])
         # Overlapping diagonally: not separated
-        assert not (sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=False))
-        assert not (sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=True))
+        assert not sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=False)
+        assert not sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=True)
 
     def test_negative_coordinates_segments(self) -> None:
         """Test line segments with negative coordinates."""
         line1 = np.array([[-2, -2], [-1, -1]])
         line2 = np.array([[-1.5, -1.5], [0, 0]])
         # Overlapping with negative coords: not separated
-        assert not (sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=False))
-        assert not (sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=True))
+        assert not sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=False)
+        assert not sat.separating_axis_theorem_line_adapt(line1, line2, touch_is_separated=True)
 
     def test_with_custom_round_tol_segments(self) -> None:
         """Test line segments with custom rounding tolerance."""
@@ -162,7 +162,7 @@ class SeparatingAxisTheoremLineAdaptTestCase(ElisaTestCase):
         # With high precision (round_tol=5), these are separated
         assert sat.separating_axis_theorem_line_adapt(line1, line2, round_tol=5)
         # With low precision (round_tol=3), these touch/overlap
-        assert not (sat.separating_axis_theorem_line_adapt(line1, line2, round_tol=3))
+        assert not sat.separating_axis_theorem_line_adapt(line1, line2, round_tol=3)
 
 
 class IntersectsTestCase(ElisaTestCase):
@@ -179,8 +179,8 @@ class IntersectsTestCase(ElisaTestCase):
         """Test intersects() with two separated squares."""
         poly1 = np.array([[0, 0], [1, 0], [1, 1], [0, 1]])
         poly2 = np.array([[2, 0], [3, 0], [3, 1], [2, 1]])
-        assert not (sat.intersects(poly1, poly2, touch_is_separated=False))
-        assert not (sat.intersects(poly1, poly2, touch_is_separated=True))
+        assert not sat.intersects(poly1, poly2, touch_is_separated=False)
+        assert not sat.intersects(poly1, poly2, touch_is_separated=True)
 
     def test_two_touching_squares(self) -> None:
         """Test intersects() with two touching squares."""
@@ -189,7 +189,7 @@ class IntersectsTestCase(ElisaTestCase):
         # touch_is_separated=False: touching counts as intersecting
         assert sat.intersects(poly1, poly2, touch_is_separated=False)
         # touch_is_separated=True: touching counts as separated
-        assert not (sat.intersects(poly1, poly2, touch_is_separated=True))
+        assert not sat.intersects(poly1, poly2, touch_is_separated=True)
 
     def test_two_overlapping_lines(self) -> None:
         """Test intersects() with two overlapping line segments."""
@@ -201,7 +201,7 @@ class IntersectsTestCase(ElisaTestCase):
         """Test intersects() with two separated line segments."""
         line1 = np.array([[0, 0], [1, 0]])
         line2 = np.array([[2, 0], [3, 0]])
-        assert not (sat.intersects(line1, line2, touch_is_separated=False))
+        assert not sat.intersects(line1, line2, touch_is_separated=False)
 
     def test_two_touching_lines_in_touch_false(self) -> None:
         """Test intersects() with two touching line segments (touch_is_separated=False)."""
@@ -213,7 +213,7 @@ class IntersectsTestCase(ElisaTestCase):
         """Test intersects() with two touching line segments (touch_is_separated=True)."""
         line1 = np.array([[0, 0], [1, 0]])
         line2 = np.array([[1, 0], [2, 0]])
-        assert not (sat.intersects(line1, line2, touch_is_separated=True))
+        assert not sat.intersects(line1, line2, touch_is_separated=True)
 
     def test_polygon_list_input(self) -> None:
         """Test intersects() with list input for polygons."""
@@ -233,12 +233,12 @@ class CollinearOrientationRegressionTestCase(ElisaTestCase):
         round_tol: int = ROUND_PRECISION,
     ) -> None:
         kwargs = {"touch_is_separated": touch_is_separated, "round_tol": round_tol}
-        assert (sat.separating_axis_theorem_line_adapt(line1, line2, **kwargs)) == (not expected)
-        assert (sat.intersects(line1, line2, **kwargs)) == (expected)
+        assert sat.separating_axis_theorem_line_adapt(line1, line2, **kwargs) == (not expected)
+        assert sat.intersects(line1, line2, **kwargs) == expected
         scalar = linter.intersection(*line1, *line2, **kwargs)
-        assert (scalar[:2]) == ((True, expected))
+        assert scalar[:2] == (True, expected)
         assert np.isnan(scalar[2])
-        assert (scalar[3:]) == ((0.0, "COLINEAR"))
+        assert scalar[3:] == (0.0, "COLINEAR")
         vector = linter.intersections(line1, line2, **kwargs)
         np.testing.assert_array_equal(vector[0], np.ones(4, dtype=bool))
         np.testing.assert_array_equal(vector[1], np.full(4, expected))

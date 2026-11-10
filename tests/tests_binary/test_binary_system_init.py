@@ -798,7 +798,7 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
             )
 
         for item in js["system"]:
-            assert (js["system"][item]) == (expected["system"][item])
+            assert js["system"][item] == expected["system"][item]
 
         for component in ["primary", "secondary"]:
             for item in js[component]:

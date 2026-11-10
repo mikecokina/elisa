@@ -34,7 +34,7 @@ class FSolveTestCase(utils.ElisaTestCase):
         solution, info, ier, msg = fsolve(fn, np.array([0.5]), full_output=True)
 
         self.assertAlmostEqual(solution[0], 3.0, places=8)
-        assert (ier) == (1)
+        assert ier == 1
         assert isinstance(info, dict)
         assert isinstance(msg, str)
 
@@ -63,7 +63,7 @@ class FSolverTestCase(utils.ElisaTestCase):
         solution, use = fsolver(fn, condition, (2.5,))
 
         assert np.isnan(solution)
-        assert not (use)
+        assert not use
 
 
 class NewtonTestCase(utils.ElisaTestCase):
@@ -125,7 +125,7 @@ class NewtonSolverTestCase(ElisaTestCase):
         args = ((1.0,), 0.0)
         expected = -1.0
         obtained = round(newton(self.x_square, x0, fprime=self.d_x_square, args=args, maxiter=100, rtol=1e-10), 7)
-        assert (expected) == (obtained)
+        assert expected == obtained
 
     def test_return_matrix(self) -> None:
         x0 = np.array([1.001, 1.002])

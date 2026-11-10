@@ -31,7 +31,7 @@ class DataReadTestCase(DataTestCase):
         fpath = str(Path(self.DATA).joinpath("clean.csv"))
         data = read_data_file(fpath, data_columns=(0, 1, 2)).T
 
-        assert (len(data)) == (3)
+        assert len(data) == 3
         assert_array_equal([0, 1, 2, 3, 4], data[0])
         assert_array_equal([1e-1] * 5, data[1])
         assert_array_equal([1e-3, 1e-3, 1e-3, 2e-3, 2e-3], data[2])
@@ -74,14 +74,14 @@ class ConvertFluxTestCase(ElisaTestCase):
         data = np.array([1.0, 2.0, 3.0])
         with pytest.raises(ElisaAnalyticsDataError) as context:
             convert_flux(data, u.mag)
-        assert ("zero point") in (str(context.value).lower())
+        assert "zero point" in str(context.value).lower()
 
     def test_convert_flux_mmag_without_zero_point_raises(self) -> None:
         """Test that converting millimagnitudes without zero_point raises ElisaAnalyticsDataError."""
         data = np.array([100.0, 200.0, 300.0])
         with pytest.raises(ElisaAnalyticsDataError) as context:
             convert_flux(data, u.mmag)
-        assert ("zero point") in (str(context.value).lower())
+        assert "zero point" in str(context.value).lower()
 
     def test_convert_flux_mag_with_zero_point(self) -> None:
         """Test conversion from magnitudes to flux with zero point."""
@@ -112,21 +112,21 @@ class ConvertFluxErrorTestCase(ElisaTestCase):
         error = np.array([0.01, 0.02, 0.03])
         with pytest.raises(ElisaAnalyticsDataError) as context:
             convert_flux_error(error, u.mag)
-        assert ("zero point") in (str(context.value).lower())
+        assert "zero point" in str(context.value).lower()
 
     def test_convert_flux_error_mmag_without_zero_point_raises(self) -> None:
         """Test that converting millimagnitude errors without zero_point raises ElisaAnalyticsDataError."""
         error = np.array([10.0, 20.0, 30.0])
         with pytest.raises(ElisaAnalyticsDataError) as context:
             convert_flux_error(error, u.mmag)
-        assert ("zero point") in (str(context.value).lower())
+        assert "zero point" in str(context.value).lower()
 
     def test_convert_flux_error_mag_with_zero_point(self) -> None:
         """Test conversion from magnitude errors to flux errors."""
         error = np.array([0.05])
         result = convert_flux_error(error, u.mag, zero_point=0.0, flux=np.array([0.4]))
         # Error should be positive and converted properly
-        assert (result[0]) > (0)
+        assert result[0] > 0
 
     def test_convert_flux_error_mmag_with_zero_point(self) -> None:
         """Test conversion from millimagnitude errors to flux errors."""
@@ -143,17 +143,17 @@ class ConvertUnitTestCase(ElisaTestCase):
     def test_convert_unit_dimensionless_unchanged(self) -> None:
         """Test that dimensionless unit is returned unchanged."""
         result = convert_unit(u.dimensionless_unscaled, u.mag)
-        assert (result) == (u.dimensionless_unscaled)
+        assert result == u.dimensionless_unscaled
 
     def test_convert_unit_to_new_unit(self) -> None:
         """Test that non-dimensionless units are converted."""
         result = convert_unit(u.km / u.s, u.m / u.s)
-        assert (result) == (u.m / u.s)
+        assert result == u.m / u.s
 
     def test_convert_unit_same_unit(self) -> None:
         """Test conversion with same unit."""
         result = convert_unit(u.mag, u.mag)
-        assert (result) == (u.mag)
+        assert result == u.mag
 
 
 class CentralMovingAverageTestCase(ElisaTestCase):
@@ -183,9 +183,9 @@ class CentralMovingAverageTestCase(ElisaTestCase):
         central_moving_average(lc_data, n_bins=20, radius=1)
 
         # Output should have fewer points (binned)
-        assert (len(lc_data.x_data)) < (original_length)
-        assert (len(lc_data.y_data)) == (len(lc_data.x_data))
-        assert (len(lc_data.y_err)) == (len(lc_data.x_data))
+        assert len(lc_data.x_data) < original_length
+        assert len(lc_data.y_data) == len(lc_data.x_data)
+        assert len(lc_data.y_err) == len(lc_data.x_data)
 
     def test_central_moving_average_with_errors(self) -> None:
         """Test averaging with error weighting."""
@@ -220,9 +220,9 @@ class CentralMovingAverageTestCase(ElisaTestCase):
         central_moving_average(lc_data, n_bins=15, radius=1, cyclic_boundaries=True)
 
         # Check that output has expected length
-        assert (len(lc_data.x_data)) <= (15)
-        assert (len(lc_data.y_data)) == (len(lc_data.x_data))
-        assert (lc_data.y_err) is None
+        assert len(lc_data.x_data) <= 15
+        assert len(lc_data.y_data) == len(lc_data.x_data)
+        assert lc_data.y_err is None
 
     def test_central_moving_average_non_cyclic(self) -> None:
         """Test averaging with non-cyclic boundaries."""
@@ -239,8 +239,8 @@ class CentralMovingAverageTestCase(ElisaTestCase):
         central_moving_average(lc_data, n_bins=20, radius=2, cyclic_boundaries=False)
 
         # Check that averaging was performed
-        assert (len(lc_data.x_data)) > (0)
-        assert (len(lc_data.y_data)) == (len(lc_data.x_data))
+        assert len(lc_data.x_data) > 0
+        assert len(lc_data.y_data) == len(lc_data.x_data)
 
     def test_central_moving_average_output_phase_range(self) -> None:
         """Test that output phases are within expected range."""
@@ -257,8 +257,8 @@ class CentralMovingAverageTestCase(ElisaTestCase):
         central_moving_average(lc_data, n_bins=10, radius=1, cyclic_boundaries=True)
 
         # Output phases should be within original range
-        assert (np.min(lc_data.x_data)) >= (np.min(self.phases))
-        assert (np.max(lc_data.x_data)) <= (np.max(self.phases))
+        assert np.min(lc_data.x_data) >= np.min(self.phases)
+        assert np.max(lc_data.x_data) <= np.max(self.phases)
 
 
 class LVDataTestCase(DataTestCase):
@@ -268,8 +268,8 @@ class LVDataTestCase(DataTestCase):
         y_unit = u.km / u.s
         rv_data = RVData.from_file(fpath, x_unit, y_unit=y_unit)
 
-        assert (rv_data.y_unit) == (u.m / u.s)
-        assert (rv_data.x_unit) == (u.dimensionless_unscaled)
+        assert rv_data.y_unit == u.m / u.s
+        assert rv_data.x_unit == u.dimensionless_unscaled
 
         assert_array_equal(rv_data.x_data, np.arange(0, 5, 1))
         assert_array_equal(rv_data.y_data, [100] * 5)
@@ -282,8 +282,8 @@ class RVDataTestCase(DataTestCase):
         y_unit = u.dimensionless_unscaled
         lc_data = LCData.from_file(fpath, x_unit, y_unit=y_unit)
 
-        assert (lc_data.y_unit) == (u.dimensionless_unscaled)
-        assert (lc_data.x_unit) == (u.dimensionless_unscaled)
+        assert lc_data.y_unit == u.dimensionless_unscaled
+        assert lc_data.x_unit == u.dimensionless_unscaled
 
         assert_array_equal(lc_data.x_data, np.arange(0, 5, 1))
         assert_array_equal(lc_data.y_data, [0.1] * 5)

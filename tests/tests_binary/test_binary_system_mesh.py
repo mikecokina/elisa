@@ -88,7 +88,7 @@ class BuildMeshSpotsFreeTestCase(ElisaTestCase):
                             if dist <= 1e-10:
                                 print(f"Match: {point}, {i}, {j}")
                                 bad_points.append(point)
-                assert not (distance < 1e-10)
+                assert not distance < 1e-10
 
     def test_outliers(self) -> None:
         """Checking if the spacing between vertices is beyond reasonable limits."""
@@ -119,8 +119,8 @@ class BuildMeshSpotsFreeTestCase(ElisaTestCase):
 
             p_triangle_size = primary.equivalent_radius * np.sin(s.primary.discretization_factor)
             s_triangle_size = secondary.equivalent_radius * np.sin(s.secondary.discretization_factor)
-            assert (3 * p_triangle_size) > (distances_p.max())
-            assert (3 * s_triangle_size) > (distances_s.max())
+            assert 3 * p_triangle_size > distances_p.max()
+            assert 3 * s_triangle_size > distances_s.max()
 
 
 class BuildSpottyMeshTestCase(ElisaTestCase):
@@ -240,7 +240,7 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
                                 print(f"Match: {point}, {i}, {j}")
                                 bad_points.append(point)
 
-                assert not (distance < 1e-10)
+                assert not distance < 1e-10
 
                 spot_distance = round(find_nearest_dist_3d(list(component_instance.spots[0].points)), 10)
 
@@ -253,7 +253,7 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
                                 print(f"Match: {point}, {i}, {j}")
                                 bad_points.append(point)
 
-                assert not (spot_distance < 1e-10)
+                assert not spot_distance < 1e-10
 
     def test_outliers(self) -> None:
         """Checking if the spacing between vertices is beyond reasonable limits."""
@@ -289,8 +289,8 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
 
             p_triangle_size = primary.equivalent_radius * np.sin(s.primary.discretization_factor)
             s_triangle_size = secondary.equivalent_radius * np.sin(s.secondary.discretization_factor)
-            assert (4 * p_triangle_size) > (distances_p.max())
-            assert (4 * s_triangle_size) > (distances_s.max())
+            assert 4 * p_triangle_size > distances_p.max()
+            assert 4 * s_triangle_size > distances_s.max()
 
 
 class MeshUtilsTestCase(ElisaTestCase):

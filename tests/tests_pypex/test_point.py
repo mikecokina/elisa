@@ -33,7 +33,7 @@ class LineSideTestCase(ElisaTestCase):
         a = np.array([0, 0])
         b = np.array([1, 0])
         result = point._line_side(p1, p2, a, b)
-        assert (result) > (0)
+        assert result > 0
 
     def test_line_side_opposite_sides(self) -> None:
         """Test points on opposite sides of line."""
@@ -42,7 +42,7 @@ class LineSideTestCase(ElisaTestCase):
         a = np.array([0, 0])
         b = np.array([1, 0])
         result = point._line_side(p1, p2, a, b)
-        assert (result) < (0)
+        assert result < 0
 
     def test_line_side_with_lists(self) -> None:
         """Test _line_side accepts list inputs."""
@@ -51,7 +51,7 @@ class LineSideTestCase(ElisaTestCase):
         a = [0, 0]
         b = [1, 0]
         result = point._line_side(p1, p2, a, b)
-        assert (result) > (0)
+        assert result > 0
 
 
 class SameSideTestCase(ElisaTestCase):
@@ -71,7 +71,7 @@ class SameSideTestCase(ElisaTestCase):
         p2 = np.array([0, -1])
         a = np.array([0, 0])
         b = np.array([1, 0])
-        assert not (point.same_side(p1, p2, a, b))
+        assert not point.same_side(p1, p2, a, b)
 
     def test_same_side_with_lists(self) -> None:
         """Test same_side accepts list inputs."""
@@ -115,8 +115,8 @@ class LineSideCompatibilityTestCase(ElisaTestCase):
                                 args = (first, second, a, b)
                                 if as_list:
                                     args = tuple(value.tolist() for value in args)
-                                assert (point._line_side(*args)) == (expected)
-                                assert (point.same_side(*args)) == (expected >= 0)
+                                assert point._line_side(*args) == expected
+                                assert point.same_side(*args) == (expected >= 0)
 
 
 class BaseTestCase(ElisaTestCase):
@@ -132,20 +132,20 @@ class BaseTestCase(ElisaTestCase):
         poly = Polygon([[-1, -1], [1, 0], [1, 1], [0.5, 1.9], [1, 1]])
         p = point.Point(x=-10, y=10)
         obtained = point.is_point_in_polygon(p, poly)
-        assert not (obtained)
+        assert not obtained
 
     def test_is_point_in_polygon_onedge(self) -> None:
         poly = Polygon([[0, 0], [1, 0], [1, 1]])
         p = point.Point(x=0.5, y=0)
         obtained = point.is_point_in_polygon(p, poly)
-        assert not (obtained)
+        assert not obtained
 
     def test_is_point_in_polygon_at_vertex(self) -> None:
         """Test point at polygon vertex."""
         poly = Polygon([[0, 0], [1, 0], [1, 1], [0, 1]])
         p = point.Point(x=0, y=0)
         obtained = point.is_point_in_polygon(p, poly)
-        assert not (obtained)
+        assert not obtained
 
     def test_is_point_in_polygon_invalid_polygon(self) -> None:
         """Test with invalid polygon (less than 3 points)."""
@@ -161,20 +161,20 @@ class PointInitTestCase(ElisaTestCase):
     def test_point_init(self) -> None:
         """Test Point initialization."""
         p = point.Point(1.5, 2.5)
-        assert (p.x) == (1.5)
-        assert (p.y) == (2.5)
+        assert p.x == 1.5
+        assert p.y == 2.5
 
     def test_point_init_integers(self) -> None:
         """Test Point initialization with integers."""
         p = point.Point(1, 2)
-        assert (p.x) == (1)
-        assert (p.y) == (2)
+        assert p.x == 1
+        assert p.y == 2
 
     def test_point_init_negative(self) -> None:
         """Test Point initialization with negative values."""
         p = point.Point(-1.5, -2.5)
-        assert (p.x) == (-1.5)
-        assert (p.y) == (-2.5)
+        assert p.x == -1.5
+        assert p.y == -2.5
 
 
 class PointStringRepresentationTestCase(ElisaTestCase):
@@ -183,22 +183,22 @@ class PointStringRepresentationTestCase(ElisaTestCase):
     def test_point_str(self) -> None:
         """Test Point __str__ method."""
         p = point.Point(1.5, 2.5)
-        assert (str(p)) == ("Point [1.5, 2.5]")
+        assert str(p) == "Point [1.5, 2.5]"
 
     def test_point_repr(self) -> None:
         """Test Point __repr__ method."""
         p = point.Point(1.5, 2.5)
-        assert (repr(p)) == ("Point [1.5, 2.5]")
+        assert repr(p) == "Point [1.5, 2.5]"
 
     def test_point_str_with_integers(self) -> None:
         """Test Point __str__ with integer coordinates."""
         p = point.Point(1, 2)
-        assert (str(p)) == ("Point [1, 2]")
+        assert str(p) == "Point [1, 2]"
 
     def test_point_str_with_negative(self) -> None:
         """Test Point __str__ with negative coordinates."""
         p = point.Point(-1.5, -2.5)
-        assert (str(p)) == ("Point [-1.5, -2.5]")
+        assert str(p) == "Point [-1.5, -2.5]"
 
 
 class PointEqualityTestCase(ElisaTestCase):
@@ -208,26 +208,26 @@ class PointEqualityTestCase(ElisaTestCase):
         """Test equality of two identical points."""
         p1 = point.Point(1.5, 2.5)
         p2 = point.Point(1.5, 2.5)
-        assert (p1) == (p2)
+        assert p1 == p2
 
     def test_point_equality_false(self) -> None:
         """Test inequality of two different points."""
         p1 = point.Point(1.5, 2.5)
         p2 = point.Point(1.5, 2.6)
-        assert (p1) != (p2)
+        assert p1 != p2
 
     def test_point_hash_same_points(self) -> None:
         """Test hash of identical points."""
         p1 = point.Point(1.5, 2.5)
         p2 = point.Point(1.5, 2.5)
-        assert (hash(p1)) == (hash(p2))
+        assert hash(p1) == hash(p2)
 
     def test_point_hash_different_points(self) -> None:
         """Test hash of different points."""
         p1 = point.Point(1.5, 2.5)
         p2 = point.Point(1.5, 2.6)
         # Different points should (likely) have different hashes
-        assert (hash(p1)) != (hash(p2))
+        assert hash(p1) != hash(p2)
 
     def test_point_hashable_in_set(self) -> None:
         """Test that Point can be used in sets."""
@@ -235,7 +235,7 @@ class PointEqualityTestCase(ElisaTestCase):
         p2 = point.Point(1.5, 2.5)
         p3 = point.Point(2.5, 3.5)
         point_set = {p1, p2, p3}
-        assert (len(point_set)) == (2)
+        assert len(point_set) == 2
 
     def test_point_hashable_in_dict(self) -> None:
         """Test that Point can be used as dict key."""
@@ -243,8 +243,8 @@ class PointEqualityTestCase(ElisaTestCase):
         p2 = point.Point(1.5, 2.5)
         point_dict = {p1: "first"}
         point_dict[p2] = "second"
-        assert (len(point_dict)) == (1)
-        assert (point_dict[p1]) == ("second")
+        assert len(point_dict) == 1
+        assert point_dict[p1] == "second"
 
 
 class PointArithmeticTestCase(ElisaTestCase):
@@ -255,8 +255,8 @@ class PointArithmeticTestCase(ElisaTestCase):
         p1 = point.Point(1.5, 2.5)
         p2 = point.Point(0.5, 0.5)
         result = p1 + p2
-        assert (result.x) == (2.0)
-        assert (result.y) == (3.0)
+        assert result.x == 2.0
+        assert result.y == 3.0
         assert isinstance(result, point.Point)
 
     def test_point_add_negative(self) -> None:
@@ -264,24 +264,24 @@ class PointArithmeticTestCase(ElisaTestCase):
         p1 = point.Point(1.5, 2.5)
         p2 = point.Point(-0.5, -0.5)
         result = p1 + p2
-        assert (result.x) == (1.0)
-        assert (result.y) == (2.0)
+        assert result.x == 1.0
+        assert result.y == 2.0
 
     def test_point_add_integers(self) -> None:
         """Test Point addition with integer coordinates."""
         p1 = point.Point(1, 2)
         p2 = point.Point(3, 4)
         result = p1 + p2
-        assert (result.x) == (4)
-        assert (result.y) == (6)
+        assert result.x == 4
+        assert result.y == 6
 
     def test_point_subtract(self) -> None:
         """Test Point subtraction."""
         p1 = point.Point(1.5, 2.5)
         p2 = point.Point(0.5, 0.5)
         result = p1 - p2
-        assert (result.x) == (1.0)
-        assert (result.y) == (2.0)
+        assert result.x == 1.0
+        assert result.y == 2.0
         assert isinstance(result, point.Point)
 
     def test_point_subtract_negative(self) -> None:
@@ -289,16 +289,16 @@ class PointArithmeticTestCase(ElisaTestCase):
         p1 = point.Point(1.5, 2.5)
         p2 = point.Point(-0.5, -0.5)
         result = p1 - p2
-        assert (result.x) == (2.0)
-        assert (result.y) == (3.0)
+        assert result.x == 2.0
+        assert result.y == 3.0
 
     def test_point_subtract_to_negative(self) -> None:
         """Test Point subtraction resulting in negative values."""
         p1 = point.Point(0.5, 0.5)
         p2 = point.Point(1.5, 2.5)
         result = p1 - p2
-        assert (result.x) == (-1.0)
-        assert (result.y) == (-2.0)
+        assert result.x == -1.0
+        assert result.y == -2.0
 
 
 class PointConversionTestCase(ElisaTestCase):
@@ -308,20 +308,20 @@ class PointConversionTestCase(ElisaTestCase):
         """Test Point to_list method."""
         p = point.Point(1.5, 2.5)
         result = p.to_list()
-        assert (result) == ([1.5, 2.5])
+        assert result == [1.5, 2.5]
         assert isinstance(result, list)
 
     def test_point_to_list_integers(self) -> None:
         """Test Point to_list with integer coordinates."""
         p = point.Point(1, 2)
         result = p.to_list()
-        assert (result) == ([1, 2])
+        assert result == [1, 2]
 
     def test_point_to_list_negative(self) -> None:
         """Test Point to_list with negative coordinates."""
         p = point.Point(-1.5, -2.5)
         result = p.to_list()
-        assert (result) == ([-1.5, -2.5])
+        assert result == [-1.5, -2.5]
 
     def test_point_to_array(self) -> None:
         """Test Point to_array method."""
@@ -357,12 +357,12 @@ class PointTestCase(ElisaTestCase):
         """Test point is not inside polygon."""
         poly = Polygon([[0, 0], [1, 0], [1, 1], [0, 1]])
         p = point.Point(x=2.0, y=2.0)
-        assert not (p.is_inside_polygon(poly))
+        assert not p.is_inside_polygon(poly)
 
     def test_set(self) -> None:
         points = [point.Point(0.1, 0.1), point.Point(0.1, 0.1)]
         points_set = point.Point.set(points)
-        assert (points_set) == ([point.Point(0.1, 0.1)])
+        assert points_set == [point.Point(0.1, 0.1)]
 
         points = [point.Point(-2, -2), point.Point(-1, -1)]
         points_set = point.Point.set(points)
@@ -382,29 +382,29 @@ class PointTestCase(ElisaTestCase):
         """Test set with multiple duplicates."""
         points = [point.Point(1.0, 1.0), point.Point(1.0, 1.0), point.Point(1.0, 1.0)]
         points_set = point.Point.set(points)
-        assert (len(points_set)) == (1)
+        assert len(points_set) == 1
 
     def test_set_all_unique(self) -> None:
         """Test set with all unique points."""
         points = [point.Point(1.0, 1.0), point.Point(2.0, 2.0), point.Point(3.0, 3.0)]
         points_set = point.Point.set(points)
-        assert (len(points_set)) == (3)
+        assert len(points_set) == 3
 
     def test_set_empty(self) -> None:
         """Test set with empty list."""
         points = []
         points_set = point.Point.set(points)
-        assert (len(points_set)) == (0)
+        assert len(points_set) == 0
 
     def test_set_single_point(self) -> None:
         """Test set with single point."""
         points = [point.Point(1.5, 2.5)]
         points_set = point.Point.set(points)
-        assert (len(points_set)) == (1)
-        assert (points_set[0]) == (point.Point(1.5, 2.5))
+        assert len(points_set) == 1
+        assert points_set[0] == point.Point(1.5, 2.5)
 
     def test_set_with_numpy_array(self) -> None:
         """Test set with numpy array input."""
         points = np.array([point.Point(0.5, 0.5), point.Point(0.5, 0.5)], dtype=object)
         points_set = point.Point.set(points)
-        assert (len(points_set)) == (1)
+        assert len(points_set) == 1

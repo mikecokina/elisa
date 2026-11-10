@@ -165,7 +165,7 @@ class ParallelDistanceRegressionTestCase(ElisaTestCase):
     ) -> None:
         result = linter.intersections(line1, line2, tol=tol)
         assert isinstance(result, tuple)
-        assert (len(result)) == (6)
+        assert len(result) == 6
         status, segment, points, distances, messages, indices = result
         collinear = expected_distance < tol
         assert_array_equal(status, np.full(4, collinear))
@@ -173,20 +173,20 @@ class ParallelDistanceRegressionTestCase(ElisaTestCase):
         assert_array_equal(points, np.full((4, 2), np.nan))
         np.testing.assert_allclose(distances, expected_distance, rtol=rtol, atol=atol)
         assert_array_equal(messages, np.full(4, b"COLINEAR" if collinear else b"PARALLEL"))
-        assert (status.dtype) == (np.dtype(bool))
-        assert (segment.dtype) == (np.dtype(bool))
-        assert (messages.dtype) == (np.dtype("S9"))
+        assert status.dtype == np.dtype(bool)
+        assert segment.dtype == np.dtype(bool)
+        assert messages.dtype == np.dtype("S9")
         assert_array_equal(indices, [[0, 1, 0, 1], [0, 1, 1, 0], [1, 0, 0, 1], [1, 0, 1, 0]])
         # Two-vertex hulls include both edge orientations. Check every mapped pair.
         for i, (a, b, c, d) in enumerate(indices.astype(int)):
             scalar = linter.intersection(line1[a], line1[b], line2[c], line2[d], tol=tol)
             assert isinstance(scalar, tuple)
-            assert (len(scalar)) == (5)
-            assert (scalar[:2]) == ((bool(status[i]), bool(segment[i])))
+            assert len(scalar) == 5
+            assert scalar[:2] == (bool(status[i]), bool(segment[i]))
             assert np.isnan(scalar[2])
             np.testing.assert_allclose(scalar[3], expected_distance, rtol=rtol, atol=atol)
             np.testing.assert_allclose(distances[i], scalar[3], rtol=rtol, atol=atol)
-            assert (scalar[4]) == (messages[i].decode())
+            assert scalar[4] == messages[i].decode()
 
     def test_parallel_distance_scales(self) -> None:
         for direction, offset in [((4, 0), (0, 3)), ((0, 4), (3, 0)), ((3, 4), (0, 5))]:
@@ -233,7 +233,7 @@ class ParallelDistanceRegressionTestCase(ElisaTestCase):
                         assert_array_equal(result[4], np.full(4, b"INTERSECT"))
                         for i, (p, q, r, s) in enumerate(result[5].astype(int)):
                             scalar = linter.intersection(a[p], a[q], b[r], b[s], touch_is_separated=touch_is_separated)
-                            assert (scalar[:2]) == ((True, expected))
+                            assert scalar[:2] == (True, expected)
                             np.testing.assert_allclose([scalar[2].x, scalar[2].y], result[2][i])
                             assert np.isnan(scalar[3])
-                            assert (scalar[4]) == ("INTERSECT")
+                            assert scalar[4] == "INTERSECT"

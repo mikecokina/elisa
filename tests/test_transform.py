@@ -107,7 +107,7 @@ class TransformBinarySystemPropertiesTestCase(ElisaTestCase):
         """Test eccentricity at boundary values."""
         # Test at lower boundary (0.0)
         result = BinarySystemProperties.eccentricity(0.0)
-        assert (result) == (0.0)
+        assert result == 0.0
 
         # Test near upper boundary (just below 1.0)
         result = BinarySystemProperties.eccentricity(0.9999)
@@ -137,7 +137,7 @@ class TransformBinarySystemPropertiesTestCase(ElisaTestCase):
         test_values = [0.0, 0.5, 1.0, -0.5, 10.5]
         for val in test_values:
             result = BinarySystemProperties.phase_shift(val)
-            assert (float(result)) == (float(val))
+            assert float(result) == float(val)
 
     def test_primary_minimum_time_with_various_units(self) -> None:
         """Test primary_minimum_time with different unit representations."""

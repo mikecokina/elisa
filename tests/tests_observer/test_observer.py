@@ -52,10 +52,10 @@ class TestPassbandContainer(ElisaTestCase):
         assert_frame_equal(self._bessel_v_df, self.pb.table)
 
     def test_default_wave_unit(self) -> None:
-        assert (self.pb.wave_unit) == ("angstrom")
+        assert self.pb.wave_unit == "angstrom"
 
     def test_default_wave_to_si_mult(self) -> None:
-        assert (self.pb.wave_to_si_mult) == (1e-10)
+        assert self.pb.wave_to_si_mult == 1e-10
 
     def test_bolometric_bandwidth(self) -> None:
         df = pd.DataFrame(
@@ -114,7 +114,7 @@ class TestObserver(ElisaTestCase):
     def test__systemc_cls(self) -> None:
         s = BinarySystemMock()
         o = Observer(self._passband, s)
-        assert (o._system_cls) == (BinarySystemMock)
+        assert o._system_cls == BinarySystemMock
 
     def test_get_passband_df(self) -> None:
         obtained = PassbandContainer.get_passband_df(self._passband)
@@ -149,7 +149,7 @@ class TestObserver(ElisaTestCase):
         s = BinarySystemMock()
         o_str = Observer(self._passband, s)
         o_lst = Observer([self._passband], s)
-        assert (len(o_str.passband)) == (len(o_lst.passband))
+        assert len(o_str.passband) == len(o_lst.passband)
 
     def test_BinarySystem_phase_interval_reduce_has_no_pulsation(self) -> None:
         s = BinarySystemMock(pp=False, sp=False)
@@ -269,17 +269,17 @@ class TestObserver(ElisaTestCase):
         """Test Observer.system_cls property getter and setter."""
         s = BinarySystemMock()
         o = Observer(self._passband, s)
-        assert (o.system_cls) == (BinarySystemMock)
+        assert o.system_cls == BinarySystemMock
         o.system_cls = SingleSystemMock
-        assert (o.system_cls) == (SingleSystemMock)
+        assert o.system_cls == SingleSystemMock
 
     def test_flux_unit_property(self) -> None:
         """Test Observer.flux_unit property getter and setter."""
         s = BinarySystemMock()
         o = Observer(self._passband, s)
-        assert (o.flux_unit) == (o._flux_unit)
+        assert o.flux_unit == o._flux_unit
         o.flux_unit = "W/m2"
-        assert (str(o.flux_unit)) == ("W / m2")
+        assert str(o.flux_unit) == "W / m2"
 
     def test_lc_invalid_flux_unit(self) -> None:
         """Test Observer.lc raises ValueError for invalid flux_unit."""
@@ -293,8 +293,8 @@ class TestObserver(ElisaTestCase):
         """Test Observer.plot and Observer.observe attributes exist and are correct type."""
         s = BinarySystemMock()
         o = Observer(self._passband, s)
-        assert (o.plot) is not None
-        assert (o.observe) is not None
+        assert o.plot is not None
+        assert o.observe is not None
         assert isinstance(o.plot, Plot)
         assert hasattr(o.observe, "lc")
         assert hasattr(o.observe, "rv")
@@ -309,7 +309,7 @@ class TestObserver(ElisaTestCase):
         # Time domain
         times = np.arange(0.0, 1.0, 0.1)
         phases_time = o.manage_time_series(from_time=0.0, to_time=1.0, time_step=0.1, times=times)
-        assert (len(phases_time)) == (len(times))
+        assert len(phases_time) == len(times)
         # Error: both phase and time domain
         with pytest.raises(ElisaOperationInputError):
             o.manage_time_series(

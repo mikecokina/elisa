@@ -45,7 +45,7 @@ class OrbitalSupplementsTestCase(ElisaTestCase):
         assert OrbitalSupplements.is_empty(arr)
 
         arr = [[6, 10], [np.nan, np.nan]]
-        assert not (OrbitalSupplements.is_empty(arr))
+        assert not OrbitalSupplements.is_empty(arr)
 
     def test_not_empty(self) -> None:
         arr = np.array([[10, 10], [np.nan, np.nan], [20, 12], [np.nan, np.nan]])

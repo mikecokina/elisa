@@ -124,7 +124,7 @@ class TestLimbDarkeningModule(ElisaTestCase):
     def _raise_test_limb_darkening_factor(self, exception_type: type[Exception], msg: str, **kwargs) -> None:
         with pytest.raises(exception_type) as context:
             ld.limb_darkening_factor(**kwargs)
-        assert (msg) in (str(context.value))
+        assert msg in str(context.value)
 
     def test_limb_darkening_factor_raise(self) -> None:
         normals = np.array([[1, 1, 1], [0.5, 0.5, 0.5], [-1.0, -1, 1.3]])
@@ -935,3 +935,31 @@ def test_unsupported_factor_law_is_internal_contract_failure(integrated: bool, l
                 cos_theta=np.ones(2),
                 limb_darkening_law=law,
             )
+
+
+@pytest.mark.usefixtures("ld_sources")
+def test_law_override_round_trip_matches_uncached_griddata() -> None:
+    star = SimpleNamespace(
+        temperatures=np.array([5523.123456789]),
+        log_g=np.array([1.456789123]),
+        metallicity=0.0,
+        limb_darkening_coefficients=None,
+    )
+
+    def evaluate() -> dict[str, NDArray[np.float64]]:
+        result = curve_utils.get_component_limbdarkening_cfs(star, ["bolometric"], symmetry_test=False)
+        points, values = legacy_source("bolometric", 0.0)
+        expected = griddata(points, values, np.column_stack((star.temperatures, star.log_g + 2)), method="linear")
+        assert_array_equal(result["bolometric"], expected)
+        return result
+
+    with settings.override(LIMB_DARKENING_LAW="cosine"):
+        original = evaluate()
+        with settings.override(LIMB_DARKENING_LAW="logarithmic"):
+            changed = evaluate()
+            assert changed["bolometric"].shape == (1, 2)
+        restored = evaluate()
+        assert_array_equal(original["bolometric"], restored["bolometric"])
+        assert changed["bolometric"].shape == (1, 2)
+    info = curve_utils.interpolate_on_ld_grid_cached.cache_info()
+    assert (info.hits, info.misses, info.currsize) == (1, 2, 2)

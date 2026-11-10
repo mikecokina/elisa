@@ -69,7 +69,7 @@ class PlotTestCase(ElisaTestCase):
         p = Plot(single)
 
         fig_eq = p.equipotential(axis_unit=u.solRad, return_figure_instance=True)
-        assert (fig_eq) is not None
+        assert fig_eq is not None
 
     def test_mesh_returns_figure(self) -> None:
         """Ensure `mesh` returns a figure instance.
@@ -83,7 +83,7 @@ class PlotTestCase(ElisaTestCase):
         p = Plot(single)
 
         fig_mesh = p.mesh(phase=0.0, plot_axis=False, axis_unit=u.solRad, return_figure_instance=True)
-        assert (fig_mesh) is not None
+        assert fig_mesh is not None
 
     def test_wireframe_returns_figure(self) -> None:
         """Ensure `wireframe` returns a figure instance.
@@ -97,4 +97,4 @@ class PlotTestCase(ElisaTestCase):
         p = Plot(single)
 
         fig_wire = p.wireframe(phase=0.0, plot_axis=False, axis_unit=u.solRad, return_figure_instance=True)
-        assert (fig_wire) is not None
+        assert fig_wire is not None

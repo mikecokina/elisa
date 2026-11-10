@@ -57,7 +57,7 @@ class TestOrbitHelpers(ElisaTestCase):
         """Sanity test for angular_velocity (static expected value check)."""
         expected = 7.349e-05
         obtained = round(bin_orbit.angular_velocity(1.25, 0.3, 0.869), 8)
-        assert (expected) == (obtained)
+        assert expected == obtained
 
     def test_create_orb_vel_vectors_basic(self) -> None:
         """Verify returned vectors have expected shapes and symmetry using a small mock system."""
@@ -87,8 +87,8 @@ class TestOrbitHelpers(ElisaTestCase):
         primary = vectors["primary"]
         secondary = vectors["secondary"]
 
-        assert (primary.shape) == ((3,))
-        assert (secondary.shape) == ((3,))
+        assert primary.shape == (3,)
+        assert secondary.shape == (3,)
 
         # center-of-mass frame: primary + secondary should be approximately zero
         assert_allclose(primary + secondary, np.zeros(3))
@@ -111,14 +111,14 @@ class TestSingleSystemOrbit(ElisaTestCase):
         # scalar
         out = self.orbit.rotational_motion(0.0)
         # expect shape (1,3)
-        assert (out.shape) == ((1, 3))
+        assert out.shape == (1, 3)
         assert_allclose(out[0, 0], single_orbit.true_phase_to_azimuth(0.0))
         assert_allclose(out[0, 2], 0.0)
 
         # array
         phases = np.array([0.0, 0.25, 0.5])
         out2 = self.orbit.rotational_motion(phases)
-        assert (out2.shape) == ((3, 3))
+        assert out2.shape == (3, 3)
         assert_allclose(out2[:, 0], single_orbit.true_phase_to_azimuth(phases))
         assert_allclose(out2[:, 2], phases)
 
@@ -126,7 +126,7 @@ class TestSingleSystemOrbit(ElisaTestCase):
         """Verify azimuth -> phase mapping is consistent with azimuth_to_true_phase."""
         az = np.array([0.0, 1.0, 2.0])
         out = self.orbit.rotational_motion_from_azimuths(az)
-        assert (out.shape) == ((3, 3))
+        assert out.shape == (3, 3)
         assert_allclose(out[:, 0], az)
         assert_allclose(out[:, 2], single_orbit.azimuth_to_true_phase(az))
 

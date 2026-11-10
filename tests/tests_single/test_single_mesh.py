@@ -45,7 +45,7 @@ class BuildMeshSpotsFreeTestCase(ElisaTestCase):
                             print(f"Match: {point}, {i}, {j}")
                             bad_points.append(point)
 
-            assert not (distance < 1e-10)
+            assert not distance < 1e-10
 
 
 class BuildSpottyMeshTestCase(ElisaTestCase):

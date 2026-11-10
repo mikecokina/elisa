@@ -350,6 +350,7 @@ def test_sampling_enum_defaults_serialization_and_invalid_strategy() -> None:
     assert inspect.signature(mcmc.LightCurveFit.fit).parameters["samples"].default is SamplingMethod.UNIFORM
     assert json.dumps(SamplingMethod.ADAPTIVE) == '"adaptive"'
     assert str(SamplingMethod.UNIFORM) == "uniform"
-    assert pickle.loads(pickle.dumps(SamplingMethod.ADAPTIVE)) is SamplingMethod.ADAPTIVE
+    restored = pickle.loads(pickle.dumps(SamplingMethod.ADAPTIVE))  # noqa: S301 - Payload created in this test.
+    assert restored is SamplingMethod.ADAPTIVE
     with pytest.raises(ElisaAnalyticsTaskError, match=r"SamplingMethod.UNIFORM"):
         prepare_lc_fits({V: LC_PHASES}, 4, samples="unknown")

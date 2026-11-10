@@ -25,13 +25,13 @@ class Shape2DTestCase(ElisaTestCase):
     def test_sat_intersection_negative_case(self) -> None:
         # not intersection example:
         faces = [[[0.0, 0.5], [1.0, 0.5], [0.0, 1.0]], [[0.0, 0.0], [1.0, 0.4], [0.0, -0.7]]]
-        assert not (intersects(faces[0], faces[1], touch_is_separated=False))
-        assert not (intersects(faces[0], faces[1], touch_is_separated=True))
+        assert not intersects(faces[0], faces[1], touch_is_separated=False)
+        assert not intersects(faces[0], faces[1], touch_is_separated=True)
 
         # not intersection example:
         faces = [[[0.0, 0.5], [1.0, 0.5], [0.0, 1.0]], [[0.0, 0.0], [1.0, 0.3], [0.0, 0.3]]]
-        assert not (intersects(faces[0], faces[1], touch_is_separated=False))
-        assert not (intersects(faces[0], faces[1], touch_is_separated=True))
+        assert not intersects(faces[0], faces[1], touch_is_separated=False)
+        assert not intersects(faces[0], faces[1], touch_is_separated=True)
 
     def test_sat_intersection_positive_case(self) -> None:
         faces = [[[0.0, 0.5], [1.0, 0.5], [0.0, 1.0]], [[0.0, 2.0], [1.0, 0.5], [0.0, 0.5]]]
@@ -52,13 +52,13 @@ class Shape2DTestCase(ElisaTestCase):
 
     def test_sat_intersection_onedge_case(self) -> None:
         faces = [[[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]], [[-1.0, 1.0], [0.0, 1.0], [0.0, 0.0]]]
-        assert not (intersects(faces[0], faces[1], touch_is_separated=True))
+        assert not intersects(faces[0], faces[1], touch_is_separated=True)
         assert intersects(faces[0], faces[1], touch_is_separated=False)
 
     def test_sat_intersection_touch_case(self) -> None:
         faces = [[[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]], [[0.0, 0.0], [-0.1, -0.5], [-0.5, -0.5]]]
 
-        assert not (intersects(faces[0], faces[1], touch_is_separated=True))
+        assert not intersects(faces[0], faces[1], touch_is_separated=True)
         assert intersects(faces[0], faces[1], touch_is_separated=False)
 
     def test_line_sat_intersect(self) -> None:
@@ -70,33 +70,33 @@ class Shape2DTestCase(ElisaTestCase):
         line1 = np.array([[-1.0, -1.0], [0.3, 0.3]])
         line2 = np.array([[0.3, 0.3], [1.3, 1.3]])
         assert intersects(line1, line2, touch_is_separated=False)
-        assert not (intersects(line1, line2, touch_is_separated=True))
+        assert not intersects(line1, line2, touch_is_separated=True)
 
         line1 = np.array([[1.0, 1.0], [1.0, 2.0]])
         line2 = np.array([[1.0, 2.0], [1.0, 13.0]])
         assert intersects(line1, line2, touch_is_separated=False)
-        assert not (intersects(line1, line2, touch_is_separated=True))
+        assert not intersects(line1, line2, touch_is_separated=True)
 
         line1 = np.array([[1.0, 1.0], [3.1, 1.0]])
         line2 = np.array([[3.2, 1.0], [5.0, 1.0]])
-        assert not (intersects(line1, line2, touch_is_separated=False))
-        assert not (intersects(line1, line2, touch_is_separated=True))
+        assert not intersects(line1, line2, touch_is_separated=False)
+        assert not intersects(line1, line2, touch_is_separated=True)
 
 
 class Line2DTestCase(ElisaTestCase):
     def test_intersects_negative(self) -> None:
         line1 = Line(np.array([[0, 0], [1, 0]]))
         line2 = Line(np.array([[2, 0], [4, 0]]))
-        assert not (line1.intersects(line2))
+        assert not line1.intersects(line2)
 
         line1 = Line(np.array([[0, 0], [1, 0]]))
         line2 = Line(np.array([[1, 0], [4, 0]]))
-        assert not (line1.intersects(line2, touch_is_separated=False))
-        assert not (line1.intersects(line2, touch_is_separated=True))
+        assert not line1.intersects(line2, touch_is_separated=False)
+        assert not line1.intersects(line2, touch_is_separated=True)
 
         line1 = Line(np.array([[0, 0], [1, 0]]))
         line2 = Line(np.array([[1, 0], [4, 1]]))
-        assert not (line1.intersects(line2, touch_is_separated=True))
+        assert not line1.intersects(line2, touch_is_separated=True)
 
     def test_intersects_positive(self) -> None:
         line1 = Line(np.array([[0, 0], [1, 0]]))
@@ -124,19 +124,19 @@ class Line2DTestCase(ElisaTestCase):
         line1 = Line(np.array([[0, 0], [1, 0]]))
         line2 = Line(np.array([[2, 0], [4, 0]]))
         obtained = line1.intersection(line2)
-        assert (obtained) is None
+        assert obtained is None
 
         line1 = Line(np.array([[0, 0], [1, 0]]))
         line2 = Line(np.array([[1, 0], [4, 0]]))
         obtained = line1.intersection(line2, touch_is_separated=False)
-        assert (obtained) is None
+        assert obtained is None
         obtained = line1.intersection(line2, touch_is_separated=True)
-        assert (obtained) is None
+        assert obtained is None
 
         line1 = Line(np.array([[0, 0], [1, 0]]))
         line2 = Line(np.array([[1, 0], [4, 1]]))
         obtained = line1.intersection(line2, touch_is_separated=True)
-        assert (obtained) is None
+        assert obtained is None
 
 
 class PolygonIntersectionObjectTestCase(ElisaTestCase):
@@ -178,14 +178,14 @@ class PolygonIntersectionObjectTestCase(ElisaTestCase):
         poly1 = Polygon(faces[0])
         poly2 = Polygon(faces[1])
         poly3 = poly1.intersection(poly2)
-        assert (poly3) is None
+        assert poly3 is None
 
         faces = [[[0.0, 0.0], [0.0, 1.0], [1.0, 1.0], [1.0, 0.0]], [[1.0, 0.0], [2.0, 0.0], [2.0, 1.0], [1.0, 1.0]]]
 
         poly1 = Polygon(faces[0])
         poly2 = Polygon(faces[1])
         poly3 = poly1.intersection(poly2)
-        assert (poly3) is None
+        assert poly3 is None
 
     def test_polygons_intersection_positive_overlap(self) -> None:
         faces = [[[0.0, 0.0], [1.0, 0.0], [0.5, 1.0]], [[0.5, 0.2], [0.3, 0.5], [0.6, 0.6]]]
@@ -225,4 +225,4 @@ class PolygonSurfaceAreaObjectTestCase(ElisaTestCase):
         area1 = poly1.surface_area()
         area2 = poly2.surface_area()
 
-        assert ([area1, area2]) == ([0.5, 1.0])
+        assert [area1, area2] == [0.5, 1.0]

@@ -149,7 +149,7 @@ class TestIsTimeDependent(ElisaTestCase):
 
         result: bool = utils.is_time_dependent(labels)
 
-        assert not (result)
+        assert not result
 
     def test_is_time_dependent_missing_minimum_time(self) -> None:
         """Test with missing primary_minimum_time parameter.
@@ -166,7 +166,7 @@ class TestIsTimeDependent(ElisaTestCase):
 
         result: bool = utils.is_time_dependent(labels)
 
-        assert not (result)
+        assert not result
 
     def test_is_time_dependent_empty_labels(self) -> None:
         """Test with empty labels list.
@@ -179,7 +179,7 @@ class TestIsTimeDependent(ElisaTestCase):
 
         result: bool = utils.is_time_dependent(labels)
 
-        assert not (result)
+        assert not result
 
     def test_is_time_dependent_both_missing(self) -> None:
         """Test with both required parameters missing.
@@ -196,7 +196,7 @@ class TestIsTimeDependent(ElisaTestCase):
 
         result: bool = utils.is_time_dependent(labels)
 
-        assert not (result)
+        assert not result
 
 
 class TestTimeLayerResolver(ElisaTestCase):
@@ -221,9 +221,9 @@ class TestTimeLayerResolver(ElisaTestCase):
 
         # Check that x_data was converted to phases
         assert isinstance(x_data_new, np.ndarray)
-        assert (len(x_data_new)) == (len(x_data))
+        assert len(x_data_new) == len(x_data)
         # Check that primary_minimum_time is still in kwargs
-        assert ("system@primary_minimum_time") in (kwargs_new)
+        assert "system@primary_minimum_time" in kwargs_new
 
     def test_time_layer_resolver_time_dependent_with_pop(self) -> None:
         """Test time-dependent data conversion with pop.
@@ -245,9 +245,9 @@ class TestTimeLayerResolver(ElisaTestCase):
         # Check that x_data was converted
         assert isinstance(x_data_new, np.ndarray)
         # Check that primary_minimum_time was removed
-        assert ("system@primary_minimum_time") not in (kwargs_new)
+        assert "system@primary_minimum_time" not in kwargs_new
         # Check that other parameters remain
-        assert ("primary@t_eff") in (kwargs_new)
+        assert "primary@t_eff" in kwargs_new
 
     def test_time_layer_resolver_phase_data(self) -> None:
         """Test with phase data (non-time-dependent).
@@ -269,7 +269,7 @@ class TestTimeLayerResolver(ElisaTestCase):
         expected: NDArray = x_data % 1.0
         np.testing.assert_array_almost_equal(x_data_new, expected)
         # Check that kwargs remain unchanged
-        assert (kwargs_new) == (kwargs)
+        assert kwargs_new == kwargs
 
     def test_time_layer_resolver_phase_data_with_pop(self) -> None:
         """Test phase data with pop=True.
@@ -306,7 +306,7 @@ class TestTimeLayerResolver(ElisaTestCase):
         expected: NDArray = x_data % 1.0
         np.testing.assert_array_almost_equal(x_data_new, expected)
         # Check that kwargs remain empty
-        assert (kwargs_new) == ({})
+        assert kwargs_new == {}
 
 
 if __name__ == "__main__":

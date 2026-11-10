@@ -86,8 +86,8 @@ class TestCalculateHorizontalDisplacements(ElisaTestCase):
         assert np.iscomplexobj(theta_disp)
 
         # Should have correct shape
-        assert (phi_disp.shape) == (self.thetas.shape)
-        assert (theta_disp.shape) == (self.thetas.shape)
+        assert phi_disp.shape == self.thetas.shape
+        assert theta_disp.shape == self.thetas.shape
 
         # Should be finite
         assert np.all(np.isfinite(phi_disp))
@@ -147,8 +147,8 @@ class TestCalculateHorizontalDisplacements(ElisaTestCase):
         )
 
         # Different scales should give different results
-        assert not (np.allclose(phi_disp_1, phi_disp_2))
-        assert not (np.allclose(theta_disp_1, theta_disp_2))
+        assert not np.allclose(phi_disp_1, phi_disp_2)
+        assert not np.allclose(theta_disp_1, theta_disp_2)
 
     def test_horizontal_displacements_pole_treatment(self) -> None:
         """Test that pole region handling works correctly."""
@@ -178,8 +178,8 @@ class TestCalculateHorizontalDisplacements(ElisaTestCase):
         assert np.all(np.isfinite(theta_disp))
 
         # Shape should match input
-        assert (phi_disp.shape) == (thetas_no_poles.shape)
-        assert (theta_disp.shape) == (thetas_no_poles.shape)
+        assert phi_disp.shape == thetas_no_poles.shape
+        assert theta_disp.shape == thetas_no_poles.shape
 
 
 class TestCalculateDisplacementCoordinates(ElisaTestCase):
@@ -219,7 +219,7 @@ class TestCalculateDisplacementCoordinates(ElisaTestCase):
         )
 
         # Should return array with shape (n_points, 3)
-        assert (result.shape) == ((3, 3))
+        assert result.shape == (3, 3)
 
         # Should be finite
         assert np.all(np.isfinite(result))
@@ -509,7 +509,7 @@ class TestCalculateTemperaturePertFactor(ElisaTestCase):
         result = kinematics.calculate_temperature_pert_factor(mode, scale=1.0)
 
         # Should return array with same shape as first column of complex_displacement
-        assert (result.shape) == ((2,))
+        assert result.shape == (2,)
 
         # Should be real-valued (imaginary part eliminated by np.real)
         assert np.isrealobj(result)
@@ -547,7 +547,7 @@ class TestCalculateTemperaturePertFactor(ElisaTestCase):
         result_2 = kinematics.calculate_temperature_pert_factor(mode, scale=2.0)
 
         # Different scales should give different results
-        assert not (np.allclose(result_1, result_2))
+        assert not np.allclose(result_1, result_2)
 
         # Ratio should match scale ratio
         assert_array_almost_equal(result_2, 2.0 * result_1)
@@ -605,4 +605,4 @@ class TestCalculateTemperaturePertFactor(ElisaTestCase):
         result_2 = kinematics.calculate_temperature_pert_factor(mode_2, scale=1.0)
 
         # Different phase shifts should give different results
-        assert not (np.allclose(result_1, result_2))
+        assert not np.allclose(result_1, result_2)

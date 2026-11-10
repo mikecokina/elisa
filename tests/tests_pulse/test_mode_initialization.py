@@ -31,8 +31,8 @@ class TestPulsationModeInitialization(ElisaTestCase):
             frequency=1.0 / u.d,
         )
 
-        assert (mode.l) == (2)
-        assert (mode.m) == (1)
+        assert mode.l == 2
+        assert mode.m == 1
         self.assertAlmostEqual(mode.amplitude, 1.0)
         assert np.isfinite(mode.frequency)
 
@@ -52,8 +52,8 @@ class TestPulsationModeInitialization(ElisaTestCase):
             tidally_locked=True,
         )
 
-        assert (mode.l) == (2)
-        assert (mode.m) == (1)
+        assert mode.l == 2
+        assert mode.m == 1
         self.assertAlmostEqual(mode.start_phase, 0.5)
         assert 0 <= mode.mode_axis_theta < const.PI
         assert np.isfinite(mode.mode_axis_phi)
@@ -142,8 +142,8 @@ class TestPulsationModeInitialization(ElisaTestCase):
             amplitude=1.0 * u.m / u.s,
             frequency=1.0 / u.d,
         )
-        assert (mode.l) == (2)
-        assert (mode.m) == (2)
+        assert mode.l == 2
+        assert mode.m == 2
 
     def test_validate_mode_m_equals_l(self) -> None:
         """Test mode validation when |m| = l."""
@@ -153,8 +153,8 @@ class TestPulsationModeInitialization(ElisaTestCase):
             amplitude=1.0 * u.m / u.s,
             frequency=1.0 / u.d,
         )
-        assert (mode.l) == (3)
-        assert (mode.m) == (3)
+        assert mode.l == 3
+        assert mode.m == 3
 
     def test_validate_mode_negative_m(self) -> None:
         """Test mode validation with negative m within valid range."""
@@ -164,8 +164,8 @@ class TestPulsationModeInitialization(ElisaTestCase):
             amplitude=1.0 * u.m / u.s,
             frequency=1.0 / u.d,
         )
-        assert (mode.l) == (2)
-        assert (mode.m) == (-1)
+        assert mode.l == 2
+        assert mode.m == -1
 
     def test_validate_mode_invalid_m_exceeds_l(self) -> None:
         """Test mode validation raises error when |m| > l."""
@@ -197,7 +197,7 @@ class TestPulsationModeInitialization(ElisaTestCase):
         )
 
         input_units = mode.default_input_units
-        assert (input_units) is not None
+        assert input_units is not None
 
     def test_default_internal_units_property(self) -> None:
         """Test that default_internal_units property returns correct units."""
@@ -209,7 +209,7 @@ class TestPulsationModeInitialization(ElisaTestCase):
         )
 
         internal_units = mode.default_internal_units
-        assert (internal_units) is not None
+        assert internal_units is not None
 
     def test_default_values_assigned(self) -> None:
         """Test that default values are correctly assigned to optional parameters."""
@@ -228,9 +228,9 @@ class TestPulsationModeInitialization(ElisaTestCase):
             mode.temperature_perturbation_phase_shift,
             settings.DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT,
         )
-        assert (mode.horizontal_to_radial_amplitude_ratio) is None
-        assert not (mode.tidally_locked)
-        assert (mode.temperature_amplitude_factor) is None
+        assert mode.horizontal_to_radial_amplitude_ratio is None
+        assert not mode.tidally_locked
+        assert mode.temperature_amplitude_factor is None
 
     def test_amplitude_initialization_with_quantity(self) -> None:
         """Test amplitude initialization with astropy Quantity."""
@@ -278,8 +278,8 @@ class TestPulsationModeInitialization(ElisaTestCase):
             frequency=1.0 / u.d,
         )
 
-        assert (mode.l) == (2)
-        assert (mode.m) == (1)
+        assert mode.l == 2
+        assert mode.m == 1
         assert isinstance(mode.l, (int, np.integer))
         assert isinstance(mode.m, (int, np.integer))
 
@@ -327,8 +327,8 @@ class TestPulsationModeInitialization(ElisaTestCase):
             frequency=1.0 / u.d,
         )
 
-        assert (mode.radial_amplitude) is None
-        assert (mode.horizontal_amplitude) is None
+        assert mode.radial_amplitude is None
+        assert mode.horizontal_amplitude is None
 
     def test_points_initialization(self) -> None:
         """Test that points are None after initialization."""
@@ -339,10 +339,10 @@ class TestPulsationModeInitialization(ElisaTestCase):
             frequency=1.0 / u.d,
         )
 
-        assert (mode.points) is None
-        assert (mode.point_harmonics) is None
-        assert (mode.point_harmonics_derivatives) is None
-        assert (mode.complex_displacement) is None
+        assert mode.points is None
+        assert mode.point_harmonics is None
+        assert mode.point_harmonics_derivatives is None
+        assert mode.complex_displacement is None
 
     def test_tilt_angles_initialization(self) -> None:
         """Test that tilt angles are None after initialization."""
@@ -353,8 +353,8 @@ class TestPulsationModeInitialization(ElisaTestCase):
             frequency=1.0 / u.d,
         )
 
-        assert (mode.tilt_phi) is None
-        assert (mode.tilt_theta) is None
+        assert mode.tilt_phi is None
+        assert mode.tilt_theta is None
 
     def test_radial_mode_l_equals_zero(self) -> None:
         """Test radial mode with l=0."""
@@ -365,8 +365,8 @@ class TestPulsationModeInitialization(ElisaTestCase):
             frequency=1.0 / u.d,
         )
 
-        assert (mode.l) == (0)
-        assert (mode.m) == (0)
+        assert mode.l == 0
+        assert mode.m == 0
 
     def test_high_degree_mode(self) -> None:
         """Test mode with high degree value."""
@@ -377,8 +377,8 @@ class TestPulsationModeInitialization(ElisaTestCase):
             frequency=1.0 / u.d,
         )
 
-        assert (mode.l) == (10)
-        assert (mode.m) == (5)
+        assert mode.l == 10
+        assert mode.m == 5
 
     def test_mode_with_custom_start_phase(self) -> None:
         """Test mode initialization with custom start_phase."""
@@ -432,8 +432,8 @@ def test_degree_zero_and_negative_azimuthal_order_remain_valid() -> None:
     mode = {"l": 1, "m": 1, "frequency": 16.0, "amplitude": 50.0}
     assert PulsationModeProperties.l(0) == 0
     assert PulsationModeProperties.m(-1) == -1
-    assert PulsationMode(**(mode | {"l": 0, "m": 0})).l == 0
-    assert PulsationMode(**(mode | {"m": -1})).m == -1
+    assert PulsationMode(**mode | {"l": 0, "m": 0}).l == 0
+    assert PulsationMode(**mode | {"m": -1}).m == -1
 
 
 @pytest.mark.parametrize("operation", ["harmonics", "displacement"])

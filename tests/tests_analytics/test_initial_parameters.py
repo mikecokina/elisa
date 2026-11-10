@@ -486,7 +486,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
     def test_is_overcontact(self) -> None:
         assert self.initial_parametres.is_overcontact("over-contact")
         assert self.initial_parametres.is_overcontact("overcontact")
-        assert not (self.initial_parametres.is_overcontact("detached"))
+        assert not self.initial_parametres.is_overcontact("detached")
 
     def test_unit_conversion_to_default(self) -> None:
         rv_initial = {
