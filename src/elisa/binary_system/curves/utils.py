@@ -167,19 +167,7 @@ def prep_surface_params(
     # compute normal radiance for each face and each component
     normal_radiance = _get_normal_radiance(system, **kwargs)
 
-    # checking if `bolometric` filter is already used
-    if "bolometric" in ld_cfs["primary"]:
-        bol_ld_cfs = {
-            component_name: {"bolometric": ld_cfs[component_name]["bolometric"]}
-            for component_name in settings.BINARY_COUNTERPARTS
-        }
-    else:
-        bol_ld_cfs = get_limbdarkening_cfs(system, passband=["bolometric"])
-
-    normal_radiance = atm.correct_normal_radiance_to_optical_depth(
-        normal_radiance,
-        bol_ld_cfs,
-    )
+    normal_radiance = atm.correct_normal_radiance_to_optical_depth(normal_radiance, ld_cfs)
 
     if write_to_containers:
         for component_name in settings.BINARY_COUNTERPARTS:

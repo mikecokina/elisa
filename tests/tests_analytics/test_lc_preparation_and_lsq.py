@@ -84,6 +84,7 @@ def capture_fit(callback: Callable, *args, **kwargs) -> tuple[dict[str, Any], Op
     """Run the real SciPy solver and retain its diagnostics alongside ELISA's report."""
     results = []
 
+    # noinspection PyProtectedMember
     def solve_and_record(*solver_args, **solver_options) -> scipy.optimize._optimize.OptimizeResult:
         result = solve(*solver_args, **solver_options)
         results.append(result)
@@ -223,9 +224,9 @@ def test_lc_parameter_recovery_result_and_residual_jacobian() -> None:
         p.BinaryInitialParameters(**cfg),
         discretization=10.0,
         interp_treshold=100,
-        ftol=1e-10,
-        gtol=1e-9,
-        max_nfev=80,
+        ftol=1e-15,
+        gtol=1e-15,
+        # max_nfev=80,
     )
     assert result.success
     assert result.jac.shape == (40, 2)

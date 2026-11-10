@@ -104,6 +104,11 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 #### Fixed
 
+- Corrected photometric surface-flux normalization to use each passband's
+  limb-darkening coefficients for both binary and single stars, preserving
+  hemispheric passband flux conservation. Bolometric limb darkening remains
+  in use for irradiation and reflection. Added independent conservation
+  checks for all supported limb-darkening laws.
 - Fixed single-phase eccentric LC synthesis to use exact integration without
   attempting curve approximations that require multiple orbital phases.
 - Fixed phase-dependent Roche geometry in binary `plot.mesh()`, `plot.wireframe()`,

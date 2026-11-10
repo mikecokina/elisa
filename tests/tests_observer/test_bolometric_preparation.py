@@ -1,4 +1,4 @@
-"""Preserve scientific parity with the former bolometric passband preparation."""
+"""Verify passband preparation against independent hemispheric integrals."""
 
 from __future__ import annotations
 
@@ -9,13 +9,11 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose, assert_array_equal
 from numpy.typing import NDArray
 
 from elisa import BinarySystem, Observer, Star, ld, settings
-from elisa.atm import atm
 from elisa.binary_system.curves import utils
-from elisa.observer.passband import init_bolometric_passband
 
 if TYPE_CHECKING:
     from typing import Any
@@ -42,34 +40,27 @@ class CapturedScience:
     limb_darkening_samples: list[LimbDarkeningSample]
 
 
-def _legacy_surface_preparation(
+def _reference_surface_preparation(
     system: OrbitalPositionContainer,
     *,
     return_values: bool = True,
     write_to_containers: bool = False,
     **kwargs: Any,
 ) -> SurfaceParameters | None:
-    """Reproduce the previous implementation, including its unused arguments."""
+    """Normalize surface flux using analytical passband hemispheric integrals."""
     ld_coefficients = utils.get_limbdarkening_cfs(system, **kwargs)
-    # The oracle deliberately follows the old implementation's internal call.
+    # Reuse atmosphere interpolation; independently check the angular normalization.
     # noinspection PyProtectedMember
     normal_radiance = utils._get_normal_radiance(system, **kwargs)
-    if "bolometric" in ld_coefficients["primary"]:
-        bolometric_coefficients = {
-            component: {"bolometric": ld_coefficients[component]["bolometric"]}
-            for component in settings.BINARY_COUNTERPARTS
-        }
-    else:
-        passband, left_bandwidth, right_bandwidth = init_bolometric_passband()
-        legacy_arguments = {
-            "passband": {"bolometric": passband},
-            "left_bandwidth": left_bandwidth,
-            "right_bandwith": right_bandwidth,
-            "atlas": "whatever",
-        }
-        bolometric_coefficients = utils.get_limbdarkening_cfs(system, **legacy_arguments)
-
-    normal_radiance = atm.correct_normal_radiance_to_optical_depth(normal_radiance, bolometric_coefficients)
+    for component, passbands in normal_radiance.items():
+        for band, flux in passbands.items():
+            coefficients = ld_coefficients[component][band]
+            hemisphere = 1 - coefficients[:, 0] / 3
+            if settings.LIMB_DARKENING_LAW == "logarithmic":
+                hemisphere += 2 * coefficients[:, 1] / 9
+            elif settings.LIMB_DARKENING_LAW == "square_root":
+                hemisphere -= coefficients[:, 1] / 5
+            passbands[band] = flux / (np.pi * hemisphere)
     if write_to_containers:
         for component in settings.BINARY_COUNTERPARTS:
             star = getattr(system, component)
@@ -145,7 +136,8 @@ def _assert_matching_science(expected: CapturedScience, actual: CapturedScience,
     assert list(expected.fluxes) == bands
     assert list(actual.fluxes) == bands
     for band in bands:
-        assert_array_equal(expected.fluxes[band], actual.fluxes[band], strict=True)
+        # Independent analytical arithmetic may differ by floating-point roundoff.
+        assert_allclose(expected.fluxes[band], actual.fluxes[band], rtol=1e-14, atol=0)
 
     assert expected.limb_darkening_samples
     assert len(expected.limb_darkening_samples) == len(actual.limb_darkening_samples)
@@ -183,7 +175,7 @@ def _assert_matching_science(expected: CapturedScience, actual: CapturedScience,
         ("pulsating", BANDS),
     ],
 )
-def test_bolometric_scientific_parity(*, law: str, custom: bool, case: str, bands: list[str]) -> None:
+def test_passband_scientific_normalization(*, law: str, custom: bool, case: str, bands: list[str]) -> None:
     with settings.override(
         LIMB_DARKENING_LAW=law,
         NUMBER_OF_PROCESSES=1,
@@ -191,8 +183,8 @@ def test_bolometric_scientific_parity(*, law: str, custom: bool, case: str, band
     ):
         try:
             for normalize in (False, True):
-                legacy_observer = _make_observer(case, bands, law, custom_coefficients=custom)
-                expected = _capture_science(_legacy_surface_preparation, legacy_observer, normalize=normalize)
+                reference_observer = _make_observer(case, bands, law, custom_coefficients=custom)
+                expected = _capture_science(_reference_surface_preparation, reference_observer, normalize=normalize)
                 current_observer = _make_observer(case, bands, law, custom_coefficients=custom)
                 actual = _capture_science(utils.prep_surface_params, current_observer, normalize=normalize)
 
@@ -214,3 +206,48 @@ def test_surface_preparation_does_not_construct_passbands(bands: list[str]) -> N
 
         assert list(fluxes) == bands
         assert all(np.isfinite(values).all() for values in fluxes.values())
+
+
+@pytest.mark.parametrize("law", ["linear", "cosine", "logarithmic", "square_root"])
+def test_reflection_uses_bolometric_coefficients(law: str) -> None:
+    """Reflection retains bolometric LD when photometric coefficients differ."""
+    with settings.override(LIMB_DARKENING_LAW=law, NUMBER_OF_PROCESSES=1, REFLECTION_EFFECT=True):
+        observer = _make_observer("circular", BANDS, law, custom_coefficients=True)
+        bolometric = [0.8] if law in ("linear", "cosine") else [0.8, 0.1]
+        for component in (observer._system.primary, observer._system.secondary):
+            component.limb_darkening_coefficients["bolometric"] = bolometric
+
+        original = ld.get_bolometric_ld_coefficients
+        integrated = ld.calculate_integrated_limb_darkening_factor
+        reflection_arrays: list[FloatArray] = []
+        reflection_integrals: list[FloatArray] = []
+
+        def capture_bolometric(*args: Any, **kwargs: Any) -> FloatArray:
+            coefficients = original(*args, **kwargs)
+            assert_array_equal(coefficients, np.tile(bolometric, (coefficients.shape[1], 1)).T)
+            reflection_arrays.append(coefficients)
+            return coefficients
+
+        def capture_integral(*args: Any, **kwargs: Any) -> FloatArray:
+            coefficients = args[1] if len(args) > 1 else kwargs["coefficients"]
+            result = integrated(*args, **kwargs)
+            if any(coefficients is sample for sample in reflection_arrays):
+                reflection_integrals.append(result)
+            return result
+
+        with (
+            patch.object(ld, "get_bolometric_ld_coefficients", capture_bolometric),
+            patch.object(ld, "calculate_integrated_limb_darkening_factor", capture_integral),
+        ):
+            actual = _capture_science(utils.prep_surface_params, observer, normalize=False)
+        expected = _capture_science(_reference_surface_preparation, observer, normalize=False)
+        _assert_matching_science(expected, actual, BANDS)
+        assert reflection_arrays
+        assert len(reflection_integrals) == len(reflection_arrays)
+        hemisphere = 1 - bolometric[0] / 3
+        if law == "logarithmic":
+            hemisphere += 2 * bolometric[1] / 9
+        elif law == "square_root":
+            hemisphere -= bolometric[1] / 5
+        for integral in reflection_integrals:
+            assert_allclose(integral, np.pi * hemisphere, rtol=1e-14)

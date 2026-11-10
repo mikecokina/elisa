@@ -1946,24 +1946,23 @@ def correct_normal_radiance_to_optical_depth(
     normal_radiances: dict,
     ld_cfs: dict,
 ) -> dict:
-    """Correct normal radiance values for optical depth effects using limb darkening coefficients.
+    """Convert passband surface flux to normal specific intensity.
 
-    Correcting normal radiance values by increment that will correct inacuracy caused by using too shallow optical depth
-    for the middle of the disk. Correction was derived analytically from spherical model.
+    Divide each face's surface flux by the hemispheric integral of the
+    same passband's limb-darkening law. The integrated factor includes pi.
 
-    :param normal_radiances: dict; dict(component: dict(filter: normal radiances for each face))
+    :param normal_radiances: dict; dict(component: dict(filter: surface flux for each face))
     :param ld_cfs: dict; dict(component: dict(filter: limb darkening coefficients for each face))
-    :return: dict;
+    :return: dict; normal specific intensities by component and passband
     """
     for star, component_normal_radiances in normal_radiances.items():
-        ld_coefficients = ld_cfs[star]["bolometric"].T
-
-        coeff = ld.calculate_integrated_limb_darkening_factor(limb_darkening_law=settings.LIMB_DARKENING_LAW,
-                                                              coefficients=ld_coefficients)
-
-        normal_radiances[star] = {
-            band: normal_radiance / coeff for band, normal_radiance in component_normal_radiances.items()
-        }
+        normal_radiances[star] = {}
+        for band, normal_radiance in component_normal_radiances.items():
+            coeff = ld.calculate_integrated_limb_darkening_factor(
+                limb_darkening_law=settings.LIMB_DARKENING_LAW,
+                coefficients=ld_cfs[star][band].T,
+            )
+            normal_radiances[star][band] = normal_radiance / coeff
 
     return normal_radiances
 

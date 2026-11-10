@@ -462,16 +462,17 @@ def test_circular_complete_curve_lru(monkeypatch: pytest.MonkeyPatch) -> None:
         ):
             obs = audit_observer()
             first = obs.observe.lc(**lc_kwargs)
-            assert curve_utils.interpolate_on_ld_grid_cached.cache_info()[:2] == (0, 4)
-            assert query.call_count == 6
+            # Only observed passbands enter this cache; reflection queries bolometric LD separately.
+            assert curve_utils.interpolate_on_ld_grid_cached.cache_info()[:2] == (0, 2)
+            assert query.call_count == 4
             assert build.call_count == 2
             repeated = obs.observe.lc(**lc_kwargs)
-            assert curve_utils.interpolate_on_ld_grid_cached.cache_info()[:2] == (4, 4)
-            assert query.call_count == 8
+            assert curve_utils.interpolate_on_ld_grid_cached.cache_info()[:2] == (2, 2)
+            assert query.call_count == 6
             assert build.call_count == 2
             equivalent = audit_observer().observe.lc(**lc_kwargs)
-            assert curve_utils.interpolate_on_ld_grid_cached.cache_info()[:2] == (8, 4)
-            assert query.call_count == 10
+            assert curve_utils.interpolate_on_ld_grid_cached.cache_info()[:2] == (4, 2)
+            assert query.call_count == 8
             assert build.call_count == 2
             for actual in (repeated, equivalent):
                 assert_array_equal(first[0], actual[0])
