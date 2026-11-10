@@ -20,6 +20,14 @@ elisa.analytics.binary\_fit.failure\_policy module
    :show-inheritance:
    :undoc-members:
 
+elisa.analytics.binary\_fit.initial\_ensemble module
+----------------------------------------------------
+
+.. automodule:: elisa.analytics.binary_fit.initial_ensemble
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 elisa.analytics.binary\_fit.io\_tools module
 --------------------------------------------
 
@@ -56,6 +64,14 @@ elisa.analytics.binary\_fit.mcmc module
 ---------------------------------------
 
 .. automodule:: elisa.analytics.binary_fit.mcmc
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+elisa.analytics.binary\_fit.mcmc\_diagnostics module
+----------------------------------------------------
+
+.. automodule:: elisa.analytics.binary_fit.mcmc_diagnostics
    :members:
    :show-inheritance:
    :undoc-members:
