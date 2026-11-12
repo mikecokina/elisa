@@ -339,6 +339,11 @@ def compute_rel_d_geometry(
     return d_flux / np.sum(total_flux)
 
 
+# Dimensionless irradiation approximation proxy, not the physical intercepted-luminosity fraction.
+# For isotropic spherical stars: Q_target = (R_target/d)^2 * L_source/L_total
+# = 4 * P_intercepted/L_total; the 4 is sphere surface area / projected cross-section.
+# This normalization is historically coupled to MAX_D_FLUX thresholds established in 2021;
+# removing the factor 4 without recalibrating thresholds changes approximation eligibility.
 def relative_irradiation(
     binary: BinarySystem,
     distances: NDArray,
