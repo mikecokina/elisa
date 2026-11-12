@@ -6,11 +6,12 @@ import numpy as np
 import pytest
 from numpy.testing import assert_array_equal, assert_array_less
 
-from elisa import Observer, const
+from elisa import Observer, const, utils
 from elisa import units as u
 from elisa.base.star import Star
 from elisa.binary_system.system import BinarySystem
 from elisa.pulse import container_ops
+from elisa.pulse import utils as putils
 from elisa.single_system.system import SingleSystem
 from tests import utils as testutils
 from tests.tests_pulse.helpers import BINARY_STAR, BINARY_SYSTEM, STAR_PARAMS, SYSTEM_PARMAS, TOL
@@ -48,17 +49,14 @@ class TestPulsationModule(ElisaTestCase):
         single = self.prepare_system(pulse_meta)
         system_container = SingleSystem.build_container(single, phase=0)
 
-        r_eq = single.star.equivalent_radius
-
         mode = system_container.star.pulsations[0]
-        theta = mode.points[:, 2]
-
-        radial = np.mean(np.abs(mode.complex_displacement[:, 0]) ** 2) ** 0.5
-        dphi = np.abs(mode.complex_displacement[:, 1])
-        dtheta = np.abs(mode.complex_displacement[:, 2])
-        horizontal = np.sqrt(dtheta**2 + (np.sin(theta) * dphi) ** 2)
-
-        horizontal = r_eq * np.mean(horizontal**2) ** 0.5
+        directions = system_container.star.pulsation_equilibrium_points
+        directions = directions / np.linalg.norm(directions, axis=1)[:, None]
+        radial_component = np.sum(mode.complex_displacement * directions, axis=1)
+        radial = np.sqrt(np.mean(abs(radial_component) ** 2))
+        tangent = mode.complex_displacement - radial_component[:, None] * directions
+        horizontal = np.sqrt(np.mean(np.sum(abs(tangent) ** 2, axis=1)))
+        np.testing.assert_allclose(horizontal, abs(mode.horizontal_amplitude), rtol=1e-12)
 
         ratio = horizontal / radial
         assert abs(ratio - in_ratio) < 0.05
@@ -89,36 +87,23 @@ class TestPulsationModule(ElisaTestCase):
         kwargs_ = {
             "update_container": False,
             "return_perturbation": True,
-            "spherical_perturbation": True,
         }
-        radius = np.abs(container_ops.position_perturbation(*args, **kwargs_)[:, 0])
+        displacement = container_ops.position_perturbation(*args, **kwargs_)
+        radius = np.abs(putils.spherical_vector_components(displacement, system_container.star.points_spherical)[:, 0])
         assert_array_less(radius, overshoot * r_ampl)
         assert_array_less(r_ampl, radius.max())
 
-        # velocity
-        args = (system_container.star, 1)
-        velocities = np.abs(
-            container_ops.velocity_perturbation(
-                *args,
-                update_container=False,
-                return_perturbation=True,
-                spherical_perturbation=True,
-            )[:, 0],
-        )
+        # Project Cartesian face vectors at the equilibrium face centers.
+        star = system_container.star
+        coordinates = utils.cartesian_to_spherical(star.pulsation_equilibrium_points[star.faces].mean(axis=1))
+        velocity = container_ops.velocity_perturbation(star, 1.0, return_perturbation=True)
+        velocities = np.abs(putils.spherical_vector_components(velocity, coordinates)[:, 0])
         assert_array_less(velocities, overshoot * amplitude)
         assert_array_less(amplitude, velocities.max())
 
-        # acceleration
         a_amp = amplitude * omega
-        args = (system_container.star, 1.0)
-        acc = np.abs(
-            container_ops.gravity_acc_perturbation(
-                *args,
-                update_container=False,
-                return_perturbation=True,
-                spherical_perturbation=True,
-            )[:, 0],
-        )
+        acceleration = container_ops.gravity_acc_perturbation(star, 1.0, return_perturbation=True)
+        acc = np.abs(putils.spherical_vector_components(acceleration, coordinates)[:, 0])
         assert_array_less(acc, overshoot * a_amp)
         assert_array_less(a_amp, acc.max())
 
@@ -165,7 +150,6 @@ class TestPulsationModule(ElisaTestCase):
             0.0,
             update_container=False,
             return_perturbation=True,
-            spherical_perturbation=True,
         )
         assert pert is not None
         assert not np.isnan(pert).any(), "Position perturbation contains NaNs"
@@ -176,7 +160,6 @@ class TestPulsationModule(ElisaTestCase):
             1.0,
             update_container=False,
             return_perturbation=True,
-            spherical_perturbation=True,
         )
         assert vel is not None
         assert not np.isnan(vel).any(), "Velocity perturbation contains NaNs"
@@ -278,22 +261,27 @@ class TestPulsationModule(ElisaTestCase):
         kwargs_ = {
             "update_container": False,
             "return_perturbation": True,
-            "spherical_perturbation": True,
         }
-        radius = np.abs(container_ops.position_perturbation(*args, **kwargs_)[:, 0]) * binary.semi_major_axis
+        star = system_container.secondary
+        displacement = container_ops.position_perturbation(*args, **kwargs_)
+        radius = np.abs(putils.spherical_vector_components(displacement, star.points_spherical)[:, 0])
+        radius *= binary.semi_major_axis
+        coordinates = utils.cartesian_to_spherical(star.pulsation_equilibrium_points[star.faces].mean(axis=1))
         assert_array_less(radius, overshoot * r_ampl)
         assert_array_less(r_ampl, radius.max())
 
         # velocity
         args = (system_container.secondary, binary.semi_major_axis)
-        velocities = np.abs(container_ops.velocity_perturbation(*args, **kwargs_)[:, 0])
+        velocity = container_ops.velocity_perturbation(*args, **kwargs_)
+        velocities = np.abs(putils.spherical_vector_components(velocity, coordinates)[:, 0])
         assert_array_less(velocities, overshoot * amplitude)
         assert_array_less(amplitude, velocities.max())
 
         # acceleration
         a_amp = amplitude * omega
         args = (system_container.secondary, binary.semi_major_axis)
-        acc = np.abs(container_ops.gravity_acc_perturbation(*args, **kwargs_)[:, 0])
+        acceleration = container_ops.gravity_acc_perturbation(*args, **kwargs_)
+        acc = np.abs(putils.spherical_vector_components(acceleration, coordinates)[:, 0])
         assert_array_less(acc, overshoot * a_amp)
         assert_array_less(a_amp, acc.max())
 

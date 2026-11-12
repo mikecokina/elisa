@@ -33,7 +33,7 @@ class TestPulsationModeInitialization(ElisaTestCase):
 
         assert mode.l == 2
         assert mode.m == 1
-        self.assertAlmostEqual(mode.amplitude, 1.0)
+        assert mode.amplitude == pytest.approx(1.0, rel=0.0, abs=5e-08)
         assert np.isfinite(mode.frequency)
 
     def test_init_with_all_parameters(self) -> None:
@@ -54,11 +54,11 @@ class TestPulsationModeInitialization(ElisaTestCase):
 
         assert mode.l == 2
         assert mode.m == 1
-        self.assertAlmostEqual(mode.start_phase, 0.5)
+        assert mode.start_phase == pytest.approx(0.5, rel=0.0, abs=5e-08)
         assert 0 <= mode.mode_axis_theta < const.PI
         assert np.isfinite(mode.mode_axis_phi)
-        self.assertAlmostEqual(mode.horizontal_to_radial_amplitude_ratio, 0.5)
-        self.assertAlmostEqual(mode.temperature_amplitude_factor, 0.01)
+        assert mode.horizontal_to_radial_amplitude_ratio == pytest.approx(0.5, rel=0.0, abs=5e-08)
+        assert mode.temperature_amplitude_factor == pytest.approx(0.01, rel=0.0, abs=5e-08)
         assert mode.tidally_locked
 
     def test_init_missing_mandatory_param_l(self) -> None:
@@ -119,7 +119,7 @@ class TestPulsationModeInitialization(ElisaTestCase):
         )
 
         expected_angular_freq = const.FULL_ARC * float(freq.to(u.FREQUENCY_UNIT).value)
-        self.assertAlmostEqual(mode.angular_frequency, expected_angular_freq)
+        assert mode.angular_frequency == pytest.approx(expected_angular_freq, rel=0.0, abs=5e-08)
 
     def test_renorm_constant_value(self) -> None:
         """Test that renorm_const is correctly set."""
@@ -131,7 +131,7 @@ class TestPulsationModeInitialization(ElisaTestCase):
         )
 
         expected_renorm = 2 * const.PI**0.5
-        self.assertAlmostEqual(mode.renorm_const, expected_renorm)
+        assert mode.renorm_const == pytest.approx(expected_renorm, rel=0.0, abs=5e-08)
 
     def test_validate_mode_valid(self) -> None:
         """Test mode validation with valid parameters (|m| <= l)."""
@@ -221,12 +221,13 @@ class TestPulsationModeInitialization(ElisaTestCase):
         )
 
         # Check default values
-        self.assertAlmostEqual(mode.start_phase, 0.0)
-        self.assertAlmostEqual(mode.mode_axis_theta, 0.0)
-        self.assertAlmostEqual(mode.mode_axis_phi, 0.0)
-        self.assertAlmostEqual(
-            mode.temperature_perturbation_phase_shift,
+        assert mode.start_phase == pytest.approx(0.0, rel=0.0, abs=5e-08)
+        assert mode.mode_axis_theta == pytest.approx(0.0, rel=0.0, abs=5e-08)
+        assert mode.mode_axis_phi == pytest.approx(0.0, rel=0.0, abs=5e-08)
+        assert mode.temperature_perturbation_phase_shift == pytest.approx(
             settings.DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT,
+            rel=0.0,
+            abs=5e-08,
         )
         assert mode.horizontal_to_radial_amplitude_ratio is None
         assert not mode.tidally_locked
@@ -243,7 +244,7 @@ class TestPulsationModeInitialization(ElisaTestCase):
 
         assert np.isfinite(mode.amplitude)
         # 1 km/s = 1000 m/s internally
-        self.assertAlmostEqual(mode.amplitude, 1000.0)
+        assert mode.amplitude == pytest.approx(1000.0, rel=0.0, abs=5e-08)
 
     def test_amplitude_initialization_with_string(self) -> None:
         """Test amplitude initialization with string quantity."""
@@ -256,7 +257,7 @@ class TestPulsationModeInitialization(ElisaTestCase):
 
         assert np.isfinite(mode.amplitude)
         # 1 km/s = 1000 m/s internally
-        self.assertAlmostEqual(mode.amplitude, 1000.0)
+        assert mode.amplitude == pytest.approx(1000.0, rel=0.0, abs=5e-08)
 
     def test_frequency_initialization_with_string(self) -> None:
         """Test frequency initialization with string quantity."""
@@ -295,7 +296,7 @@ class TestPulsationModeInitialization(ElisaTestCase):
                     frequency=1.0 / u.d,
                     mode_axis_theta=theta,
                 )
-                self.assertAlmostEqual(mode.mode_axis_theta, expected_theta)
+                assert mode.mode_axis_theta == pytest.approx(expected_theta, rel=0.0, abs=5e-08)
                 assert 0 <= mode.mode_axis_theta < const.PI
 
     def test_amplitude_negative_raises_error(self) -> None:
@@ -339,9 +340,9 @@ class TestPulsationModeInitialization(ElisaTestCase):
             frequency=1.0 / u.d,
         )
 
-        assert mode.points is None
         assert mode.point_harmonics is None
-        assert mode.point_harmonics_derivatives is None
+        assert mode.point_harmonics_gradient is None
+        assert mode.complex_radial_displacement is None
         assert mode.complex_displacement is None
 
     def test_tilt_angles_initialization(self) -> None:
@@ -391,7 +392,7 @@ class TestPulsationModeInitialization(ElisaTestCase):
             start_phase=start_phase,
         )
 
-        self.assertAlmostEqual(mode.start_phase, start_phase)
+        assert mode.start_phase == pytest.approx(start_phase, rel=0.0, abs=5e-08)
 
     def test_mode_with_custom_horizontal_ratio(self) -> None:
         """Test mode initialization with custom horizontal_to_radial_amplitude_ratio."""
@@ -404,7 +405,7 @@ class TestPulsationModeInitialization(ElisaTestCase):
             horizontal_to_radial_amplitude_ratio=ratio,
         )
 
-        self.assertAlmostEqual(mode.horizontal_to_radial_amplitude_ratio, ratio)
+        assert mode.horizontal_to_radial_amplitude_ratio == pytest.approx(ratio, rel=0.0, abs=5e-08)
 
     def test_mode_with_temperature_amplitude_factor(self) -> None:
         """Test mode initialization with temperature_amplitude_factor."""
@@ -417,7 +418,7 @@ class TestPulsationModeInitialization(ElisaTestCase):
             temperature_amplitude_factor=temp_factor,
         )
 
-        self.assertAlmostEqual(mode.temperature_amplitude_factor, temp_factor)
+        assert mode.temperature_amplitude_factor == pytest.approx(temp_factor, rel=0.0, abs=5e-08)
 
 
 @pytest.mark.parametrize("value", [-1, -1.0, np.int32(-2), Decimal(-1), Fraction(-1, 1)])

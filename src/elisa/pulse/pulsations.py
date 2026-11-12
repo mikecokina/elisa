@@ -29,11 +29,12 @@ def spherical_harmonics(
     order: int | None = None,
     degree: int | None = None,
 ) -> NDArray:
-    """Calculate normalized spherical harmonics with RMS = 1.
+    """Evaluate scalar harmonics with ELISA's full-sphere RMS normalization.
 
-    Computes spherical harmonics Y_m^l evaluated at given spherical coordinate
-    points, normalized such that the root-mean-square is 1. The harmonics are
-    multiplied by a time-dependent exponential factor.
+    Multiplication by sqrt(4*pi) converts the standard unit-integral harmonic
+    to unit mean squared magnitude over a sphere. This is an analytic spherical
+    normalization, not a discrete mesh RMS. The backend includes the
+    Condon--Shortley phase; the supplied complex time factor is applied last.
 
     :param mode: Pulsation mode object containing degree and order information.
     :type mode: object
@@ -77,68 +78,6 @@ def diff_spherical_harmonics_by_phi(
     return (0 + 1j) * mode.m * harmonics[0]
 
 
-def diff_spherical_harmonics_by_theta(
-    mode: PulsationMode,
-    harmonics: list[NDArray],
-    phis: NDArray,
-    thetas: NDArray,
-) -> NDArray:
-    """Calculate latitudinal derivative of spherical harmonics.
-
-    Computes the partial derivative of spherical harmonics with respect to
-    the latitudinal (polar) coordinate theta: d Y_m^l / d theta.
-
-    :param mode: Pulsation mode object containing degree and order information.
-    :type mode: object
-    :param harmonics: List of harmonics [Y_l^m, Y_l^(m+1)].
-    :type harmonics: list[NDArray]
-    :param phis: Azimuthal coordinates where derivative is evaluated, shape (n_points,).
-    :type phis: NDArray
-    :param thetas: Latitudinal coordinates where derivative is evaluated, shape (n_points,).
-    :type thetas: NDArray
-    :returns: Latitudinal derivative of spherical harmonics with shape (n_points,).
-    :rtype: NDArray
-    """
-    theta_test = np.logical_and(thetas != 0.0, thetas != const.PI)
-    derivative = np.zeros(phis.shape, dtype=np.complex128)
-    derivative[theta_test] = (
-        mode.m * harmonics[0][theta_test] / np.tan(thetas[theta_test])
-        + np.sqrt((mode.l - mode.m) * (mode.l + mode.m + 1))
-        * np.exp((0 - 1j) * phis[theta_test])
-        * harmonics[1][theta_test]
-    )
-    return derivative
-
-
-def horizontal_displacement_normalization(
-    derivatives: list[NDArray],
-    harmonics: list[NDArray],
-) -> float:
-    """Calculate normalization constant for horizontal displacement.
-
-    Normalizes the root-mean-square of horizontal displacement of a given
-    pulsation mode to unity. The horizontal displacement is the combination
-    of azimuthal and latitudinal displacement components.
-
-    :param derivatives: List of harmonic derivatives [dY/d_phi, dY/d_theta].
-    :type derivatives: list[NDArray]
-    :param harmonics: List of harmonics [Y_l^m, Y_l^(m+1)].
-    :type harmonics: list[NDArray]
-    :returns: Normalization constant for horizontal displacement.
-    :rtype: float
-    """
-    numerator = np.sum(np.power(np.abs(harmonics[0]), 2))
-    denominator = np.sum(
-        np.power(np.abs(derivatives[0]), 2)
-        + np.power(np.abs(derivatives[1]), 2),
-    )
-    if denominator == 0:
-        error_msg = "Horizontal displacement normalization has a zero denominator."
-        raise_elisa_pulsation_mode_error(error_msg)
-    # noinspection PyUnresolvedReferences
-    return np.sqrt(numerator / denominator)
-
-
 def assign_amplitudes(
     star_container: StarContainer | Body,
     normalization_constant: float = 1.0,
@@ -150,6 +89,12 @@ def assign_amplitudes(
     properties. For modes without an explicit horizontal-to-radial amplitude ratio,
     it is calculated from the mode properties. Temperature amplitude factors are
     computed for modes where not explicitly provided.
+
+    The input amplitude V is a velocity coefficient scale in m/s. For angular
+    frequency omega and signed horizontal/radial ratio q, the physical length
+    scales are A_r=V/(omega*sqrt(1+q**2)) and A_h=q*A_r, both in metres.
+    A_r is not in general the sampled radial RMS or a pointwise maximum.
+    Horizontal mesh RMS normalization is performed later in kinematics.
 
     :param star_container: Star container object with pulsation modes.
     :type star_container: object
@@ -235,9 +180,8 @@ def temp_amplitude(mode: PulsationMode) -> float:
     :rtype: float
     :raises PulsationModeError: If horizontal_to_radial_amplitude_ratio is zero.
     """
-    # Review later: the sole production caller, assign_amplitudes(), rejects
-    # a zero ratio before calling this function. This may be an internal
-    # contract failure; retain PulsationModeError and candidate rejection for now.
+    # The prescription contains 1/K. Amplitude assignment requires an explicit
+    # temperature factor for radial modes or K=0 rather than evaluating it.
     if mode.horizontal_to_radial_amplitude_ratio == 0:
         error_msg = "Temperature perturbation requires a nonzero horizontal-to-radial amplitude ratio."
         raise_elisa_pulsation_mode_error(error_msg)
@@ -247,3 +191,74 @@ def temp_amplitude(mode: PulsationMode) -> float:
         - 4
         - 1 / mode.horizontal_to_radial_amplitude_ratio
     )
+
+
+def cartesian_harmonics(mode: PulsationMode, directions: NDArray,
+                        time_exponential: complex) -> tuple[NDArray, NDArray]:
+    """Evaluate Y and its dimensionless Cartesian tangent gradient on unit n.
+
+    Regular solid harmonics S_lm=r**l Y_lm are homogeneous Cartesian
+    polynomials. Starting at S_00=1, build S_mm with x+i*y, S_(m+1,m) with z,
+    then advance degree with the normalized z*S_(l-1,m), r**2*S_(l-2,m)
+    recurrence. The derivative array follows the same recurrence by the product
+    rule. Its coefficients include ELISA's sqrt(4*pi) harmonic normalization
+    and the Condon--Shortley sign in the sectoral seed.
+
+    At unit n, Euler's identity n.grad(S)=l*S gives the dimensionless tangent
+    gradient g=grad(S)-(n.grad(S))*n. It is tangent to the equilibrium radial
+    sphere, not necessarily tangent to the distorted stellar surface.
+    Polynomial evaluation needs neither angular division nor a chosen pole
+    meridian: the same Cartesian expression applies at and near both poles.
+    On a sphere of physical radius R, the spatial surface gradient is g/R;
+    kinematics uses the dimensionless g in its radius-weighted displacement law.
+
+    Negative orders use Y_(l,-m)=(-1)**m*conj(Y_(l,m)) for the spatial harmonic
+    and its gradient. Apply the supplied exp(-i*(omega*t+start_phase)) afterward;
+    conjugating that temporal factor would reverse the mode's time convention.
+
+    :param mode: Mode supplying degree l and signed order m.
+    :param directions: Unit Cartesian directions, shape (n_points, 3), in
+                       pulsation axes. Radius is deliberately excluded.
+    :param time_exponential: Common complex temporal factor at this snapshot.
+    :returns: Complex harmonic values (n_points,) and tangent gradients
+              (n_points, 3), both dimensionless and in the input frame.
+    """
+    x, y, z = directions.T
+    order = abs(mode.m)
+    value = np.ones(len(x), dtype=complex)
+    derivative = np.zeros((len(x), 3), dtype=complex)
+    transverse = x + 1j*y
+    transverse_gradient = np.array([1., 1j, 0.])
+    for m in range(1, order+1):
+        factor = -np.sqrt((2*m+1)/(2*m))
+        derivative = factor*(transverse[:, None]*derivative
+                             + value[:, None]*transverse_gradient)
+        value = factor*transverse*value
+    # The adjacent-degree seed starts the recurrence at fixed |m|.
+    if mode.l > order:
+        previous, previous_derivative = value, derivative
+        factor = np.sqrt(2*order+3)
+        derivative = factor*z[:, None]*derivative
+        derivative[:, 2] += factor*value
+        value = factor*z*value
+        # Retain r**2 as a polynomial even though evaluation uses unit vectors:
+        # its derivative contributes 2*n*S_(l-2,m) to the spatial gradient.
+        radius_squared = np.sum(directions**2, axis=1)
+        for degree in range(order+2, mode.l+1):
+            a = np.sqrt((4*degree**2-1)/(degree**2-order**2))
+            b = np.sqrt((2*degree+1)*((degree-1)**2-order**2)
+                        / ((2*degree-3)*(degree**2-order**2)))
+            next_derivative = (a*z[:, None]*derivative
+                               - b*(radius_squared[:, None]*previous_derivative
+                                    + 2*directions*previous[:, None]))
+            next_derivative[:, 2] += a*value
+            previous, value = value, a*z*value-b*radius_squared*previous
+            previous_derivative, derivative = derivative, next_derivative
+    # Project using the computed radial derivative (Euler: n.grad(S)=l*S).
+    # This avoids leaving cancellation residuals in the tangent field at high l.
+    gradient = derivative - np.sum(derivative*directions, axis=1)[:, None]*directions
+    # Spatial conjugacy precedes the shared temporal factor for both outputs.
+    if mode.m < 0:
+        value = (-1)**order*value.conj()
+        gradient = (-1)**order*gradient.conj()
+    return time_exponential*value, time_exponential*gradient

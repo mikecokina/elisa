@@ -124,6 +124,7 @@ class SinglePositionContainer(PositionContainer):
         :rtype: elisa.single_system.container.SinglePositionContainer
         """
         logger.debug("build called with kwargs: %s", kwargs)
+        self.reset_flatten()
         self.build_surface()
         self.build_from_points()
 

@@ -395,10 +395,6 @@ class StarContainer:
         self.face_symmetry_vector = np.array([])
         self.base_symmetry_faces_number = 0
 
-        # aux variables for treating singularities at poles
-        self.pole_idx = np.array([])
-        self.pole_idx_neighbour = np.array([])
-
         # those are used only if case of spots are NOT used ------------------------------------------------------------
         self.base_symmetry_points = np.array([])
         self.base_symmetry_faces = np.array([])
@@ -434,6 +430,13 @@ class StarContainer:
         # --------------------------------------------------------------------------------------------------------------
 
         self._flatten = False
+
+        # Cartesian pulsations -----------------------------------------------------------------------------------------
+        # Reference data remain unset until generate_harmonics prepares the equilibrium surface and mode frame.
+        self.pulsation_rotation: NDArray | None = None
+        self.pulsation_directions: NDArray | None = None
+        self.pulsation_equilibrium_points: NDArray | None = None
+        # --------------------------------------------------------------------------------------------------------------
 
     @classmethod
     def from_star_instance(cls, star: Star) -> StarContainer:

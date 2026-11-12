@@ -68,9 +68,9 @@ def test_position_container_owns_pulsation_snapshot(owner: str) -> None:
         "renorm_const",
         "radial_amplitude",
         "horizontal_amplitude",
-        "points",
         "point_harmonics",
-        "point_harmonics_derivatives",
+        "point_harmonics_gradient",
+        "complex_radial_displacement",
         "complex_displacement",
         "tilt_phi",
         "tilt_theta",
@@ -98,14 +98,17 @@ def test_position_container_owns_pulsation_snapshot(owner: str) -> None:
     assert_allclose(mode.complex_displacement, displacement, rtol=1e-13)
 
 
-def test_properties_serializer_copies_existing_mode_arrays() -> None:
+@pytest.mark.parametrize("field", ["point_harmonics_gradient", "complex_displacement", "complex_radial_displacement"])
+def test_properties_serializer_copies_existing_mode_arrays(field: str) -> None:
     system = make_single()
     container = system.build_container(phase=0.0)
-    # Legacy callers may already have synthesis arrays attached to Star modes.
-    system.star.pulsations[0].points = container.star.pulsations[0].points.copy()
+    # Callers may attach computed Cartesian synthesis arrays to Star modes.
+    setattr(system.star.pulsations[0], field, getattr(container.star.pulsations[0], field).copy())
     properties = system.star.properties_serializer()
     mode = properties["pulsations"][0]
     assert mode is not system.star.pulsations[0]
-    assert not np.shares_memory(mode.points, system.star.pulsations[0].points)
-    mode.points[:] = 0
-    assert np.any(system.star.pulsations[0].points != 0)
+    actual = getattr(mode, field)
+    original = getattr(system.star.pulsations[0], field)
+    assert not np.shares_memory(actual, original)
+    actual[:] = 0
+    assert np.any(original != 0)

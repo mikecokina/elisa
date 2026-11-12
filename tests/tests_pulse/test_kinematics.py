@@ -1,10 +1,8 @@
 """Unit tests for elisa.pulse.surface.kinematics module."""
 
 import numpy as np
-import pytest
-from numpy.testing import assert_array_almost_equal, assert_array_equal
+from numpy.testing import assert_array_almost_equal
 
-from elisa import settings
 from elisa import units as u
 from elisa.base.star import Star
 from elisa.pulse.mode import PulsationMode
@@ -27,323 +25,6 @@ SYSTEM_PARAMS = {
     "inclination": 80 * u.deg,
     "rotation_period": 30 * u.d,
 }
-
-
-class TestCalculateHorizontalDisplacements(ElisaTestCase):
-    """Unit tests for calculate_horizontal_displacements function."""
-
-    def setUp(self) -> None:
-        super().setUp()
-        """Set up test fixtures."""
-        self.thetas = np.linspace(0.1, np.pi - 0.1, 10)
-        self.harmonics_derivatives = np.random.random((2, 10)) + 1j * np.random.random((2, 10))
-        self.radius = 1.0
-        self.scale = 1.0
-
-    def test_radial_mode_returns_zeros(self) -> None:
-        """Test that radial mode (l=0) returns zero displacements."""
-        mode = PulsationMode(
-            l=0,
-            m=0,
-            amplitude=1.0 * u.m / u.s,
-            frequency=1.0 / u.d,
-            horizontal_to_radial_amplitude_ratio=0.0,
-            temperature_amplitude_factor=0.01,
-        )
-
-        phi_disp, theta_disp = kinematics.calculate_horizontal_displacements(
-            mode,
-            self.thetas,
-            self.harmonics_derivatives,
-            self.radius,
-            self.scale,
-        )
-
-        assert_array_equal(phi_disp, np.zeros(10))
-        assert_array_equal(theta_disp, np.zeros(10))
-
-    def test_non_radial_mode_returns_complex(self) -> None:
-        """Test that non-radial mode returns complex displacements."""
-        mode = PulsationMode(
-            l=2,
-            m=1,
-            amplitude=1.0 * u.m / u.s,
-            frequency=1.0 / u.d,
-            horizontal_to_radial_amplitude_ratio=0.5,
-        )
-        mode.horizontal_amplitude = 0.1
-
-        phi_disp, theta_disp = kinematics.calculate_horizontal_displacements(
-            mode,
-            self.thetas,
-            self.harmonics_derivatives,
-            self.radius,
-            self.scale,
-        )
-
-        # Should return complex arrays
-        assert np.iscomplexobj(phi_disp)
-        assert np.iscomplexobj(theta_disp)
-
-        # Should have correct shape
-        assert phi_disp.shape == self.thetas.shape
-        assert theta_disp.shape == self.thetas.shape
-
-        # Should be finite
-        assert np.all(np.isfinite(phi_disp))
-        assert np.all(np.isfinite(theta_disp))
-
-    def test_horizontal_displacements_with_zero_amplitude(self) -> None:
-        """Test horizontal displacements with zero horizontal amplitude."""
-        mode = PulsationMode(
-            l=2,
-            m=1,
-            amplitude=1.0 * u.m / u.s,
-            frequency=1.0 / u.d,
-            horizontal_to_radial_amplitude_ratio=0.0,
-            temperature_amplitude_factor=0.01,
-        )
-        mode.horizontal_amplitude = 0.0
-
-        phi_disp, theta_disp = kinematics.calculate_horizontal_displacements(
-            mode,
-            self.thetas,
-            self.harmonics_derivatives,
-            self.radius,
-            self.scale,
-        )
-
-        # Should return zeros when horizontal amplitude is zero
-        assert_array_almost_equal(phi_disp, np.zeros(10))
-        assert_array_almost_equal(theta_disp, np.zeros(10))
-
-    def test_horizontal_displacements_scale_dependence(self) -> None:
-        """Test that scale parameter affects the displacements correctly."""
-        mode = PulsationMode(
-            l=2,
-            m=1,
-            amplitude=1.0 * u.m / u.s,
-            frequency=1.0 / u.d,
-            horizontal_to_radial_amplitude_ratio=0.5,
-        )
-        mode.horizontal_amplitude = 0.1
-
-        # Calculate with scale = 1.0
-        phi_disp_1, theta_disp_1 = kinematics.calculate_horizontal_displacements(
-            mode,
-            self.thetas,
-            self.harmonics_derivatives,
-            self.radius,
-            1.0,
-        )
-
-        # Calculate with scale = 2.0
-        phi_disp_2, theta_disp_2 = kinematics.calculate_horizontal_displacements(
-            mode,
-            self.thetas,
-            self.harmonics_derivatives,
-            self.radius,
-            2.0,
-        )
-
-        # Different scales should give different results
-        assert not np.allclose(phi_disp_1, phi_disp_2)
-        assert not np.allclose(theta_disp_1, theta_disp_2)
-
-    def test_horizontal_displacements_pole_treatment(self) -> None:
-        """Test that pole region handling works correctly."""
-        # Use angles away from exact poles
-        thetas_no_poles = np.array([0.1, np.pi / 4, np.pi / 2, 3 * np.pi / 4, np.pi - 0.1])
-        harmonics_derivatives = np.ones((2, 5)) + 1j * np.ones((2, 5))
-
-        mode = PulsationMode(
-            l=2,
-            m=1,
-            amplitude=1.0 * u.m / u.s,
-            frequency=1.0 / u.d,
-            horizontal_to_radial_amplitude_ratio=0.5,
-        )
-        mode.horizontal_amplitude = 0.1
-
-        phi_disp, theta_disp = kinematics.calculate_horizontal_displacements(
-            mode,
-            thetas_no_poles,
-            harmonics_derivatives,
-            self.radius,
-            self.scale,
-        )
-
-        # All results should be finite
-        assert np.all(np.isfinite(phi_disp))
-        assert np.all(np.isfinite(theta_disp))
-
-        # Shape should match input
-        assert phi_disp.shape == thetas_no_poles.shape
-        assert theta_disp.shape == thetas_no_poles.shape
-
-
-class TestCalculateDisplacementCoordinates(ElisaTestCase):
-    """Unit tests for calculate_displacement_coordinates function."""
-
-    def setUp(self) -> None:
-        super().setUp()
-        """Set up test fixtures."""
-        self.points = np.array([[1.0, 0.0, 0.1], [1.0, 0.1, 0.5], [1.0, 0.2, 1.0]])
-        self.harmonics = np.array([1.0 + 0.1j, 0.9 + 0.2j, 0.8 + 0.3j])
-        self.harmonics_derivatives = np.array(
-            [
-                [0.1 + 0.05j, 0.15 + 0.1j, 0.2 + 0.15j],
-                [0.2 + 0.1j, 0.25 + 0.15j, 0.3 + 0.2j],
-            ],
-        )
-        self.radius = 1.0
-
-    def test_displacement_coordinates_basic(self) -> None:
-        """Test basic displacement coordinates calculation."""
-        mode = PulsationMode(
-            l=2,
-            m=1,
-            amplitude=1.0 * u.m / u.s,
-            frequency=1.0 / u.d,
-            horizontal_to_radial_amplitude_ratio=0.5,
-        )
-        mode.radial_amplitude = 0.1
-        mode.horizontal_amplitude = 0.05
-
-        result = kinematics.calculate_displacement_coordinates(
-            mode,
-            self.points,
-            self.harmonics,
-            self.harmonics_derivatives,
-            self.radius,
-        )
-
-        # Should return array with shape (n_points, 3)
-        assert result.shape == (3, 3)
-
-        # Should be finite
-        assert np.all(np.isfinite(result))
-
-    def test_displacement_coordinates_radial_component(self) -> None:
-        """Test radial component of displacement."""
-        mode = PulsationMode(
-            l=2,
-            m=1,
-            amplitude=1.0 * u.m / u.s,
-            frequency=1.0 / u.d,
-            horizontal_to_radial_amplitude_ratio=0.5,
-        )
-        mode.radial_amplitude = 0.1
-        mode.horizontal_amplitude = 0.05
-
-        result = kinematics.calculate_displacement_coordinates(
-            mode,
-            self.points,
-            self.harmonics,
-            self.harmonics_derivatives,
-            self.radius,
-            scale=1.0,
-        )
-
-        # Radial component should match radial_amplitude * harmonics
-        expected_radial = 0.1 * self.harmonics / 1.0
-        assert_array_almost_equal(result[:, 0], expected_radial)
-
-    def test_displacement_coordinates_scale_factor(self) -> None:
-        """Test that scale factor affects displacement correctly."""
-        mode = PulsationMode(
-            l=2,
-            m=1,
-            amplitude=1.0 * u.m / u.s,
-            frequency=1.0 / u.d,
-            horizontal_to_radial_amplitude_ratio=0.5,
-        )
-        mode.radial_amplitude = 0.1
-        mode.horizontal_amplitude = 0.05
-
-        result_scale_1 = kinematics.calculate_displacement_coordinates(
-            mode,
-            self.points,
-            self.harmonics,
-            self.harmonics_derivatives,
-            self.radius,
-            scale=1.0,
-        )
-
-        result_scale_2 = kinematics.calculate_displacement_coordinates(
-            mode,
-            self.points,
-            self.harmonics,
-            self.harmonics_derivatives,
-            self.radius,
-            scale=2.0,
-        )
-
-        # Radial component should be scaled by 1/scale
-        assert_array_almost_equal(
-            result_scale_1[:, 0] / result_scale_2[:, 0],
-            np.full(3, 2.0),
-        )
-
-    def test_displacement_coordinates_invalid_model(self) -> None:
-        """Test that invalid pulsation model raises error."""
-        mode = PulsationMode(
-            l=2,
-            m=1,
-            amplitude=1.0 * u.m / u.s,
-            frequency=1.0 / u.d,
-            horizontal_to_radial_amplitude_ratio=0.5,
-        )
-        mode.radial_amplitude = 0.1
-        mode.horizontal_amplitude = 0.05
-
-        # Save original setting
-        original_model = settings.PULSATION_MODEL
-
-        try:
-            # Set to invalid model
-            settings.PULSATION_MODEL = "invalid_model"
-
-            with pytest.raises(NotImplementedError):
-                kinematics.calculate_displacement_coordinates(
-                    mode,
-                    self.points,
-                    self.harmonics,
-                    self.harmonics_derivatives,
-                    self.radius,
-                )
-        finally:
-            # Restore original setting
-            settings.PULSATION_MODEL = original_model
-
-
-class TestCalculateModeAngularDisplacement(ElisaTestCase):
-    """Unit tests for calculate_mode_angular_displacement function."""
-
-    def test_real_part_extraction(self) -> None:
-        """Test that real part is extracted from complex displacement."""
-        displacement = np.array([1.0 + 2.0j, 3.0 + 4.0j, 5.0 + 6.0j])
-
-        result = kinematics.calculate_mode_angular_displacement(displacement)
-
-        expected = np.array([1.0, 3.0, 5.0])
-        assert_array_equal(result, expected)
-
-    def test_real_displacement_unchanged(self) -> None:
-        """Test that real displacement is unchanged."""
-        displacement = np.array([1.0 + 0.0j, 2.0 + 0.0j, 3.0 + 0.0j])
-
-        result = kinematics.calculate_mode_angular_displacement(displacement)
-
-        assert_array_equal(result, np.array([1.0, 2.0, 3.0]))
-
-    def test_pure_imaginary_gives_zero(self) -> None:
-        """Test that pure imaginary displacement gives zero."""
-        displacement = np.array([0.0 + 1.0j, 0.0 + 2.0j, 0.0 + 3.0j])
-
-        result = kinematics.calculate_mode_angular_displacement(displacement)
-
-        assert_array_almost_equal(result, np.array([0.0, 0.0, 0.0]))
 
 
 class TestCalculateRadialDisplacement(ElisaTestCase):
@@ -504,6 +185,7 @@ class TestCalculateTemperaturePertFactor(ElisaTestCase):
                 [0.9 + 1.1j, 0.15 + 0.1j, 0.25 + 0.15j],
             ],
         )
+        mode.complex_radial_displacement = mode.complex_displacement[:, 0]
         mode.radial_amplitude = 0.1
 
         result = kinematics.calculate_temperature_pert_factor(mode, scale=1.0)
@@ -543,6 +225,7 @@ class TestCalculateTemperaturePertFactor(ElisaTestCase):
         )
         mode.radial_amplitude = 0.1
 
+        mode.complex_radial_displacement = mode.complex_displacement[:, 0]
         result_1 = kinematics.calculate_temperature_pert_factor(mode, scale=1.0)
         result_2 = kinematics.calculate_temperature_pert_factor(mode, scale=2.0)
 
@@ -598,6 +281,8 @@ class TestCalculateTemperaturePertFactor(ElisaTestCase):
 
         mode_1.complex_displacement = displacement
         mode_2.complex_displacement = displacement
+        mode_1.complex_radial_displacement = displacement[:, 0]
+        mode_2.complex_radial_displacement = displacement[:, 0]
         mode_1.radial_amplitude = 0.1
         mode_2.radial_amplitude = 0.1
 

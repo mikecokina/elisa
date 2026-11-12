@@ -148,7 +148,9 @@ def r_cmap(star: StarContainer, *args) -> NDArray:
     - **subtract_equilibrium** (:class:`bool`) - Include pulsation perturbations
     - **model_scale** (:class:`float`) - Scale factor for the system
 
-    :return: Radius values at surface face centers
+    :return: Mean vertex radii per face, or mean radial displacement projections
+             when subtract_equilibrium is True. The latter uses physical vectors,
+             not finite spherical radius differences.
     :rtype: NDArray
     """
     scale: str
@@ -162,14 +164,10 @@ def r_cmap(star: StarContainer, *args) -> NDArray:
         points: NDArray = star.points - star.com[None, :]
         value: NDArray = utils.cartesian_to_spherical(points)[:, 0]
     else:
-        pargs: tuple = (star, 0.0)
-        kwargs = {
-            "update_container": True,
-            "return_perturbation": False,
-            "spherical_perturbation": False,
-        }
-        perturbation: NDArray = container_ops.position_perturbation(*pargs, **kwargs)
-        value = perturbation[:, 0]
+        perturbation = container_ops.position_perturbation(
+            star, update_container=False, return_perturbation=True,
+        )
+        value = putils.spherical_vector_components(perturbation, star.points_spherical)[:, 0]
 
     value = value[star.faces].mean(axis=1) * model_scale
     unt = units.DISTANCE_UNIT if unit == "default" else unit
@@ -211,16 +209,15 @@ def horizonatal_displacement_cmap(star: StarContainer, *args) -> NDArray:
         error_msg: str = "Horizontal displacement colormap is relevant only for stars with pulsations."
         raise_elisa_graphics_error(error_msg)
 
-    pargs: tuple = (star, 0.0)
-    pkwargs: dict = {
-        "update_container": False,
-        "return_perturbation": True,
-        "spherical_perturbation": True,
-    }
-
-    perturbation: NDArray = container_ops.position_perturbation(*pargs, **pkwargs)
-
-    value: NDArray = putils.horizontal_component(perturbation, star.points_spherical)
+    # Project the linear Cartesian displacement, not finite angular increments.
+    # Average vertex tangent norms, then convert mesh lengths to physical units.
+    perturbation = container_ops.position_perturbation(
+        star,
+        update_container=False,
+        return_perturbation=True,
+    )
+    components = putils.spherical_vector_components(perturbation, star.points_spherical)
+    value: NDArray = np.linalg.norm(components[:, 1:], axis=1)
     value = value[star.faces].mean(axis=1) * model_scale
     unt = units.DISTANCE_UNIT if unit == "default" else unit
     value = transform_values(value, units.DISTANCE_UNIT, unt)
@@ -261,7 +258,6 @@ def v_cmap(star: StarContainer, *args) -> NDArray:
     pkwargs: dict = {
         "update_container": False,
         "return_perturbation": True,
-        "spherical_perturbation": False,
     }
     velocities: NDArray = (
         container_ops.velocity_perturbation(*pargs, **pkwargs)
@@ -316,7 +312,6 @@ def v_rad_cmap(
     pkwargs: dict = {
         "update_container": False,
         "return_perturbation": True,
-        "spherical_perturbation": False,
     }
     velocities: NDArray = (
         utils.rotate_item(
@@ -356,7 +351,7 @@ def v_rad_pert_cmap(star: StarContainer, *args) -> NDArray:
     - **subtract_equilibrium** (:class:`bool`) - Not used for this colormap
     - **model_scale** (:class:`float`) - Scale factor for the system
 
-    :return: Radial velocity perturbation values at surface points
+    :return: Radial projections of face velocity perturbations in the selected units
     :rtype: NDArray
     :raises ElisaGraphicsError: If star has no pulsations
     """
@@ -375,9 +370,11 @@ def v_rad_pert_cmap(star: StarContainer, *args) -> NDArray:
     pkwargs: dict = {
         "update_container": False,
         "return_perturbation": True,
-        "spherical_perturbation": True,
     }
-    velocities: NDArray = container_ops.velocity_perturbation(*pargs, **pkwargs)[:, 0]
+    velocities = container_ops.velocity_perturbation(*pargs, **pkwargs)
+    face_centers = star.pulsation_equilibrium_points[star.faces].mean(axis=1)
+    coordinates = np.atleast_2d(utils.cartesian_to_spherical(face_centers))
+    velocities = putils.spherical_vector_components(velocities, coordinates)[:, 0]
     unt = units.m / units.s if unit == "default" else unit
     value: NDArray = transform_values(velocities, units.VELOCITY_UNIT, unt)
 
@@ -421,14 +418,14 @@ def v_horizontal_pert_cmap(star: StarContainer, *args) -> NDArray:
     pkwargs: dict = {
         "update_container": False,
         "return_perturbation": True,
-        "spherical_perturbation": True,
     }
-    velocities: NDArray = container_ops.velocity_perturbation(*pargs, **pkwargs)
-    face_centres_sph: NDArray = star.points_spherical[star.faces].mean(axis=1)
-    velocities = (
-        putils.horizontal_component(velocities, face_centres_sph, treat_poles=True)
-        * model_scale
-    )
+    # Average physical Cartesian vectors first; project in the face-center
+    # basis before taking the tangent norm, without a second mesh scaling.
+    velocities = container_ops.velocity_perturbation(*pargs, **pkwargs)
+    face_centers = star.pulsation_equilibrium_points[star.faces].mean(axis=1)
+    coordinates = np.atleast_2d(utils.cartesian_to_spherical(face_centers))
+    components = putils.spherical_vector_components(velocities, coordinates)
+    velocities = np.linalg.norm(components[:, 1:], axis=1)
     unt = units.m / units.s if unit == "default" else unit
     value: NDArray = transform_values(velocities, units.VELOCITY_UNIT, unt)
 
@@ -473,9 +470,11 @@ def g_cmap(star: StarContainer, *args) -> NDArray:
         pkwargs: dict = {
             "update_container": False,
             "return_perturbation": True,
-            "spherical_perturbation": True,
         }
-        g: NDArray = container_ops.gravity_acc_perturbation(*pargs, **pkwargs)[:, 0]
+        acceleration = container_ops.gravity_acc_perturbation(*pargs, **pkwargs)
+        face_centers = star.pulsation_equilibrium_points[star.faces].mean(axis=1)
+        coordinates = np.atleast_2d(utils.cartesian_to_spherical(face_centers))
+        g: NDArray = putils.spherical_vector_components(acceleration, coordinates)[:, 0]
     else:
         log_g: NDArray = star.log_g
         g = np.power(10, log_g)
@@ -504,7 +503,7 @@ def horizontal_g_pert_cmap(star: StarContainer, *args) -> NDArray:
     - **subtract_equilibrium** (:class:`bool`) - Not used for this colormap
     - **model_scale** (:class:`float`) - Scale factor for the system
 
-    :return: Horizontal gravity acceleration perturbation values at surface points
+    :return: Horizontal intrinsic acceleration magnitudes at surface face centers
     :rtype: NDArray
     :raises ElisaGraphicsError: If star has no pulsations
     """
@@ -523,14 +522,13 @@ def horizontal_g_pert_cmap(star: StarContainer, *args) -> NDArray:
     pkwargs: dict = {
         "update_container": False,
         "return_perturbation": True,
-        "spherical_perturbation": True,
     }
-    acceleration: NDArray = container_ops.gravity_acc_perturbation(*pargs, **pkwargs)
-    face_centres_sph: NDArray = star.points_spherical[star.faces].mean(axis=1)
-    acceleration = (
-        putils.horizontal_component(acceleration, face_centres_sph, treat_poles=True)
-        * model_scale
-    )
+    # Project face vectors explicitly; the tangent norm remains in m/s**2.
+    acceleration = container_ops.gravity_acc_perturbation(*pargs, **pkwargs)
+    face_centers = star.pulsation_equilibrium_points[star.faces].mean(axis=1)
+    coordinates = np.atleast_2d(utils.cartesian_to_spherical(face_centers))
+    components = putils.spherical_vector_components(acceleration, coordinates)
+    acceleration = np.linalg.norm(components[:, 1:], axis=1)
     unt = units.ACCELERATION_UNIT if unit == "default" else unit
     value: NDArray = transform_values(acceleration, units.ACCELERATION_UNIT, unt)
 

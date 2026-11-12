@@ -174,118 +174,6 @@ class TestPulsationsFunctions(ElisaTestCase):
         # For m=0, derivative should be zero
         assert_almost_equal(result, np.zeros_like(result))
 
-    def test_diff_spherical_harmonics_by_theta_basic(self) -> None:
-        """Test diff_spherical_harmonics_by_theta calculates derivative correctly."""
-        pulse_meta = [
-            {
-                "l": 2,
-                "m": 1,
-                "amplitude": 1.0 * u.m / u.s,
-                "frequency": 1.0 / u.d,
-                "start_phase": 0.0,
-            },
-        ]
-
-        single = SingleSystem(star=Star(pulsations=pulse_meta, **STAR_PARAMS), **SYSTEM_PARMAS)
-        system_container = testutils.prepare_single_system_container(single)
-        system_container.build_mesh()
-        points = utils.cartesian_to_spherical(system_container.star.points)
-
-        mode = single.star.pulsations[0]
-        time = 0.0
-        exponential = putils.generate_time_exponential(mode, time)
-
-        harmonics_0 = pulsations.spherical_harmonics(mode, points, exponential)
-        harmonics_1 = pulsations.spherical_harmonics(mode, points, exponential, order=mode.m + 1)
-
-        result = pulsations.diff_spherical_harmonics_by_theta(
-            mode,
-            [harmonics_0, harmonics_1],
-            points[:, 1],
-            points[:, 2],
-        )
-
-        # Result should have same length as points
-        assert result.shape[0] == points.shape[0]
-
-        # Result should be finite
-        assert np.all(np.isfinite(result))
-
-        # Result should be complex
-        assert np.iscomplexobj(result)
-
-    def test_diff_spherical_harmonics_by_theta_zero_m(self) -> None:
-        """Test diff_spherical_harmonics_by_theta with m=0."""
-        pulse_meta = [
-            {
-                "l": 2,
-                "m": 0,
-                "amplitude": 1.0 * u.m / u.s,
-                "frequency": 1.0 / u.d,
-                "start_phase": 0.0,
-            },
-        ]
-
-        single = SingleSystem(star=Star(pulsations=pulse_meta, **STAR_PARAMS), **SYSTEM_PARMAS)
-        system_container = testutils.prepare_single_system_container(single)
-        system_container.build_mesh()
-        points = utils.cartesian_to_spherical(system_container.star.points)
-
-        mode = single.star.pulsations[0]
-        time = 0.0
-        exponential = putils.generate_time_exponential(mode, time)
-
-        harmonics_0 = pulsations.spherical_harmonics(mode, points, exponential)
-        harmonics_1 = pulsations.spherical_harmonics(mode, points, exponential, order=mode.m + 1)
-
-        result = pulsations.diff_spherical_harmonics_by_theta(
-            mode,
-            [harmonics_0, harmonics_1],
-            points[:, 1],
-            points[:, 2],
-        )
-
-        # Result should be finite
-        assert np.all(np.isfinite(result))
-
-    def test_horizontal_displacement_normalization_basic(self) -> None:
-        """Test horizontal_displacement_normalization calculates normalization constant."""
-        pulse_meta = [
-            {
-                "l": 2,
-                "m": 1,
-                "amplitude": 1.0 * u.m / u.s,
-                "frequency": 1.0 / u.d,
-                "start_phase": 0.0,
-            },
-        ]
-
-        single = SingleSystem(star=Star(pulsations=pulse_meta, **STAR_PARAMS), **SYSTEM_PARMAS)
-        system_container = testutils.prepare_single_system_container(single)
-        system_container.build_mesh()
-        points = utils.cartesian_to_spherical(system_container.star.points)
-
-        mode = single.star.pulsations[0]
-        time = 0.0
-        exponential = putils.generate_time_exponential(mode, time)
-
-        harmonics_0 = pulsations.spherical_harmonics(mode, points, exponential)
-        harmonics_1 = pulsations.spherical_harmonics(mode, points, exponential, order=mode.m + 1)
-
-        d_phi = pulsations.diff_spherical_harmonics_by_phi(mode, [harmonics_0, harmonics_1])
-        d_theta = pulsations.diff_spherical_harmonics_by_theta(
-            mode,
-            [harmonics_0, harmonics_1],
-            points[:, 1],
-            points[:, 2],
-        )
-
-        result = pulsations.horizontal_displacement_normalization([d_phi, d_theta], [harmonics_0, harmonics_1])
-
-        # Result should be finite and positive
-        assert np.isfinite(result)
-        assert result > 0.0
-
     def test_assign_amplitudes_basic(self) -> None:
         """Test assign_amplitudes assigns correct amplitude values."""
         pulse_meta = [
@@ -340,7 +228,7 @@ class TestPulsationsFunctions(ElisaTestCase):
         # Check that ratio is preserved
         if mode.radial_amplitude > 0:
             ratio = mode.horizontal_amplitude / mode.radial_amplitude
-            self.assertAlmostEqual(ratio, 0.5, places=4)
+            assert ratio == pytest.approx(0.5, rel=0.0, abs=5e-05)
 
     def test_assign_amplitudes_normalization_constant(self) -> None:
         """Test assign_amplitudes with custom normalization constant."""

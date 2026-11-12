@@ -102,9 +102,7 @@ def test_zero_amplitude_is_valid_and_finite() -> None:
     assert mode.radial_amplitude == mode.horizontal_amplitude == mode.temperature_amplitude_factor == 0
 
 
-def test_pulsation_zero_denominators() -> None:
-    with pytest.raises(error.PulsationModeError, match="zero denominator"):
-        pulsations.horizontal_displacement_normalization([np.zeros(3)] * 2, [np.ones(3)] * 2)
+def test_temperature_zero_ratio_is_rejected() -> None:
     with pytest.raises(error.PulsationModeError, match="nonzero horizontal"):
         pulsations.temp_amplitude(SimpleNamespace(horizontal_to_radial_amplitude_ratio=0))
 

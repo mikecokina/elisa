@@ -13,6 +13,9 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 #### Added
 
+- Cartesian pulsation regression checks for pole continuity, signed amplitudes,
+  radius-weighted normalization, frozen-equilibrium time derivatives, physical
+  vector units, colormap projections and single/binary observable synthesis.
 - Aggregated MCMC synthesis-failure diagnostics across all workers, with concise
   periodic INFO summaries instead of individual candidate warnings and tracebacks.
   `MCMC_DIAGNOSTICS_INTERVAL_STEPS` /
@@ -69,6 +72,15 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 #### Changed
 
+- Replaced finite spherical-coordinate pulsation increments with physical Cartesian
+  displacement vectors evaluated on the flattened equilibrium mesh, including spot
+  replacement vertices. Position, intrinsic velocity and acceleration now share
+  the same complex displacement and component-frame rotation; displaced face
+  centers, normals and areas are rebuilt before surface integration.
+- Breaking pulsation API change: removed `spherical_perturbation` and the legacy
+  angular-displacement and pole-treatment helpers. Perturbation functions return
+  Cartesian physical vectors; spherical diagnostic components require explicit
+  projection with `spherical_vector_components`.
 - Optimized tabulated-atmosphere radiances by integrating unique aligned,
   passbanded spectra before mapping and temperature interpolation across surface
   faces. Integrated fluxes and T^4 interpolation weights use float64 precision,
@@ -104,6 +116,16 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 #### Fixed
 
+- Evaluate pulsation harmonics and Cartesian tangent gradients with a regular
+  solid-harmonic recurrence that remains defined at both poles. Horizontal
+  displacement uses local equilibrium radii and complex vertex RMS normalization;
+  temperature perturbations retain a separate radial displacement coefficient.
+- Corrected pulsation colormaps to project physical Cartesian vectors at
+  equilibrium vertices or face centers, avoid duplicate velocity/acceleration
+  scaling, and leave the surface mesh unchanged when displaying displacement.
+- Reset flatten state before complete single-star container rebuilds so spot
+  replacement vertices and faces are merged on every build, including pulsating
+  spotted stars.
 - Corrected single-star rotational velocities for stellar and spot surfaces to
   use `omega × position`, matching the time derivative of the rotating geometry
   and the established observer-frame RV convention. Added independent geometry,
