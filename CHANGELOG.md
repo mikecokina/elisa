@@ -104,6 +104,11 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 #### Fixed
 
+- Corrected orbital light-travel-time delays for binary pulsations: evaluate
+  harmonics at emission time by subtracting the observer-frame barycentric
+  propagation delay, without applying the inclination projection twice.
+  Added geometric and synthesis regression tests, refreshed the pulsating-binary
+  RV reference, and corrected the line-of-sight vector in its utility docstring.
 - Removed whole-kelvin rounding from blackbody surface temperatures so
   least-squares finite differences retain the Planck-flux temperature
   response and recover noiseless light-curve parameters after the passband

@@ -804,7 +804,7 @@ def calculate_cos_theta(
 def calculate_cos_theta_los_x(
     normals: NDArray,
 ) -> NDArray:
-    """Calculate cosine of an angle between normalized vectors and line of sight vector [1, 0, 0].
+    """Calculate cosine of an angle between normalized vectors and line of sight vector [-1, 0, 0].
 
     :param normals: numpy.ndarray
     :return: numpy.ndarray
