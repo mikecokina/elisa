@@ -24,7 +24,7 @@ from elisa.observer import utils as outils
 from elisa.observer.passband import PassbandContainer, _validated_passband_interval, init_bolometric_passband
 from elisa.observer.plot import Plot
 from elisa.photometric_standards.standards_handlers import load_standard
-from elisa.utils import file_source_identity, is_empty, jd_to_phase
+from elisa.utils import file_source_identity, is_empty
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -630,7 +630,9 @@ class Observer:
             if is_empty(times):
                 times = up.arange(from_time, to_time, time_step)
 
-            phases = jd_to_phase(times, self._system.period, self._system.t0, centre=0.5)
+            # Preserve elapsed cycles for pulsations and asynchronous spots.
+            # phase_interval_reduce handles periodic geometry and deduplication.
+            phases = (np.asarray(times) - self._system.t0) / self._system.period
         elif is_empty(phases):
             phases = up.arange(from_phase, to_phase, phase_step)
 

@@ -104,6 +104,11 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 #### Fixed
 
+- Preserved orbital cycle counts in absolute-time inputs to `Observer.lc()`
+  and `Observer.rv()`, making pulsating and asynchronously spotted systems
+  consistent with equivalent unwrapped-phase observations. Time-derived
+  returned phases now retain elapsed cycles; strictly periodic systems keep
+  their existing phase reduction and deduplication.
 - Corrected orbital light-travel-time delays for binary pulsations: evaluate
   harmonics at emission time by subtracting the observer-frame barycentric
   propagation delay, without applying the inclination projection twice.
