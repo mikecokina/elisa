@@ -194,12 +194,12 @@ def build_velocities(system: SinglePositionContainer) -> SinglePositionContainer
     omega = np.array([0.0, 0.0, system.angular_velocity])
 
     # rotational velocity
-    p_velocities = np.cross(star.points, omega, axisa=1)
+    p_velocities = np.cross(omega, star.points)
     star.velocities = np.mean(p_velocities[star.faces], axis=1)
 
     if star.has_spots():
         for _spot in star.spots.values():
-            p_velocities_spot = np.cross(_spot.points, omega, axisa=1)
+            p_velocities_spot = np.cross(omega, _spot.points)
             _spot.velocities = np.mean(p_velocities_spot[_spot.faces], axis=1)
 
     return system

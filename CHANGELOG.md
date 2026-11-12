@@ -104,6 +104,11 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 #### Fixed
 
+- Corrected single-star rotational velocities for stellar and spot surfaces to
+  use `omega × position`, matching the time derivative of the rotating geometry
+  and the established observer-frame RV convention. Added independent geometry,
+  analytic rotation, spot and RV regression checks across phases and inclinations,
+  and refreshed the affected pulsating single-star RV reference curve.
 - Preserved orbital cycle counts in absolute-time inputs to `Observer.lc()`
   and `Observer.rv()`, making pulsating and asynchronously spotted systems
   consistent with equivalent unwrapped-phase observations. Time-derived
