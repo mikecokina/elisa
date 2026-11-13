@@ -6,11 +6,11 @@ This roadmap tracks remaining work and deliberately deferred technical debt, not
 
 ## Next
 
-- [ ] **Standalone binary LC visual diagnostics** - Create one independent, production-quality Python script for each of the eight documented binary LC configurations in `docs/diagrams/`, one system at a time. Each script defines its own fixed, physically valid system, calculates and displays the light curve, saves `lightcurve.png`, and generates `temperature_animation.gif` showing absolute surface temperature with a fixed 45° azimuth / 45° elevation camera and consistent frame-to-frame colour scale. Keep outputs separate. **No CLI, shared base, common utilities, configuration modules or imports between examples; deliberate code duplication is required.** Preserve elapsed orbital cycles where spots or pulsations require them. Start with circular synchronous unspotted.
-
 ## Open / deferred
 
 - [ ] **Logging lifecycle and spawned workers (follow-up to PR #29)** - Separate loading/validating `LOG_CONFIG` from applying logging during import. Under spawn, a custom logging JSON selected in the INI can be applied before worker initialization; a `FileHandler(mode="w")` may truncate the parent log. Defer the broader lifecycle refactor; it is not a merge requirement for PR #29. Preserve fork-inherited handlers and explicit parent logging configuration. Cover INI-selected custom logging in spawn regressions when revisited.
+
+- [ ] **LC fitting: preserve user-supplied phase coordinates** - When users provide phase-domain observations, preserve their original phases without implicit modulo-one folding in the fitting time layer. Ensure direct synthesis and interpolation support the supplied phase range consistently in both LSQ and MCMC. Preserve existing JD/time-domain folding and candidate period/epoch recomputation. Add focused regression tests. No fitting refactor planned.
 
 ## Explicitly deferred / do not reopen without evidence
 
