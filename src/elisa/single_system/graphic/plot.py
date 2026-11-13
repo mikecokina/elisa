@@ -263,6 +263,8 @@ class Plot:
         :param phase: Photometric phase at which to render the surface.
         :type phase: elisa.types.Float
         :param colormap: Colormap name or ``None`` to use defaults.
+            ``radiance`` is projected directional radiance ``L_normal * LD(mu) * mu``,
+            including limb darkening and a separate projected-area cosine.
         :type colormap: str | None
         :param face_mask: Optional boolean mask selecting faces to include.
         :type face_mask: numpy.ndarray | None
@@ -294,8 +296,21 @@ class Plot:
         :type colorbar: bool
         :param return_figure_instance: If True return the Figure instance.
         :type return_figure_instance: bool
-        :param subtract_equilibrium: If True subtract equilibrium values from colormap.
+        :param subtract_equilibrium: Select the intrinsic diagnostic described below.
         :type subtract_equilibrium: bool
+
+        With ``subtract_equilibrium=True`` (requires pulsations): ``radius``
+        gives the mean radial projection of Cartesian displacement in equilibrium
+        directions, not finite radius differences; ``velocity`` gives intrinsic
+        pulsational speed, not a difference of total speed magnitudes;
+        ``radial_velocity`` gives the observer x velocity component (positive for
+        recession); ``gravity_acceleration`` gives signed radial intrinsic
+        acceleration, not a difference of effective-gravity magnitudes;
+        ``temperature`` gives the actual increment from its equilibrium snapshot.
+        The perturbation-only maps ``horizontal_displacement``, ``v_r_perturbed``,
+        ``v_horizontal_perturbed`` and ``horizontal_acceleration`` already show
+        intrinsic diagnostics. Their values, and those of ``normal_radiance``
+        and ``radiance``, are unaffected by this flag.
 
         :returns: Figure instance or ``None`` when the plot is shown.
         :rtype: matplotlib.figure.Figure | None

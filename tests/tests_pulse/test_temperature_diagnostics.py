@@ -601,7 +601,7 @@ def test_public_graphics_uses_recognized_build_arguments(
         monkeypatch.setattr(graphics, renderer_name, lambda **_surface_options: None)
         system.plot.surface(phase=0.31, colormap="temperature", subtract_equilibrium=subtract_temperature)
 
-    assert len(build_calls) == (2 if animation else 1)
+    assert len(build_calls) == (3 if animation else 1)
     assert len(pulsation_calls) == len(build_calls)
     for _built_phase, built_distance, actual_options in build_calls:
         expected_options: dict[str, Any] = {"build_pulsations": not subtract_temperature, **explicit_options}

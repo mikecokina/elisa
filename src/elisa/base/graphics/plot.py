@@ -24,6 +24,49 @@ if TYPE_CHECKING:
     from elisa.types import Float
 
 
+def animation_phases(start_phase: Float, stop_phase: Float, phase_step: Float) -> NDArray:
+    """Sample unwrapped phases at a fixed step, including stops on the grid.
+
+    Floating-point tolerance is used only to recognize an on-grid endpoint;
+    it never changes the requested spacing or adds an off-grid final frame.
+    """
+    start_phase = float(start_phase)
+    stop_phase = float(stop_phase)
+    phase_step = float(phase_step)
+
+    if not np.isfinite([start_phase, stop_phase, phase_step]).all():
+        raise_elisa_graphics_error("Animation phase bounds and phase_step must be finite.")
+    if phase_step <= 0:
+        raise_elisa_graphics_error("Animation phase_step must be positive.")
+    if stop_phase < start_phase:
+        raise_elisa_graphics_error(f"Starting phase {start_phase} is greater than stop phase {stop_phase}")
+    if start_phase == stop_phase:
+        return np.array([start_phase])
+    if start_phase + phase_step == start_phase:
+        raise_elisa_graphics_error("Animation phase_step is too small to advance the starting phase.")
+
+    step_count = (stop_phase - start_phase) / phase_step
+    if not np.isfinite(step_count):
+        raise_elisa_graphics_error("Animation phase range and step produce a non-finite frame count.")
+
+    # Count complete intervals. Division can round an integral count down,
+    # so check whether one additional step actually reaches the requested stop.
+    phase_scale = max(abs(start_phase), abs(stop_phase), phase_step)
+    endpoint_tolerance = 2 * float(np.finfo(float).eps) * phase_scale
+    complete_steps = int(np.floor(step_count))
+    next_grid_phase = start_phase + (complete_steps + 1) * phase_step
+    if abs(next_grid_phase - stop_phase) <= endpoint_tolerance:
+        complete_steps += 1
+
+    phases = start_phase + np.arange(complete_steps + 1) * phase_step
+
+    # Preserve the exact start; snap only an endpoint affected by roundoff.
+    endpoint_matches_stop = complete_steps > 0 and abs(phases[-1] - stop_phase) <= endpoint_tolerance
+    if endpoint_matches_stop:
+        phases[-1] = stop_phase
+    return phases
+
+
 def build_surface_with_temperature_reference(
     container: SinglePositionContainer | OrbitalPositionContainer,
     colormap: str | None,
@@ -100,7 +143,8 @@ def add_colormap_to_plt_kwargs(*args, **kwargs) -> NDArray | None:
 
     - **scale** - Scale type: ``'log'``, ``'logarithmic'`` or ``'linear'``.
     - **unit** - Output unit, or ``'default'`` to retain the native unit.
-    - **subtract_equilibrium** - Return only the pulsation increment when True.
+    - **subtract_equilibrium** - Select the intrinsic pulsation diagnostic defined
+      by the requested colormap; this is not generally subtraction of magnitudes.
     - **equilibrium_temperatures** - Plot-local pre-pulsation face temperatures,
       required for temperature equilibrium subtraction.
 
@@ -111,7 +155,7 @@ def add_colormap_to_plt_kwargs(*args, **kwargs) -> NDArray | None:
     - ``'velocity'`` - Absolute values of surface element velocities relative to observer
     - ``'radial_velocity'`` - Radial component of surface velocities relative to observer
     - ``'normal_radiance'`` - Surface element radiance perpendicular to surface
-    - ``'radiance'`` - Surface element radiance in direction towards observer
+    - ``'radiance'`` - Projected directional radiance, including limb darkening and the area cosine
     - ``'radius'`` - Distance of surface elements from center of mass
     - ``'horizontal_displacement'`` - Distribution of horizontal component of surface displacement
     - ``'horizontal_acceleration'`` - Distribution of horizontal surface acceleration component
@@ -198,7 +242,7 @@ def r_cmap(star: StarContainer, *args) -> NDArray:
 
     - **scale** (:class:`str`) - Scale type: ``'log'``, ``'logarithmic'``, or ``'linear'``
     - **unit** - Unit for the colormap values
-    - **subtract_equilibrium** (:class:`bool`) - Include pulsation perturbations
+    - **subtract_equilibrium** (:class:`bool`) - Use equilibrium radial displacement projection when True
     - **model_scale** (:class:`float`) - Scale factor for the system
 
     :return: Mean vertex radii per face, or mean radial displacement projections
@@ -281,9 +325,9 @@ def horizonatal_displacement_cmap(star: StarContainer, *args) -> NDArray:
 def v_cmap(star: StarContainer, *args) -> NDArray:
     """Return surface element speed as a colormap.
 
-    Computes the absolute speed of surface elements in the reference frame,
-    optionally including pulsation perturbations, and returns values suitable
-    for visualization as a colormap.
+    Return total observer-frame face speed, or ``|v_p|`` for intrinsic
+    pulsational face velocity when subtraction is requested. The latter is
+    not ``|v_total| - |v_equilibrium|``.
 
     :param star: Star container with velocity data
     :type star: StarContainer
@@ -294,10 +338,11 @@ def v_cmap(star: StarContainer, *args) -> NDArray:
 
     - **scale** (:class:`str`) - Scale type: ``'log'``, ``'logarithmic'``, or ``'linear'``
     - **unit** - Unit for the colormap values
-    - **subtract_equilibrium** (:class:`bool`) - Include pulsation perturbations
+    - **subtract_equilibrium** (:class:`bool`) - Return intrinsic pulsational speed when True;
+      not a difference of total speed magnitudes
     - **model_scale** (:class:`float`) - Scale factor for the system
 
-    :return: Speed values at surface points
+    :return: Norms of face velocity vectors
     :rtype: NDArray
     """
     scale: str
@@ -330,9 +375,9 @@ def v_rad_cmap(
 ) -> NDArray:
     """Return radial velocity as a colormap (with respect to the observer).
 
-    Computes the radial component of surface element velocities relative to
-    the observer, optionally including pulsation perturbations, and returns
-    values suitable for visualization as a colormap.
+    Return the observer x component of total face velocity, or of intrinsic
+    pulsational velocity when subtraction is requested. Positive values mean
+    recession. These are local face velocities, not disk-integrated RVs.
 
     :param star: Star container with velocity data
     :type star: StarContainer
@@ -343,12 +388,13 @@ def v_rad_cmap(
 
     - **scale** (:class:`str`) - Scale type: ``'log'``, ``'logarithmic'``, or ``'linear'``
     - **unit** - Unit for the colormap values
-    - **subtract_equilibrium** (:class:`bool`) - Include pulsation perturbations
+    - **subtract_equilibrium** (:class:`bool`) - Return the observer x component of
+      intrinsic pulsational velocity when True
     - **model_scale** (:class:`float`) - Scale factor for the system
     - **inclination** (:class:`float`) - Inclination angle
     - **position** (:class:`elisa.const.Position`) - Position object
 
-    :return: Radial velocity values at surface points
+    :return: Observer x velocities per face, positive for recession
     :rtype: NDArray
     :note: Logarithmic scale is not supported for radial velocity
     """
@@ -488,9 +534,10 @@ def v_horizontal_pert_cmap(star: StarContainer, *args) -> NDArray:
 def g_cmap(star: StarContainer, *args) -> NDArray:
     """Return gravity acceleration colormap.
 
-    Computes the surface distribution of gravitational acceleration magnitude,
-    optionally including pulsation perturbations, and returns values suitable
-    for visualization as a colormap.
+    Return the stored effective-gravity magnitude ``10**log_g``. With subtraction
+    requested, return ``mean(a_p) dot e_r`` in the equilibrium face-centre basis:
+    signed radial intrinsic acceleration, not the difference between perturbed
+    and equilibrium effective-gravity magnitudes.
 
     :param star: Star container with gravity acceleration data
     :type star: StarContainer
@@ -501,10 +548,11 @@ def g_cmap(star: StarContainer, *args) -> NDArray:
 
     - **scale** (:class:`str`) - Scale type: ``'log'``, ``'logarithmic'``, or ``'linear'``
     - **unit** - Unit for the colormap values
-    - **subtract_equilibrium** (:class:`bool`) - Include pulsation perturbations
+    - **subtract_equilibrium** (:class:`bool`) - Return signed radial intrinsic acceleration
+      when True, not a gravity-magnitude difference
     - **model_scale** (:class:`float`) - Scale factor for the system
 
-    :return: Gravity acceleration values at surface points
+    :return: Effective-gravity magnitudes, or signed radial intrinsic accelerations, per face
     :rtype: NDArray
     :raises ElisaGraphicsError: If logarithmic scale is used with ``subtract_equilibrium=True``
     """
@@ -668,11 +716,13 @@ def norm_radiance_cmap(star: StarContainer, *args) -> NDArray:
 
 
 def radiance_cmap(star: StarContainer, *args) -> NDArray:
-    """Return radiance in the direction of the observer as a colormap.
+    """Return projected directional radiance towards the observer as a colormap.
 
-    Computes the radiance of surface elements in the direction towards the
-    observer, accounting for limb darkening effects, and returns values suitable
-    for visualization as a colormap.
+    Observer-facing faces return ``L_normal * LD(mu) * mu``; other faces return
+    zero. ``LD(mu)`` is the limb-darkening factor. The separate cosine ``mu``
+    weights projected area and is not part of limb darkening. Thus this is the
+    directional contribution per physical surface area, without a face-area
+    multiplier, rather than directional radiance ``L_normal * LD(mu)`` alone.
 
     :param star: Star container with radiance data
     :type star: StarContainer
@@ -685,7 +735,7 @@ def radiance_cmap(star: StarContainer, *args) -> NDArray:
     - **unit** - Unit for the colormap values
     - **subtract_equilibrium** (:class:`bool`) - Not used for this colormap
 
-    :return: Radiance values at surface face centers with limb darkening applied
+    :return: Projected directional radiance per face, including limb darkening and the area cosine
     :rtype: NDArray
     :note: Logarithmic scale is not supported for radiance
     """

@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from elisa.base.error import raise_elisa_graphics_error
 from elisa.base.graphics import plot
 from elisa.const import Position
 from elisa.graphic import graphics
@@ -59,9 +58,15 @@ class Animation:
         """Create an animation of the rotational motion of the single system.
 
         The function steps the system through phases from ``start_phase`` to
-        ``stop_phase`` (inclusive) with step ``phase_step`` and prepares frame
+        the last grid point not beyond ``stop_phase`` and prepares frame
         data (points, faces and colormap) which is then passed to the graphics
         layer.
+
+        Sampling includes ``start_phase``. ``phase_step`` must be finite and
+        positive. The stop is included only on the sampling grid (allowing
+        floating-point rounding); an off-grid stop is not appended. Equal bounds
+        produce one frame. Bounds must be finite and ordered. Phases retain
+        elapsed cycles and determine each frame's physical time.
 
         :param start_phase: Starting phase of the animation.
         :type start_phase: elisa.types.Float
@@ -72,25 +77,38 @@ class Animation:
         :param scale: Colormap scale, typically ``"linear"`` or ``"log"``.
         :type scale: str
         :param colormap: Name of the requested colormap or ``None`` to use default.
+            ``radiance`` is projected directional radiance ``L_normal * LD(mu) * mu``;
+            the limb-darkening factor and projected-area cosine are distinct.
         :type colormap: str | None
         :param savepath: If provided, animation will be stored to this path.
         :type savepath: pathlib.Path | str | None
         :param plot_axis: If ``False``, axes will be hidden in the produced plot.
         :type plot_axis: bool
-        :param subtract_equilibrium: Remove equilibrium part of quantity (useful for pulsations).
+        :param subtract_equilibrium: Select the intrinsic diagnostic described below.
         :type subtract_equilibrium: bool
         :param edges: Highlight edges of surface faces when rendering.
         :type edges: bool
+
+        With ``subtract_equilibrium=True`` (requires pulsations): ``radius``
+        gives the mean radial projection of Cartesian displacement in equilibrium
+        directions, not finite radius differences; ``velocity`` gives intrinsic
+        pulsational speed, not a difference of total speed magnitudes;
+        ``radial_velocity`` gives the observer x velocity component (positive for
+        recession); ``gravity_acceleration`` gives signed radial intrinsic
+        acceleration, not a difference of effective-gravity magnitudes;
+        ``temperature`` gives the actual increment from its equilibrium snapshot.
+        The perturbation-only maps ``horizontal_displacement``, ``v_r_perturbed``,
+        ``v_horizontal_perturbed`` and ``horizontal_acceleration`` already show
+        intrinsic diagnostics. Their values, and those of ``normal_radiance``
+        and ``radiance``, are unaffected by this flag.
+
         :return: None
         :rtype: None
         """
         anim_kwargs: dict = {}
 
-        if stop_phase < start_phase:
-            raise_elisa_graphics_error(f"Starting phase {start_phase} is greater than stop phase {stop_phase}")
-
-        n_frames = int((stop_phase - start_phase) / phase_step)
-        phases = np.linspace(start_phase, stop_phase, num=n_frames)
+        phases = plot.animation_phases(start_phase, stop_phase, phase_step)
+        n_frames = len(phases)
         points: list = []
         faces: list = []
         cmap: list = []

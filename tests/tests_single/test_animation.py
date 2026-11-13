@@ -12,14 +12,14 @@ class AnimationTestCase(ElisaTestCase):
     """Unit tests for `elisa.single_system.graphic.animation.Animation`.
 
     The tests exercise the animation helper in a lightweight way by
-    requesting a single-frame animation so the plotting backend work is
+    requesting a short animation so the plotting backend work is
     executed but the runtime stays fast and deterministic.
     """
 
     @pytest.mark.requires_ld(passbands=("bolometric",), laws=("cosine",))
     @pytest.mark.requires_atmosphere
     def test_rotational_motion_runs_minimal(self) -> None:
-        """Run a minimal (single-frame) animation and ensure it completes.
+        """Run a minimal endpoint-inclusive animation and ensure it completes.
 
         :returns: None
         :rtype: None

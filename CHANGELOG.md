@@ -120,6 +120,11 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 #### Fixed
 
+- Fixed single-star and binary orbital animations ignoring the requested
+  `phase_step`. Frames now follow that increment, including the stop phase only
+  when it falls on the sampling grid. Equal bounds produce one frame; invalid
+  phase ranges and non-positive or non-finite steps are rejected. Elapsed orbital
+  cycles are preserved when calculating each frame's physical time.
 - Fixed `plot.mesh()` failing for pulsating single and binary stars with
   "the star container has not been flattened". Mesh plots now display the
   displaced surface at the requested phase and elapsed time, including spots

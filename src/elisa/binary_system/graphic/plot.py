@@ -378,16 +378,30 @@ class Plot:
         :param separate_colormaps: bool; if True, figure will contain separate colormap for each component
         :param colorbar_separation: float; shifting position of the colorbar from its default postition, default is 0.0
         :param colorbar_size: float; relative size of the colorbar, default 0.7
-        :param subtract_equilibrium: bool; if True; equilibrium values are subtracted from surface colormap
+        :param subtract_equilibrium: bool; select the intrinsic diagnostic described below
         :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
                                              produced figure
+        With ``subtract_equilibrium=True`` (requires pulsations): ``radius``
+        gives the mean radial projection of Cartesian displacement in equilibrium
+        directions, not finite radius differences; ``velocity`` gives intrinsic
+        pulsational speed, not a difference of total speed magnitudes;
+        ``radial_velocity`` gives the observer x velocity component (positive for
+        recession); ``gravity_acceleration`` gives signed radial intrinsic
+        acceleration, not a difference of effective-gravity magnitudes;
+        ``temperature`` gives the actual increment from its equilibrium snapshot.
+        The perturbation-only maps ``horizontal_displacement``, ``v_r_perturbed``,
+        ``v_horizontal_perturbed`` and ``horizontal_acceleration`` already show
+        intrinsic diagnostics. Their values, and those of ``normal_radiance``
+        and ``radiance``, are unaffected by this flag.
+
         :**available colormap options**:
             * :'gravity_acceleration': surface distribution of gravity acceleration,
             * :'temperature': surface distribution of the effective temperature,
             * :'velocity': absolute values of surface elements velocities with respect to the observer,
             * :'radial_velocity': radial component of the surface element velocities relative to the observer,
             * :'normal_radiance': surface element radiance perpendicular to the surface element,
-            * :'radiance': radiance of the surface element in a direction towards the observer,
+            * :'radiance': projected directional radiance `L_normal * LD(mu) * mu`,
+              with separate limb-darkening and projected-area factors,
             * :'radius': distance of the surface elements from the center of mass
             * :'horizontal_displacement': distribution of the horizontal component of surface displacement
             * :'horizontal_acceleration': distribution of horizontal component surface acceleration

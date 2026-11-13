@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from elisa.base.error import raise_elisa_graphics_error
 from elisa.base.graphics import plot
 from elisa.binary_system import dynamic
 from elisa.binary_system import utils as butils
@@ -59,6 +58,12 @@ class Animation:
     ) -> None:
         """Create an animation of the orbital motion.
 
+        Sampling includes ``start_phase``. ``phase_step`` must be finite and
+        positive. The stop is included only on the sampling grid (allowing
+        floating-point rounding); an off-grid stop is not appended. Equal bounds
+        produce one frame. Bounds must be finite and ordered. Phases retain
+        elapsed cycles and determine each frame's physical time.
+
         :param start_phase: Starting orbital phase of the animation.
         :type start_phase: Float
         :param stop_phase: Ending orbital phase of the animation.
@@ -77,13 +82,26 @@ class Animation:
         :param separate_colormaps: If ``True``, use separate colormaps for each
             component.
         :type separate_colormaps: bool | None
-        :param subtract_equilibrium: If ``True``, subtract the equilibrium part
-            of the quantity, which is useful for pulsation-related quantities.
+        :param subtract_equilibrium: Select the intrinsic diagnostic described below.
         :type subtract_equilibrium: bool
         :param plot_axis: If ``False``, hide the axis.
         :type plot_axis: bool
         :param edges: If ``True``, highlight edges of surface faces.
         :type edges: bool
+
+        With ``subtract_equilibrium=True`` (requires pulsations): ``radius``
+        gives the mean radial projection of Cartesian displacement in equilibrium
+        directions, not finite radius differences; ``velocity`` gives intrinsic
+        pulsational speed, not a difference of total speed magnitudes;
+        ``radial_velocity`` gives the observer x velocity component (positive for
+        recession); ``gravity_acceleration`` gives signed radial intrinsic
+        acceleration, not a difference of effective-gravity magnitudes;
+        ``temperature`` gives the actual increment from its equilibrium snapshot.
+        The perturbation-only maps ``horizontal_displacement``, ``v_r_perturbed``,
+        ``v_horizontal_perturbed`` and ``horizontal_acceleration`` already show
+        intrinsic diagnostics. Their values, and those of ``normal_radiance``
+        and ``radiance``, are unaffected by this flag.
+
         :return: ``None``.
         :rtype: None
 
@@ -97,8 +115,8 @@ class Animation:
           relative to the observer
         - ``"normal_radiance"``: surface element radiance perpendicular to the
           surface element
-        - ``"radiance"``: radiance of the surface element in the direction of
-          the observer
+        - ``"radiance"``: projected directional radiance ``L_normal * LD(mu) * mu``;
+          limb darkening and the projected-area cosine are separate factors
         - ``"radius"``: distance of surface elements from the centre of mass
         - ``"horizontal_displacement"``: distribution of the horizontal
           component of surface displacement
@@ -110,11 +128,7 @@ class Animation:
         """
         del units
 
-        if stop_phase < start_phase:
-            raise_elisa_graphics_error(
-                f"Starting phase {start_phase} is greater than stop phase "
-                f"{stop_phase}.",
-            )
+        phases: NDArray[np.float64] = plot.animation_phases(start_phase, stop_phase, phase_step)
 
         components = butils.component_to_list("both")
 
@@ -124,12 +138,7 @@ class Animation:
                 and colormap not in ["velocity", "radial_velocity"]
             )
 
-        n_frames = int((stop_phase - start_phase) / phase_step)
-        phases: NDArray[np.float64] = np.linspace(
-            start_phase,
-            stop_phase,
-            num=n_frames,
-        )
+        n_frames = len(phases)
 
         none = [None for _ in range(n_frames)]
         points = {component: copy(none) for component in components}
