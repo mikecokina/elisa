@@ -72,6 +72,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 #### Changed
 
+- Clarified pulsation mesh-to-metre conversions and the velocity-coefficient
+  meaning of mode amplitudes. Updated the pulsation tutorial to distinguish
+  coefficient amplitudes from physical RMS velocities and document preserved
+  elapsed cycles in the Observer's `times=` interface.
 - Replaced finite spherical-coordinate pulsation increments with physical Cartesian
   displacement vectors evaluated on the flattened equilibrium mesh, including spot
   replacement vertices. Position, intrinsic velocity and acceleration now share
@@ -116,10 +120,19 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 #### Fixed
 
+- Corrected `temperature` colormaps with `subtract_equilibrium=True` in single-
+  and binary-star surface plots and animations. They now show the temperature
+  change caused by pulsations relative to the same surface before pulsations,
+  including spots and binary irradiation. Previously, the color values were
+  calculated from already perturbed temperatures, giving incorrect differences.
+- Fixed non-finite surface temperatures at zero pulsation velocity amplitude,
+  which could cause light-curve and radial-velocity synthesis to fail. An
+  explicitly configured temperature perturbation still produces thermal
+  oscillations at zero displacement; automatically calculated temperature
+  perturbations become zero.
 - Evaluate pulsation harmonics and Cartesian tangent gradients with a regular
   solid-harmonic recurrence that remains defined at both poles. Horizontal
-  displacement uses local equilibrium radii and complex vertex RMS normalization;
-  temperature perturbations retain a separate radial displacement coefficient.
+  displacement uses local equilibrium radii and complex vertex RMS normalization.
 - Corrected pulsation colormaps to project physical Cartesian vectors at
   equilibrium vertices or face centers, avoid duplicate velocity/acceleration
   scaling, and leave the surface mesh unchanged when displaying displacement.

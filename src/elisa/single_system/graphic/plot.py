@@ -313,7 +313,12 @@ class Plot:
         )
         position_container.set_on_position_params(single_position)
         position_container.set_time()
-        position_container.build(phase=phase, build_pulsations=True)
+        # Build once for this plot; the helper owns snapshot timing and component association.
+        equilibrium_temperatures = plot.build_surface_with_temperature_reference(
+            position_container,
+            colormap,
+            subtract_equilibrium=subtract_equilibrium,
+        )
         correct_face_orientation(position_container.star, com=0)
 
         # calculating radiances
@@ -330,9 +335,15 @@ class Plot:
 
         star_container = position_container.star
 
-        args = (colormap, star_container, phase, 0.0, 1.0, self.single.inclination, position_container.position)
-        kwargs = {"scale": scale, "unit": colorbar_unit, "subtract_equilibrium": subtract_equilibrium}
-        surface_kwargs.update({"cmap": plot.add_colormap_to_plt_kwargs(*args, **kwargs)})
+        args_ = (colormap, star_container, phase, 0.0, 1.0, self.single.inclination, position_container.position)
+        kwargs_ = {
+            "scale": scale,
+            "unit": colorbar_unit,
+            "subtract_equilibrium": subtract_equilibrium,
+            "equilibrium_temperatures": equilibrium_temperatures.get("star"),
+        }
+        # Scalar temperatures retain face order when the geometry is rotated for viewing.
+        surface_kwargs.update({"cmap": plot.add_colormap_to_plt_kwargs(*args_, **kwargs_)})
 
         surface_kwargs.update(
             {

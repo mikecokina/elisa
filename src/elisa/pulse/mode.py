@@ -75,7 +75,7 @@ class PulsationMode(ParameterTracking):
         Dimensionless Cartesian tangent gradient in the pulsation-axis frame.
     complex_radial_displacement : np.ndarray | None
         Complex radial scalar coefficient A_r*Y/scale in mesh length units,
-        stored separately for temperature perturbations.
+        retained separately for radial-displacement diagnostics.
     complex_displacement : np.ndarray | None
         Complex Cartesian displacement in component axes and mesh length units.
     tilt_phi : float | None

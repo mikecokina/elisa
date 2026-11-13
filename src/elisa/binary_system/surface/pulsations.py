@@ -67,6 +67,10 @@ def build_perturbations(
 ) -> OrbitalPositionContainer:
     """Incorporate pulsation perturbations into the position container.
 
+    Binary mesh lengths are normalized by the orbital semi-major axis.
+    Incorporation receives scale = system.semi_major_axis in metres to convert
+    between mesh-coordinate displacements and physical SI quantities.
+
     :param system: Orbital position container instance.
     :type system: OrbitalPositionContainer
     :param component: Component selector.

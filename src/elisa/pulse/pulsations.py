@@ -132,9 +132,12 @@ def assign_amplitudes(
 
     :param star_container: Star container object with pulsation modes.
     :type star_container: object
-    :param normalization_constant: Scaling factor for amplitudes. For binary systems,
-                                   this is the semi-major axis; for single stars, it
-                                   should remain 1.0. Defaults to 1.0.
+    :param normalization_constant: Mesh-to-metre length conversion factor, called
+                                   scale in container operations. Multiplies the
+                                   mesh equivalent radius to obtain metres for
+                                   the amplitude prescriptions. Use 1.0 for single
+                                   stars or the binary semi-major axis in metres;
+                                   it does not multiply the input mode amplitude.
     :type normalization_constant: float
     :raises PulsationModeError: If a radial mode (l=0) or mode with only radial motion
                         lacks an explicit temperature_amplitude_factor.

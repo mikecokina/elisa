@@ -113,7 +113,12 @@ class Animation:
             on_pos = SinglePositionContainer.from_single_system(**from_this)
             on_pos.set_on_position_params(position)
             on_pos.set_time()
-            on_pos.build()
+            # Build once for this frame; the helper owns snapshot timing and component association.
+            equilibrium_temperatures = plot.build_surface_with_temperature_reference(
+                on_pos,
+                colormap,
+                subtract_equilibrium=subtract_equilibrium,
+            )
 
             crv_utils.prep_surface_params(
                 system=on_pos, write_to_containers=True, **atm_kwargs,
@@ -125,9 +130,15 @@ class Animation:
             points.append(star.points)
             faces.append(star.faces)
 
-            args = (colormap, star, position.phase, 0.0, 1.0, self.single.inclination, on_pos.position)
-            kwargs = {"scale": scale, "unit": "default", "subtract_equilibrium": subtract_equilibrium}
-            cmap.append(plot.add_colormap_to_plt_kwargs(*args, **kwargs))
+            args_ = (colormap, star, position.phase, 0.0, 1.0, self.single.inclination, on_pos.position)
+            kwargs_ = {
+                "scale": scale,
+                "unit": "default",
+                "subtract_equilibrium": subtract_equilibrium,
+                "equilibrium_temperatures": equilibrium_temperatures.get("star"),
+            }
+            # Subtract this frame's equilibrium; observer rotation preserves scalar face temperatures.
+            cmap.append(plot.add_colormap_to_plt_kwargs(*args_, **kwargs_))
 
         anim_kwargs.update({
             "start_phase": start_phase,

@@ -4,6 +4,14 @@ Harmonic mathematics belongs in pulsations, physical vector normalization in
 kinematics, and frame transformation/mesh application here. Stored displacement
 vectors use component axes and mesh length units; observable synthesis later
 rotates positions and velocities to observer axes without re-evaluating modes.
+
+The mesh-to-metre length conversion is r_physical = scale * r_mesh. Single-star
+mesh coordinates are already in metres, so scale = 1.0. Binary mesh coordinates
+are normalized by the orbital semi-major axis, so scale is that axis in metres
+(metres per normalized mesh unit). It is not an arbitrary amplitude multiplier:
+physical displacement amplitudes must be divided by scale to enter the mesh,
+while time derivatives of mesh displacements require multiplication by scale
+to recover SI velocities and accelerations.
 """
 
 from __future__ import annotations
@@ -102,8 +110,8 @@ def incorporate_pulsations_to_model(
     velocities, accelerations, and temperatures due to pulsation modes.
     Position uses a linear Cartesian vector sum. Intrinsic velocity is added
     to the existing orbital/spin velocity, and pulsation acceleration is used
-    in the existing effective-gravity prescription. Temperature uses the radial
-    coefficient. Background normals and thermodynamic fields remain available
+    in the existing effective-gravity prescription. Temperature uses the scalar
+    harmonic. Background normals and thermodynamic fields remain available
     while these perturbations are applied; centers, normals and areas are then
     recomputed from displaced vertices with the existing face connectivity.
 
@@ -111,7 +119,11 @@ def incorporate_pulsations_to_model(
     :type star_container: elisa.base.container.StarContainer
     :param com_x: X-coordinate of component centre of mass.
     :type com_x: float
-    :param scale: Scaling factor (semi-major axis for binary systems). Defaults to 1.0.
+    :param scale: Mesh-to-metre length conversion factor, passed through the
+                  incorporation steps to divide physical displacements into mesh
+                  units and convert their derivatives to SI velocity/acceleration.
+                  Use 1.0 for single-star meshes in metres, or the binary
+                  semi-major axis in metres for normalized binary meshes.
     :type scale: float
     :returns: Star container with updated surface properties.
     :rtype: elisa.base.container.StarContainer
@@ -177,12 +189,16 @@ def complex_displacement(star: StarContainer, scale: float) -> None:
     Constructs vectors in pulsation axes and stores them in component Cartesian
     axes, in mesh length units. These displacements are subsequently used to
     compute kinematic quantities (position, velocity, acceleration). The radial
-    scalar is stored separately for temperature perturbations; a Cartesian
-    column cannot stand in for it. Norms are fixed for this snapshot.
+    scalar is retained separately for diagnostics; a Cartesian column cannot
+    stand in for it. Norms are fixed for this snapshot.
 
     :param star: Star container with flattened surface mesh.
     :type star: elisa.base.container.StarContainer
-    :param scale: Scaling factor for amplitudes.
+    :param scale: Mesh-to-metre length conversion factor. Physical displacement
+                  amplitudes in metres are divided by scale before storage in
+                  mesh-coordinate units, for both the Cartesian vector and the
+                  radial scalar. Use 1.0 for singles or the semi-major axis in
+                  metres for binaries.
     :type scale: float
     :raises ElisaUnexpectedError: If the caller has not flattened the star container.
     """
@@ -260,7 +276,7 @@ def velocity_perturbation(
 ) -> NDArray | None:
     """Calculate velocity perturbation on pulsating star surface.
 
-    Return sum(omega*Im(D)) in m/s along component Cartesian axes, with
+    Return scale*sum(omega*Im(D)) in m/s along component Cartesian axes, with
     equilibrium geometry and mode orientation frozen during differentiation.
     Updating the container adds face-averaged vectors to the existing equilibrium
     velocity; no spin, orbital or moving-axis transport contribution is derived
@@ -274,7 +290,10 @@ def velocity_perturbation(
 
     :param star: Star container with surface mesh and pulsations.
     :type star: elisa.base.container.StarContainer
-    :param scale: Scaling factor (semi-major axis for binary systems).
+    :param scale: Mesh-to-metre length conversion factor. Multiplying the time
+                  derivative of mesh-coordinate displacement by scale converts
+                  mesh units per second to m/s. Use 1.0 for singles or the
+                  semi-major axis in metres for binaries.
     :type scale: float
     :param update_container: If True, add perturbation to star.velocities.
                              Defaults to False.
@@ -316,7 +335,7 @@ def gravity_acc_perturbation(
 ) -> NDArray | None:
     """Calculate gravitational acceleration perturbation on pulsating star.
 
-    Return -sum(omega**2*Re(D)) in m/s**2 along component axes, using the
+    Return -scale*sum(omega**2*Re(D)) in m/s**2 along component axes, using the
     same frozen-frame derivative as velocity_perturbation. The optional update
     adds the face-averaged acceleration to the inward equilibrium effective
     gravity vector -10**log_g*normal, then stores log10 of its magnitude.
@@ -329,7 +348,10 @@ def gravity_acc_perturbation(
 
     :param star: Star container with surface mesh and pulsations.
     :type star: elisa.base.container.StarContainer
-    :param scale: Scaling factor (semi-major axis for binary systems).
+    :param scale: Mesh-to-metre length conversion factor. Multiplying the second
+                  time derivative of mesh-coordinate displacement by scale
+                  converts mesh units per second squared to m/s**2. Use 1.0 for
+                  singles or the semi-major axis in metres for binaries.
     :type scale: float
     :param update_container: If True, update star.log_g. Defaults to False.
     :type update_container: bool
@@ -363,7 +385,7 @@ def gravity_acc_perturbation(
 
 def temp_perturbation(
     star: StarContainer,
-    scale: float = 1.0,
+    scale: float = 1.0,  # noqa: ARG001 - retained for the common perturbation API; cancels from the thermal factor.
     *,
     update_container: bool = False,
     return_perturbation: bool = False,
@@ -371,15 +393,21 @@ def temp_perturbation(
 ) -> NDArray | None:
     """Calculate temperature perturbation on pulsating star surface.
 
-    Sum the dimensionless temperature factors from each mode's radial
-    coefficient, including its configured thermal phase shift. Face perturbations
-    use the mean vertex factor times the existing local face temperature. Point diagnostics
-    instead use the reference stellar t_eff; they are not a new pointwise
+    Sum the dimensionless temperature factors from each mode's scalar
+    harmonic, including its configured thermal phase shift. Face perturbations
+    use the mean vertex factor times the existing local face temperature. Updating
+    adds this increment to the temperature field. Point diagnostics use the reference stellar
+    t_eff; they are not a new pointwise
     temperature field used by atmosphere synthesis.
 
     :param star: Star container with surface mesh and pulsations.
     :type star: elisa.base.container.StarContainer
-    :param scale: Scaling factor (semi-major axis for binary systems). Defaults to 1.0.
+    :param scale: Mesh-to-metre length conversion factor (1.0 for singles;
+                  semi-major axis in metres for binaries). Retained only to
+                  preserve the existing call signature; it is not used here.
+                  It cancels algebraically from the dimensionless fractional
+                  temperature perturbation, which is evaluated directly from
+                  the complex harmonic.
     :type scale: float
     :param update_container: If True, add perturbation to star.temperatures.
                              Defaults to False.
@@ -394,14 +422,17 @@ def temp_perturbation(
     """
     # Sum temperature perturbations from all modes
     temp_pert = np.sum(
-        [kinematics.calculate_temperature_pert_factor(mode, scale) for mode in star.pulsations.values()],
+        [kinematics.calculate_temperature_pert_factor(mode) for mode in star.pulsations.values()],
         axis=0,
     )
 
-    # Average to face values and scale by stellar temperature
+    # Average the summed factor to faces, then scale by the existing local
+    # equilibrium temperature (including spots and any prior reflection).
     temp_pert_face = temp_pert[star.faces].mean(axis=1) * star.temperatures
 
     if update_container:
+        # Apply the physical increment once. Plotting owns any reference it needs;
+        # synthesis does not retain or invalidate a diagnostic temperature cache.
         star.temperatures += temp_pert_face
 
     if return_perturbation:

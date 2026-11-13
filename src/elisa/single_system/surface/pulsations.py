@@ -35,6 +35,8 @@ def build_perturbations(system: SinglePositionContainer) -> SinglePositionContai
     If the star stored in :obj:`system` has pulsation modes defined, this
     function computes positional perturbations for the surface mesh and assigns
     the perturbed model back to the star attribute of the supplied container.
+    The single-star mesh is already in metres, so incorporation receives the
+    mesh-to-metre length conversion scale = 1.0.
 
     :param system: Container holding single-system position and star data.
     :type system: elisa.single_system.container.SinglePositionContainer

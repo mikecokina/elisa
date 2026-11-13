@@ -23,7 +23,8 @@ def calculate_radial_displacement(mode: PulsationMode, harmonics: NDArray) -> ND
     by multiplying the radial amplitude by the spherical harmonic values.
     The result is a complex scalar length in metres, not a Cartesian x
     component. Multiplying it by the equilibrium unit direction gives the
-    radial vector; container operations divide by the system length scale.
+    radial vector; container operations divide by the mesh-to-metre conversion
+    factor scale to store it in mesh-coordinate units.
 
     :param mode: Pulsation mode object with radial amplitude.
     :type mode: elisa.pulse.mode.PulsationMode
@@ -44,7 +45,8 @@ def calculate_mode_derivatives(
     With D(t)=D_0*exp(-i*omega*t), d(Re(D))/dt=Re(-i*omega*D)
     equals omega*Im(D). Equilibrium coordinates and the pulsation-axis
     orientation are held fixed. The result retains the input length unit per
-    second; container operations convert mesh lengths to metres.
+    second; container operations multiply by the mesh-to-metre conversion factor
+    scale to obtain m/s from stored mesh-coordinate displacements.
 
     This is an intrinsic harmonic derivative. Moving-frame transport and
     material velocities of an evolving eccentric equilibrium surface are not
@@ -69,7 +71,9 @@ def calculate_mode_second_derivatives(
     Differentiating exp(-i*omega*t) twice gives -omega**2. Thus the second
     derivative of Re(D) is -omega**2*Re(D), with the same frozen equilibrium
     and orientation convention as calculate_mode_derivatives. Units are the
-    input length unit per second squared; no frame-transport terms are added.
+    input length unit per second squared; container operations multiply by the
+    mesh-to-metre conversion factor scale to obtain m/s**2 from stored mesh
+    displacements. No frame-transport terms are added.
 
     :param displacement: Complex displacement vector.
     :type displacement: NDArray
@@ -81,39 +85,28 @@ def calculate_mode_second_derivatives(
     return -(angular_frequency**2) * np.real(displacement)
 
 
-def calculate_temperature_pert_factor(
-    mode: PulsationMode,
-    scale: float,
-) -> NDArray:
-    """Calculate temperature perturbation factor for pulsating star surface.
+def calculate_temperature_pert_factor(mode: PulsationMode) -> NDArray:
+    """Calculate the dimensionless temperature perturbation at mesh vertices.
 
-    Computes the temperature perturbation following Townsend (2003) treatment,
-    using the explicit radial scalar coefficient D_r, not a Cartesian vector
-    component. The implemented fractional perturbation is
-    temperature_amplitude_factor*Re(exp(-i*shift)*D_r)*scale/A_r.
-    D_r is stored in mesh units, so scale/A_r makes this factor dimensionless
-    and cancels the radial amplitude already present in D_r. The temperature
-    amplitude factor retains its configured or previously assigned meaning.
+    The implementation evaluates f_T = beta * Re[exp(-i * delta) * Y], where
+    beta is the dimensionless temperature amplitude factor, delta is the
+    temperature phase shift, and Y includes the complex temporal phase.
 
-    :param mode: Pulsation mode with displacement and temperature data.
-    :type mode: elisa.pulse.mode.PulsationMode
-    :param scale: Scaling factor for the system (semi-major axis for binary systems).
-    :type scale: float
-    :returns: Temperature perturbation factor (delta_T = factor * T_eff).
+    For physical radial amplitude A_r in metres, the mesh-coordinate radial
+    displacement is D_r = (A_r / scale) * Y, where scale converts mesh lengths
+    to metres (1.0 for singles; semi-major axis in metres for binaries).
+    For nonzero A_r, (scale / A_r) * D_r = Y, so the displacement-based
+    expression beta * (scale / A_r) * Re[exp(-i * delta) * D_r] is equivalent.
+    The direct harmonic expression remains defined at A_r = 0: an explicitly
+    supplied nonzero beta still prescribes a temperature oscillation, whereas
+    the automatically derived beta vanishes with the velocity amplitude.
+
+    :param mode: Pulsation mode with evaluated complex harmonics.
+    :returns: Dimensionless temperature perturbation at mesh vertices.
     :rtype: NDArray
     """
-    # Apply phase shift between geometry and temperature perturbations
-    hrm_shift = np.real(
-        generate_phase_shift(mode.temperature_perturbation_phase_shift)
-        * mode.complex_radial_displacement,
-    )
-
-    # Calculate temperature perturbation following Townsend (2003)
-    return (
-        mode.temperature_amplitude_factor
-        * hrm_shift
-        * scale
-        / mode.radial_amplitude
+    return mode.temperature_amplitude_factor * np.real(
+        generate_phase_shift(mode.temperature_perturbation_phase_shift) * mode.point_harmonics,
     )
 
 
@@ -146,7 +139,10 @@ def calculate_cartesian_displacement(
     :param harmonics: Complex normalized Y values, shape (n_points,).
     :param gradient: Dimensionless complex tangent gradients, shape (n_points, 3).
     :param radius: Local equilibrium radii, shape (n_points,).
-    :param scale: Metres per mesh length unit: 1 for singles, binary SMA for binaries.
+    :param scale: Mesh-to-metre length conversion factor: 1.0 for singles or the
+                  binary semi-major axis in metres. Both radial and horizontal
+                  physical displacement terms are divided by scale to return
+                  mesh-coordinate vectors; it does not rescale mode amplitudes.
     :returns: Complex Cartesian vectors in the input frame, shape (n_points, 3),
               in mesh length units (metres for singles, SMA units for binaries).
     """

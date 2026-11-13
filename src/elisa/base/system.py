@@ -236,9 +236,13 @@ class System(ParameterTracking, Generic[TBody], metaclass=ABCMeta):
 
     @suspend_tracking_during_initialization
     def assign_pulsations_amplitudes(self, normalisation_constant: Float = 1.0) -> None:
-        """Assign pulsation amplitudes to component modes using RV amplitude.
+        """Assign physical pulsation displacement amplitudes to component modes.
 
-        :param normalisation_constant: Multiplicative normalisation constant.
+        :param normalisation_constant: Mesh-to-metre length conversion factor passed
+                                       to the amplitude calculation to convert
+                                       component equivalent radii to metres.
+                                       Use 1.0 for single stars or the orbital
+                                       semi-major axis in metres for binaries.
         :type normalisation_constant: elisa.types.Float
         :returns: None
         :rtype: None

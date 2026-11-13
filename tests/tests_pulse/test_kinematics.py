@@ -187,8 +187,9 @@ class TestCalculateTemperaturePertFactor(ElisaTestCase):
         )
         mode.complex_radial_displacement = mode.complex_displacement[:, 0]
         mode.radial_amplitude = 0.1
+        mode.point_harmonics = mode.complex_radial_displacement / mode.radial_amplitude
 
-        result = kinematics.calculate_temperature_pert_factor(mode, scale=1.0)
+        result = kinematics.calculate_temperature_pert_factor(mode)
 
         # Should return array with same shape as first column of complex_displacement
         assert result.shape == (2,)
@@ -199,8 +200,8 @@ class TestCalculateTemperaturePertFactor(ElisaTestCase):
         # Should be finite
         assert np.all(np.isfinite(result))
 
-    def test_temperature_perturbation_scale_dependence(self) -> None:
-        """Test that scale parameter affects temperature perturbation."""
+    def test_temperature_perturbation_mesh_scale_invariance(self) -> None:
+        """The same harmonic gives the same thermal factor in metres or SMA units."""
         pulse_meta = [
             {
                 "l": 2,
@@ -226,14 +227,12 @@ class TestCalculateTemperaturePertFactor(ElisaTestCase):
         mode.radial_amplitude = 0.1
 
         mode.complex_radial_displacement = mode.complex_displacement[:, 0]
-        result_1 = kinematics.calculate_temperature_pert_factor(mode, scale=1.0)
-        result_2 = kinematics.calculate_temperature_pert_factor(mode, scale=2.0)
+        mode.point_harmonics = mode.complex_radial_displacement / mode.radial_amplitude
+        result_1 = kinematics.calculate_temperature_pert_factor(mode)
+        mode.complex_radial_displacement /= 2.0
+        result_2 = kinematics.calculate_temperature_pert_factor(mode)
 
-        # Different scales should give different results
-        assert not np.allclose(result_1, result_2)
-
-        # Ratio should match scale ratio
-        assert_array_almost_equal(result_2, 2.0 * result_1)
+        assert_array_almost_equal(result_2, result_1)
 
     def test_temperature_perturbation_phase_shift(self) -> None:
         """Test that phase shift affects temperature perturbation."""
@@ -285,9 +284,11 @@ class TestCalculateTemperaturePertFactor(ElisaTestCase):
         mode_2.complex_radial_displacement = displacement[:, 0]
         mode_1.radial_amplitude = 0.1
         mode_2.radial_amplitude = 0.1
+        mode_1.point_harmonics = displacement[:, 0] / mode_1.radial_amplitude
+        mode_2.point_harmonics = displacement[:, 0] / mode_2.radial_amplitude
 
-        result_1 = kinematics.calculate_temperature_pert_factor(mode_1, scale=1.0)
-        result_2 = kinematics.calculate_temperature_pert_factor(mode_2, scale=1.0)
+        result_1 = kinematics.calculate_temperature_pert_factor(mode_1)
+        result_2 = kinematics.calculate_temperature_pert_factor(mode_2)
 
         # Different phase shifts should give different results
         assert not np.allclose(result_1, result_2)

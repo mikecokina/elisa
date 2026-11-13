@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, cast
 
 import numpy as np
 
@@ -14,13 +14,63 @@ from elisa.pulse import utils as putils
 from elisa.utils import transform_values
 
 if TYPE_CHECKING:
-    from matplotlib.colors import Colormap
     from numpy.typing import NDArray
 
     from elisa.base.container import StarContainer
+    from elisa.binary_system.container import OrbitalPositionContainer
     from elisa.const import Position
+    from elisa.single_system.container import SinglePositionContainer
     from elisa.types import AstropyUnit as Unit
     from elisa.types import Float
+
+
+def build_surface_with_temperature_reference(
+    container: SinglePositionContainer | OrbitalPositionContainer,
+    colormap: str | None,
+    *,
+    subtract_equilibrium: bool = False,
+    components_distance: float | None = None,
+    component: Literal["all", "both"] = "all",
+) -> dict[str, NDArray]:
+    """Build a graphics surface and return plot-local equilibrium temperatures.
+
+    References are keyed by ``star`` or by ``primary`` and ``secondary``.
+    Only temperature subtraction splits the build, at the boundary after
+    equilibrium synthesis (including reflection) and flattening. Copies survive
+    the in-place pulsations update and belong solely to this plot or frame.
+
+    Binary graphics build both stars using the recognized ``component`` selector;
+    ``all`` and ``both`` are existing aliases. Single-star phase and time are
+    already established on the container before this operation.
+    """
+    from elisa.binary_system.container import OrbitalPositionContainer  # noqa: PLC0415
+
+    # Preserve the ordinary build for every diagnostic that needs no temperature reference.
+    capture = colormap == "temperature" and subtract_equilibrium
+    if isinstance(container, OrbitalPositionContainer):
+        container.build(
+            components_distance=components_distance, component=component, build_pulsations=not capture,
+        )
+        if not capture:
+            return {}
+        # Both components must finish reflection before copying their flattened temperatures.
+        references = {
+            name: getattr(container, name).temperatures.copy()
+            for name in ("primary", "secondary")
+        }
+        # Use the same distance and component selection as the equilibrium build.
+        container.build_pulsations(components_distance=components_distance, component=component)
+    else:
+        container.build(build_pulsations=not capture)
+        if not capture:
+            return {}
+        # Independent storage is required because incorporation adds temperatures in place.
+        # A successful build has populated temperatures; the container annotation
+        # also allows None for its earlier, unbuilt state.
+        # noinspection PyUnnecessaryCast
+        references = {"star": cast("NDArray", container.star.temperatures).copy()}
+        container.build_pulsations()
+    return references
 
 
 def add_colormap_to_plt_kwargs(*args, **kwargs) -> NDArray | None:
@@ -44,17 +94,15 @@ def add_colormap_to_plt_kwargs(*args, **kwargs) -> NDArray | None:
     - **inclination** (:class:`float`) - Inclination of the system.
     - **position** (:class:`elisa.const.Position`) - Position object.
 
-    :param kwargs: Keyword arguments for colormap computation
-    :type kwargs: dict
+    :param kwargs: Colormap options. Additional keyword arguments are accepted.
 
     **kwargs options:**
 
-    - **scale** (:class:`str`) - Scale type: ``'log'``, ``'logarithmic'``, or ``'linear'``.
-      Default: ``'linear'``.
-    - **unit** (:class:`astropy.units.Unit`) - Unit for the colormap values.
-      Default: ``'default'``.
-    - **subtract_equilibrium** (:class:`bool`) - If ``True``, return only perturbation
-      from equilibrium state. Default: ``False``.
+    - **scale** - Scale type: ``'log'``, ``'logarithmic'`` or ``'linear'``.
+    - **unit** - Output unit, or ``'default'`` to retain the native unit.
+    - **subtract_equilibrium** - Return only the pulsation increment when True.
+    - **equilibrium_temperatures** - Plot-local pre-pulsation face temperatures,
+      required for temperature equilibrium subtraction.
 
     **available colormap options:**
 
@@ -76,7 +124,7 @@ def add_colormap_to_plt_kwargs(*args, **kwargs) -> NDArray | None:
     :raises ElisaGraphicsError: If ``subtract_equilibrium=True`` but star has no pulsations
     """
     star: StarContainer
-    colormap: Colormap
+    colormap: str | None
     model_scale: Float
     inclination: Float
     position: Position
@@ -100,6 +148,7 @@ def add_colormap_to_plt_kwargs(*args, **kwargs) -> NDArray | None:
     scale: str = kwargs.get("scale", "linear")
     unit = kwargs.get("unit", "default")
     subtract_equilibrium: bool = kwargs.get("subtract_equilibrium", False)
+    equilibrium_temperatures = kwargs.get("equilibrium_temperatures")
 
     if colormap is None:
         return None
@@ -124,7 +173,11 @@ def add_colormap_to_plt_kwargs(*args, **kwargs) -> NDArray | None:
         inclination,
         position,
     )
-    retval: NDArray | None = colorbar_fn[colormap](star, *args_colormap)
+    # Only the temperature diagnostic consumes the caller-owned equilibrium snapshot.
+    diagnostic_kwargs = (
+        {"equilibrium_temperatures": equilibrium_temperatures} if colormap == "temperature" else {}
+    )
+    retval: NDArray | None = colorbar_fn[colormap](star, *args_colormap, **diagnostic_kwargs)
 
     return retval
 
@@ -535,12 +588,17 @@ def horizontal_g_pert_cmap(star: StarContainer, *args) -> NDArray:
     return to_log(value, scale)
 
 
-def t_cmap(star: StarContainer, *args) -> NDArray:
+def t_cmap(star: StarContainer, *args, equilibrium_temperatures: NDArray | None = None) -> NDArray:
     """Return temperature colormap.
 
-    Computes the surface distribution of effective temperature, optionally
-    including pulsation perturbations, and returns values suitable for
-    visualization as a colormap.
+    Return total face temperatures, or their actual difference from the
+    equilibrium face temperatures supplied by the plotting call. The caller
+    captures this local snapshot after flattening and before pulsation incorporation.
+    Direct subtraction remains defined even when the fractional perturbation is -1;
+    reconstructing equilibrium from the final temperature would lose information.
+    This diagnostic does not evaluate or apply physical perturbations again.
+
+    :param equilibrium_temperatures: Pre-pulsation face temperatures, required for subtraction.
 
     :param star: Star container with temperature data
     :type star: StarContainer
@@ -551,29 +609,28 @@ def t_cmap(star: StarContainer, *args) -> NDArray:
 
     - **scale** (:class:`str`) - Scale type: ``'log'``, ``'logarithmic'``, or ``'linear'``
     - **unit** - Unit for the colormap values
-    - **subtract_equilibrium** (:class:`bool`) - Include pulsation perturbations
+    - **subtract_equilibrium** (:class:`bool`) - Subtract equilibrium face temperatures
     - **model_scale** (:class:`float`) - Scale factor for the system
 
-    :return: Temperature values at surface points
+    :return: Temperature values on surface faces
     :rtype: NDArray
     """
     scale: str
     unit: Unit
     subtract_equilibrium: bool
-    model_scale: float
 
-    scale, unit, subtract_equilibrium, model_scale = args[:4]
+    scale, unit, subtract_equilibrium = args[:3]
 
-    pargs: tuple = (star, model_scale)
-    pkwargs: dict = {
-        "update_container": False,
-        "return_perturbation": True,
-    }
-    temperatures: NDArray = (
-        container_ops.temp_perturbation(*pargs, **pkwargs)
-        if subtract_equilibrium
-        else star.temperatures
-    )
+    if subtract_equilibrium:
+        if equilibrium_temperatures is None:
+            message = "Temperature equilibrium subtraction requires pre-pulsation face temperatures."
+            raise_elisa_graphics_error(message)
+        # Observer rotations preserve scalar temperatures and face order, so the
+        # pre-pulsation snapshot is still aligned. Direct subtraction also works
+        # at f = -1, where T*f/(1+f) cannot recover the lost equilibrium value.
+        temperatures = star.temperatures - equilibrium_temperatures
+    else:
+        temperatures = star.temperatures
     value: NDArray = transform_values(temperatures, units.DefaultStarInputUnits.t_eff, unit)
 
     return to_log(value, scale)

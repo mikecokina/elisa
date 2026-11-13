@@ -375,7 +375,7 @@ class Plot:
             * :'radial_velocity': radial component of the surface element velocities relative to the observer,
             * :'normal_radiance': surface element radiance perpendicular to the surface element,
             * :'radiance': radiance of the surface element in a direction towards the observer,
-            * :'radius': distance of the surface elements from the centre of mass
+            * :'radius': distance of the surface elements from the center of mass
             * :'horizontal_displacement': distribution of the horizontal component of surface displacement
             * :'horizontal_acceleration': distribution of horizontal component surface acceleration
             * :'v_r_perturbed': radial component of the pulsation velocity (perpendicular towards
@@ -418,12 +418,19 @@ class Plot:
         dynamic.assign_spot_longitudes(orbital_position_container, spots_longitudes, index=None, component="all")
 
         orbital_position_container.set_on_position_params(
-            orbital_position, potentials["primary"][0], potentials["secondary"][0],
+            orbital_position,
+            potentials["primary"][0],
+            potentials["secondary"][0],
         )
 
         orbital_position_container.set_time()
-        orbital_position_container.build(
-            components_distance=components_distance, components="both", build_pulsations=True,
+        # Build once for this plot; the helper owns snapshot timing and component association.
+        equilibrium_temperatures = plot.build_surface_with_temperature_reference(
+            orbital_position_container,
+            colormap,
+            subtract_equilibrium=subtract_equilibrium,
+            components_distance=components_distance,
+            component="all",
         )
         components = butils.component_to_list(components_to_plot)
 
@@ -464,9 +471,11 @@ class Plot:
                 self.binary.inclination,
                 orbital_position_container.position,
             )
-            kwargs = {"scale": scale, "unit": colorbar_unit, "subtract_equilibrium": subtract_equilibrium}
-
-            surface_kwargs.update({f"{component}_cmap": plot.add_colormap_to_plt_kwargs(*args, **kwargs)})
+            # Scalar temperatures retain face order when the geometry is rotated for viewing.
+            surface_kwargs.update({f"{component}_cmap": plot.add_colormap_to_plt_kwargs(
+                *args, scale=scale, unit=colorbar_unit, subtract_equilibrium=subtract_equilibrium,
+                equilibrium_temperatures=equilibrium_temperatures.get(component),
+            )})
 
             surface_kwargs.update(
                 {

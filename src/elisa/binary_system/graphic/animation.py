@@ -174,7 +174,14 @@ class Animation:
                 potentials["primary"][pos_idx],
                 potentials["secondary"][pos_idx],
             )
-            on_pos.build(components_distance=position.distance)
+            # Build once for this frame; the helper owns snapshot timing and component association.
+            equilibrium_temperatures = plot.build_surface_with_temperature_reference(
+                on_pos,
+                colormap,
+                subtract_equilibrium=subtract_equilibrium,
+                components_distance=position.distance,
+                component="all",
+            )
 
             # calculating radiances
             # Local import to avoid circular import at module import time
@@ -215,7 +222,7 @@ class Animation:
                 points[component][pos_idx] = star.points
                 faces[component][pos_idx] = star.faces
 
-                args = (
+                args_ = (
                     colormap,
                     star,
                     position.phase,
@@ -224,15 +231,14 @@ class Animation:
                     self.binary.inclination,
                     on_pos.position,
                 )
-                kwargs = {
+                # Scalar temperatures retain face order when the geometry is rotated for viewing.
+                kwargs_ = {
                     "scale": scale,
                     "unit": "default",
                     "subtract_equilibrium": subtract_equilibrium,
+                    "equilibrium_temperatures": equilibrium_temperatures.get(component),
                 }
-                cmap[component][pos_idx] = plot.add_colormap_to_plt_kwargs(
-                    *args,
-                    **kwargs,
-                )
+                cmap[component][pos_idx] = plot.add_colormap_to_plt_kwargs(*args_, **kwargs_)
 
         anim_kwargs = {
             "morphology": self.binary.morphology,
