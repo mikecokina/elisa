@@ -25,54 +25,34 @@ if TYPE_CHECKING:
 
 
 def animation_phases(start_phase: Float, stop_phase: Float, phase_step: Float) -> NDArray:
-    """Sample unwrapped phases at a fixed step, including stops on the grid.
-
-    Floating-point tolerance is used only to recognize an on-grid endpoint;
-    it never changes the requested spacing or adds an off-grid final frame.
-    """
-    start_phase = float(start_phase)
-    stop_phase = float(stop_phase)
-    phase_step = float(phase_step)
-
+    """Sample unwrapped phases at a fixed step, including an on-grid stop."""
+    start_phase, stop_phase, phase_step = map(float, (start_phase, stop_phase, phase_step))
     if not np.isfinite([start_phase, stop_phase, phase_step]).all():
         raise_elisa_graphics_error("Animation phase bounds and phase_step must be finite.")
     if phase_step <= 0:
         raise_elisa_graphics_error("Animation phase_step must be positive.")
     if stop_phase < start_phase:
         raise_elisa_graphics_error(f"Starting phase {start_phase} is greater than stop phase {stop_phase}")
-    if start_phase == stop_phase:
-        return np.array([start_phase])
-    if start_phase + phase_step == start_phase:
-        raise_elisa_graphics_error("Animation phase_step is too small to advance the starting phase.")
 
     step_count = (stop_phase - start_phase) / phase_step
     if not np.isfinite(step_count):
         raise_elisa_graphics_error("Animation phase range and step produce a non-finite frame count.")
 
-    # Start with complete intervals. Allow four ULPs of rounding in the step
-    # count, rather than a tolerance that grows with the absolute phase.
-    step_count_tolerance = 4 * float(np.spacing(step_count))
-    last_step = int(np.floor(step_count))
-
-    # Division may underestimate an integral count. Also recognize an exact
-    # grid match when subtraction of large phases has lost relative precision.
-    next_step = last_step + 1
-    next_phase = start_phase + next_step * phase_step
-    next_step_reaches_stop = abs(next_step - step_count) <= step_count_tolerance
-    if next_step_reaches_stop or next_phase == stop_phase:
-        last_step = next_step
-
+    # Four ULPs cover rounding in the interval count, independent of absolute phase.
+    tolerance = 4 * float(np.spacing(step_count))
+    nearest_step = round(step_count)
+    stop_is_on_grid = (
+        abs(step_count - nearest_step) <= tolerance
+        or start_phase + nearest_step * phase_step == stop_phase
+    )
+    last_step = nearest_step if stop_is_on_grid else int(np.floor(step_count))
     phases = start_phase + np.arange(last_step + 1) * phase_step
-
-    # Preserve the exact start; snap only an endpoint affected by roundoff.
-    stop_is_on_grid = last_step > 0 and abs(last_step - step_count) <= step_count_tolerance
     if stop_is_on_grid:
         phases[-1] = stop_phase
-
-    # Advancing at the start does not guarantee distinct floats across the range.
     if np.any(phases[1:] <= phases[:-1]):
         raise_elisa_graphics_error(
-            "Animation phase_step is too small to produce distinct float64 phases over the requested range.",
+            "Animation phase_step is too small to produce "
+            "distinct float64 phases over the requested range.",
         )
     return phases
 
