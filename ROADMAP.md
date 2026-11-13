@@ -11,8 +11,6 @@ This roadmap tracks remaining work and deliberately deferred technical debt, not
 ## Open / deferred
 
 - [ ] **Logging lifecycle and spawned workers (follow-up to PR #29)** - Separate loading/validating `LOG_CONFIG` from applying logging during import. Under spawn, a custom logging JSON selected in the INI can be applied before worker initialization; a `FileHandler(mode="w")` may truncate the parent log. Defer the broader lifecycle refactor; it is not a merge requirement for PR #29. Preserve fork-inherited handlers and explicit parent logging configuration. Cover INI-selected custom logging in spawn regressions when revisited.
-- [ ] **GUI: targeted exception-boundary follow-ups** - Check the broad catch in the LC fitting ephemeris fallback (`_extract_from_lsqr()` / `task.get_result()`), which may turn an unexpected programming failure into `None`. Consider a focused malformed/non-object JSON regression for the shared modeling-result loader. These are narrow follow-ups, not a reason to repeat the completed GUI audit. Do not introduce blanket exception handling.
-- [ ] **GUI browser E2E Python compatibility** - Remove or justify the hardcoded Python 3.14 fixture requirement. ELISA supports Python 3.11+. Verify E2E behavior on available supported interpreters; do not claim compatibility without testing it.
 
 ## Explicitly deferred / do not reopen without evidence
 
