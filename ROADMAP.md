@@ -1,23 +1,20 @@
 # Roadmap
 
-Updated: 2026-11-03
+Updated: 2026-11-13
 
-This roadmap collects deferred work and technical debt, not commitments for a specific release. Items are unprioritized and should be revisited when supported by a concrete need, bug report, or performance evidence.
+This roadmap tracks remaining work and deliberately deferred technical debt, not release commitments. Completed audits, tutorials, diagrams and refactors are omitted.
+
+## Next
+
+- [ ] **Standalone binary LC visual diagnostics** - Create one independent, production-quality Python script for each of the eight documented binary LC configurations in `docs/diagrams/`, one system at a time. Each script defines its own fixed, physically valid system, calculates and displays the light curve, saves `lightcurve.png`, and generates `temperature_animation.gif` showing absolute surface temperature with a fixed 45° azimuth / 45° elevation camera and consistent frame-to-frame colour scale. Keep outputs separate. **No CLI, shared base, common utilities, configuration modules or imports between examples; deliberate code duplication is required.** Preserve elapsed orbital cycles where spots or pulsations require them. Start with circular synchronous unspotted.
 
 ## Open / deferred
 
-- [ ] **Limb-darkening metallicity interpolation** - Audit the treatment of metallicity between atmosphere/LD tables. The earlier implementation combined bracketing tables; confirm the intended physical interpolation and its numerical behavior before changing anything.
-- [ ] **Cache keys and settings dependence** - Audit caches whose results can change with ELISA settings. Ensure all result-affecting settings are represented in cache identity, or that invalidation is correct. Avoid gratuitous cache changes without a reproducible failure.
-- [ ] **Atmosphere / reflection performance** - Profile realistic systems, especially eccentric, asynchronous and spotted configurations. Previous work provided limited additional acceleration. Preserve configurations where symmetries cannot safely be used.
-- [ ] **Notebooks, examples and tutorials** - Review for obsolete APIs, outdated numerical output, and the eccentric-system convention that input `surface_potential` is referenced to periastron (`d = 1 - e`).
-- [ ] **GUI: remaining exception-boundary issues** - Review the broad exception catch in the LC fitting ephemeris fallback (`_extract_from_lsqr()` / `task.get_result()`) which can turn an unexpected programming failure into `None`. Also add a focused malformed/non-object JSON regression for the shared modeling-result loader if useful. Do not introduce blanket exception handling.
-- [ ] **GUI browser E2E Python compatibility** - Remove or justify the hardcoded Python 3.14 fixture requirement. ELISA's supported Python floor is 3.11. Verify GUI E2E behavior on available supported interpreters; do not claim untested compatibility.
-- [ ] **Static type/IDE inspections in tests** - Ruff is clean for the test tree, but an independent mypy/pyright and PyCharm inspection pass was not completed. Address concrete issues as they arise, especially intentional invalid inputs in negative tests. Avoid speculative suppressions.
-- [ ] **Ruff outside tests** - A previous audit reported about 1,915 diagnostics outside the test tree, principally in ancillary notebooks/scripts and a few production files. Treat as separate scope; confirm current counts before any cleanup.
+- [ ] **Logging lifecycle and spawned workers (follow-up to PR #29)** - Separate loading/validating `LOG_CONFIG` from applying logging during import. Under spawn, a custom logging JSON selected in the INI can be applied before worker initialization; a `FileHandler(mode="w")` may truncate the parent log. Defer the broader lifecycle refactor; it is not a merge requirement for PR #29. Preserve fork-inherited handlers and explicit parent logging configuration. Cover INI-selected custom logging in spawn regressions when revisited.
+- [ ] **GUI: targeted exception-boundary follow-ups** - Check the broad catch in the LC fitting ephemeris fallback (`_extract_from_lsqr()` / `task.get_result()`), which may turn an unexpected programming failure into `None`. Consider a focused malformed/non-object JSON regression for the shared modeling-result loader. These are narrow follow-ups, not a reason to repeat the completed GUI audit. Do not introduce blanket exception handling.
+- [ ] **GUI browser E2E Python compatibility** - Remove or justify the hardcoded Python 3.14 fixture requirement. ELISA supports Python 3.11+. Verify E2E behavior on available supported interpreters; do not claim compatibility without testing it.
 
-## Explicitly deprioritized / do not reopen without a reason
+## Explicitly deferred / do not reopen without evidence
 
-- **MCMC initial walker positions** - No further initialization changes planned. Preserve the existing finite-posterior initialization and candidate-failure handling.
-- **Post-fit critical-potential / boundary adjustment** - Further changes to the critical-potential boundary or its shifting/adjustment after fitting are **not planned**. Do not confuse this with the already completed fix for computing physically correct critical potentials in the fit summary.
-- **Further classical Lagrange solver cleanup** - No broad refactor merely for naming, exception hierarchy or cosmetic cleanup.
-- **Historical near-critical fit-bias experiments** - Earlier volume-reference investigations were sufficient for the present purpose; no additional experiments planned.
+- **Limb-darkening metallicity interpolation** - Intentionally deferred. Define and validate a physically meaningful metallicity interpolation before changing the existing table-selection/bracketing behavior; no speculative change now.
+- **Post-fit critical-potential boundary adjustments and classical Lagrange solver** - No further boundary-shifting changes or broad solver/exception-hierarchy cleanup are planned without a concrete correctness problem.
