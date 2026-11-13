@@ -49,21 +49,31 @@ def animation_phases(start_phase: Float, stop_phase: Float, phase_step: Float) -
     if not np.isfinite(step_count):
         raise_elisa_graphics_error("Animation phase range and step produce a non-finite frame count.")
 
-    # Count complete intervals. Division can round an integral count down,
-    # so check whether one additional step actually reaches the requested stop.
-    phase_scale = max(abs(start_phase), abs(stop_phase), phase_step)
-    endpoint_tolerance = 2 * float(np.finfo(float).eps) * phase_scale
-    complete_steps = int(np.floor(step_count))
-    next_grid_phase = start_phase + (complete_steps + 1) * phase_step
-    if abs(next_grid_phase - stop_phase) <= endpoint_tolerance:
-        complete_steps += 1
+    # Start with complete intervals. Allow four ULPs of rounding in the step
+    # count, rather than a tolerance that grows with the absolute phase.
+    step_count_tolerance = 4 * float(np.spacing(step_count))
+    last_step = int(np.floor(step_count))
 
-    phases = start_phase + np.arange(complete_steps + 1) * phase_step
+    # Division may underestimate an integral count. Also recognize an exact
+    # grid match when subtraction of large phases has lost relative precision.
+    next_step = last_step + 1
+    next_phase = start_phase + next_step * phase_step
+    next_step_reaches_stop = abs(next_step - step_count) <= step_count_tolerance
+    if next_step_reaches_stop or next_phase == stop_phase:
+        last_step = next_step
+
+    phases = start_phase + np.arange(last_step + 1) * phase_step
 
     # Preserve the exact start; snap only an endpoint affected by roundoff.
-    endpoint_matches_stop = complete_steps > 0 and abs(phases[-1] - stop_phase) <= endpoint_tolerance
-    if endpoint_matches_stop:
+    stop_is_on_grid = last_step > 0 and abs(last_step - step_count) <= step_count_tolerance
+    if stop_is_on_grid:
         phases[-1] = stop_phase
+
+    # Advancing at the start does not guarantee distinct floats across the range.
+    if np.any(phases[1:] <= phases[:-1]):
+        raise_elisa_graphics_error(
+            "Animation phase_step is too small to produce distinct float64 phases over the requested range.",
+        )
     return phases
 
 
