@@ -220,10 +220,23 @@ class Plot:
         )
 
         orbital_position_container = self._prepare_mesh_container(position, phase)
-        orbital_position_container.build_mesh(components_distance=components_distance)
-        orbital_position_container.build_perturbations(
-            component=components_to_plot, components_distance=components_distance,
-        )
+        if any(
+            getattr(orbital_position_container, selected_component).has_pulsations()
+            for selected_component in butils.component_to_list(components_to_plot)
+        ):
+            # Prepare both equilibrium surfaces, then incorporate only the
+            # requested components. Atmosphere and radiance preparation is omitted.
+            orbital_position_container.build(
+                components_distance=components_distance,
+                component="all",
+                build_pulsations=False,
+            )
+            orbital_position_container.build_pulsations(
+                component=components_to_plot,
+                components_distance=components_distance,
+            )
+        else:
+            orbital_position_container.build_mesh(components_distance=components_distance)
 
         if components_to_plot in ["primary", "both"]:
             binary_mesh_kwargs.update(

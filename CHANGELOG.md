@@ -120,6 +120,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 #### Fixed
 
+- Fixed `plot.mesh()` failing for pulsating single and binary stars with
+  "the star container has not been flattened". Mesh plots now display the
+  displaced surface at the requested phase and elapsed time, including spots
+  and multiple pulsation modes. Non-pulsating mesh plotting remains unchanged.
 - Fixed the `radius` colormap in binary orbital animations, which incorrectly
   included the offset to the system barycenter in each star's radius. Radii are
   now measured from the corresponding star's center in both pulsating and

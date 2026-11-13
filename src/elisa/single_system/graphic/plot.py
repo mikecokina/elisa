@@ -113,7 +113,8 @@ class Plot:
             if inclination is not None
             else up.degrees(self.single.inclination)
         )
-        azim = self.single.orbit.rotational_motion(phase=phase)[0][0]
+        single_position = self.single.orbit.rotational_motion(phase=phase)[0]
+        azim = single_position[0]
         azimuth = (
             transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64)
             if azimuth is not None
@@ -124,8 +125,14 @@ class Plot:
             self.single,
             self.defpos,
         )
-        position_container.build_mesh()
-        position_container.build_perturbations()
+        if position_container.has_pulsations():
+            position_container.set_on_position_params(Position(0, np.nan, *single_position))
+            position_container.set_time()
+            # Incorporation needs equilibrium face fields as well as flattened
+            # spot vertices and harmonics; no atmosphere or radiance preparation.
+            position_container.build(build_pulsations=True)
+        else:
+            position_container.build_mesh()
 
         mesh = position_container.star.get_flatten_parameter("points")
         denominator = 1 * axis_unit.to(u.DefaultSingleSystemUnits.star.equivalent_radius)
