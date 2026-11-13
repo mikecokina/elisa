@@ -120,6 +120,10 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 #### Fixed
 
+- Fixed the `radius` colormap in binary orbital animations, which incorrectly
+  included the offset to the system barycenter in each star's radius. Radii are
+  now measured from the corresponding star's center in both pulsating and
+  non-pulsating systems, while the rendered surface geometry remains unchanged.
 - Corrected `temperature` colormaps with `subtract_equilibrium=True` in single-
   and binary-star surface plots and animations. They now show the temperature
   change caused by pulsations relative to the same surface before pulsations,

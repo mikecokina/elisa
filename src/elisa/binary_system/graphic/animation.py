@@ -206,9 +206,6 @@ class Animation:
                 / (1 + self.binary.mass_ratio),
                 "secondary": position.distance / (1 + self.binary.mass_ratio),
             }
-            on_pos.primary.points[:, 0] -= distances_to_com["primary"]
-            on_pos.secondary.points[:, 0] -= distances_to_com["primary"]
-
             on_pos = butils.move_sys_onpos(
                 on_pos,
                 position,
@@ -217,9 +214,12 @@ class Animation:
                 on_copy=False,
             )
 
+            # Keep physical vertices and component centers in the same frame;
+            # barycentric translation belongs only to the renderer coordinates.
+            pos_correction = butils.correction_to_com(position.distance, self.binary.mass_ratio, on_pos.secondary.com)
             for component in components:
                 star = getattr(on_pos, component)
-                points[component][pos_idx] = star.points
+                points[component][pos_idx] = star.points - pos_correction[None, :]
                 faces[component][pos_idx] = star.faces
 
                 args_ = (
