@@ -46,6 +46,14 @@ class QuadraticPosterior(MCMCFit):
         return -float(np.sum(xn**2))
 
 
+class SamplerCheckingRV(CentralRadialVelocity):
+    """Check transferred state while evaluating the real RV model in a worker."""
+
+    def likelihood(self, xn: NDArray[np.float64]) -> float:
+        assert self.last_sampler is None, "Workers must not receive a previous sampler"
+        return super().likelihood(xn)
+
+
 def make_quadratic_posterior() -> QuadraticPosterior:
     fit = QuadraticPosterior()
     initial = p.BinaryInitialParameters(
@@ -356,6 +364,53 @@ def test_morphology_error_is_a_physical_elisa_error() -> None:
         # Existing MCMCFit/MCMCMixin dictionaries own the sampler attributes.
         assert hasattr(fit, "__dict__")
         assert "norm_init_vector" not in cls.__slots__
+
+
+@pytest.mark.parametrize("fitter_type", [CentralRadialVelocity, DetachedLightCurveFit])
+@pytest.mark.parametrize("parallel", [False, True])
+def test_sampling_callback_preserves_parent_sampler(fitter_type: type[MCMCFit], *, parallel: bool) -> None:
+    fit = fitter_type()
+    previous = emcee.EnsembleSampler(4, 1, fit.ln_probability)
+    fit.last_sampler = previous
+
+    callback = fit._sampling_log_prob_fn(parallel=parallel)
+
+    assert fit.last_sampler is previous
+    if parallel:
+        assert callback.__self__ is not fit
+        assert callback.__self__.last_sampler is None
+    else:
+        assert callback == fit.ln_probability
+
+
+def test_second_parallel_rv_fit_matches_seeded_serial_results() -> None:
+    cfg, data = rv_problem(constrained=True)
+    fit = SamplerCheckingRV()
+    reference = CentralRadialVelocity()
+    options = {
+        "data": data,
+        "x0": p.BinaryInitialParameters(**cfg),
+        "nwalkers": 6,
+        "nsteps": 6,
+        "burn_in": 2,
+        "initial_state": np.random.default_rng(2026).uniform(0.2, 0.8, (6, 2)),
+        "save": False,
+    }
+    with (
+        settings.override(NUMBER_OF_PROCESSES=1, NUMBER_OF_MCMC_PROCESSES=2),
+        patch("numpy.random.get_state", return_value=np.random.RandomState(2026).get_state()),
+    ):
+        first_result = fit.fit(**options)
+        previous = fit.last_sampler
+        second_result = fit.fit(**options)
+        with settings.override(NUMBER_OF_MCMC_PROCESSES=1):
+            serial_result = reference.fit(**options)
+
+    assert fit.last_sampler is not previous
+    assert first_result == second_result == serial_result
+    for sampler in (previous, fit.last_sampler):
+        assert_array_equal(sampler.get_chain(), reference.last_sampler.get_chain())
+        assert_array_equal(sampler.get_log_prob(), reference.last_sampler.get_log_prob())
 
 
 def test_lc_initialization_does_not_evaluate_physical_models() -> None:
