@@ -1,7 +1,7 @@
-"""Best-effort MCMC diagnostics with per-run counters inherited through fork.
+"""Best-effort MCMC diagnostics with explicitly shared per-run counters.
 
 The parent activates a run before creating its pool and deactivates it after the
-pool closes. Workers inherit that context and mutate only the locked counters
+pool closes. Worker initializers activate that context and mutate only the locked counters
 and an idempotent failure flag. Shared objects never live on the pickled fitter.
 Only the parent reports snapshots or writes files; independent run contexts do
 not share counters. Ordinary instrumentation failures disable diagnostics while
@@ -57,7 +57,7 @@ class RunDiagnostics:
     """Parent snapshots and one synchronized shared array per sampling run."""
 
     def __init__(self, context: BaseContext | None, initialization: dict, chain_path: str | Path | None = None) -> None:
-        """Allocate parent-owned run state; None requests the existing fork context.
+        """Allocate parent-owned run state; None requests the supported worker context.
 
         Context lookup and shared-memory allocation are optional diagnostics work:
         ordinary failures leave a disabled run that sampling can still enter.
@@ -82,8 +82,31 @@ class RunDiagnostics:
         except Exception as failure:
             self.disable(failure)
 
+    def __getstate__(self) -> dict[str, Any]:
+        """Transfer shared worker state without parent tokens or output bookkeeping.
+
+        Pool initialization permits passing the synchronized array and failure flag
+        to spawned workers. These objects must never be sent as ordinary pool tasks.
+        """
+        return {
+            "disabled": self.disabled,
+            "warned": False,
+            "owner_pid": self.owner_pid,
+            "failed": self.failed,
+            "counters": getattr(self, "counters", None),
+            "token": None,
+            "path": None,
+        }
+
+    def activate_worker(self) -> None:
+        """Attach shared counters in a worker without taking ownership of output."""
+        try:
+            _active.set(self)
+        except Exception as failure:
+            self.disable(failure)
+
     def __enter__(self) -> Self:
-        """Activate this parent run for fork inheritance, returning even if disabled."""
+        """Activate this parent run, returning even if diagnostics is disabled."""
         try:
             self.token = _active.set(self)
         except Exception as failure:
@@ -217,3 +240,4 @@ def diagnostics_failed(failure: Exception) -> None:
         run = _active.get()
         if run is not None:
             run.disable(failure)
+

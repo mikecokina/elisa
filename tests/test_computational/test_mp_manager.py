@@ -139,10 +139,9 @@ def test_mcmc_sampling_with_real_emcee(workers: int) -> None:
         assert sampler.pool is None
 
 
-def test_unavailable_fork_is_explicit_and_serial_still_works() -> None:
-    with patch.object(mp_manager.multiprocessing, "get_context", side_effect=ValueError("no fork")):
-        with pytest.raises(RuntimeError, match=r"requires the 'fork'.*Use serial execution"):
-            mp_manager.get_mp_context()
+def test_unavailable_fork_uses_spawn_and_serial_still_works() -> None:
+    with patch.object(mp_manager.multiprocessing, "get_all_start_methods", return_value=["spawn"]):
+        assert mp_manager.get_mp_context().get_start_method() == "spawn"
         with settings.override(NUMBER_OF_PROCESSES=1, NUMBER_OF_MCMC_PROCESSES=1):
             with patch.object(mp_manager, "get_mp_context", side_effect=AssertionError("serial requested a pool")):
                 observed = mp_manager.manage_observations(_observe_state, (None, None), np.arange(3))
@@ -151,7 +150,7 @@ def test_unavailable_fork_is_explicit_and_serial_still_works() -> None:
     np.testing.assert_array_equal(observed["pid"], [os.getpid()] * 3)
 
 
-@pytest.mark.parametrize("preset", [None, "forkserver"])
+@pytest.mark.parametrize("preset", [None, "forkserver", "spawn"])
 def test_imports_and_context_leave_application_start_method_unchanged(tmp_path: Path, preset: str | None) -> None:
     if preset is not None and preset not in multiprocessing.get_all_start_methods():
         pytest.skip(f"{preset} is unavailable")
@@ -205,3 +204,4 @@ def test_worker_exceptions_still_reach_caller(operation: str) -> None:
         else:
             _manage_chain_evaluation(np.arange(4).reshape(-1, 1), _fail)
     assert {child.pid for child in multiprocessing.active_children()} == previous_children
+

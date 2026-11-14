@@ -38,7 +38,7 @@ from elisa.binary_system.system import BinarySystem
 from elisa.conf.enums import SamplingMethod
 from elisa.graphic.mcmc_graphics import Plot
 from elisa.logger import getPersistentLogger
-from elisa.observer.mp_manager import get_mp_context
+from elisa.observer.mp_manager import get_mp_context, initialize_worker
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -46,6 +46,7 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
+    from elisa.analytics.binary_fit.mcmc_diagnostics import RunDiagnostics
     from elisa.analytics.dataset.base import LCData, RVData
     from elisa.observer.observer import Observer
     from elisa.types import Float
@@ -57,11 +58,21 @@ _HALF_LOG_2PI: float = 0.5 * float(np.log(2.0 * np.pi))
 logger = getPersistentLogger(__name__)
 
 
+def _initialize_mcmc_worker(values: dict[str, Any], diagnostics: RunDiagnostics) -> None:
+    """Restore effective settings and activate the run's shared diagnostic counters."""
+    initialize_worker(values)
+    diagnostics.activate_worker()
+
+
 @contextmanager
-def _mcmc_pool() -> Iterator[Pool | None]:
-    """Keep the optional fork pool alive for the entire sampling phase."""
+def _mcmc_pool(diagnostics: RunDiagnostics) -> Iterator[Pool | None]:
+    """Keep an initialized worker pool alive for the entire sampling phase."""
     if settings.NUMBER_OF_MCMC_PROCESSES > 1:
-        with get_mp_context().Pool(processes=settings.NUMBER_OF_MCMC_PROCESSES) as pool:
+        with get_mp_context().Pool(
+            processes=settings.NUMBER_OF_MCMC_PROCESSES,
+            initializer=_initialize_mcmc_worker,
+            initargs=(settings.settings_serializer(), diagnostics),
+        ) as pool:
             logger.info("Starting parallel MCMC with %s workers", settings.NUMBER_OF_MCMC_PROCESSES)
             yield pool
     else:
@@ -324,8 +335,8 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         execution based on the settings.NUMBER_OF_MCMC_PROCESSES configuration.
 
         The parent resolves one absolute output destination shared by chain saves
-        and best-effort diagnostics. Diagnostics activates before the fork pool,
-        so counters are inherited without being serialized on the fitter.
+        and best-effort diagnostics. Diagnostics activates before the pool,
+        and shared counters reach workers through the initializer, outside the fitter.
 
         :param nwalkers: The number of walkers in the ensemble. Minimum is 2 * number
             of free parameters.
@@ -366,7 +377,7 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
             fit_id = str(self.chain_path(fit_id).absolute())
         with RunDiagnostics(
             None, self._initialization_diagnostics, fit_id if save else None,
-        ) as diagnostics, _mcmc_pool() as pool:
+        ) as diagnostics, _mcmc_pool(diagnostics) as pool:
             sampler = emcee.EnsembleSampler(pool=pool, **kwargs)  # type: ignore[arg-type]
             self.worker(
                 sampler,
@@ -777,3 +788,4 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
 
         self.flat_result = result_dict
         return parameters.serialize_result(result_dict)
+

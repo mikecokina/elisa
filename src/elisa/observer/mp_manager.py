@@ -4,7 +4,6 @@ import multiprocessing
 from typing import TYPE_CHECKING
 
 from elisa import settings
-from elisa.base.error import raise_elisa_unexpected_error
 from elisa.logger import getLogger
 from elisa.utils import renormalize_async_result, split_to_batches
 
@@ -21,24 +20,14 @@ logger = getLogger(__name__)
 
 
 def get_mp_context() -> BaseContext:
-    """Return ELISA's fork context without changing the application's default.
+    """Select a supported worker context without changing the application's default."""
+    method = "fork" if "fork" in multiprocessing.get_all_start_methods() else "spawn"
+    return multiprocessing.get_context(method)
 
-    Resolve it only when multiprocessing is requested so serial use remains
-    available on platforms without fork. Workers inherit the parent's state at
-    pool creation; callers must account for active threads and native runtimes.
 
-    :raises ElisaUnexpectedError: If the platform does not support fork.
-    """
-    try:
-        return multiprocessing.get_context("fork")
-    except ValueError as exc:
-        msg = (
-            "ELISA multiprocessing requires the 'fork' start method, which is unavailable "
-            "on this platform. Use serial execution (NUMBER_OF_PROCESSES and "
-            "NUMBER_OF_MCMC_PROCESSES <= 1)."
-        )
-        # Platform support cannot change with a candidate's physical parameters.
-        return raise_elisa_unexpected_error(msg, exc)
+def initialize_worker(values: dict[str, Any]) -> None:
+    """Apply the parent's effective settings before evaluating any worker tasks."""
+    settings.configure(**values)
 
 
 def manage_observations(
@@ -68,7 +57,11 @@ def manage_observations(
     if len(position) >= settings.NUMBER_OF_PROCESSES > 1:
         logger.info("starting multiprocessor workers")
         phase_batches = split_to_batches(array=position, n_proc=settings.NUMBER_OF_PROCESSES)
-        pool = get_mp_context().Pool(processes=settings.NUMBER_OF_PROCESSES)
+        pool = get_mp_context().Pool(
+            processes=settings.NUMBER_OF_PROCESSES,
+            initializer=initialize_worker,
+            initargs=(settings.settings_serializer(),),
+        )
 
         result = [pool.apply_async(fn, (*args[:2], batch, *args[2:])) for batch in phase_batches]
         pool.close()
@@ -78,3 +71,4 @@ def manage_observations(
     # argument has to follow singature e.g. produce_circ_sync_curves_mp(...) from c_managed.py
     args = (*args[:2], position, *args[2:])
     return fn(*args)
+

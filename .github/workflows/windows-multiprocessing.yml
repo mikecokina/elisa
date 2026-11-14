@@ -1,0 +1,61 @@
+name: Windows multiprocessing
+
+on:
+  push:
+    branches: [fix/windows-spawn-pr28]
+  pull_request:
+    branches: [dev, feature/optimizations]
+
+permissions:
+  contents: read
+
+jobs:
+  multiprocessing:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            python: '3.12'
+          - os: windows-latest
+            python: '3.14'
+          - os: ubuntu-latest
+            python: '3.12'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      ELISA_CONFIG: ${{ github.workspace }}/.ci/elisa.ini
+      MPLBACKEND: Agg
+      NUMBA_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Prepare noninteractive configuration
+        shell: python
+        run: |
+          import os
+          from pathlib import Path
+          config = Path(os.environ['ELISA_CONFIG'])
+          config.parent.mkdir(parents=True, exist_ok=True)
+          home = Path(os.environ['RUNNER_TEMP']) / 'elisa data'
+          home.mkdir(parents=True, exist_ok=True)
+          config.write_text(f'[general]\nhome={home}\nsuppress_warnings=true\n')
+      - name: Install package and test dependencies
+        run: python -m pip install -e . pytest ruff
+      - name: Check changed production modules
+        run: >-
+          python -m ruff check
+          src/elisa/observer/mp_manager.py
+          src/elisa/analytics/binary_fit/mcmc.py
+          src/elisa/analytics/binary_fit/mcmc_diagnostics.py
+          src/elisa/analytics/binary_fit/summary.py
+      - name: Test imports, worker state, physical curves, and MCMC diagnostics
+        run: >-
+          python -m pytest -q
+          tests/test_computational/test_mp_manager.py
+          tests/test_computational/test_spawn.py
+          tests/tests_analytics/test_mcmc_diagnostics_integration.py
