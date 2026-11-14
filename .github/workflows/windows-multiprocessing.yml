@@ -59,3 +59,45 @@ jobs:
           tests/test_computational/test_mp_manager.py
           tests/test_computational/test_spawn.py
           tests/tests_analytics/test_mcmc_diagnostics_integration.py
+
+  scientific-suite:
+    name: Scientific suite (${{ matrix.revision }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        revision: [candidate, pr28]
+    env:
+      ELISA_CONFIG: ${{ github.workspace }}/.ci/elisa.ini
+      MPLBACKEND: Agg
+      NUMBA_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.revision == 'pr28' && 'a56fa8e5161ed1e2cdc3e67a5d44a549c4e48a30' || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare noninteractive configuration
+        shell: python
+        run: |
+          import os
+          from pathlib import Path
+          config = Path(os.environ['ELISA_CONFIG'])
+          config.parent.mkdir(parents=True, exist_ok=True)
+          home = Path(os.environ['RUNNER_TEMP']) / 'elisa data'
+          home.mkdir(parents=True, exist_ok=True)
+          config.write_text(f'[general]\nhome={home}\nsuppress_warnings=true\n')
+      - name: Install package and test dependencies
+        run: python -m pip install -e ".[test,ui]"
+      - name: Run scientific test suite
+        run: python -m pytest tests --ignore=tests/tests_gui -q -ra --junitxml=.ci/scientific-tests.xml
+      - name: Save test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scientific-tests-${{ matrix.revision }}
+          path: .ci/scientific-tests.xml

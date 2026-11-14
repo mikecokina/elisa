@@ -1724,4 +1724,3 @@ def _manage_chain_evaluation(
         result = [r.get() for r in result]
         return np.vstack(result)
     return eval_function(*args, renormalized_chain)
-

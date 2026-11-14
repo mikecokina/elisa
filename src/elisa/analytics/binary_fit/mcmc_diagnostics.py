@@ -240,4 +240,3 @@ def diagnostics_failed(failure: Exception) -> None:
         run = _active.get()
         if run is not None:
             run.disable(failure)
-

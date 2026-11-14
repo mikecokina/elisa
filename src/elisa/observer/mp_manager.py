@@ -71,4 +71,3 @@ def manage_observations(
     # argument has to follow singature e.g. produce_circ_sync_curves_mp(...) from c_managed.py
     args = (*args[:2], position, *args[2:])
     return fn(*args)
-

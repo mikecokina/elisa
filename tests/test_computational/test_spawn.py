@@ -144,7 +144,10 @@ def test_spawn_survives_disabled_diagnostics(tmp_path: Path, monkeypatch: pytest
 def test_spawn_worker_errors_propagate_and_children_exit(operation: str) -> None:
     previous = {child.pid for child in multiprocessing.active_children()}
     with (
-        settings.override(NUMBER_OF_PROCESSES=2, NUMBER_OF_MCMC_PROCESSES=2),
+        settings.override(
+            NUMBER_OF_PROCESSES=2 if operation == "observation" else 1,
+            NUMBER_OF_MCMC_PROCESSES=2 if operation == "summary" else 1,
+        ),
         pytest.raises(ValueError, match="spawned worker failed"),
     ):
         if operation == "observation":

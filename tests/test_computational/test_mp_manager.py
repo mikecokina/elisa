@@ -204,4 +204,3 @@ def test_worker_exceptions_still_reach_caller(operation: str) -> None:
         else:
             _manage_chain_evaluation(np.arange(4).reshape(-1, 1), _fail)
     assert {child.pid for child in multiprocessing.active_children()} == previous_children
-
