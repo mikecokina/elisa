@@ -70,7 +70,7 @@ def test_chain_summary_uses_effective_settings() -> None:
 def test_physical_light_and_radial_velocity_curves() -> None:
     """Use blackbody atmospheres and explicit LD so CI needs no external tables."""
     with settings.override(
-        NUMBER_OF_PROCESSES=1, LIMB_DARKENING_LAW="square_root",
+        NUMBER_OF_PROCESSES=1, NUMBER_OF_MCMC_PROCESSES=1, LIMB_DARKENING_LAW="square_root",
         REFLECTION_EFFECT=False, MESH_GENERATOR="trapezoidal",
     ):
         definition = get_default_binary_definition()
@@ -91,6 +91,13 @@ def test_physical_light_and_radial_velocity_curves() -> None:
             for band, values in serial[1].items():
                 assert np.isfinite(values).all()
                 np.testing.assert_allclose(parallel[1][band], values, rtol=1e-10, atol=1e-10)
+
+
+def test_physical_curves_with_parallel_mcmc_user_configuration() -> None:
+    """The physical smoke test must not depend on a user's MCMC worker count."""
+    with settings.override(NUMBER_OF_PROCESSES=1, NUMBER_OF_MCMC_PROCESSES=2):
+        test_physical_light_and_radial_velocity_curves()
+        assert settings.NUMBER_OF_MCMC_PROCESSES == 2
 
 
 class ConfiguredFit(AnalyticFit):

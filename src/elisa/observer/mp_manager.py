@@ -26,8 +26,9 @@ def get_mp_context() -> BaseContext:
 
 
 def initialize_worker(values: dict[str, Any]) -> None:
-    """Apply the parent's effective settings before evaluating any worker tasks."""
-    settings.configure(**values)
+    """Restore fresh-interpreter state without reopening logging resources."""
+    if multiprocessing.get_start_method() != "fork":
+        settings.restore_worker_settings(values)
 
 
 def manage_observations(

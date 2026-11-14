@@ -377,6 +377,20 @@ class Settings(_Const):
         side effects cannot be rolled back, but failed logging never publishes
         candidate Settings values.
         """
+        self._configure(kwargs, apply_logging=True)
+
+    def restore_worker_settings(self, values: dict) -> None:
+        """Restore a parent snapshot without reapplying process-owned logging.
+
+        Fresh-interpreter workers need effective runtime settings, not another
+        dictConfig call that can truncate a parent log or require a removed JSON
+        file. Keep the LOG_CONFIG selector as metadata but leave the worker's
+        existing logging handlers alone. Forked workers already inherit both.
+        """
+        self._configure(values, apply_logging=False)
+
+    def _configure(self, kwargs: dict, *, apply_logging: bool) -> None:
+        """Validate and publish settings, optionally applying logging policy."""
         unknown = kwargs.keys() - self._fields
         if unknown:
             raise_elisa_settings_error(f"Unknown or read-only setting(s): {', '.join(sorted(unknown))}")
@@ -386,7 +400,7 @@ class Settings(_Const):
         candidate["ATLAS_TO_BASE_DIR"] = self._atlas_to_base_dir(candidate)
         if "HOME" in kwargs:
             _create_settings_directory(candidate["HOME"])
-        if "LOG_CONFIG" in kwargs:
+        if apply_logging and "LOG_CONFIG" in kwargs:
             profile = candidate["LOG_CONFIG"]
             if profile == DefaultSettings.LOG_CONFIG and not Path(profile).is_file():
                 profile = LoggingProfile.DEFAULT.value
