@@ -260,6 +260,19 @@ ELISa supports parallel computation of light curves to improve performance on mu
 During multiprocessing, the requested light curve points are divided into smaller batches, 
 and each batch is evaluated on a separate CPU core.
 
+ELISa uses `fork` where available and `spawn` otherwise, including on Windows. Windows does not support `fork` or `forkserver`. Worker processes receive a snapshot of the parent's effective ELISa settings when each pool is created; ELISa does not change the application's global multiprocessing start method.
+
+When using multiprocessing from a Python script on Windows, place calls that start computations behind a main guard so spawned workers can safely import the script:
+
+```python
+def main():
+    # Configure ELISa and run observations or fitting here.
+    ...
+
+if __name__ == "__main__":
+    main()
+```
+
 ### Important Considerations
 
 - Parallelization introduces computational overhead.

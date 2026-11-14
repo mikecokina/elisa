@@ -93,8 +93,8 @@ jobs:
           config.write_text(f'[general]\nhome={home}\nsuppress_warnings=true\n')
       - name: Install package and test dependencies
         run: python -m pip install -e ".[test,ui]"
-      - name: Install published limb-darkening tables
-        run: python -c "from elisa import settings; from elisa.managers.download_manager import DownloadManager; DownloadManager(settings).download_van_hamme()"
+      - name: Install published scientific tables
+        run: python -c "from elisa import settings; from elisa.managers.download_manager import DownloadManager; DownloadManager(settings).download_all()"
       - name: Run scientific test suite
         run: python -m pytest tests --ignore=tests/tests_gui -q -ra --junitxml=.ci/scientific-tests.xml
       - name: Save test results
