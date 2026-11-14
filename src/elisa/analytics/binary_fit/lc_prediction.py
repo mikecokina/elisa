@@ -117,6 +117,39 @@ def extend_phase_support(reference: NDArray, phases: NDArray) -> NDArray:
     The sorted, unique result keeps one neighboring point beyond each observation
     boundary where available, so interpolation covers the entire supplied interval.
 
+    If trimming leaves fewer than four points, add four evenly spaced phases
+    inside the observed interval for cubic interpolation. Degenerate intervals
+    may yield fewer distinct phases; then retain the nearest unused expanded
+    support neighbors until four distinct coordinates are available.
+
+    Narrow interval between adaptive nodes (schematic, not to scale)::
+
+        observations:                 [oooooooooooo]
+                                      lower        upper
+        trimmed support:      *                              *
+                              only 2 nodes: cubic needs >= 4 distinct nodes
+        supplemented:         *       +   +    +   +         *
+                                      <--- linspace --->
+
+    Here ``*`` denotes retained adaptive support, ``o`` an observation, and ``+``
+    a new synthesis coordinate. All existing support is retained; the new points
+    resolve the local observation interval rather than widening it to distant nodes.
+
+    Degenerate interval: repeated observations at the same phase::
+
+        expanded support:     *          *          *          *          *
+        observations:                         o
+                                              lower == upper
+        after local addition:            *    +     *
+                                              ^ four linspace values coincide
+        supplemented:                    *    +     *          *
+                                                               ^ reuse neighbor
+
+    Deduplication leaves only three points in this example, so one unused support
+    neighbor is restored. Extremely narrow floating-point intervals can likewise
+    produce fewer than four distinct linspace coordinates. No artificial phase
+    offsets are introduced; every added coordinate is synthesized normally.
+
     Only coordinates are repeated: the prediction layer evaluates fresh synthetic
     flux at every unwrapped support phase. Tiling flux would incorrectly impose
     one-orbit periodicity on asynchronous spots or pulsations.
@@ -140,7 +173,17 @@ def extend_phase_support(reference: NDArray, phases: NDArray) -> NDArray:
     support = np.unique(np.concatenate([reference + offset for offset in offsets]))
     start = max(0, int(np.searchsorted(support, lower)) - 1)
     stop = min(support.size, int(np.searchsorted(support, upper, side="right")) + 1)
-    return support[start:stop]
+    trimmed = support[start:stop]
+    if trimmed.size >= _MIN_CUBIC_SUPPORT:
+        return trimmed
+
+    supplemented = np.unique(np.concatenate((trimmed, np.linspace(lower, upper, _MIN_CUBIC_SUPPORT))))
+    if supplemented.size < _MIN_CUBIC_SUPPORT:
+        neighbours = np.setdiff1d(support, supplemented, assume_unique=True)
+        distances = np.maximum(lower - neighbours, neighbours - upper)
+        nearest = np.argsort(distances, kind="stable")[:_MIN_CUBIC_SUPPORT - supplemented.size]
+        supplemented = np.unique(np.concatenate((supplemented, neighbours[nearest])))
+    return supplemented
 
 
 def _synthesis_support(
