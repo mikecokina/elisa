@@ -12,7 +12,7 @@ from elisa.base.types import FLOAT, INT
 from elisa.logger import getLogger
 from elisa.single_system.orbit.transform import OrbitProperties
 
-logger = getLogger("single_system.orbit.orbit")
+logger = getLogger(__name__)
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -92,15 +92,15 @@ class Orbit(AbstractOrbit):
         super().__init__(**kwargs)
 
         # default values of properties
-        self.rotational_period: Float = np.nan
+        self.rotation_period: Float = np.nan
 
         # set supplied properties without using f-strings in logging
         logger.debug("setting properties of orbit instance %s", self.__class__.__name__)
         for kw in kwargs:
             setattr(self, kw, kwargs[kw])
 
-        # keep period consistent with rotational_period
-        self.period = self.rotational_period
+        # keep period consistent with rotation_period
+        self.period = self.rotation_period
 
     def orbital_motion(self, phase: NDArray | Float) -> NDArray[np.floating]:
         """Alias to :meth:`rotational_motion`.

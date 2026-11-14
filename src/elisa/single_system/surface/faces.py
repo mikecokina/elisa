@@ -3,9 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-from scipy.spatial import Delaunay
+from scipy.spatial import Delaunay, QhullError
 
 from elisa.base import spot
+from elisa.base.error import raise_elisa_numeric_error
 from elisa.base.surface import faces as bfaces
 from elisa.base.surface.faces import mirror_triangulation, set_all_surface_centres
 from elisa.base.types import INT
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
     from elisa.single_system.container import SinglePositionContainer
 
 
-logger = getLogger("single_system.surface.faces")
+logger = getLogger(__name__)
 
 
 def build_faces(system_container: SinglePositionContainer) -> SinglePositionContainer:
@@ -86,7 +87,10 @@ def single_surface(
     """
     if points is None:
         points = star_container.points
-    triangulation = Delaunay(points)
+    try:
+        triangulation = Delaunay(points)
+    except QhullError as exc:
+        raise_elisa_numeric_error(str(exc), exc)
     return triangulation.convex_hull
 
 
@@ -190,12 +194,12 @@ def build_velocities(system: SinglePositionContainer) -> SinglePositionContainer
     omega = np.array([0.0, 0.0, system.angular_velocity])
 
     # rotational velocity
-    p_velocities = np.cross(star.points, omega, axisa=1)
+    p_velocities = np.cross(omega, star.points)
     star.velocities = np.mean(p_velocities[star.faces], axis=1)
 
     if star.has_spots():
         for _spot in star.spots.values():
-            p_velocities_spot = np.cross(_spot.points, omega, axisa=1)
+            p_velocities_spot = np.cross(omega, _spot.points)
             _spot.velocities = np.mean(p_velocities_spot[_spot.faces], axis=1)
 
     return system

@@ -1,2 +1,0 @@
-Benchmark of multiprocessing approach
-=====================================

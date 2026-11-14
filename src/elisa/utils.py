@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import datetime
+import datetime  # noqa: ICN001
 import re
-from collections.abc import Iterable, Iterator, Sized
+from collections.abc import Collection, Iterable, Iterator, Mapping, Sized
 from copy import copy, deepcopy
+from pathlib import Path
 from queue import Empty, Queue
 from re import Match
 from typing import TYPE_CHECKING, Any
@@ -16,6 +17,11 @@ from numpy.linalg import norm
 
 from elisa import const
 from elisa import umpy as up
+from elisa.base.error import (
+    raise_elisa_invalid_kwargs_error,
+    raise_elisa_lookup_error,
+    raise_elisa_missing_kwargs_error,
+)
 from elisa.base.types import FLOAT, INT
 from elisa.numba_functions import operations
 
@@ -28,6 +34,49 @@ if TYPE_CHECKING:
     from elisa.types import Float, HasMeshData, Int, Number
 
 FEBRUARY_MONTH_NUMBER = 2
+
+FileSourceIdentity = tuple[str, int, int, int, int, int]
+
+
+def file_source_identity(path: str | Path) -> FileSourceIdentity:
+    """Resolve a resource and identify its current filesystem revision.
+
+    Call before cache lookup. No content hashing or file reading is performed.
+    Resources must not be edited concurrently with a calculation; filesystems
+    without reliable revision metadata require explicit cache clearing.
+    """
+    resolved = Path(path).resolve(strict=True)
+    revision = resolved.stat()
+    return (str(resolved), revision.st_dev, revision.st_ino, revision.st_size,
+            revision.st_mtime_ns, revision.st_ctime_ns)
+
+
+# A fixed byte order makes equal float64 values produce equal cache keys on any
+# host. Encoding and decoding must use the same dtype; native byte order alone
+# would make decoding serialized keys platform-dependent.
+_CACHE_FLOAT64_DTYPE = np.dtype(np.float64).newbyteorder("<")
+
+
+def float64_array_to_cache_key(arr: NDArray) -> tuple[tuple[int, ...], bytes]:
+    """Encode exact float64 values and shape as an immutable array cache key.
+
+    Normalize dtype and endianness to little-endian float64 without rounding.
+    Preserve C ordering, signed zero and NaN payload bits, avoiding Python
+    float/NaN equality rules. Only the bytes copy is retained, not the input.
+    Keep the dtype consistent with :func:`float64_array_from_cache_key`.
+    """
+    values = np.asarray(arr, dtype=_CACHE_FLOAT64_DTYPE)
+    return values.shape, values.tobytes(order="C")
+
+
+def float64_array_from_cache_key(key: tuple[tuple[int, ...], bytes]) -> NDArray:
+    """Decode an array key as a read-only float64 view without copying its bytes.
+
+    Use the same fixed byte order as :func:`float64_array_to_cache_key` so the
+    reconstructed coordinates preserve the original float64 values exactly.
+    """
+    shape, data = key
+    return np.frombuffer(data, dtype=_CACHE_FLOAT64_DTYPE).reshape(shape)
 
 
 def polar_to_cartesian(radius: Float | NDArray, phi: Float | NDArray) -> tuple[Float, Float] | tuple[NDArray, NDArray]:
@@ -42,12 +91,13 @@ def polar_to_cartesian(radius: Float | NDArray, phi: Float | NDArray) -> tuple[F
     return x, y
 
 
-def invalid_kwarg_checker(kwargs: dict, kwarglist: list | tuple, instance: type) -> None:
+def invalid_kwarg_checker(kwargs: Mapping[str, Any], kwarglist: Collection[str], instance: type) -> None:
     """Check if `kwargs` for `instance` are in allowed kwargs presented in `kwarglist`.
 
-    :param kwargs: dict; kwargs to evaluate if are in kwarg list.
-    :param kwarglist: list | tuple; list of allowed kwargs for given instance.
+    :param kwargs: Mapping whose argument names are checked against the allowed names.
+    :param kwarglist: Collection of allowed argument names.
     :param instance: Any; class/instance with attribute `__name__`
+    :raises ElisaInvalidKwargsError: If any supplied argument name is not allowed.
     """
     invalid_kwargs = [kwarg for kwarg in kwargs if kwarg not in kwarglist]
     if len(invalid_kwargs) > 0:
@@ -56,15 +106,16 @@ def invalid_kwarg_checker(kwargs: dict, kwarglist: list | tuple, instance: type)
             f"in class instance {instance.__name__}.\n "
             f"List of available parameters: {', '.join(kwarglist)}"
         )
-        raise ValueError(msg)
+        raise_elisa_invalid_kwargs_error(msg)
 
 
-def invalid_param_checker(kwargs: dict, kwarglist: list | tuple, message: str) -> None:
+def invalid_param_checker(kwargs: Iterable[str], kwarglist: Collection[str], message: str) -> None:
     """Invalid parameter checker for any class instance or function.
 
-    :param kwargs: dict; kwargs to evaluate if are in kwarg list.
-    :param kwarglist: list | tuple; list of allowed kwargs for given instance
+    :param kwargs: Iterable of parameter names (e.g. a tuple, dictionary or key view).
+    :param kwarglist: Collection of allowed parameter names.
     :param message: Any class
+    :raises ElisaInvalidKwargsError: If a supplied parameter name is not allowed.
     """
     invalid_kwargs = [kwarg for kwarg in kwargs if kwarg not in kwarglist]
     if len(invalid_kwargs) > 0:
@@ -73,7 +124,7 @@ def invalid_param_checker(kwargs: dict, kwarglist: list | tuple, message: str) -
             f"in {message}.\n "
             f"List of available parameters: {', '.join(kwarglist)}"
         )
-        raise ValueError(msg)
+        raise_elisa_invalid_kwargs_error(msg)
 
 
 def is_plane(given: str, expected: str) -> Match[str] | None:
@@ -148,13 +199,12 @@ def cartesian_to_spherical(
     points = np.expand_dims(points, axis=0) if len(np.shape(points)) == 1 else points
     r = np.linalg.norm(points, axis=1)
 
-    old_settings = np.seterr(divide="ignore", invalid="ignore")
-    phi = up.arcsin(points[:, 1] / (np.linalg.norm(points[:, :2], axis=1)))  # vypocet azimutalneho (rovinneho) uhla
-    phi[up.isnan(phi)] = 0
+    with np.errstate(divide="ignore", invalid="ignore"):
+        phi = up.arcsin(points[:, 1] / (np.linalg.norm(points[:, :2], axis=1)))  # vypocet azimutalneho (rovinneho) uhla
+        phi[up.isnan(phi)] = 0
 
-    theta = up.arccos(points[:, 2] / r)  # vypocet polarneho (elevacneho) uhla
-    theta[up.isnan(theta)] = 0
-    np.seterr(**old_settings)
+        theta = up.arccos(points[:, 2] / r)  # vypocet polarneho (elevacneho) uhla
+        theta[up.isnan(theta)] = 0
 
     signtest = points[:, 0] < 0
     phi[signtest] = const.PI - phi[signtest]
@@ -523,17 +573,18 @@ def check_missing_kwargs(
 ) -> None:
     """Check if all `kwargs` are all in `instance kwargs`.
 
-    If missing raise ValuerError with missing `kwargs`.
+    Report missing required keyword arguments.
 
     :param mandatory_kwargs: list[str] | tuple[str]
     :param supplied_kwargs: dict[str, Any]
     :param instance_of: class
+    :raises ElisaMissingKwargsError: If required argument names are absent.
     :return:
     """
     missing_kwargs = [f"`{kwarg}`" for kwarg in mandatory_kwargs if kwarg not in supplied_kwargs]
     if len(missing_kwargs) > 0:
         msg = f"Missing argument(s): {', '.join(missing_kwargs)} in class instance {instance_of.__name__}"
-        raise ValueError(msg)
+        raise_elisa_missing_kwargs_error(msg)
 
 
 def check_missing_params(
@@ -543,17 +594,18 @@ def check_missing_params(
 ) -> None:
     """Check if all `kwargs` are all in parameter `obj`.
 
-    If missing raise ValuerError with missing `kwargs`.
+    Report missing required parameter names.
 
     :param mandatory_kwargs: List[str]
     :param supplied_kwargs: List[str]
     :param instance: class instance
+    :raises ElisaMissingKwargsError: If required parameter names are absent.
     :return:
     """
     missing_kwargs = [f"`{kwarg}`" for kwarg in mandatory_kwargs if kwarg not in supplied_kwargs]
     if len(missing_kwargs) > 0:
         msg = f"Missing argument(s): {', '.join(missing_kwargs)} in object {instance}"
-        raise ValueError(msg)
+        raise_elisa_missing_kwargs_error(msg)
 
 
 def numeric_logg_to_string(logg: Float) -> str:
@@ -594,6 +646,8 @@ def numeric_metallicity_from_string(n_metallicity: str) -> Float:
     return value * sign
 
 
+# These lookup helpers preserve their existing numerical behavior. Only raised
+# numeric/type/index failures are normalized; callers own the domain translation.
 def find_nearest_value_as_matrix(
     look_in: NDArray[Float],
     look_for: Float | NDArray[Float],
@@ -604,11 +658,15 @@ def find_nearest_value_as_matrix(
     :param look_for: numpy.array; elements according to which the closest element in `look_in` is searched for
     :return: Tuple[numpy.array, numpy.ndarray]
     """
-    val = np.array([look_for]) if np.isscalar(look_for) else look_for
-    dif = up.abs(val[:, np.newaxis] - look_in)
-    argmins = dif.argmin(axis=1)
-    val = look_in[argmins]
-    return val, argmins
+    try:
+        val = np.array([look_for]) if np.isscalar(look_for) else look_for
+        dif = up.abs(val[:, np.newaxis] - look_in)
+        argmins = dif.argmin(axis=1)
+        val = look_in[argmins]
+    except (ValueError, IndexError, TypeError, ArithmeticError) as exc:
+        raise_elisa_lookup_error(str(exc), exc)
+    else:
+        return val, argmins
 
 
 def find_nearest_value(
@@ -621,10 +679,14 @@ def find_nearest_value(
     :param look_for: float;
     :return: List[look_for: float, int (index from look_for)];
     """
-    look_in = np.array(look_in)
-    look_for = look_in[(up.abs(look_in - look_for)).argmin()]
-    index = up.where(look_in == look_for)[0][0]
-    return look_for, index
+    try:
+        look_in = np.array(look_in)
+        look_for = look_in[(up.abs(look_in - look_for)).argmin()]
+        index = up.where(look_in == look_for)[0][0]
+    except (ValueError, IndexError, TypeError, ArithmeticError) as exc:
+        raise_elisa_lookup_error(str(exc), exc)
+    else:
+        return look_for, index
 
 
 def find_surrounded_as_matrix(
@@ -640,27 +702,30 @@ def find_surrounded_as_matrix(
     :param look_for: numpy.ndarray;
     :return: numpy.array;
     """
-    if not (np.array(look_in.min() <= look_for).all() and np.array(look_for <= look_in.max()).all()):
-        msg = "At least one value in `look_for` is out of bound of `look_in`"
-        raise ValueError(msg)
+    try:
+        if not (np.array(look_in.min() <= look_for).all() and np.array(look_for <= look_in.max()).all()):
+            raise_elisa_lookup_error("At least one value in `look_for` is out of bound of `look_in`")
 
-    dif = look_for[:, np.newaxis] - look_in
-    positive_mask = dif >= 0
-    # for values on the left side of look_in array
-    all_positive = np.all(positive_mask, axis=1)
-    # add artificial sign change for right boundary value
-    # switch 'fancy' indexing to integer index since in numpy, combined assigment can't be done by fancy indexing
-    all_positive_inline = up.arange(0, len(look_for))[all_positive]
-    positive_mask[all_positive_inline, -1] = False
-    # find signs switching columns
-    sign_swith_mask = up.logical_xor(positive_mask[:, :-1], positive_mask[:, 1:])
-    idx_array = np.ones(np.shape(dif), dtype=INT) * up.arange(np.shape(look_in)[0])
-    idx_array = idx_array[:, :-1][sign_swith_mask]
-    ret_matrix = np.column_stack((look_in[idx_array], look_in[idx_array + 1]))
-    # consider on place value as not surounded (surounded by itself)
-    isin_look_in = np.isin(look_for, look_in)
-    ret_matrix[isin_look_in] = np.array([look_for, look_for]).T[isin_look_in]
-    return ret_matrix
+        dif = look_for[:, np.newaxis] - look_in
+        positive_mask = dif >= 0
+        # for values on the left side of look_in array
+        all_positive = np.all(positive_mask, axis=1)
+        # add artificial sign change for right boundary value
+        # switch 'fancy' indexing to integer index since in numpy, combined assigment can't be done by fancy indexing
+        all_positive_inline = up.arange(0, len(look_for))[all_positive]
+        positive_mask[all_positive_inline, -1] = False
+        # find signs switching columns
+        sign_swith_mask = up.logical_xor(positive_mask[:, :-1], positive_mask[:, 1:])
+        idx_array = np.ones(np.shape(dif), dtype=INT) * up.arange(np.shape(look_in)[0])
+        idx_array = idx_array[:, :-1][sign_swith_mask]
+        ret_matrix = np.column_stack((look_in[idx_array], look_in[idx_array + 1]))
+        # consider on place value as not surounded (surounded by itself)
+        isin_look_in = np.isin(look_for, look_in)
+        ret_matrix[isin_look_in] = np.array([look_for, look_for]).T[isin_look_in]
+    except (ValueError, IndexError, TypeError, ArithmeticError) as exc:
+        raise_elisa_lookup_error(str(exc), exc)
+    else:
+        return ret_matrix
 
 
 def find_surrounded(
@@ -676,37 +741,39 @@ def find_surrounded(
     :param look_for: float;
     :return: List [float, float];
     """
-    if look_for > max(look_in) or look_for < min(look_in):
-        msg = "Any value in `look_for` is out of bound of `look_in`"
-        raise ValueError(msg)
+    try:
+        if look_for > max(look_in) or look_for < min(look_in):
+            raise_elisa_lookup_error("Any value in `look_for` is out of bound of `look_in`")
 
-    if look_for == min(look_in):
-        return [min(look_in), min(look_in)]
-    if look_for == max(look_in):
-        return [max(look_in), max(look_in)]
+        if look_for == min(look_in):
+            return [min(look_in), min(look_in)]
+        if look_for == max(look_in):
+            return [max(look_in), max(look_in)]
 
-    arr, ret = np.array(look_in[:]), []
-    f_nst = find_nearest_value(arr, look_for)
-    ret.append(float(f_nst[0]))
+        arr, ret = np.array(look_in[:]), []
+        f_nst = find_nearest_value(arr, look_for)
+        ret.append(float(f_nst[0]))
 
-    new_arr = []
-    if f_nst[0] > look_for:
-        for i in range(len(arr)):
-            if arr[i] < f_nst[0]:
-                new_arr.extend([float(arr[i])])
-    else:
-        for i in range(len(arr)):
-            if arr[i] > f_nst[0]:
-                new_arr.extend([float(arr[i])])
+        new_arr = []
+        if f_nst[0] > look_for:
+            for i in range(len(arr)):
+                if arr[i] < f_nst[0]:
+                    new_arr.extend([float(arr[i])])
+        else:
+            for i in range(len(arr)):
+                if arr[i] > f_nst[0]:
+                    new_arr.extend([float(arr[i])])
 
-    arr = new_arr[:]
-    del new_arr
+        arr = new_arr[:]
+        del new_arr
 
-    # arr = np.delete(arr, f_nst[1], 0)
-    ret.append(float(find_nearest_value(np.asarray(arr), look_for)[0]))
-    ret = sorted(ret)
-    # test
-    return ret if ret[0] < look_for < ret[1] else [look_for, look_for]
+        # arr = np.delete(arr, f_nst[1], 0)
+        ret.append(float(find_nearest_value(np.asarray(arr), look_for)[0]))
+        ret = sorted(ret)
+        # test
+        return ret if ret[0] < look_for < ret[1] else [look_for, look_for]
+    except (ValueError, IndexError, TypeError, ArithmeticError) as exc:
+        raise_elisa_lookup_error(str(exc), exc)
 
 
 def calculate_cos_theta(
@@ -737,7 +804,7 @@ def calculate_cos_theta(
 def calculate_cos_theta_los_x(
     normals: NDArray,
 ) -> NDArray:
-    """Calculate cosine of an angle between normalized vectors and line of sight vector [1, 0, 0].
+    """Calculate cosine of an angle between normalized vectors and line of sight vector [-1, 0, 0].
 
     :param normals: numpy.ndarray
     :return: numpy.ndarray
@@ -845,8 +912,11 @@ def find_idx_of_nearest(array: NDArray[Float], values: NDArray[Float]) -> Int:
     :param values: 1D array (N) - values to which closest point in the `array` should be found
     :return: np.ndarray with shape (N) that points to the closest values in `array`
     """
-    array = np.asarray(array)
-    return (up.abs(array[np.newaxis, :] - values[:, np.newaxis])).argmin(axis=1)
+    try:
+        array = np.asarray(array)
+        return (up.abs(array[np.newaxis, :] - values[:, np.newaxis])).argmin(axis=1)
+    except (ValueError, IndexError, TypeError, ArithmeticError) as exc:
+        raise_elisa_lookup_error(str(exc), exc)
 
 
 def rotation_in_spherical(

@@ -10,7 +10,7 @@ from elisa.base.container import PositionContainer, StarContainer
 from elisa.logger import getLogger
 from elisa.single_system.surface import faces, gravity, mesh, pulsations, temperature
 
-logger = getLogger("single_system.container")
+logger = getLogger(__name__)
 
 
 if TYPE_CHECKING:
@@ -124,6 +124,7 @@ class SinglePositionContainer(PositionContainer):
         :rtype: elisa.single_system.container.SinglePositionContainer
         """
         logger.debug("build called with kwargs: %s", kwargs)
+        self.reset_flatten()
         self.build_surface()
         self.build_from_points()
 

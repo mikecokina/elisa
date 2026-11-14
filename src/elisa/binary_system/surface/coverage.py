@@ -4,13 +4,19 @@ from typing import TYPE_CHECKING
 
 import matplotlib.path as mpltpath
 import numpy as np
-from scipy.spatial import ConvexHull
+from scipy.spatial import ConvexHull, QhullError
 
 from elisa import const, settings, utils
 from elisa import umpy as up
+from elisa.base.error import (
+    ElisaNumericError,
+    raise_elisa_numeric_error,
+    raise_elisa_unexpected_error,
+)
 from elisa.base.surface import coverage as bcoverage
 from elisa.base.types import BOOL, FLOAT, INT
 from elisa.binary_system import utils as bsutils
+from elisa.conf.enums import IntersectionBackend
 from elisa.logger import getLogger
 
 if TYPE_CHECKING:
@@ -20,8 +26,77 @@ if TYPE_CHECKING:
     from elisa.binary_system.container import OrbitalPositionContainer
     from elisa.types import NP_BOOL_, ComponentName, Float, Int, NumpyBool
 
-logger = getLogger("binary_system.surface.coverage")
+logger = getLogger(__name__)
 
+
+def _calculate_intersection_areas(
+    hull: NDArray[Float],
+    triangles: NDArray[Float],
+) -> NDArray[Float]:
+    """Calculate hull/triangle intersection areas with the configured backend."""
+    backend = settings.INTERSECTION_BACKEND
+    if backend == IntersectionBackend.PYPEX:
+        return _calculate_pypex_intersection_areas(hull, triangles)
+
+    if backend in {IntersectionBackend.REFERENCE, IntersectionBackend.SUTHERLAND_HODGMAN}:
+        return _calculate_sutherland_hodgman_intersection_areas(
+            hull, triangles, compiled=backend == IntersectionBackend.SUTHERLAND_HODGMAN,
+        )
+
+    # Settings validate every public configuration write before publication.
+    # Reaching this branch violates the settings/dispatch contract, e.g. a new
+    # enum member was added without implementing its coverage backend.
+    message = f"Unexpected intersection backend {backend!r}; validated settings must select an implemented backend."
+    return raise_elisa_unexpected_error(message)
+
+
+def _calculate_pypex_intersection_areas(
+    hull: NDArray[Float],
+    triangles: NDArray[Float],
+) -> NDArray[Float]:
+    """Translate standalone PYPEX failures into numeric candidate failures.
+
+    Only the coverage adapter assigns ELISA semantics. PYPEX helpers and other
+    callers, such as the horizon tool, keep their original builtin errors.
+    """
+    try:
+        pypex_hull = bsutils.hull_to_pypex_poly(hull)
+        pypex_faces = bsutils.faces_to_pypex_poly(triangles)
+        intersections = bsutils.pypex_poly_hull_intersection(pypex_faces, pypex_hull)
+        # A missing intersection is a valid zero area.
+        areas = np.array(bsutils.pypex_poly_surface_area(intersections), dtype=FLOAT)
+    except Exception as exc:  # noqa: BLE001 - coverage deliberately rejects any failed PYPEX computation
+        msg = f"PyPex failed to calculate surface intersection areas: {exc}"
+        raise_elisa_numeric_error(msg, exc)
+
+    areas_match_faces = areas.shape == (len(triangles),)
+    areas_are_finite = np.all(np.isfinite(areas))
+    areas_are_nonnegative = np.all(areas >= 0)
+    if not (areas_match_faces and areas_are_finite and areas_are_nonnegative):
+        msg = "PyPex must return one finite nonnegative intersection area per face"
+        raise_elisa_numeric_error(msg)
+    return areas
+
+
+def _calculate_sutherland_hodgman_intersection_areas(
+    hull: NDArray[Float],
+    triangles: NDArray[Float],
+    *,
+    compiled: bool,
+) -> NDArray[Float]:
+    """Assign candidate-rejection semantics at the Sutherland-Hodgman boundary."""
+    from elisa.binary_system.surface.clipping import (  # noqa: PLC0415 - optional backend
+        sutherland_hodgman_intersection_areas,
+    )
+
+    try:
+        areas = sutherland_hodgman_intersection_areas(hull, triangles, compiled=compiled)
+    except ElisaNumericError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - coverage rejects failed intersection computations
+        msg = f"Sutherland-Hodgman failed to calculate surface intersection areas: {exc}"
+        raise_elisa_numeric_error(msg, exc)
+    return areas
 
 
 def partial_visible_faces_surface_coverage(
@@ -44,29 +119,27 @@ def partial_visible_faces_surface_coverage(
     :return: Surface coverage of partially visible faces.
     :rtype: NDArray[Float]
     """
-    pypex_hull = bsutils.hull_to_pypex_poly(hull)
-    pypex_faces = bsutils.faces_to_pypex_poly(points[faces])
+    intersection_areas = _calculate_intersection_areas(hull, points[faces])
 
-    # it is possible to None happens in intersection, tkae care about it latter
-    pypex_intersection = bsutils.pypex_poly_hull_intersection(
-        pypex_faces,
-        pypex_hull,
-    )
+    # Reject unusable candidate geometry where partial coverage is computed,
+    # before thresholding could hide infinities or assembly receives invalid data.
+    try:
+        with np.errstate(divide="raise", invalid="raise", over="raise"):
+            inplane_points_3d = np.column_stack((points, np.zeros(points.shape[0])))
+            inplane_surface_area = utils.triangle_areas(
+                triangles=faces,
+                points=inplane_points_3d,
+            )
+            correction_cosine = utils.calculate_cos_theta_los_x(normals)
+            if not np.all(np.isfinite(inplane_surface_area)) or not np.all(np.isfinite(correction_cosine)):
+                raise_elisa_numeric_error("Partial-face projection areas and correction cosines must be finite.")
+            partial_coverage = (inplane_surface_area - intersection_areas) / correction_cosine
+    except (FloatingPointError, OverflowError, ValueError) as exc:
+        raise_elisa_numeric_error("Partial-face coverage could not be computed from the projected geometry.", exc)
 
-    # think about surface normalisation like and avoid surface areas like 1e-6
-    # which lead to loss in precission
-    pypex_polys_surface_area = np.array(
-        bsutils.pypex_poly_surface_area(pypex_intersection),
-        dtype=FLOAT,
-    )
-
-    inplane_points_3d = np.column_stack((points, np.zeros(points.shape[0])))
-    inplane_surface_area = utils.triangle_areas(
-        triangles=faces,
-        points=inplane_points_3d,
-    )
-    correction_cosine = utils.calculate_cos_theta_los_x(normals)
-    return (inplane_surface_area - pypex_polys_surface_area) / correction_cosine
+    if partial_coverage.shape != (len(faces),) or not np.all(np.isfinite(partial_coverage)):
+        raise_elisa_numeric_error("Partial-face coverage must contain one finite area per selected face.")
+    return partial_coverage
 
 
 def calculate_centre_of_star_projection(
@@ -303,24 +376,24 @@ def compute_surface_coverage(
     # TODO: add unittests  # noqa: FIX002, TD002, TD003
     logger.debug("computing surface coverage for %s", system.position)
 
-    bb_path = None
     cover_component: ComponentName = "secondary" if 0.0 < system.position.azimuth < const.PI else "primary"
     cover_object = getattr(system, cover_component)
     undercover_component = settings.BINARY_COUNTERPARTS[cover_component]
     undercover_object = getattr(system, undercover_component)
 
-    # all surface values in sma unit which are smaller than following threshold
-    # are discarded (set to 0.0)
-    surface_noise_threshold = (
-        2.0 * np.pi * undercover_object.polar_radius**2 / len(undercover_object.faces)
-    ) / 1e6
-
-    cover_object_obs_visible_projection = utils.get_visible_projection(cover_object)
-    undercover_object_obs_visible_projection = utils.get_visible_projection(
-        undercover_object,
-    )
-
     if in_eclipse:
+        # Expensive projections are only required for eclipse geometry.
+        # all surface values in sma unit which are smaller than following threshold
+        # are discarded (set to 0.0)
+        surface_noise_threshold = (
+            2.0 * np.pi * undercover_object.polar_radius**2 / len(undercover_object.faces)
+        ) / 1e6
+
+        cover_object_obs_visible_projection = utils.get_visible_projection(cover_object)
+        undercover_object_obs_visible_projection = utils.get_visible_projection(
+            undercover_object,
+        )
+
         # indices of points on near side
         undercover_visible_point_indices = np.unique(
             undercover_object.faces[undercover_object.indices],
@@ -339,25 +412,24 @@ def compute_surface_coverage(
         full_visible, _invisible, partial_visible = (
             visibility_disimilar_objects(*args) if similar_size_test else visibility_similar_objects(*args)
         )
-    else:
-        full_visible, _invisible, partial_visible = visibility_out_of_eclipse(
-            undercover_object,
+
+        # process partial and full visible faces (get surface area of 3d polygon)
+        # of undercover object
+        partial_visible_faces = undercover_object.faces[partial_visible]
+        partial_visible_normals = undercover_object.normals[partial_visible]
+        undercover_object_pts_projection = utils.plane_projection(
+            undercover_object.points,
+            "yz",
+            keep_3d=False,
         )
 
-    # process partial and full visible faces (get surface area of 3d polygon)
-    # of undercover object
-    partial_visible_faces = undercover_object.faces[partial_visible]
-    partial_visible_normals = undercover_object.normals[partial_visible]
-    undercover_object_pts_projection = utils.plane_projection(
-        undercover_object.points,
-        "yz",
-        keep_3d=False,
-    )
-
-    if in_eclipse:
         if bb_path is None:
-            msg = "Boundary path should have been defined at this point, check the code logic"
-            raise RuntimeError(msg)
+            # The earlier in_eclipse branch must create this path or raise.
+            # A degenerate projection may fail there, but cannot legitimately
+            # leave None here; this is a flow contract, not a candidate penalty.
+            msg = ("Eclipse coverage requires the previously constructed "
+                   "occulting boundary path; received None.")
+            raise_elisa_unexpected_error(msg)
 
         partial_coverage = partial_visible_faces_surface_coverage(
             points=undercover_object_pts_projection,
@@ -367,12 +439,15 @@ def compute_surface_coverage(
         )
         partial_coverage[partial_coverage < surface_noise_threshold] = 0.0
     else:
+        full_visible, _invisible, partial_visible = visibility_out_of_eclipse(
+            undercover_object,
+        )
         partial_coverage = None
 
     # discard values of surface which are under threshold
     visible_coverage = undercover_object.areas[full_visible]
 
-    undercover_obj_coverage = bcoverage.surface_area_coverage(
+    undercover_obj_coverage = bcoverage.assemble_surface_coverage(
         size=undercover_object.normals.shape[0],
         visible=full_visible,
         visible_coverage=visible_coverage,
@@ -409,7 +484,13 @@ def get_eclipse_boundary_path(hull: NDArray[Float]) -> mpltpath.Path:
     :return: Boundary path of the component projection.
     :rtype: matplotlib.path.Path
     """
-    cover_bound = ConvexHull(hull)
+    try:
+        cover_bound = ConvexHull(hull)
+    except (QhullError, ValueError, FloatingPointError, OverflowError) as exc:
+        # A degenerate/nonfinite candidate projection cannot define an eclipse
+        # outline. Reject that candidate before partial-face coverage is built.
+        raise_elisa_numeric_error("Cannot construct an eclipse boundary from the "
+                                  "projected stellar mesh.", exc)
     hull_points = hull[cover_bound.vertices]
     return mpltpath.Path(hull_points)
 

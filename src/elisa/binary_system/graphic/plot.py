@@ -8,6 +8,7 @@ from elisa import const, utils
 from elisa import umpy as up
 from elisa import units as u
 from elisa.base import transform
+from elisa.base.error import raise_elisa_graphics_error
 from elisa.base.graphics import plot
 from elisa.base.surface.faces import correct_face_orientation
 from elisa.binary_system import dynamic
@@ -147,9 +148,9 @@ class Plot:
             components_distance = self.binary.orbit.orbital_motion(phase=phase)[0][0]
             points_primary, points_secondary = self.binary.compute_equipotential_boundary(components_distance, plane)
         else:
-            msg = "Invalid choice of crossection plane, use only: `xy`, `yz`, `zx`."
-            raise ValueError(msg)
+            raise_elisa_graphics_error("Invalid choice of crossection plane, use only: `xy`, `yz`, `zx`.")
 
+        # noinspection PyUnboundLocalVariable
         equipotential_kwargs.update(
             {
                 "return_figure_instance": return_figure_instance,
@@ -164,6 +165,22 @@ class Plot:
             },
         )
         return graphics.equipotential(**equipotential_kwargs)
+
+    def _prepare_mesh_container(self, position: Position, phase: Float) -> OrbitalPositionContainer:
+        """Set instantaneous potentials and spot longitudes before meshing.
+
+        Eccentric potentials preserve reference volumes; spot longitudes account
+        for rotation and orbital libration at the requested phase.
+        """
+        container = OrbitalPositionContainer.from_binary_system(self.binary, position)
+        if self.binary.eccentricity > 0:
+            potentials = self.binary.correct_potentials(phases=[phase])
+            container.set_on_position_params(position, potentials["primary"][0], potentials["secondary"][0])
+
+        # recalculating spot latitudes
+        spots_longitudes = dynamic.calculate_spot_longitudes(self.binary, phase, component="all")
+        dynamic.assign_spot_longitudes(container, spots_longitudes, index=None, component="all")
+        return container
 
     def mesh(
         self,
@@ -193,7 +210,8 @@ class Plot:
             if inclination is not None
             else up.degrees(self.binary.inclination)
         )
-        components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
+        position = self.binary.calculate_orbital_motion(phase)[0]
+        components_distance, azim = position.distance, position.azimuth
 
         azimuth = (
             transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64)
@@ -201,11 +219,24 @@ class Plot:
             else up.degrees(azim) - 90
         )
 
-        orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
-        orbital_position_container.build_mesh(components_distance=components_distance)
-        orbital_position_container.build_perturbations(
-            component=components_to_plot, components_distance=components_distance,
-        )
+        orbital_position_container = self._prepare_mesh_container(position, phase)
+        if any(
+            getattr(orbital_position_container, selected_component).has_pulsations()
+            for selected_component in butils.component_to_list(components_to_plot)
+        ):
+            # Prepare both equilibrium surfaces, then incorporate only the
+            # requested components. Atmosphere and radiance preparation is omitted.
+            orbital_position_container.build(
+                components_distance=components_distance,
+                component="all",
+                build_pulsations=False,
+            )
+            orbital_position_container.build_pulsations(
+                component=components_to_plot,
+                components_distance=components_distance,
+            )
+        else:
+            orbital_position_container.build_mesh(components_distance=components_distance)
 
         if components_to_plot in ["primary", "both"]:
             binary_mesh_kwargs.update(
@@ -261,19 +292,15 @@ class Plot:
             if inclination is not None
             else up.degrees(self.binary.inclination)
         )
-        components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
+        position = self.binary.calculate_orbital_motion(phase)[0]
+        components_distance, azim = position.distance, position.azimuth
         azimuth = (
             transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64)
             if azimuth is not None
             else up.degrees(azim) - 90
         )
 
-        orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
-
-        # recalculating spot latitudes
-        spots_longitudes = dynamic.calculate_spot_longitudes(self.binary, phase, component="all")
-        dynamic.assign_spot_longitudes(orbital_position_container, spots_longitudes, index=None, component="all")
-
+        orbital_position_container = self._prepare_mesh_container(position, phase)
         orbital_position_container.build_mesh(components_distance=components_distance)
         orbital_position_container.build_faces(components_distance=components_distance)
 
@@ -351,17 +378,31 @@ class Plot:
         :param separate_colormaps: bool; if True, figure will contain separate colormap for each component
         :param colorbar_separation: float; shifting position of the colorbar from its default postition, default is 0.0
         :param colorbar_size: float; relative size of the colorbar, default 0.7
-        :param subtract_equilibrium: bool; if True; equilibrium values are subtracted from surface colormap
+        :param subtract_equilibrium: bool; select the intrinsic diagnostic described below
         :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
                                              produced figure
+        With ``subtract_equilibrium=True`` (requires pulsations): ``radius``
+        gives the mean radial projection of Cartesian displacement in equilibrium
+        directions, not finite radius differences; ``velocity`` gives intrinsic
+        pulsational speed, not a difference of total speed magnitudes;
+        ``radial_velocity`` gives the observer x velocity component (positive for
+        recession); ``gravity_acceleration`` gives signed radial intrinsic
+        acceleration, not a difference of effective-gravity magnitudes;
+        ``temperature`` gives the actual increment from its equilibrium snapshot.
+        The perturbation-only maps ``horizontal_displacement``, ``v_r_perturbed``,
+        ``v_horizontal_perturbed`` and ``horizontal_acceleration`` already show
+        intrinsic diagnostics. Their values, and those of ``normal_radiance``
+        and ``radiance``, are unaffected by this flag.
+
         :**available colormap options**:
             * :'gravity_acceleration': surface distribution of gravity acceleration,
             * :'temperature': surface distribution of the effective temperature,
             * :'velocity': absolute values of surface elements velocities with respect to the observer,
             * :'radial_velocity': radial component of the surface element velocities relative to the observer,
             * :'normal_radiance': surface element radiance perpendicular to the surface element,
-            * :'radiance': radiance of the surface element in a direction towards the observer,
-            * :'radius': distance of the surface elements from the centre of mass
+            * :'radiance': projected directional radiance `L_normal * LD(mu) * mu`,
+              with separate limb-darkening and projected-area factors,
+            * :'radius': distance of the surface elements from the center of mass
             * :'horizontal_displacement': distribution of the horizontal component of surface displacement
             * :'horizontal_acceleration': distribution of horizontal component surface acceleration
             * :'v_r_perturbed': radial component of the pulsation velocity (perpendicular towards
@@ -404,12 +445,19 @@ class Plot:
         dynamic.assign_spot_longitudes(orbital_position_container, spots_longitudes, index=None, component="all")
 
         orbital_position_container.set_on_position_params(
-            orbital_position, potentials["primary"][0], potentials["secondary"][0],
+            orbital_position,
+            potentials["primary"][0],
+            potentials["secondary"][0],
         )
 
         orbital_position_container.set_time()
-        orbital_position_container.build(
-            components_distance=components_distance, components="both", build_pulsations=True,
+        # Build once for this plot; the helper owns snapshot timing and component association.
+        equilibrium_temperatures = plot.build_surface_with_temperature_reference(
+            orbital_position_container,
+            colormap,
+            subtract_equilibrium=subtract_equilibrium,
+            components_distance=components_distance,
+            component="all",
         )
         components = butils.component_to_list(components_to_plot)
 
@@ -450,9 +498,11 @@ class Plot:
                 self.binary.inclination,
                 orbital_position_container.position,
             )
-            kwargs = {"scale": scale, "unit": colorbar_unit, "subtract_equilibrium": subtract_equilibrium}
-
-            surface_kwargs.update({f"{component}_cmap": plot.add_colormap_to_plt_kwargs(*args, **kwargs)})
+            # Scalar temperatures retain face order when the geometry is rotated for viewing.
+            surface_kwargs.update({f"{component}_cmap": plot.add_colormap_to_plt_kwargs(
+                *args, scale=scale, unit=colorbar_unit, subtract_equilibrium=subtract_equilibrium,
+                equilibrium_temperatures=equilibrium_temperatures.get(component),
+            )})
 
             surface_kwargs.update(
                 {

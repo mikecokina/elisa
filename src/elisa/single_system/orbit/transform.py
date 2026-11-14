@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from elisa import const
 from elisa import units as u
-from elisa.base.transform import WHEN_FLOAT64, TransformProperties, quantity_transform
+from elisa.base.error import raise_elisa_parameters_error
+from elisa.base.transform import WHEN_FLOAT64, SystemProperties, TransformProperties, quantity_transform
 
 if TYPE_CHECKING:
     from elisa.types import AstropyQuantity as Quantity
@@ -14,7 +16,7 @@ class OrbitProperties(TransformProperties):
     """Transform helpers for orbital properties of a single-star system."""
 
     @staticmethod
-    def rotational_period(value: Quantity | Float | Int) -> Float:
+    def rotation_period(value: Quantity | Float | Int) -> Float:
         """Transform and validate rotational period of single star system.
 
         If unit is not specified, the default period unit from
@@ -25,7 +27,7 @@ class OrbitProperties(TransformProperties):
         :return: Rotational period converted to the default single system units.
         :rtype: Float
         """
-        return quantity_transform(value, u.DefaultSingleSystemUnits.system.rotation_period, WHEN_FLOAT64)
+        return SystemProperties.period(value)
 
     @staticmethod
     def inclination(value: Quantity | Float | Int) -> Float:
@@ -38,4 +40,13 @@ class OrbitProperties(TransformProperties):
         :return: Inclination converted to the default single system units (radians).
         :rtype: Float
         """
-        return quantity_transform(value, u.DefaultSingleSystemUnits.system.inclination, WHEN_FLOAT64)
+        value = quantity_transform(
+            value,
+            u.DefaultSingleSystemUnits.system.inclination,
+            WHEN_FLOAT64,
+            parameter="inclination",
+        )
+        if not 0 <= value <= const.PI:
+            msg = f"Inclination value of {value} is out of bounds (0, pi)."
+            raise_elisa_parameters_error(msg)
+        return value

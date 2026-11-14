@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import configparser
+import os
 import sys
+import tempfile
 from pathlib import Path
 from typing import ClassVar, Final
 
@@ -34,21 +36,28 @@ class DefaultSettings:
     RV_LAMBDA_INTERVAL: tuple = (5500, 5600)
 
     # computational
+    PENALIZE_ALL_EXCEPTIONS: bool = False
+    MEAN_ANOMALY_SOLVER: str = "vectorized"
+    INTERSECTION_BACKEND: str = "sutherland_hodgman"
     MAX_DISCRETIZATION_FACTOR: int = 8
     MIN_DISCRETIZATION_FACTOR: int = 3
     DEFAULT_DISCRETIZATION_FACTOR: int = 5
     NUMBER_OF_THREADS: int = 1
-    NUMBER_OF_PROCESSES: int = -1  # int(os.cpu_count())
-    NUMBER_OF_MCMC_PROCESSES: int = -1
+    NUMBER_OF_PROCESSES: int = 1
+    NUMBER_OF_MCMC_PROCESSES: int = 1
     MAX_NU_SEPARATION: float = 0.08
     MAX_D_FLUX: float = 2e-4
     MAX_SPOT_D_LONGITUDE: float = np.pi / 180.0  # in radians
     MIN_POINTS_IN_ECLIPSE: int = 35
     MAX_SOLVER_ITERS: int = 100
+    PRESERVE_INPUT_PHASES: bool = False
     MAX_CURVE_DATAPOINTS: int = 300
     MESH_GENERATOR: str = "auto"
     DEFORMATION_TOL: float = 0.05
     MCMC_SAVE_INTERVAL: int = 1800
+    MCMC_DIAGNOSTICS_INTERVAL_STEPS: int = 100
+    MCMC_INITIAL_WALKER_MAX_ATTEMPTS: int = 100
+    MCMC_AUTOCORR_TOL: int = 0
     USE_SINGLE_LD_COEFFICIENTS: bool = False
     USE_INTERPOLATION_APPROXIMATION: bool = True
     USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION: bool = True
@@ -62,7 +71,6 @@ class DefaultSettings:
     CK04_ATM_TABLES: str = str(Path(HOME) / "atmosphere" / "ck04")
     K93_ATM_TABLES: str = str(Path(HOME) / "atmosphere" / "k93")
 
-    ATM_ATLAS: str = "ck04"
     # Atlas mapping (kept mutable because other startup code updates it at runtime)
     ATLAS_TO_BASE_DIR: ClassVar[dict[str, str]] = {
         "castelli": CK04_ATM_TABLES,
@@ -76,6 +84,22 @@ class DefaultSettings:
 
     CUDA: bool = False
     MAGNITUDE_SYSTEM: str = "vega"
+
+
+def _write_ini_file(config: configparser.ConfigParser, destination: Path) -> None:
+    """Publish a complete INI file without replacing an existing destination."""
+    # ensure parent directory exists
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=destination.parent, delete=False) as output:
+            temporary = Path(output.name)
+            config.write(output)
+        # Refuse replacement, including a file created while the wizard ran.
+        os.link(temporary, destination)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 class SettingsManager:
@@ -98,13 +122,6 @@ class SettingsManager:
 
         def _create_configuration_path_input(_directory: str) -> None:
             Path(_directory).mkdir(parents=True, exist_ok=True)
-
-        def _write_ini_file(_config: configparser.ConfigParser, _path: str) -> None:
-            p = Path(_path)
-            # ensure parent directory exists
-            p.parent.mkdir(parents=True, exist_ok=True)
-            with p.open("w") as _f:
-                _config.write(_f)
 
         def _system_exit(exit_code: int) -> None:
             sys.exit(exit_code)
@@ -146,6 +163,8 @@ class SettingsManager:
             f"[ hit enter for default {default_config_path} ]: "
         )
         configuration_file = input(file_prompt) or default_config_path
+        if Path(configuration_file).exists() or Path(configuration_file).is_symlink():
+            raise FileExistsError(configuration_file)
         _create_configuration_path_input(str(Path(configuration_file).parent))
         config.set(section_general, "home", str(Path(configuration_file).parent))
 
@@ -157,19 +176,6 @@ class SettingsManager:
         ld_tables = input(ld_prompt) or DefaultSettings.LD_TABLES
         _create_configuration_path_input(ld_tables)
         config.set(section_support, "ld_tables", ld_tables)
-
-        # atlas
-        atlas_prompt = (
-            f"Choose default atmosphere model to use \n"
-            f"\t type ck04 for castelli-kurucz 2004\n"
-            f"\t type k93 for kurucz 1993\n"
-            f"[ default  {DefaultSettings.ATM_ATLAS} ]: "
-        )
-        atm_atlas = input(atlas_prompt) or DefaultSettings.ATM_ATLAS
-        if atm_atlas not in ["ck04", "k93"]:
-            msg = "Invalid input for atmosphere atlas. Type option ck04 or k93."
-            raise ValueError(msg)
-        config.set(section_support, "atlas", atm_atlas)
 
         # castelli_kurucz_04_atm_tables
         ck04_prompt = (
@@ -190,4 +196,4 @@ class SettingsManager:
         config.set(section_support, "kurucz_93_atm_tables", k93_atm_tables)
 
         # write file
-        _write_ini_file(config, default_config_path)
+        _write_ini_file(config, Path(configuration_file))

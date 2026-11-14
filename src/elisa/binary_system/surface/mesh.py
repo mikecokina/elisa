@@ -7,7 +7,14 @@ import numpy as np
 
 from elisa import const, opt, settings, utils
 from elisa import umpy as up
-from elisa.base.error import MaxIterationError, SpotError
+from elisa.base.error import (
+    ElisaMaxIterationError,
+    ElisaNumericError,
+    ElisaNumericSolverError,
+    raise_elisa_numeric_error,
+    raise_elisa_spot_error,
+    raise_elisa_unexpected_error,
+)
 from elisa.base.spot import incorporate_spots_mesh
 from elisa.base.surface.mesh import correct_component_mesh
 from elisa.base.types import FLOAT
@@ -28,7 +35,7 @@ if TYPE_CHECKING:
     from elisa.binary_system.system import BinarySystem
     from elisa.types import ComponentName, ComponentSelection, Float, Int
 
-logger = getLogger("binary_system.surface.mesh")
+logger = getLogger(__name__)
 
 
 MESH_NUM_POINTS_TRAPEZOIDAL_OVECONTACT = 4
@@ -36,24 +43,32 @@ MESH_NUM_POINTS_OVERCONTACT_NECK = 5
 SPOT_POINTS_NDIM = 2
 
 
-@functools.cache
 def _load_correction_factors() -> dict[str, NDArray[Float]]:
-    """Load mesh correction factor tables.
-
-    :return: Mapping of morphology names to correction-factor tables.
-    :rtype: dict[str, NDArray[Float]]
-    """
-    detached = np.load(settings.PATH_TO_DETACHED_CORRECTIONS, allow_pickle=False)
-    over_contact = np.load(
-        settings.PATH_TO_OVER_CONTACT_CORRECTIONS,
-        allow_pickle=False,
+    """Resolve both current correction resources before cache lookup."""
+    return _load_correction_factors_cached(
+        utils.file_source_identity(settings.PATH_TO_DETACHED_CORRECTIONS),
+        utils.file_source_identity(settings.PATH_TO_OVER_CONTACT_CORRECTIONS),
     )
+
+
+@functools.cache
+def _load_correction_factors_cached(
+    detached_source: utils.FileSourceIdentity, over_contact_source: utils.FileSourceIdentity,
+) -> dict[str, NDArray[Float]]:
+    """Load the exact selected resource revisions; preserve morphology aliases."""
+    detached = np.load(detached_source[0], allow_pickle=False)
+    over_contact = np.load(over_contact_source[0], allow_pickle=False)
     return {
         "detached": detached,
         "semi-detached": detached,
         "double-contact": detached,
         "over-contact": over_contact,
     }
+
+
+_load_correction_factors.cache_clear = _load_correction_factors_cached.cache_clear
+_load_correction_factors.cache_info = _load_correction_factors_cached.cache_info
+_load_correction_factors.cache_parameters = _load_correction_factors_cached.cache_parameters
 
 
 def build_mesh(
@@ -730,7 +745,7 @@ def get_surface_points(
     radius = opt.newton.newton(potential_fn, x0_arr, **radius_kwargs)
     if (radius < 0.0).any():
         msg = "Solver found at least one point in the opposite direction. Check your points."
-        raise ValueError(msg)
+        raise_elisa_numeric_error(msg)
     return utils.spherical_to_cartesian(np.column_stack((radius, phi_arr, theta_arr)))
 
 
@@ -948,12 +963,14 @@ def rebuild_mesh_detached(
     mass_ratio = system.mass_ratio
     potential = star.surface_potential
 
+    # The caller must build a symmetric mesh before selecting this reuse path.
+    # Candidate-dependent failures belong to mesh construction, not missing state.
     if is_empty(star.points):
-        msg = "This function can be used only on container with already built mesh."
-        raise RuntimeError(msg)
+        msg = f"Cannot rebuild the detached mesh for {component!r}: no existing mesh points are available."
+        raise_elisa_unexpected_error(msg)
     if star.base_symmetry_points_number == 0:
-        msg = "This function can be used only on symmetrical meshes."
-        raise RuntimeError(msg)
+        msg = f"Cannot rebuild the detached mesh for {component!r}: no base symmetry points are available."
+        raise_elisa_unexpected_error(msg)
 
     potential_fn = getattr(model, f"potential_{component}_fn")
     precalc_fn = getattr(model, f"pre_calculate_for_potential_value_{component}")
@@ -1273,7 +1290,7 @@ def mesh_spots(  # noqa: C901, PLR0912, PLR0915
             logger.debug("no spots to evaluate for %s component - continue", component_name)
             continue
 
-        for spot_index, spot_instance in list(component_instance.spots.items()):
+        for spot_instance in component_instance.spots.values():
             lon, lat = spot_instance.longitude, spot_instance.latitude
             alpha = min(spot_instance.angular_radius, spot_instance.discretization_factor)
             spot_radius = spot_instance.angular_radius
@@ -1292,38 +1309,26 @@ def mesh_spots(  # noqa: C901, PLR0912, PLR0915
             )
             args2 = ((system.mass_ratio, *precalc_fn(*args1)), potential)
             kwargs = {"original_kwargs": args1}
-            solution, use = fsolver(potential_fn, solver_condition, *args2, **kwargs)
+            try:
+                solution, use = fsolver(potential_fn, solver_condition, *args2, **kwargs)
+            except ElisaNumericSolverError as exc:
+                msg = (
+                    "Solver failed while calculating the surface radius at the center of spot "
+                    f"{spot_instance.kwargs_serializer()}."
+                )
+                raise_elisa_spot_error(msg, exc)
 
             if not use:
-                if not settings.SUPPRESS_WARNINGS:
-                    logger.warning(
-                        "center of spot %s doesn't satisfy reasonable conditions and entire spot will be omitted",
-                        spot_instance.kwargs_serializer(),
-                    )
-                component_instance.remove_spot(spot_index=spot_index)
-                continue
+                msg = (
+                    "No acceptable surface radius was found at the center of spot "
+                    f"{spot_instance.kwargs_serializer()}: the solver failed to converge, "
+                    "returned an invalid radius, or the center lies in the neck region."
+                )
+                raise_elisa_spot_error(msg)
 
             spot_center_r = solution
             spot_center = utils.spherical_to_cartesian(np.asarray([spot_center_r, lon, lat], dtype=FLOAT))
 
-            args1 = (synchronicity, mass_ratio, components_distance, lon, lat + alpha)
-            args2 = ((system.mass_ratio, *precalc_fn(*args1)), potential)
-            kwargs = {"original_kwargs": args1}
-            solution, use = fsolver(potential_fn, solver_condition, *args2, **kwargs)
-
-            if not use:
-                if not settings.SUPPRESS_WARNINGS:
-                    logger.warning(
-                        "first inner ring of spot %s doesn't satisfy reasonable conditions "
-                        "and entire spot will be omitted",
-                        spot_instance.kwargs_serializer(),
-                    )
-                component_instance.remove_spot(spot_index=spot_index)
-                continue
-
-            x0 = up.sqrt(
-                spot_center_r**2 + solution**2 - (2.0 * spot_center_r * solution * up.cos(alpha)),
-            )
             num_radial = int(np.round(spot_radius / alpha)) + 1
             logger.debug(
                 "number of rings in spot %s is %s",
@@ -1332,7 +1337,7 @@ def mesh_spots(  # noqa: C901, PLR0912, PLR0915
             )
             thetas = np.linspace(lat, lat + spot_radius, num=num_radial, endpoint=True)
             num_azimuthal = [
-                1 if index == 0 else int(index * 2.0 * const.PI * x0 // x0) for index in range(len(thetas))
+                1 if index == 0 else int(index * 2.0 * const.PI) for index in range(len(thetas))
             ]
             deltas = [np.linspace(0.0, const.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]
 
@@ -1368,13 +1373,9 @@ def mesh_spots(  # noqa: C901, PLR0912, PLR0915
             )
             try:
                 spot_points = get_surface_points(*args)
-            except (MaxIterationError, ValueError) as exc:
-                msg = (
-                    "Solver could not find at least some surface points of spot "
-                    f"{spot_instance.kwargs_serializer()}. Probable reason is that your "
-                    "spot is intersecting neck which is currently not supported."
-                )
-                raise SpotError(msg) from exc
+            except (ElisaMaxIterationError, ElisaNumericError) as exc:
+                msg = f"Solver failed while calculating surface points for spot {spot_instance.kwargs_serializer()}."
+                raise_elisa_spot_error(msg, exc)
 
             if system.morphology == "over-contact":
                 if spot_points.ndim == SPOT_POINTS_NDIM:
@@ -1387,11 +1388,17 @@ def mesh_spots(  # noqa: C901, PLR0912, PLR0915
                     validity_test = False
 
                 if not validity_test:
-                    msg = (
-                        f"Your spot {spot_instance.kwargs_serializer()} is intersecting neck "
-                        "which is currently not supported."
-                    )
-                    raise SpotError(msg)
+                    if spot_points.ndim != SPOT_POINTS_NDIM:
+                        msg = (
+                            f"Surface points for spot {spot_instance.kwargs_serializer()} "
+                            f"have an invalid array shape: {spot_points.shape}."
+                        )
+                    else:
+                        msg = (
+                            f"Spot {spot_instance.kwargs_serializer()} extends into the neck region "
+                            "of the overcontact system; this geometry is not supported."
+                        )
+                    raise_elisa_spot_error(msg)
 
             boundary_points = spot_points[-len(deltas[-1]) :]
             if component_name == "primary":

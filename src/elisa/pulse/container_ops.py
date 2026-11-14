@@ -1,4 +1,18 @@
-"""Pulsation perturbation calculations for star container surface properties."""
+"""Apply intrinsic Cartesian pulsations to flattened component surfaces.
+
+Harmonic mathematics belongs in pulsations, physical vector normalization in
+kinematics, and frame transformation/mesh application here. Stored displacement
+vectors use component axes and mesh length units; observable synthesis later
+rotates positions and velocities to observer axes without re-evaluating modes.
+
+The mesh-to-metre length conversion is r_physical = scale * r_mesh. Single-star
+mesh coordinates are already in metres, so scale = 1.0. Binary mesh coordinates
+are normalized by the orbital semi-major axis, so scale is that axis in metres
+(metres per normalized mesh unit). It is not an arbitrary amplitude multiplier:
+physical displacement amplitudes must be divided by scale to enter the mesh,
+while time derivatives of mesh displacements require multiplication by scale
+to recover SI velocities and accelerations.
+"""
 
 from __future__ import annotations
 
@@ -6,9 +20,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from elisa import const, utils
+from elisa.base.error import raise_elisa_unexpected_error
 from elisa.base.surface.faces import calculate_normals, set_all_surface_centres
-from elisa.base.types import COMPLEX
 from elisa.pulse import pulsations
 from elisa.pulse import utils as putils
 from elisa.pulse.surface import kinematics
@@ -27,26 +40,33 @@ def generate_harmonics(
 ) -> StarContainer:
     """Generate spherical harmonics and derivatives for pulsation modes.
 
-    Calculates spherical harmonics Y_l^m and Y_l^(m+1) at surface points
-    in tilted coordinates, along with their derivatives with respect to
-    azimuthal and latitudinal angles. These harmonics are used for
-    calculating perturbed surface properties due to pulsations.
+    Calculates spherical harmonics and Cartesian tangent gradients at
+    equilibrium surface points in the shared mode-0 pulsation-axis frame.
+    These harmonics are used for calculating perturbed surface properties.
+    The caller supplies an equilibrium snapshot, flattened with any spot
+    replacement mesh. Subtract the component center before evaluating radial
+    directions. All modes share the axis and locking settings of mode 0, while
+    each keeps its own temporal frequency and phase.
 
     :param star_container: Star container with surface mesh.
     :type star_container: elisa.base.container.StarContainer
-    :param com_x: X-coordinate of component centre of mass.
+    :param com_x: Component center x coordinate in mesh length units.
     :type com_x: float
-    :param phase: Rotational/orbital phase of the system.
+    :param phase: Caller-supplied rotational/orbital phase for axis orientation.
     :type phase: float
-    :param time: Time of observation.
+    :param time: Harmonic time in seconds, including the emission-time correction
+                 already supplied by the binary wrapper when applicable.
     :type time: float
     :returns: Star container with updated harmonics on all pulsation modes.
     :rtype: elisa.base.container.StarContainer
-    :raises ValueError: If star container is not flattened.
+    :raises ElisaUnexpectedError: If the caller has not flattened the star container.
     """
-    error_msg = "Pulsations can be calculated only on flattened container."
+    # All perturbations must reference the same flattened surface, including
+    # replacement spot vertices; flattening is the caller's preparation step.
     if not star_container.is_flat():
-        raise ValueError(error_msg)
+        error_msg = ("Cannot generate pulsation harmonics: the star container "
+                     "has not been flattened.")
+        raise_elisa_unexpected_error(error_msg)
 
     # Transform surface points to spherical coordinates
     coords_kwargs = {"kind": "points", "com_x": com_x}
@@ -57,55 +77,24 @@ def generate_harmonics(
     star_container.pulsations[0].tilt_phi = tilt_phi
     star_container.pulsations[0].tilt_theta = tilt_theta
 
-    # Apply tilt rotation to points
-    tilted_points = putils.tilt_mode_coordinates(
-        star_container.points_spherical,
-        star_container.pulsations[0].tilt_phi,
-        star_container.pulsations[0].tilt_theta,
-    )
-
-    # Store tilted points in first mode (other modes share the same coordinates)
-    star_container.pulsations[0].points = tilted_points
-
-    # Calculate harmonics and derivatives for each mode
+    # Rotate Cartesian equilibrium directions rather than converting tilted
+    # angles through arccos, which can round near-pole points to exact poles.
+    equilibrium = star_container.points - np.array([com_x, 0., 0.])
+    radii = np.linalg.norm(equilibrium, axis=1)
+    directions = equilibrium/radii[:, None]
+    rotation = putils.mode_rotation(tilt_phi, tilt_theta)
+    # Q maps column vectors from mode axes to component axes; row-vector
+    # component directions therefore enter mode axes as n_component @ Q.
+    tilted_directions = directions @ rotation
+    star_container.pulsation_rotation = rotation
+    star_container.pulsation_directions = tilted_directions
+    star_container.pulsation_equilibrium_points = equilibrium
+    star_container.points_spherical[:, 0] = radii
     for mode in star_container.pulsations.values():
-        # Generate time-dependent exponential factor
         exponential = putils.generate_time_exponential(mode, time)
-
-        # Calculate spherical harmonics Y_l^m and Y_l^(m+1)
-        harmonics = np.zeros((2, tilted_points.shape[0]), dtype=COMPLEX)
-        harmonics[0] = pulsations.spherical_harmonics(mode, tilted_points, exponential)
-
-        if mode.m != mode.l:
-            harmonics[1] = pulsations.spherical_harmonics(
-                mode,
-                tilted_points,
-                exponential,
-                order=mode.m + 1,
-                degree=mode.l,
-            )
-
-        # Calculate derivatives d/d_phi and d/d_theta
-        derivatives = np.empty((2, tilted_points.shape[0]), dtype=COMPLEX)
-        derivatives[0] = pulsations.diff_spherical_harmonics_by_phi(mode, list(harmonics))
-        derivatives[1] = pulsations.diff_spherical_harmonics_by_theta(
-            mode,
-            list(harmonics),
-            tilted_points[:, 1],
-            tilted_points[:, 2],
+        mode.point_harmonics, mode.point_harmonics_gradient = pulsations.cartesian_harmonics(
+            mode, tilted_directions, exponential,
         )
-
-        # Normalize horizontal amplitude to unity for non-radial modes
-        if mode.l > 0:
-            norm_constant = pulsations.horizontal_displacement_normalization(
-                list(derivatives),
-                list(harmonics),
-            )
-            derivatives *= norm_constant
-
-        # Store harmonics and derivatives on mode instance
-        mode.point_harmonics = harmonics[0]
-        mode.point_harmonics_derivatives = derivatives
 
     return star_container
 
@@ -119,22 +108,28 @@ def incorporate_pulsations_to_model(
 
     Calculates and incorporates perturbations to surface positions,
     velocities, accelerations, and temperatures due to pulsation modes.
-    Recomputes surface normals and areas after deformation.
+    Position uses a linear Cartesian vector sum. Intrinsic velocity is added
+    to the existing orbital/spin velocity, and pulsation acceleration is used
+    in the existing effective-gravity prescription. Temperature uses the scalar
+    harmonic. Background normals and thermodynamic fields remain available
+    while these perturbations are applied; centers, normals and areas are then
+    recomputed from displaced vertices with the existing face connectivity.
 
     :param star_container: Star container with surface mesh and pulsation modes.
     :type star_container: elisa.base.container.StarContainer
     :param com_x: X-coordinate of component centre of mass.
     :type com_x: float
-    :param scale: Scaling factor (semi-major axis for binary systems). Defaults to 1.0.
+    :param scale: Mesh-to-metre length conversion factor, passed through the
+                  incorporation steps to divide physical displacements into mesh
+                  units and convert their derivatives to SI velocity/acceleration.
+                  Use 1.0 for single-star meshes in metres, or the binary
+                  semi-major axis in metres for normalized binary meshes.
     :type scale: float
     :returns: Star container with updated surface properties.
     :rtype: elisa.base.container.StarContainer
     """
     # Calculate complex displacement amplitudes for all modes
     complex_displacement(star_container, scale=scale)
-
-    # Identify and handle polar region singularities
-    putils.pole_neighbours(star_container)
 
     # Apply perturbations to surface properties
     position_perturbation(
@@ -162,7 +157,8 @@ def incorporate_pulsations_to_model(
         return_perturbation=False,
     )
 
-    # Recalculate surface geometry properties
+    # Only now replace the equilibrium geometry: visibility, coverage and
+    # surface-element integration need geometry of the displaced triangles.
     set_all_surface_centres(star_container)
     normals_args = (
         star_container.points,
@@ -176,32 +172,55 @@ def incorporate_pulsations_to_model(
     return star_container
 
 
+def _pulsation_reference(star: StarContainer) -> tuple[NDArray, NDArray, NDArray]:
+    """Require the reference frame and surface prepared by generate_harmonics."""
+    rotation = star.pulsation_rotation
+    directions = star.pulsation_directions
+    equilibrium = star.pulsation_equilibrium_points
+    if rotation is None or directions is None or equilibrium is None:
+        raise_elisa_unexpected_error(
+            "Cannot calculate pulsation perturbations: generate_harmonics must prepare the reference surface first.")
+    return rotation, directions, equilibrium
+
+
 def complex_displacement(star: StarContainer, scale: float) -> None:
     """Calculate complex displacement vector for surface points.
 
-    Assigns complex displacement amplitudes at surface points in tilted
-    spherical coordinates. These displacements are subsequently used to
-    compute kinematic quantities (position, velocity, acceleration).
+    Constructs vectors in pulsation axes and stores them in component Cartesian
+    axes, in mesh length units. These displacements are subsequently used to
+    compute kinematic quantities (position, velocity, acceleration). The radial
+    scalar is retained separately for diagnostics; a Cartesian column cannot
+    stand in for it. Norms are fixed for this snapshot.
 
     :param star: Star container with flattened surface mesh.
     :type star: elisa.base.container.StarContainer
-    :param scale: Scaling factor for amplitudes.
+    :param scale: Mesh-to-metre length conversion factor. Physical displacement
+                  amplitudes in metres are divided by scale before storage in
+                  mesh-coordinate units, for both the Cartesian vector and the
+                  radial scalar. Use 1.0 for singles or the semi-major axis in
+                  metres for binaries.
     :type scale: float
-    :raises ValueError: If star container is not flattened.
+    :raises ElisaUnexpectedError: If the caller has not flattened the star container.
     """
-    error_msg = "Pulsations can be calculated only on flattened container."
+    # Displacements must use the same flattened vertex ordering as harmonics.
     if not star.is_flat():
-        raise ValueError(error_msg)
+        error_msg = ("Cannot calculate pulsation displacements: the star "
+                     "container has not been flattened.")
+        raise_elisa_unexpected_error(error_msg)
 
+    rotation, directions, _ = _pulsation_reference(star)
     for mode in star.pulsations.values():
-        mode.complex_displacement = kinematics.calculate_displacement_coordinates(
-            mode,
-            star.pulsations[0].points,
-            mode.point_harmonics,
-            mode.point_harmonics_derivatives,
-            star.points_spherical[:, 0],
-            scale=scale,
+        displacement = kinematics.calculate_cartesian_displacement(
+            mode, directions, mode.point_harmonics,
+            mode.point_harmonics_gradient, star.points_spherical[:, 0], scale,
         )
+        # Store all modes in the component Cartesian frame once, so position,
+        # velocity and acceleration share exactly the same vector rotation.
+        # For row vectors the mode-to-component transformation is D_mode @ Q.T;
+        # no finite angular increments enter this transport.
+        mode.complex_displacement = displacement @ rotation.T
+        mode.complex_radial_displacement = kinematics.calculate_radial_displacement(
+            mode, mode.point_harmonics)/scale
 
 
 def position_perturbation(
@@ -210,61 +229,41 @@ def position_perturbation(
     *,
     update_container: bool = True,
     return_perturbation: bool = False,
-    spherical_perturbation: bool = False,
 ) -> NDArray | None:
     """Calculate surface mesh deformation due to pulsations.
 
-    Computes the displacement of surface points due to pulsation-induced
-    radial and horizontal motion. Can return displacements in either
-    spherical or Cartesian coordinates.
+    Each stored D includes exp(-i*(omega*t+start_phase)); its real part is
+    the physical displacement at this snapshot. Add Re(sum(D)) to the frozen
+    component-relative equilibrium vertices and restore the component center
+    only when writing absolute mesh points. Lengths remain in mesh units.
+
+    The returned vertex vectors always have Cartesian component order
+    (delta_x, delta_y, delta_z), in metres for singles or SMA units for binaries.
+    Coordinate differences are not part of this physical-vector API. Diagnostic
+    projections, when needed, are explicit calls to spherical_vector_components.
 
     :param star: Star container with surface mesh and pulsations.
     :type star: elisa.base.container.StarContainer
-    :param com_x: X-coordinate of component centre of mass. Defaults to 0.0.
+    :param com_x: X-coordinate of component center of mass. Defaults to 0.0.
     :type com_x: float
     :param update_container: If True, update star.points with perturbed positions.
                              Defaults to True.
     :type update_container: bool
     :param return_perturbation: If True, return displacement perturbation. Defaults to False.
     :type return_perturbation: bool
-    :param spherical_perturbation: If True, return displacement in spherical coordinates.
-                                   Defaults to False.
-    :type spherical_perturbation: bool
     :returns: Displacement perturbation array if return_perturbation is True, else None.
     :rtype: np.ndarray | None
     """
-    displacement = None
-
-    # Sum displacements from all pulsation modes
-    tilt_displacement_sph = np.sum(
-        [
-            kinematics.calculate_mode_angular_displacement(mode.complex_displacement)
-            for mode in star.pulsations.values()
-        ],
-        axis=0,
-    )
-
-    # Derotate displacement back to original coordinate frame
-    points_spherical = putils.derotate_surface_points(
-        star.pulsations[0].points + tilt_displacement_sph,
-        star.pulsations[0].tilt_phi,
-        star.pulsations[0].tilt_theta,
-    )
-
-    points = utils.spherical_to_cartesian(points_spherical)
-
-    if return_perturbation:
-        if spherical_perturbation:
-            displacement = points_spherical - star.points_spherical
-            displacement[displacement[:, 1] > const.PI, 1] -= const.FULL_ARC
-        elif not spherical_perturbation:
-            displacement = points - utils.spherical_to_cartesian(star.points_spherical)
-
+    _, _, equilibrium = _pulsation_reference(star)
+    displacement = np.zeros_like(equilibrium)
+    for mode in star.pulsations.values():
+        displacement += mode.complex_displacement.real
+    points = equilibrium + displacement
     if update_container:
-        com = np.array([com_x, 0.0, 0.0])
-        star.points = points + com[None, :]
-
-    return displacement if return_perturbation else None
+        star.points = points + np.array([com_x, 0., 0.])
+    if return_perturbation:
+        return displacement
+    return None
 
 
 def velocity_perturbation(
@@ -273,82 +272,56 @@ def velocity_perturbation(
     *,
     update_container: bool = False,
     return_perturbation: bool = False,
-    spherical_perturbation: bool = False,
     point_perturbations: bool = False,
 ) -> NDArray | None:
     """Calculate velocity perturbation on pulsating star surface.
 
-    Computes the velocity perturbation due to pulsation-induced motion
-    at surface points or face-averaged locations. Can return values in
-    either spherical or Cartesian coordinates.
+    Return scale*sum(omega*Im(D)) in m/s along component Cartesian axes, with
+    equilibrium geometry and mode orientation frozen during differentiation.
+    Updating the container adds face-averaged vectors to the existing equilibrium
+    velocity; no spin, orbital or moving-axis transport contribution is derived
+    here. Observer rotation re-expresses this vector but does not make it the
+    inertial derivative of phase-dependent geometry.
+
+    Returned vectors always have Cartesian component order (v_x, v_y, v_z),
+    in m/s, either at vertices or averaged onto faces. Diagnostic projections
+    are explicit calls to spherical_vector_components; face vectors must be
+    projected at the equilibrium face centers after Cartesian averaging.
 
     :param star: Star container with surface mesh and pulsations.
     :type star: elisa.base.container.StarContainer
-    :param scale: Scaling factor (semi-major axis for binary systems).
+    :param scale: Mesh-to-metre length conversion factor. Multiplying the time
+                  derivative of mesh-coordinate displacement by scale converts
+                  mesh units per second to m/s. Use 1.0 for singles or the
+                  semi-major axis in metres for binaries.
     :type scale: float
     :param update_container: If True, add perturbation to star.velocities.
                              Defaults to False.
     :type update_container: bool
     :param return_perturbation: If True, return velocity perturbation. Defaults to False.
     :type return_perturbation: bool
-    :param spherical_perturbation: If True, return in spherical coordinates.
-                                   Defaults to False.
-    :type spherical_perturbation: bool
     :param point_perturbations: If True, return point values (not face-averaged).
                                 Defaults to False.
     :type point_perturbations: bool
     :returns: Velocity perturbation array if return_perturbation is True, else None.
     :rtype: np.ndarray | None
     """
-    # Sum velocity contributions from all modes
-    tilt_velocity_sph = np.sum(
-        [
-            kinematics.calculate_mode_derivatives(
-                displacement=mode.complex_displacement,
-                angular_frequency=mode.angular_frequency,
-            )
-            for mode in star.pulsations.values()
-        ],
-        axis=0,
-    )
-
-    # Derotate velocity back to original frame
-    velocity_pert_sph = putils.derotate_surface_displacements(
-        tilt_velocity_sph,
-        star.pulsations[0].points,
-        star.points_spherical,
-        star.pulsations[0].tilt_phi,
-        star.pulsations[0].tilt_theta,
-    )
-
-    # Handle pole singularities
-    velocity_pert_sph[star.pole_idx] = velocity_pert_sph[star.pole_idx_neighbour]
-
-    # Transform to Cartesian coordinates and scale
-    points_cartesian = utils.spherical_to_cartesian(star.points_spherical)
-    velocity_pert = putils.transform_spherical_displacement_to_cartesian(
-        velocity_pert_sph,
-        points_cartesian,
-        0.0,
-    )
-    velocity_pert *= scale
-
-    # Average to face values
-    velocity_pert_face = velocity_pert[star.faces].mean(axis=1)
-
+    # Harmonic derivative at frozen equilibrium coordinates and frozen mode
+    # orientation. This is the existing intrinsic pulsational velocity, expressed
+    # along component axes. Phase transport and observer rotations reorient it;
+    # they do not add rotational transport, Coriolis or orbital terms.
+    _, _, equilibrium = _pulsation_reference(star)
+    velocity = np.zeros_like(equilibrium)
+    for mode in star.pulsations.values():
+        velocity += kinematics.calculate_mode_derivatives(
+            mode.complex_displacement, mode.angular_frequency)
+    velocity *= scale
     if update_container:
-        star.velocities += velocity_pert_face
-
+        star.velocities += velocity[star.faces].mean(axis=1)
     if return_perturbation:
-        if spherical_perturbation:
-            velocity_pert_sph[:, 0] *= scale
-            if point_perturbations:
-                return velocity_pert_sph
-            return velocity_pert_sph[star.faces].mean(axis=1)
-        if point_perturbations:
-            return velocity_pert
-        return velocity_pert_face
-
+        if not point_perturbations:
+            velocity = velocity[star.faces].mean(axis=1)
+        return velocity
     return None
 
 
@@ -358,93 +331,61 @@ def gravity_acc_perturbation(
     *,
     update_container: bool = False,
     return_perturbation: bool = False,
-    spherical_perturbation: bool = False,
     point_perturbations: bool = False,
 ) -> NDArray | None:
     """Calculate gravitational acceleration perturbation on pulsating star.
 
-    Computes the acceleration perturbation due to pulsation-induced motion
-    at surface points. Updates surface gravity if requested.
+    Return -scale*sum(omega**2*Re(D)) in m/s**2 along component axes, using the
+    same frozen-frame derivative as velocity_perturbation. The optional update
+    adds the face-averaged acceleration to the inward equilibrium effective
+    gravity vector -10**log_g*normal, then stores log10 of its magnitude.
+    This retains the existing effective-gravity prescription; it does not
+    recompute a gravitational potential or add equilibrium tidal-flow dynamics.
+
+    Returned vectors always have Cartesian component order (a_x, a_y, a_z),
+    in m/s**2, either at vertices or averaged onto faces. Spherical-basis
+    diagnostics require an explicit spherical_vector_components projection.
 
     :param star: Star container with surface mesh and pulsations.
     :type star: elisa.base.container.StarContainer
-    :param scale: Scaling factor (semi-major axis for binary systems).
+    :param scale: Mesh-to-metre length conversion factor. Multiplying the second
+                  time derivative of mesh-coordinate displacement by scale
+                  converts mesh units per second squared to m/s**2. Use 1.0 for
+                  singles or the semi-major axis in metres for binaries.
     :type scale: float
     :param update_container: If True, update star.log_g. Defaults to False.
     :type update_container: bool
     :param return_perturbation: If True, return acceleration perturbation. Defaults to False.
     :type return_perturbation: bool
-    :param spherical_perturbation: If True, return in spherical coordinates.
-                                   Defaults to False.
-    :type spherical_perturbation: bool
     :param point_perturbations: If True, return point values (not face-averaged).
                                 Defaults to False.
     :type point_perturbations: bool
     :returns: Acceleration perturbation array if return_perturbation is True, else None.
     :rtype: np.ndarray | None
     """
-    # Sum acceleration contributions from all modes
-    tilt_acc_sph = np.sum(
-        [
-            kinematics.calculate_mode_second_derivatives(
-                displacement=mode.complex_displacement,
-                angular_frequency=mode.angular_frequency,
-            )
-            for mode in star.pulsations.values()
-        ],
-        axis=0,
-    )
-
-    # Derotate acceleration back to original frame
-    acc_pert_sph = putils.derotate_surface_displacements(
-        tilt_acc_sph,
-        star.pulsations[0].points,
-        star.points_spherical,
-        star.pulsations[0].tilt_phi,
-        star.pulsations[0].tilt_theta,
-    )
-
-    # Handle pole singularities
-    acc_pert_sph[star.pole_idx] = acc_pert_sph[star.pole_idx_neighbour]
-
-    # Transform to Cartesian coordinates and scale
-    points_cartesian = utils.spherical_to_cartesian(star.points_spherical)
-    acc_pert = putils.transform_spherical_displacement_to_cartesian(
-        acc_pert_sph,
-        points_cartesian,
-        0.0,
-    )
-    acc_pert *= scale
-
-    # Handle pole singularities in Cartesian frame
-    acc_pert[star.pole_idx] = acc_pert[star.pole_idx_neighbour]
-
-    # Average to face values
-    acc_pert_face = acc_pert[star.faces].mean(axis=1)
-
+    # Intrinsic second harmonic derivative, under the same frozen-frame
+    # convention as velocity_perturbation; equilibrium gravity is unchanged.
+    _, _, equilibrium = _pulsation_reference(star)
+    acceleration = np.zeros_like(equilibrium)
+    for mode in star.pulsations.values():
+        acceleration += kinematics.calculate_mode_second_derivatives(
+            mode.complex_displacement, mode.angular_frequency)
+    acceleration *= scale
     if update_container:
-        # Calculate equilibrium gravity
-        g_eq = -np.power(10, star.log_g)[:, None] * star.normals
-        # Total acceleration magnitude
-        total_acc = np.linalg.norm(g_eq + acc_pert_face, axis=1)
-        star.log_g = np.log10(total_acc)
-
+        # Incorporation rebuilds normals afterward, so this update uses the
+        # equilibrium normal together with the existing equilibrium gravity.
+        g_eq = -np.power(10, star.log_g)[:, None]*star.normals
+        star.log_g = np.log10(np.linalg.norm(g_eq + acceleration[star.faces].mean(axis=1), axis=1))
     if return_perturbation:
-        if spherical_perturbation:
-            acc_pert_sph[:, 0] *= scale
-            if point_perturbations:
-                return acc_pert_sph
-            return acc_pert_sph[star.faces].mean(axis=1)
-        if point_perturbations:
-            return acc_pert
-        return acc_pert_face
-
+        if not point_perturbations:
+            acceleration = acceleration[star.faces].mean(axis=1)
+        return acceleration
     return None
 
 
 def temp_perturbation(
     star: StarContainer,
-    scale: float = 1.0,
+    scale: float = 1.0,  # noqa: ARG001 - retained for the common perturbation API; cancels from the thermal factor.
     *,
     update_container: bool = False,
     return_perturbation: bool = False,
@@ -452,12 +393,21 @@ def temp_perturbation(
 ) -> NDArray | None:
     """Calculate temperature perturbation on pulsating star surface.
 
-    Computes the temperature perturbation due to pulsation-induced
-    adiabatic compression and dynamical heating effects.
+    Sum the dimensionless temperature factors from each mode's scalar
+    harmonic, including its configured thermal phase shift. Face perturbations
+    use the mean vertex factor times the existing local face temperature. Updating
+    adds this increment to the temperature field. Point diagnostics use the reference stellar
+    t_eff; they are not a new pointwise
+    temperature field used by atmosphere synthesis.
 
     :param star: Star container with surface mesh and pulsations.
     :type star: elisa.base.container.StarContainer
-    :param scale: Scaling factor (semi-major axis for binary systems). Defaults to 1.0.
+    :param scale: Mesh-to-metre length conversion factor (1.0 for singles;
+                  semi-major axis in metres for binaries). Retained only to
+                  preserve the existing call signature; it is not used here.
+                  It cancels algebraically from the dimensionless fractional
+                  temperature perturbation, which is evaluated directly from
+                  the complex harmonic.
     :type scale: float
     :param update_container: If True, add perturbation to star.temperatures.
                              Defaults to False.
@@ -472,14 +422,17 @@ def temp_perturbation(
     """
     # Sum temperature perturbations from all modes
     temp_pert = np.sum(
-        [kinematics.calculate_temperature_pert_factor(mode, scale) for mode in star.pulsations.values()],
+        [kinematics.calculate_temperature_pert_factor(mode) for mode in star.pulsations.values()],
         axis=0,
     )
 
-    # Average to face values and scale by stellar temperature
+    # Average the summed factor to faces, then scale by the existing local
+    # equilibrium temperature (including spots and any prior reflection).
     temp_pert_face = temp_pert[star.faces].mean(axis=1) * star.temperatures
 
     if update_container:
+        # Apply the physical increment once. Plotting owns any reference it needs;
+        # synthesis does not retain or invalidate a diagnostic temperature cache.
         star.temperatures += temp_pert_face
 
     if return_perturbation:

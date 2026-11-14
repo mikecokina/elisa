@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from multiprocessing.pool import Pool
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -16,14 +15,16 @@ from elisa.analytics.models import lc as lc_model
 from elisa.analytics.models import serializers
 from elisa.analytics.params import parameters
 from elisa.analytics.params.parameters import BinaryInitialParameters
-from elisa.base.error import MaxIterationError, MorphologyError
+from elisa.base.error import ElisaMaxIterationError, MorphologyError, raise_elisa_monte_carlo_error
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.surface.gravity import calculate_polar_gravity_acceleration
 from elisa.logger import getLogger
+from elisa.observer.mp_manager import get_mp_context
 from elisa.utils import split_to_batches
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from multiprocessing.pool import Pool
 
     from numpy.typing import NDArray
 
@@ -32,7 +33,7 @@ if TYPE_CHECKING:
     from elisa.types import Float
 
 
-logger = getLogger("analytics.binary_fit.summary")
+logger = getLogger(__name__)
 
 DASH_N = 126
 
@@ -63,7 +64,7 @@ def fit_lc_summary_with_error_propagation(  # noqa: C901, PLR0912, PLR0915
     :type dimensionless_radii: bool
     :return: None. Summary is written to file or stdout.
     :rtype: None
-    :raises ValueError: If MCMC chain is not found in fit_instance.
+    :raises ElisaMonteCarloError: If MCMC chain is not found in fit_instance.
     """
 
     def propagate_errors(radius: NDArray, factor: NDArray) -> NDArray:
@@ -104,9 +105,8 @@ def fit_lc_summary_with_error_propagation(  # noqa: C901, PLR0912, PLR0915
     fit_instance.fit_method_instance.constrained = params_instance.get_constrained(jsonify=False)
     fit_instance.fit_method_instance.fitable = params_instance.get_fitable(jsonify=False)
 
-    error_msg = "MCMC chain was not found."
     if flat_chain is None:
-        raise ValueError(error_msg)
+        raise_elisa_monte_carlo_error("MCMC chain was not found.")
 
     renormalized_chain = np.empty(flat_chain.shape)
     for ii, lbl in enumerate(variable_labels):
@@ -745,6 +745,7 @@ def evaluate_binary_params(*args: Any) -> NDArray:
             fit_instance.fit_method_instance.fitable.keys(),
             fit_instance.fit_method_instance.constrained,
             fit_instance.fit_method_instance.fixed,
+            raise_initial=False,
         )
 
         try:
@@ -799,7 +800,7 @@ def evaluate_binary_params(*args: Any) -> NDArray:
                     full_chain[ii, ref_idx + 7 * pulse_idx + 5] = star_instance.pulsations[pulse_idx].mode_axis_phi
                     full_chain[ii, ref_idx + 7 * pulse_idx + 6] = star_instance.pulsations[pulse_idx].mode_axis_theta
 
-        except (MaxIterationError, MorphologyError):
+        except (ElisaMaxIterationError, MorphologyError):
             continue
 
     return full_chain
@@ -1324,7 +1325,8 @@ def simple_lc_fit_summary(  # noqa: C901, PLR0912, PLR0915
 
 
 def simple_rv_fit_summary(
-    fit_instance: LCFitLeastSquares | RVFitLeastSquares | LCFitMCMC | RVFitMCMC, path: str | None,
+    fit_instance: LCFitLeastSquares | RVFitLeastSquares | LCFitMCMC | RVFitMCMC,
+    path: str | None,
 ) -> None:
     """Generate detailed radial velocity fit summary report.
 
@@ -1482,7 +1484,7 @@ def fit_rv_summary_with_error_propagation(
     :type percentiles: list[int]
     :return: None. Summary written to file or stdout.
     :rtype: None
-    :raises ValueError: If MCMC chain is not found in fit_instance.
+    :raises ElisaMonteCarloError: If MCMC chain is not found in fit_instance.
     """
     if path is not None:
         f = Path(path).open("w")  # noqa: SIM115
@@ -1504,9 +1506,8 @@ def fit_rv_summary_with_error_propagation(
     fit_instance.fit_method_instance.constrained = params_instance.get_constrained(jsonify=False)
     fit_instance.fit_method_instance.fitable = params_instance.get_fitable(jsonify=False)
 
-    error_msg: str = "MCMC chain was not found."
     if flat_chain is None:
-        raise ValueError(error_msg)
+        raise_elisa_monte_carlo_error("MCMC chain was not found.")
 
     renormalized_chain: NDArray = np.empty(flat_chain.shape)
     for ii, lbl in enumerate(variable_labels):
@@ -1675,6 +1676,7 @@ def evaluate_rv_params(*args: Any) -> NDArray:
             fit_instance.fit_method_instance.fitable.keys(),
             fit_instance.fit_method_instance.constrained,
             fit_instance.fit_method_instance.fixed,
+            raise_initial=False,
         )
         system_kwgs: dict[str, Any] = serializers.serialize_system_kwargs(**init_rv_kwargs)
 
@@ -1711,7 +1713,7 @@ def _manage_chain_evaluation(
     if settings.NUMBER_OF_MCMC_PROCESSES > 1:
         logger.info("starting multiprocessor workers for error propagation technique")
         batches: list[NDArray] = split_to_batches(array=renormalized_chain, n_proc=settings.NUMBER_OF_MCMC_PROCESSES)
-        pool: Pool = Pool(processes=settings.NUMBER_OF_MCMC_PROCESSES)
+        pool: Pool = get_mp_context().Pool(processes=settings.NUMBER_OF_MCMC_PROCESSES)
         result: list[Any] = [pool.apply_async(eval_function, (*args, batch)) for batch in batches]
         pool.close()
         pool.join()

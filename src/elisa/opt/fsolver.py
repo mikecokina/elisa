@@ -6,6 +6,7 @@ import numpy as np
 
 from elisa import settings
 from elisa import umpy as up
+from elisa.base.error import raise_elisa_numeric_solver_error
 from elisa.logger import getLogger
 
 if TYPE_CHECKING:
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 
     from elisa.types import Float
 
-logger = getLogger("opt.fsolver")
+logger = getLogger(__name__)
 
 MAX_EXPECTED_SOLUTION_BOUNDARY = 1e15
 
@@ -95,7 +96,7 @@ def fsolver(
     :param kwargs: Optional keyword arguments. Supported key is
                    ``original_kwargs`` for condition validation arguments.
     :returns: Tuple of ``(solution, use)``.
-    :raises Exception: Re-raises any exception from the underlying solver.
+    :raises ElisaNumericSolverError: Wraps ordinary exceptions during the solver attempt.
     """
     solution: Float = np.nan
     use = False
@@ -115,13 +116,10 @@ def fsolver(
             use = 0 < solution < MAX_EXPECTED_SOLUTION_BOUNDARY
         elif not settings.SUPPRESS_WARNINGS:
             logger.warning("solution in implicit solver was not found, cause: %s", msg)
-    except Exception as exc:
-        logger.debug(
-            "attempt to solve function %s finished w/ exception: %s",
-            fn.__name__,
-            str(exc),
-        )
-        raise
+    except Exception as exc:  # noqa: BLE001 - caller assigns domain meaning to any failed solver attempt
+        # Keep this low-level boundary independent of spots and fitting policy.
+        # Broad wrapping is intentional: the caller rejects the failed candidate.
+        raise_elisa_numeric_solver_error("Implicit solver attempt failed.", exc)
 
     args_to_use = kwargs.get("original_kwargs", args)
     return (solution, use) if condition(solution, *args_to_use) else (np.nan, False)

@@ -6,7 +6,6 @@
             "format": "%(asctime)s - %(process)d - %(name)s - %(levelname)s: %(message)s"
         }
     },
-
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
@@ -15,22 +14,37 @@
             "stream": "ext://sys.stdout"
         }
     },
-
     "loggers": {
-        "main": {
-            "level": "INFO",
-            "handlers": ["console"],
-            "propagate": 0
+        "elisa.observer": {
+            "level": "NOTSET",
+            "handlers": [],
+            "propagate": true
         },
-        "BinarySystem": {
-            "level": "INFO",
-            "handlers": ["console"],
-            "propagate": 0
+        "elisa.binary_system": {
+            "level": "NOTSET",
+            "handlers": [],
+            "propagate": true
+        },
+        "elisa.atm": {
+            "level": "NOTSET",
+            "handlers": [],
+            "propagate": true
+        },
+        "elisa.ld": {
+            "level": "NOTSET",
+            "handlers": [],
+            "propagate": true
+        },
+        "scipy": {
+            "level": "NOTSET",
+            "handlers": [],
+            "propagate": true
         }
     },
-
     "root": {
         "level": "DEBUG",
-        "handlers": ["console"]
+        "handlers": [
+            "console"
+        ]
     }
 }

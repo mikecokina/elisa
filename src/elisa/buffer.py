@@ -20,6 +20,8 @@ class Buffer:
 
     MAX_STORAGE: ClassVar[int] = 300
 
+    # LD keys include resolved directory, filename, file revision and selected columns.
+    # Entries are private source frames; edits to assets must go through ld cache invalidation.
     LD_CFS_TABLES: ClassVar[dict] = {}
     ATMOSPHERE_TABLES: ClassVar[dict] = {}
 

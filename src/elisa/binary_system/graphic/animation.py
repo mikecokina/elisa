@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from elisa.binary_system.system import BinarySystem
     from elisa.types import Float
 
-logger = getLogger("binary_system.graphic.animation")
+logger = getLogger(__name__)
 
 
 class Animation:
@@ -58,6 +58,12 @@ class Animation:
     ) -> None:
         """Create an animation of the orbital motion.
 
+        Sampling includes ``start_phase``. ``phase_step`` must be finite and
+        positive. The stop is included only on the sampling grid (allowing
+        floating-point rounding); an off-grid stop is not appended. Equal bounds
+        produce one frame. Bounds must be finite and ordered. Phases retain
+        elapsed cycles and determine each frame's physical time.
+
         :param start_phase: Starting orbital phase of the animation.
         :type start_phase: Float
         :param stop_phase: Ending orbital phase of the animation.
@@ -76,13 +82,26 @@ class Animation:
         :param separate_colormaps: If ``True``, use separate colormaps for each
             component.
         :type separate_colormaps: bool | None
-        :param subtract_equilibrium: If ``True``, subtract the equilibrium part
-            of the quantity, which is useful for pulsation-related quantities.
+        :param subtract_equilibrium: Select the intrinsic diagnostic described below.
         :type subtract_equilibrium: bool
         :param plot_axis: If ``False``, hide the axis.
         :type plot_axis: bool
         :param edges: If ``True``, highlight edges of surface faces.
         :type edges: bool
+
+        With ``subtract_equilibrium=True`` (requires pulsations): ``radius``
+        gives the mean radial projection of Cartesian displacement in equilibrium
+        directions, not finite radius differences; ``velocity`` gives intrinsic
+        pulsational speed, not a difference of total speed magnitudes;
+        ``radial_velocity`` gives the observer x velocity component (positive for
+        recession); ``gravity_acceleration`` gives signed radial intrinsic
+        acceleration, not a difference of effective-gravity magnitudes;
+        ``temperature`` gives the actual increment from its equilibrium snapshot.
+        The perturbation-only maps ``horizontal_displacement``, ``v_r_perturbed``,
+        ``v_horizontal_perturbed`` and ``horizontal_acceleration`` already show
+        intrinsic diagnostics. Their values, and those of ``normal_radiance``
+        and ``radiance``, are unaffected by this flag.
+
         :return: ``None``.
         :rtype: None
 
@@ -96,8 +115,8 @@ class Animation:
           relative to the observer
         - ``"normal_radiance"``: surface element radiance perpendicular to the
           surface element
-        - ``"radiance"``: radiance of the surface element in the direction of
-          the observer
+        - ``"radiance"``: projected directional radiance ``L_normal * LD(mu) * mu``;
+          limb darkening and the projected-area cosine are separate factors
         - ``"radius"``: distance of surface elements from the centre of mass
         - ``"horizontal_displacement"``: distribution of the horizontal
           component of surface displacement
@@ -109,12 +128,7 @@ class Animation:
         """
         del units
 
-        if stop_phase < start_phase:
-            message = (
-                f"Starting phase {start_phase} is greater than stop phase "
-                f"{stop_phase}."
-            )
-            raise ValueError(message)
+        phases: NDArray[np.float64] = plot.animation_phases(start_phase, stop_phase, phase_step)
 
         components = butils.component_to_list("both")
 
@@ -124,12 +138,7 @@ class Animation:
                 and colormap not in ["velocity", "radial_velocity"]
             )
 
-        n_frames = int((stop_phase - start_phase) / phase_step)
-        phases: NDArray[np.float64] = np.linspace(
-            start_phase,
-            stop_phase,
-            num=n_frames,
-        )
+        n_frames = len(phases)
 
         none = [None for _ in range(n_frames)]
         points = {component: copy(none) for component in components}
@@ -174,7 +183,14 @@ class Animation:
                 potentials["primary"][pos_idx],
                 potentials["secondary"][pos_idx],
             )
-            on_pos.build(components_distance=position.distance)
+            # Build once for this frame; the helper owns snapshot timing and component association.
+            equilibrium_temperatures = plot.build_surface_with_temperature_reference(
+                on_pos,
+                colormap,
+                subtract_equilibrium=subtract_equilibrium,
+                components_distance=position.distance,
+                component="all",
+            )
 
             # calculating radiances
             # Local import to avoid circular import at module import time
@@ -199,9 +215,6 @@ class Animation:
                 / (1 + self.binary.mass_ratio),
                 "secondary": position.distance / (1 + self.binary.mass_ratio),
             }
-            on_pos.primary.points[:, 0] -= distances_to_com["primary"]
-            on_pos.secondary.points[:, 0] -= distances_to_com["primary"]
-
             on_pos = butils.move_sys_onpos(
                 on_pos,
                 position,
@@ -210,12 +223,15 @@ class Animation:
                 on_copy=False,
             )
 
+            # Keep physical vertices and component centers in the same frame;
+            # barycentric translation belongs only to the renderer coordinates.
+            pos_correction = butils.correction_to_com(position.distance, self.binary.mass_ratio, on_pos.secondary.com)
             for component in components:
                 star = getattr(on_pos, component)
-                points[component][pos_idx] = star.points
+                points[component][pos_idx] = star.points - pos_correction[None, :]
                 faces[component][pos_idx] = star.faces
 
-                args = (
+                args_ = (
                     colormap,
                     star,
                     position.phase,
@@ -224,15 +240,14 @@ class Animation:
                     self.binary.inclination,
                     on_pos.position,
                 )
-                kwargs = {
+                # Scalar temperatures retain face order when the geometry is rotated for viewing.
+                kwargs_ = {
                     "scale": scale,
                     "unit": "default",
                     "subtract_equilibrium": subtract_equilibrium,
+                    "equilibrium_temperatures": equilibrium_temperatures.get(component),
                 }
-                cmap[component][pos_idx] = plot.add_colormap_to_plt_kwargs(
-                    *args,
-                    **kwargs,
-                )
+                cmap[component][pos_idx] = plot.add_colormap_to_plt_kwargs(*args_, **kwargs_)
 
         anim_kwargs = {
             "morphology": self.binary.morphology,

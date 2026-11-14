@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from elisa.pypex.base.conf import ROUND_PRECISION
+from elisa.pypex.base.error import raise_value_error
 from elisa.pypex.poly2d import projection
 
 if TYPE_CHECKING:
@@ -65,7 +66,7 @@ def separating_axis_theorem(
 
     if (nv1 < MIN_POLYGON_VERTICES) or (nv2 < MIN_POLYGON_VERTICES):
         msg = "invalid polygon shape, expected at least polygon with 3 corners"
-        raise ValueError(msg)
+        raise_value_error(msg)
 
     # Build a list of all edges from both polygons.
     # SAT for convex polygons needs testing axes derived from all polygon edges.
@@ -197,6 +198,9 @@ def separating_axis_theorem_line_adapt(
         tangent, normal, projection.projection(vertex, tangent))
         for vertex in line2])
     projection_x = [np.round(projection_line1.T[0], round_tol), np.round(projection_line2.T[0], round_tol)]
+
+    # Order each interval independently of segment endpoint orientation.
+    projection_x = [np.sort(interval) for interval in projection_x]
 
     # Sort intervals
     # After sorting:

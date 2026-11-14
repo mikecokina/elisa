@@ -18,7 +18,7 @@
         {"type": "string"}
       ]},
       "angular_radius": {"anyOf": [
-        {"type": "number", "minimum": 0.0},
+        {"type": "number", "exclusiveMinimum": 0},
         {"type": "string"}
       ]},
       "temperature_factor": {
@@ -27,7 +27,7 @@
       },
       "discretization_factor": {
         "type": "number",
-        "minimum": 0
+        "exclusiveMinimum": 0
       }
     }
   }

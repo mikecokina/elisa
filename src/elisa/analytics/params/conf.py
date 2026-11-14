@@ -1,19 +1,18 @@
-import datetime
+import datetime as dt
+from datetime import UTC
 
 import numpy as np
 
-from elisa import settings
 from elisa import units as u
-from elisa.atm import atm_file_prefix_to_quantity_list
-from elisa.utc import UTC
+from elisa.atm.atm import atm_file_prefix_to_quantity_list
+from elisa.atm.const import Atmosphere
 from elisa.utils import jd_from_datetime
 
 PARAM_PARSER = "@"
 NUISANCE_PARSER = "nuisance"
 
-TEMPERATURES = atm_file_prefix_to_quantity_list("temperature", settings.ATM_ATLAS)
-METALLICITY = atm_file_prefix_to_quantity_list("metallicity", settings.ATM_ATLAS)
-
+# Serialized identifier for constrained marginal summaries; preserve for result compatibility.
+JOINT_POSTERIOR_PERCENTILES_ESTIMATE = "marginal percentiles of joint posterior samples"
 
 COMPOSITE_FLAT_PARAMS = [
     "spot",
@@ -43,15 +42,32 @@ DEFAULT_NORMALIZATION_PULSATION = {
 
 DEFAULT_NORMALIZATION_STAR = {
     "mass": (0.1, 50),
-    "t_eff": (np.min(TEMPERATURES), np.max(TEMPERATURES)),
-    "metallicity": (np.min(METALLICITY), np.max(METALLICITY)),
     "surface_potential": (2.0, 50.0),
     "albedo": (0, 1),
     "gravity_darkening": (0, 1),
     "synchronicity": (0.01, 10),
 }
 
-CURRENT_TIME_JD = jd_from_datetime(datetime.datetime.now(tz=UTC))
+
+def get_default_normalization_star() -> dict:
+    """Return independent CK04 numerical fitting defaults for every atmosphere.
+
+    These finite fitting defaults do not limit the physical atmosphere domain.
+    Supply explicit parameter endpoints when different fitting bounds are needed.
+
+    :returns: Default parameter bounds.
+    :rtype: dict
+    """
+    temperatures = atm_file_prefix_to_quantity_list("temperature", Atmosphere.CK04)
+    metallicity = atm_file_prefix_to_quantity_list("metallicity", Atmosphere.CK04)
+    return {
+        **DEFAULT_NORMALIZATION_STAR,
+        "t_eff": (np.min(temperatures), np.max(temperatures)),
+        "metallicity": (np.min(metallicity), np.max(metallicity)),
+    }
+
+
+CURRENT_TIME_JD = jd_from_datetime(dt.datetime.now(tz=UTC))
 
 DEFAULT_NORMALIZATION_SYSTEM = {
     "inclination": (0, 180),

@@ -6,8 +6,11 @@ import numpy as np
 
 from elisa import const
 from elisa import umpy as up
+from elisa.base.error import raise_elisa_unexpected_error
 from elisa.base.surface import gravity as bgravity
 from elisa.binary_system import utils as bsutils
+from elisa.binary_system.surface.validation import validate_component_distance
+from elisa.conf.enums import BinaryComponent
 from elisa.logger import getLogger
 from elisa.utils import is_empty
 
@@ -18,7 +21,7 @@ if TYPE_CHECKING:
     from elisa.binary_system.container import OrbitalPositionContainer
     from elisa.types import ComponentName, ComponentSelection, Float
 
-logger = getLogger("binary_system.surface.gravity")
+logger = getLogger(__name__)
 
 
 
@@ -43,6 +46,7 @@ def calculate_potential_gradient(
     :type mass_ratio: Float
     :return: Potential gradient vectors at the supplied points.
     :rtype: NDArray[Float]
+    :raises ElisaUnexpectedError: If the internal component selector is invalid.
     """
     r3 = up.power(np.linalg.norm(points, axis=1), 3)
     r_hat3 = up.power(
@@ -58,14 +62,14 @@ def calculate_potential_gradient(
     inv_r3_sum = 1 / r3 + mass_ratio / r_hat3  # shared subexpression used in dy and dz
     cd2 = up.power(components_distance, 2)     # precomputed scalar used in both branches
 
-    if component == "primary":
+    if component == BinaryComponent.PRIMARY:
         domega_dx = (
             -points[:, 0] / r3
             + mass_ratio * (components_distance - points[:, 0]) / r_hat3
             + f2_q1 * points[:, 0]
             - mass_ratio / cd2
         )
-    elif component == "secondary":
+    elif component == BinaryComponent.SECONDARY:
         domega_dx = (
             -points[:, 0] / r3
             + mass_ratio * (components_distance - points[:, 0]) / r_hat3
@@ -73,8 +77,10 @@ def calculate_potential_gradient(
             + 1 / cd2
         )
     else:
-        msg = f"Invalid value `{component}` of argument `component`.\nUse `primary` or `secondary`."
-        raise ValueError(msg)
+        # The caller selects the component before evaluating its physical values;
+        # parameter drift cannot introduce a different component identifier.
+        msg = f"Potential gradient received an unexpected component {component!r}; expected 'primary' or 'secondary'."
+        raise_elisa_unexpected_error(msg)
 
     domega_dy = -points[:, 1] * (inv_r3_sum - f2_q1)
     domega_dz = -points[:, 2] * inv_r3_sum
@@ -103,9 +109,10 @@ def calculate_polar_potential_gradient_magnitude(
     :type synchronicity: Float
     :return: Magnitude of the polar potential gradient.
     :rtype: Float
+    :raises ElisaUnexpectedError: If the internal component selector is invalid.
     """
     points = np.array(
-        [0.0, 0.0, polar_radius] if component == "primary" else [components_distance, 0.0, polar_radius],
+        [0.0, 0.0, polar_radius] if component == BinaryComponent.PRIMARY else [components_distance, 0.0, polar_radius],
     )
 
     r3 = up.power(np.linalg.norm(points), 3)
@@ -115,18 +122,23 @@ def calculate_polar_potential_gradient_magnitude(
     )
     cd2 = up.power(components_distance, 2)  # shared scalar used in both branches
 
-    if component == "primary":
+    if component == BinaryComponent.PRIMARY:
         domega_dx = mass_ratio * components_distance / r_hat3 - mass_ratio / cd2
-    elif component == "secondary":
+    elif component == BinaryComponent.SECONDARY:
         domega_dx = (
             -points[0] / r3
             + mass_ratio * (components_distance - points[0]) / r_hat3
-            - up.power(synchronicity, 2) * (mass_ratio + 1) * (1 - points[0])
+            - up.power(synchronicity, 2) * (mass_ratio + 1) * (components_distance - points[0])
             + 1.0 / cd2
         )
     else:
-        msg = f"Invalid value `{component}` of argument `component`.\nUse `primary` or `secondary`."
-        raise ValueError(msg)
+        # Component identity is selected by the caller, independently of
+        # candidate values; an unknown identifier violates that contract.
+        msg = (
+            f"Polar potential gradient received an unexpected component {component!r}; "
+            "expected 'primary' or 'secondary'."
+        )
+        raise_elisa_unexpected_error(msg)
 
     domega_dz = -points[2] * (1.0 / r3 + mass_ratio / r_hat3)
     return np.hypot(domega_dx, domega_dz)
@@ -193,6 +205,9 @@ def build_surface_gravity(
     The value assigned to each face is the mean of the surface gravity values
     evaluated at the corners of that face.
 
+    Numeric distances that are nonfinite or nonpositive reject the candidate;
+    missing or malformed distance inputs violate the internal calling contract.
+
     :param system: Orbital position container.
     :type system: OrbitalPositionContainer
     :param components_distance: Component separation in SMA units.
@@ -207,9 +222,7 @@ def build_surface_gravity(
         logger.debug("no component set to build surface gravity")
         return None
 
-    if is_empty(components_distance):
-        msg = "Component distance value was not supplied or is invalid."
-        raise ValueError(msg)
+    validate_component_distance(components_distance)
 
     components = bsutils.component_to_list(component)
     mass_ratio = system.mass_ratio

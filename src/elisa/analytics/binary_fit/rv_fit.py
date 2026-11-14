@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from elisa.analytics.binary_fit import io_tools
+from elisa.analytics.binary_fit.chain_tools import get_production_chain
 from elisa.analytics.binary_fit.least_squares import (
     CentralRadialVelocity as LstSqrCentralRV,
 )
@@ -16,14 +17,17 @@ from elisa.analytics.binary_fit.summary import (
 from elisa.analytics.params import parameters
 from elisa.analytics.params.result_handler import FitResultHandler
 from elisa.binary_system.utils import resolve_json_kind
+from elisa.conf.enums import BinarySystemKind
 from elisa.logger import getLogger
 
 if TYPE_CHECKING:
+    import numpy as np
     from numpy.typing import NDArray
 
     from elisa.analytics.params.parameters import BinaryInitialParameters
+    from elisa.conf.enums import DiscardUnit
 
-logger = getLogger("analytics.binary_fit.rv_fit")
+logger = getLogger(__name__)
 
 
 class RVFit(FitResultHandler):
@@ -88,6 +92,7 @@ class RVFitMCMC(RVFit):
         super().__init__()
         self.fit_method_instance: MCMCCentralRV = MCMCCentralRV()
 
+        self.chain: NDArray[np.float64] | None = None
         self.flat_chain: NDArray | None = None
         self.flat_chain_path: str | None = None
         self.normalization: dict[str, Any] | None = None
@@ -120,8 +125,8 @@ class RVFitMCMC(RVFit):
         self.result = self.fit_method_instance.fit(data=data, x0=x0, **kwargs)
         self.flat_result = self.fit_method_instance.flat_result
 
-        # noinspection PyArgumentList
-        self.flat_chain = self.fit_method_instance.last_sampler.get_chain(flat=True)
+        self.chain = get_production_chain(self.fit_method_instance.last_sampler)
+        self.flat_chain = self.chain.reshape(-1, self.chain.shape[-1])
         self.flat_chain_path = self.fit_method_instance.flat_chain_path
         self.normalization = self.fit_method_instance.normalization
         self.variable_labels = list(self.fit_method_instance.fitable.keys())
@@ -136,6 +141,8 @@ class RVFitMCMC(RVFit):
         filename: str,
         discard: int = 0,
         percentiles: list[float] | None = None,
+        *,
+        discard_unit: DiscardUnit | str | None = None,
     ) -> tuple[NDArray, list[str], dict[str, tuple[float, float]]]:
         """Load MCMC chain from JSON file with auxiliary data.
 
@@ -143,18 +150,23 @@ class RVFitMCMC(RVFit):
 
         :param filename: Chain identifier or filename (ending with .json) containing the chain.
         :type filename: str
-        :param discard: Number of steps to discard from the chain as part of the
+        :param discard: Number of samples to discard from the chain as part of the
             thermalization phase (default: 0).
         :type discard: int
         :param percentiles: Percentile intervals used to generate confidence intervals,
             provided as [lower, center, upper].
         :type percentiles: list[float] | None
+        :param discard_unit: ``DiscardUnit.STEPS`` requires temporal metadata;
+            ``DiscardUnit.ROWS`` discards flat rows and preserves temporal axes only
+            at complete ensemble boundaries. ``None`` selects steps for structured
+            chains and rows for legacy files. Strings "steps" and "rows" are accepted.
+        :type discard_unit: DiscardUnit | str | None
         :returns: Tuple containing flattened MCMC chain, labels of variables in
             flat_chain columns, and dictionary of boundaries for reconstructing
             real values from normalized flat_chain array.
         :rtype: tuple[NDArray, list[str], dict[str, tuple[float, float]]]
         """
-        return io_tools.load_chain(self, filename, discard, percentiles)
+        return io_tools.load_chain(self, filename, discard, percentiles, discard_unit=discard_unit)
 
     def fit_summary(
         self,
@@ -190,13 +202,13 @@ class RVFitMCMC(RVFit):
 
         kind_of = resolve_json_kind(data=self.result, _sin=True)
         if not propagate_errors:
-            if kind_of == "community":
+            if kind_of == BinarySystemKind.COMMUNITY:
                 simple_rv_fit_summary(self, filename)
             else:
                 simple_lc_fit_summary(self, filename, dimensionless_radii=True)
             return
 
-        if kind_of == "community":
+        if kind_of == BinarySystemKind.COMMUNITY:
             fit_rv_summary_with_error_propagation(self, filename, percentiles)
         else:
             fit_lc_summary_with_error_propagation(

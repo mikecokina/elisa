@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, cast
 import gradio as gr
 from PIL import Image  # noqa: TC002 - needed at runtime for Gradio type hints
 
+from elisa.base.error import ElisaMaxIterationError, ElisaNumericError
 from elisa.ui.components import star_inputs, system_inputs
 from elisa.ui.shared.const import ATMOSPHERE_CHOICES
 from elisa.ui.shared.fit_json import make_json_load_handler
@@ -175,6 +176,9 @@ def _make_handler(
                 primary_spot_params,
                 secondary_spot_params,
             )
+        except (ElisaNumericError, ElisaMaxIterationError) as exc:
+            msg = "The model could not be calculated numerically. Check the system parameters and sampling."
+            raise gr.Error(msg) from exc
         except Exception as exc:
             msg = str(exc)
             raise gr.Error(msg) from exc

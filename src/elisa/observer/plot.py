@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from elisa import units as u
+from elisa.base.error import raise_elisa_graphics_error
 from elisa.base.types import FLOAT
 from elisa.graphic import graphics
 
@@ -112,12 +113,12 @@ class Plot:
         :returns: Plot figure instance if return_figure_instance is True, otherwise displays
             the plot and returns result from graphics.phase_curve.
         :rtype: object
-        :raises TypeError: If phases, fluxes, and unit are provided inconsistently
+        :raises ElisaGraphicsError: If phases, fluxes, and unit are provided inconsistently
             (either all three or none must be provided).
         """
         if (phases is None) != (fluxes is None) != (unit is None):
             msg = "You have to supply `phases`, `fluxes` and `unit` variables or none of them."
-            raise TypeError(msg)
+            raise_elisa_graphics_error(msg)
 
         kwargs = {
             "return_figure_instance": return_figure_instance,
@@ -171,12 +172,12 @@ class Plot:
         :returns: Plot figure instance if return_figure_instance is True, otherwise displays
             the plot and returns result from graphics.rv_curve.
         :rtype: object
-        :raises TypeError: If phases, radial_velocities, and unit are provided inconsistently
+        :raises ElisaGraphicsError: If phases, radial_velocities, and unit are provided inconsistently
             (either all three or none must be provided).
         """
         if (phases is None) != (radial_velocities is None) != (unit is None):
             msg = "You have to supply both `phases` `fluxes`, `radial_velocities` and `None` or none of them."
-            raise TypeError(msg)
+            raise_elisa_graphics_error(msg)
 
         kwargs = {
             "return_figure_instance": return_figure_instance,

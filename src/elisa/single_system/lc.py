@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from elisa.base.error import raise_elisa_not_implemented_error
 from elisa.logger import getLogger
 
 logger = getLogger(__name__)
@@ -21,7 +22,7 @@ def compute_general_lightcurve(system: SingleSystem, **kwargs: Any) -> dict[str,
     code. Concrete light-curve generators for specific scenarios (with
     or without pulsations, different achromatic/passband options) should
     be used instead. The function currently raises
-    :class:`NotImplementedError`.
+    :class:`elisa.base.error.ElisaNotImplementedError`.
 
     :param system: Single-star system instance to evaluate.
     :type system: elisa.single_system.system.SingleSystem
@@ -30,7 +31,7 @@ def compute_general_lightcurve(system: SingleSystem, **kwargs: Any) -> dict[str,
     :type kwargs: Any
     :returns: Mapping of passband labels to light-curve arrays.
     :rtype: dict[str, numpy.typing.NDArray[elisa.types.Float]]
-    :raises NotImplementedError: Always raised for the generic stub.
+    :raises ElisaNotImplementedError: Always raised for the generic stub.
     """
     logger.debug(
         "compute_general_lightcurve called for system %s with kwargs: %s",
@@ -38,4 +39,4 @@ def compute_general_lightcurve(system: SingleSystem, **kwargs: Any) -> dict[str,
         kwargs,
     )
     msg = "Generic light-curve generator is not implemented; use concrete generators from curves submodule."
-    raise NotImplementedError(msg)
+    raise_elisa_not_implemented_error(msg)

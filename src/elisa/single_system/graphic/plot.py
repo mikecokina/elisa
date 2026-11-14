@@ -113,7 +113,8 @@ class Plot:
             if inclination is not None
             else up.degrees(self.single.inclination)
         )
-        azim = self.single.orbit.rotational_motion(phase=phase)[0][0]
+        single_position = self.single.orbit.rotational_motion(phase=phase)[0]
+        azim = single_position[0]
         azimuth = (
             transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64)
             if azimuth is not None
@@ -124,8 +125,14 @@ class Plot:
             self.single,
             self.defpos,
         )
-        position_container.build_mesh()
-        position_container.build_perturbations()
+        if position_container.has_pulsations():
+            position_container.set_on_position_params(Position(0, np.nan, *single_position))
+            position_container.set_time()
+            # Incorporation needs equilibrium face fields as well as flattened
+            # spot vertices and harmonics; no atmosphere or radiance preparation.
+            position_container.build(build_pulsations=True)
+        else:
+            position_container.build_mesh()
 
         mesh = position_container.star.get_flatten_parameter("points")
         denominator = 1 * axis_unit.to(u.DefaultSingleSystemUnits.star.equivalent_radius)
@@ -256,6 +263,8 @@ class Plot:
         :param phase: Photometric phase at which to render the surface.
         :type phase: elisa.types.Float
         :param colormap: Colormap name or ``None`` to use defaults.
+            ``radiance`` is projected directional radiance ``L_normal * LD(mu) * mu``,
+            including limb darkening and a separate projected-area cosine.
         :type colormap: str | None
         :param face_mask: Optional boolean mask selecting faces to include.
         :type face_mask: numpy.ndarray | None
@@ -287,8 +296,21 @@ class Plot:
         :type colorbar: bool
         :param return_figure_instance: If True return the Figure instance.
         :type return_figure_instance: bool
-        :param subtract_equilibrium: If True subtract equilibrium values from colormap.
+        :param subtract_equilibrium: Select the intrinsic diagnostic described below.
         :type subtract_equilibrium: bool
+
+        With ``subtract_equilibrium=True`` (requires pulsations): ``radius``
+        gives the mean radial projection of Cartesian displacement in equilibrium
+        directions, not finite radius differences; ``velocity`` gives intrinsic
+        pulsational speed, not a difference of total speed magnitudes;
+        ``radial_velocity`` gives the observer x velocity component (positive for
+        recession); ``gravity_acceleration`` gives signed radial intrinsic
+        acceleration, not a difference of effective-gravity magnitudes;
+        ``temperature`` gives the actual increment from its equilibrium snapshot.
+        The perturbation-only maps ``horizontal_displacement``, ``v_r_perturbed``,
+        ``v_horizontal_perturbed`` and ``horizontal_acceleration`` already show
+        intrinsic diagnostics. Their values, and those of ``normal_radiance``
+        and ``radiance``, are unaffected by this flag.
 
         :returns: Figure instance or ``None`` when the plot is shown.
         :rtype: matplotlib.figure.Figure | None
@@ -313,7 +335,12 @@ class Plot:
         )
         position_container.set_on_position_params(single_position)
         position_container.set_time()
-        position_container.build(phase=phase, build_pulsations=True)
+        # Build once for this plot; the helper owns snapshot timing and component association.
+        equilibrium_temperatures = plot.build_surface_with_temperature_reference(
+            position_container,
+            colormap,
+            subtract_equilibrium=subtract_equilibrium,
+        )
         correct_face_orientation(position_container.star, com=0)
 
         # calculating radiances
@@ -330,9 +357,15 @@ class Plot:
 
         star_container = position_container.star
 
-        args = (colormap, star_container, phase, 0.0, 1.0, self.single.inclination, position_container.position)
-        kwargs = {"scale": scale, "unit": colorbar_unit, "subtract_equilibrium": subtract_equilibrium}
-        surface_kwargs.update({"cmap": plot.add_colormap_to_plt_kwargs(*args, **kwargs)})
+        args_ = (colormap, star_container, phase, 0.0, 1.0, self.single.inclination, position_container.position)
+        kwargs_ = {
+            "scale": scale,
+            "unit": colorbar_unit,
+            "subtract_equilibrium": subtract_equilibrium,
+            "equilibrium_temperatures": equilibrium_temperatures.get("star"),
+        }
+        # Scalar temperatures retain face order when the geometry is rotated for viewing.
+        surface_kwargs.update({"cmap": plot.add_colormap_to_plt_kwargs(*args_, **kwargs_)})
 
         surface_kwargs.update(
             {

@@ -8,6 +8,7 @@ Subpackages
    :maxdepth: 4
 
    elisa.analytics
+   elisa.atm
    elisa.base
    elisa.binary_system
    elisa.conf
@@ -22,87 +23,96 @@ Subpackages
    elisa.schema_registry
    elisa.single_system
    elisa.tensor
+   elisa.ui
 
 Submodules
 ----------
-
-elisa.atm module
-----------------
-
-.. automodule:: elisa.atm
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 elisa.buffer module
 -------------------
 
 .. automodule:: elisa.buffer
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.const module
 ------------------
 
 .. automodule:: elisa.const
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
+
+elisa.json\_encoder module
+--------------------------
+
+.. automodule:: elisa.json_encoder
+   :members:
+   :show-inheritance:
+   :undoc-members:
 
 elisa.ld module
 ---------------
 
 .. automodule:: elisa.ld
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.logger module
 -------------------
 
 .. automodule:: elisa.logger
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.types module
 ------------------
 
 .. automodule:: elisa.types
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.umpy module
 -----------------
 
 .. automodule:: elisa.umpy
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.units module
 ------------------
 
 .. automodule:: elisa.units
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
+
+elisa.utc module
+----------------
+
+.. automodule:: elisa.utc
+   :members:
+   :show-inheritance:
+   :undoc-members:
 
 elisa.utils module
 ------------------
 
 .. automodule:: elisa.utils
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: elisa
    :members:
-   :undoc-members:
    :show-inheritance:
-   :noindex:
+   :undoc-members:
+   :no-index:

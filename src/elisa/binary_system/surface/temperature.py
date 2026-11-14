@@ -10,6 +10,10 @@ from numpy.typing import NDArray
 
 from elisa import ld, settings, utils
 from elisa import umpy as up
+from elisa.base.error import (
+    raise_elisa_temperature_error,
+    raise_elisa_unexpected_error,
+)
 from elisa.base.surface import temperature as btemperature
 from elisa.base.surface.temperature import renormalize_temperatures
 from elisa.base.types import FLOAT
@@ -26,7 +30,7 @@ if TYPE_CHECKING:
     from elisa.binary_system.container import OrbitalPositionContainer
     from elisa.types import ComponentSelection, Int
 
-logger = getLogger("binary_system.surface.temperature")
+logger = getLogger(__name__)
 
 SurfaceDataDict: TypeAlias = dict[str, NDArray[Float]]
 VisibilityDict: TypeAlias = dict[str, NDArray[NP_BOOL_]]
@@ -246,7 +250,9 @@ def apply_reflection_effect(  # noqa: C901, PLR0912, PLR0915
         q_ab = get_symmetrical_q_ab(shp_xy, shp_reduced, gamma, distance)
 
         # calculating limb darkening factor for each combination of surface faces
-        d_gamma = get_symmetrical_d_gamma(shp_xy, shp_reduced, ldc, gamma)
+        d_gamma = get_symmetrical_d_gamma(
+            shp_xy, shp_reduced, ldc, gamma, reflection_only=True,
+        )
 
         # calculating limb darkening factors for each combination of faces shape
         # (N_faces_primary * N_faces_secondary)
@@ -262,9 +268,11 @@ def apply_reflection_effect(  # noqa: C901, PLR0912, PLR0915
                 star = getattr(system, component)
                 counterpart_component = settings.BINARY_COUNTERPARTS[component]
                 vis_sym = vis_test_symmetry[component]
+                # The symmetry branch uses the same flag that requests these masks.
+                # A missing mask violates the internal flow, not the candidate physics.
                 if vis_sym is None:
-                    msg = "Symmetry visibility mask is required in symmetry branch."
-                    raise ValueError(msg)
+                    msg = f"Reflection symmetry requires a visibility mask for component {component!r}; received None."
+                    raise_elisa_unexpected_error(msg)
 
                 # calculation of reflection effect correction as
                 # 1 + (c / t_effi) * sum_j(r_j * Q_ab * t_effj^4 * D(gamma_j) * areas_j)
@@ -294,9 +302,11 @@ def apply_reflection_effect(  # noqa: C901, PLR0912, PLR0915
         for component in components:
             star = getattr(system, component)
             vis_sym = vis_test_symmetry[component]
+            # The symmetry branch uses the same flag that requests these masks.
+            # A missing mask violates the internal flow, not the candidate physics.
             if vis_sym is None:
-                msg = "Symmetry visibility mask is required in symmetry branch."
-                raise ValueError(msg)
+                msg = f"Reflection symmetry requires a visibility mask for component {component!r}; received None."
+                raise_elisa_unexpected_error(msg)
 
             # assigning new temperatures according to last iteration as
             # teff_new = teff_old * reflection_factor^0.25
@@ -577,17 +587,18 @@ def get_symmetrical_distance_matrix(
     :param centres: Face centres for both components.
     :type centres: dict[str, NDArray[Float]]
     :param vis_test: Visibility masks for both components.
-    :type vis_test: dict[str, NDArray[NP_BOOL_]]
+    :type vis_test: ``dict[str, NDArray[NP_BOOL_]]``
     :param vis_test_symmetry: Symmetry visibility masks for both components.
-    :type vis_test_symmetry: dict[str, NDArray[NP_BOOL_] | None]
+    :type vis_test_symmetry: ``dict[str, NDArray[NP_BOOL_] | None]``
     :return: Tuple ``(distance, join_vector)``.
     :rtype: tuple[NDArray[Float], NDArray[Float]]
     """
     vis_primary_sym = vis_test_symmetry["primary"]
     vis_secondary_sym = vis_test_symmetry["secondary"]
+    # Only the symmetry branch calls this helper; mask creation must precede it.
     if vis_primary_sym is None or vis_secondary_sym is None:
-        msg = "Symmetry visibility masks are required in symmetry branch."
-        raise ValueError(msg)
+        msg = "Reflection symmetry requires visibility masks for both components; at least one mask is None."
+        raise_elisa_unexpected_error(msg)
 
     # in case of symmetries, you need to calculate only minor part of distance matrix connected with base
     # symmetry part of the both surfaces
@@ -636,17 +647,18 @@ def get_symmetrical_gammma(
     :param join_vector: Join-vector matrix.
     :type join_vector: NDArray[Float]
     :param vis_test: Visibility masks for both components.
-    :type vis_test: dict[str, NDArray[NP_BOOL_]]
+    :type vis_test: ``dict[str, NDArray[NP_BOOL_]]``
     :param vis_test_symmetry: Symmetry visibility masks for both components.
-    :type vis_test_symmetry: dict[str, NDArray[NP_BOOL_] | None]
+    :type vis_test_symmetry: ``dict[str, NDArray[NP_BOOL_] | None]``
     :return: Cosine matrices ``gamma`` for both components.
     :rtype: dict[str, NDArray[Float]]
     """
     vis_primary_sym = vis_test_symmetry["primary"]
     vis_secondary_sym = vis_test_symmetry["secondary"]
+    # Only the symmetry branch calls this helper; mask creation must precede it.
     if vis_primary_sym is None or vis_secondary_sym is None:
-        msg = "Symmetry visibility masks are required in symmetry branch."
-        raise ValueError(msg)
+        msg = "Reflection symmetry requires visibility masks for both components; at least one mask is None."
+        raise_elisa_unexpected_error(msg)
 
     gamma = {
         "primary": np.empty(shape=shape, dtype=FLOAT),
@@ -704,6 +716,8 @@ def get_symmetrical_d_gamma(
     shape_reduced: tuple[Int, Int],
     ldc: dict[str, NDArray[Float]],
     gamma: GammaDict,
+    *,
+    reflection_only: bool = False,
 ) -> GammaDict:
     """Use symmetries to compute limb-darkening factor matrices.
 
@@ -715,6 +729,9 @@ def get_symmetrical_d_gamma(
     :type ldc: dict[str, NDArray[Float]]
     :param gamma: Cosines of angles between the join vector and face normals.
     :type gamma: dict[str, NDArray[Float]]
+    :param reflection_only: Compute only the primary column block and secondary
+        row block consumed by reflection. Other entries remain uninitialized.
+        The default also computes the complementary symmetry blocks.
     :return: Limb-darkening factor matrices.
     :rtype: dict[str, NDArray[Float]]
     """
@@ -730,12 +747,13 @@ def get_symmetrical_d_gamma(
         cos_theta=cos_theta,
     )
 
-    cos_theta = gamma["primary"][:shape_reduced[0], shape_reduced[1]:]
-    d_gamma["primary"][:shape_reduced[0], shape_reduced[1]:] = ld.limb_darkening_factor(
-        coefficients=ldc["primary"][:, :shape_reduced[0]].T,
-        limb_darkening_law=settings.LIMB_DARKENING_LAW,
-        cos_theta=cos_theta,
-    )
+    if not reflection_only:
+        cos_theta = gamma["primary"][:shape_reduced[0], shape_reduced[1]:]
+        d_gamma["primary"][:shape_reduced[0], shape_reduced[1]:] = ld.limb_darkening_factor(
+            coefficients=ldc["primary"][:, :shape_reduced[0]].T,
+            limb_darkening_law=settings.LIMB_DARKENING_LAW,
+            cos_theta=cos_theta,
+        )
 
     cos_theta = gamma["secondary"][:shape_reduced[0], :]
     d_gamma["secondary"][:shape_reduced[0], :] = ld.limb_darkening_factor(
@@ -744,12 +762,13 @@ def get_symmetrical_d_gamma(
         cos_theta=cos_theta.T,
     ).T
 
-    cos_theta = gamma["secondary"][shape_reduced[0]:, :shape_reduced[1]]
-    d_gamma["secondary"][shape_reduced[0]:, :shape_reduced[1]] = ld.limb_darkening_factor(
-        coefficients=ldc["secondary"][:, :shape_reduced[1]].T,
-        limb_darkening_law=settings.LIMB_DARKENING_LAW,
-        cos_theta=cos_theta.T,
-    ).T
+    if not reflection_only:
+        cos_theta = gamma["secondary"][shape_reduced[0]:, :shape_reduced[1]]
+        d_gamma["secondary"][shape_reduced[0]:, :shape_reduced[1]] = ld.limb_darkening_factor(
+            coefficients=ldc["secondary"][:, :shape_reduced[1]].T,
+            limb_darkening_law=settings.LIMB_DARKENING_LAW,
+            cos_theta=cos_theta.T,
+        ).T
 
     return d_gamma
 
@@ -806,7 +825,7 @@ def get_distance_matrix_shape(
     :param system: Orbital position container.
     :type system: OrbitalPositionContainer
     :param vis_test: Visibility masks for both components.
-    :type vis_test: dict[str, NDArray[NP_BOOL_]]
+    :type vis_test: ``dict[str, NDArray[NP_BOOL_]]``
     :return: Tuple ``(shape, shape_reduced)``.
     :rtype: tuple[tuple[Int, Int, Int], tuple[Int, Int]]
     """
@@ -819,17 +838,32 @@ def get_distance_matrix_shape(
 
 
 
-@functools.cache
 def _load_albedo_data() -> tuple[list, list]:
-    """Load and cache albedo interpolation tables from disk.
+    """Resolve the current albedo resource before cache lookup."""
+    # The table is fixed; temperature selects an interpolation point, not a file.
+    try:
+        source = utils.file_source_identity(settings.PATH_TO_ALBEDOS)
+    except Exception as exc:  # noqa: BLE001 - fixed resource failures are fatal contract errors
+        msg = f"Cannot locate the fixed albedo table {settings.PATH_TO_ALBEDOS}: {exc}"
+        raise_elisa_unexpected_error(msg, exc)
+    return _load_albedo_data_cached(source)
 
-    :return: Tuple ``(temperatures, albedos)`` of interpolation data loaded
-        from ``settings.PATH_TO_ALBEDOS``.
-    :rtype: tuple[list, list]
-    """
-    with Path(settings.PATH_TO_ALBEDOS).open("r") as f:
-        data = json.load(f)
-    return data["x"], data["y"]
+
+@functools.cache
+def _load_albedo_data_cached(source: utils.FileSourceIdentity) -> tuple[list, list]:
+    """Load the selected source revision without consulting mutable settings."""
+    try:
+        with Path(source[0]).open("r") as f:
+            data = json.load(f)
+        return data["x"], data["y"]
+    except Exception as exc:  # noqa: BLE001 - fixed resource failures are fatal contract errors
+        msg = f"Cannot load the fixed albedo table {source[0]}: {exc}"
+        raise_elisa_unexpected_error(msg, exc)
+
+
+_load_albedo_data.cache_clear = _load_albedo_data_cached.cache_clear
+_load_albedo_data.cache_info = _load_albedo_data_cached.cache_info
+_load_albedo_data.cache_parameters = _load_albedo_data_cached.cache_parameters
 
 
 def interpolate_albedo(temperature: Float) -> Float:
@@ -842,10 +876,13 @@ def interpolate_albedo(temperature: Float) -> Float:
     :type temperature: Float
     :return: Interpolated albedo in the interval ``(0, 1)``.
     :rtype: Float
+    :raises ElisaTemperatureError: If ``temperature`` is not positive.
+    :raises ElisaUnexpectedError: If the fixed albedo table cannot be loaded.
     """
+    # Production callers pass Star.t_eff, already validated as a finite scalar.
     if temperature <= 0:
-        msg = "Negative temperature of the star encountered."
-        raise ValueError(msg)
+        msg = f"Albedo interpolation requires a positive effective temperature; received {temperature!r}."
+        raise_elisa_temperature_error(msg)
 
     interp_temps, interp_a = _load_albedo_data()
     return np.interp(np.log10(temperature), interp_temps, interp_a)

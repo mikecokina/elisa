@@ -21,7 +21,7 @@ Pre-release steps
     `setup.py` in variable `install_requires`
 
 5.  make sure a latest docstsring documentation is generated and there is no error during Sphinx HTML build
-    (for more comprehensive information take a look into `docs/README.rst`)
+    (for more comprehensive information take a look into `docs/README.md`)
 
 6.  make sure setup.cfg contains all supported Python versions
 
@@ -111,10 +111,9 @@ long_description = (
 
 setup(
     name="elisa",
-    src_root="src",
     version=read_version(),
 
-    python_requires=">=3.10",
+    python_requires=">=3.11",
 
     description="Eclipsing Binary Modeling Software",
     long_description=long_description,
@@ -146,7 +145,6 @@ setup(
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.
         # 'Programming Language :: Python :: 2',
-        "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
@@ -171,29 +169,23 @@ setup(
     # https://packaging.python.org/en/latest/requirements.html
 
     install_requires=[
-        # Python 3.10 compatible floors
-        'astropy>=6.1.7; python_version<"3.11"',
-        'numpy>=2.2.0; python_version<"3.11"',
-        'pandas>=2.2.3; python_version<"3.11"',
-        'scipy>=1.15.0; python_version<"3.11"',
-
-        # Python 3.11+ floors (aligns with newer environments)
-        'astropy>=7.2.0; python_version>="3.11"',
-        'numpy>=2.4.2; python_version>="3.11"',
-        'pandas>=3.0.1; python_version>="3.11"',
-        'scipy>=1.17.1; python_version>="3.11"',
+        # Python 3.11+ dependency floors
+        'astropy>=7.2.0',
+        'numpy>=2.4.2',
+        'pandas>=3.0.1',
+        'scipy>=1.17.1',
 
         # Common deps
-        "corner>=2.2.1",
-        "emcee>=3.0.1",
-        "jsonschema>=3.2.0",
-        "matplotlib>=3.3.2",
-        "packaging>=20.0",
-        "python-dateutil>=2.6.1",
-        "tqdm>=4.43.0",
-        "parameterized>=0.7.4",
-        "numba>=0.51.2",
-        "requests>=2.26.0",
+        "corner>=2.2.3",
+        "emcee>=3.1.6",
+        "jsonschema>=4.26.0",
+        "matplotlib>=3.10.8",
+        "packaging>=26.0",
+        "python-dateutil>=2.9.0.post0",
+        "tqdm>=4.67.3",
+        "parameterized>=0.9.0",
+        "numba>=0.64.0",
+        "requests>=2.32.5",
     ],
 
     # List additional groups of dependencies here (e.g. development
@@ -209,17 +201,17 @@ setup(
             "ruff",
         ],
         "test": [
+            "playwright>=1.56",
             "coverage",
             "pytest>=9.0.2",
-            "parameterized>=0.7.4",
+            "parameterized>=0.9.0",
         ],
         "ui": [
             "gradio~=6.10.0",
             # UI runtime dependencies used by the Gradio desktop app
             # pandas and matplotlib are already listed in install_requires
-            'pandas>=2.2.3; python_version < "3.11"',
-            'pandas>=3.0.1; python_version >= "3.11"',
-            "matplotlib>=3.3.2",
+            'pandas>=3.0.1',
+            "matplotlib>=3.10.8",
             "pillow>=9.0.0",
         ],
     },

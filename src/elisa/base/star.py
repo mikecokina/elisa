@@ -8,6 +8,10 @@ from elisa import units as u
 from elisa import utils
 from elisa.base.body import Body
 from elisa.base.container import StarPropertiesContainer
+from elisa.base.parameter_tracking import (
+    preserve_explicit_inputs_during_reinitialization,
+    suspend_tracking_during_initialization,
+)
 from elisa.base.transform import StarProperties
 from elisa.logger import getLogger
 from elisa.pulse.mode import PulsationMode
@@ -15,10 +19,11 @@ from elisa.pulse.mode import PulsationMode
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    from elisa.atm.const import Atmosphere
     from elisa.types import Float
     from elisa.units import _DefaultStarInputUnits, _DefaultStarUnits
 
-logger = getLogger("elisa.base.star")
+logger = getLogger(__name__)
 
 
 class Star(Body):
@@ -76,7 +81,9 @@ class Star(Body):
         coefficients for the entire star (useful when the object lies
         outside the supported atmosphere grid). It may be a single numeric
         value or a mapping of passband name to coefficients, e.g.
-        ``{ 'V': [a, b, ...] }``.
+        ``{ 'V': [a, b, ...] }``. Custom coefficients retain the current
+        ``settings.LIMB_DARKENING_LAW``; using them under an incompatible law
+        raises an error. Supply new coefficients when changing laws.
     :type limb_darkening_coefficients: float | dict[str, list[float]]
 
     Mandatory arguments (BinarySystem)
@@ -157,11 +164,13 @@ class Star(Body):
         mapping index → :class:`PulsationMode` internally.
     :type pulsations: list[dict[str, float]]
 
-    :param atmosphere: Atmosphere identifier used for spectral models.
-        Supported aliases include::
+    :param atmosphere: Atmosphere identifier used for spectral models (default ``ck04``). Stored as one of
+        the canonical identifiers ``ck04``, ``k93`` or ``bb`` (:class:`elisa.atm.const.Atmosphere`).
+        Supported aliases are normalized on input::
 
             - ``castelli``, ``castelli-kurucz``, ``ck``, ``ck04``
             - ``kurucz``, ``k``, ``k93``
+            - ``bb``, ``black_body``, ``black-body``
 
     :type atmosphere: str
 
@@ -192,10 +201,13 @@ class Star(Body):
     )
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
+    @suspend_tracking_during_initialization
     def __init__(self, *, name: str | None = None, **kwargs: Any) -> None:
         utils.invalid_kwarg_checker(kwargs, Star.ALL_KWARGS, Star)
+        transformed_kwargs = self.transform_input(**kwargs)
+
         super().__init__(name, **kwargs)
-        kwargs = self.transform_input(**kwargs)
+        kwargs = transformed_kwargs
 
         # default values of properties
         self.filling_factor = up.NaN
@@ -206,7 +218,7 @@ class Star(Body):
         self.gravity_darkening = up.NaN
         # Test against None value is provided across the codebase, so we need to
         # set it to None here instead of any other value (for example an empty dict) to avoid confusion.
-        self.limb_darkening_coefficients: dict[str, list[float]] | None = None
+        self.limb_darkening_coefficients = None
         self._pulsations: dict[int, PulsationMode] | list[PulsationMode] = []
 
         self.side_radius = up.NaN
@@ -241,6 +253,24 @@ class Star(Body):
         """
         return u.DefaultStarUnits
 
+    @property
+    def atmosphere(self) -> Atmosphere:
+        """Return the canonical atmosphere identifier (``ck04`` by default)."""
+        return self._atmosphere
+
+    @atmosphere.setter
+    def atmosphere(self, value: str) -> None:
+        self._atmosphere = StarProperties.atmosphere(value)
+
+    @property
+    def limb_darkening_coefficients(self) -> dict[str, list[float]] | None:
+        """Return custom coefficients retaining their defining law."""
+        return self._limb_darkening_coefficients
+
+    @limb_darkening_coefficients.setter
+    def limb_darkening_coefficients(self, value: dict | None) -> None:
+        self._limb_darkening_coefficients = StarProperties.limb_darkening_coefficients(value)
+
     def transform_input(self, **kwargs) -> dict[str, Any]:
         """Transform and validate initialization keyword arguments.
 
@@ -255,6 +285,7 @@ class Star(Body):
         """
         return StarProperties.transform_input(**kwargs)
 
+    @suspend_tracking_during_initialization
     def init_parameters(self, **kwargs) -> None:
         """Set initial attribute values from transformed keyword args.
 
@@ -286,6 +317,7 @@ class Star(Body):
             "mass": u.kg,
             "t_eff": u.K,
             "discretization_factor": u.rad,
+            "polar_log_g": u.LOG_ACCELERATION_UNIT,
         }
 
         serialized_kwargs: dict[str, Any] = {}
@@ -298,6 +330,9 @@ class Star(Body):
                     value = [spot.kwargs_serializer() for spot in spots_attr.values()]
                 else:
                     value = [spot.kwargs_serializer() for spot in spots_attr]
+            elif kwarg == "pulsations":
+                modes = self.pulsations.values() if hasattr(self.pulsations, "values") else self.pulsations
+                value = [mode.kwargs_serializer() for mode in modes]
             elif kwarg in default_units:
                 value = getattr(self, kwarg)
                 if not isinstance(value, u.Quantity):
@@ -308,9 +343,32 @@ class Star(Body):
             serialized_kwargs[kwarg] = value
         return serialized_kwargs
 
+    def reinitialization_kwargs(self) -> dict[str, Any]:
+        """Return explicitly supplied current scalar inputs in constructor units."""
+        kwargs = self._explicit_kwargs(self.kwargs_serializer())
+        for key, collection in (("spots", self.spots), ("pulsations", self.pulsations)):
+            if collection or key in kwargs:
+                items = collection.values() if hasattr(collection, "values") else collection
+                kwargs[key] = [item.reinitialization_kwargs() for item in items]
+        return kwargs
+
+    @preserve_explicit_inputs_during_reinitialization
     def init(self) -> None:
-        """Re-initialize the instance from its serialized kwargs."""
-        self.__init__(**self.kwargs_serializer())
+        """Rebuild inputs and nested objects without promoting computed defaults."""
+        spots, modes = self.spots, self.pulsations
+        kwargs = self.reinitialization_kwargs()
+        kwargs.pop("spots", None)
+        kwargs.pop("pulsations", None)
+        try:
+            self.__init__(**kwargs)
+        finally:
+            # Keep the user's collections reachable even if scalar validation fails.
+            self._spots, self._pulsations = spots, modes
+        for index, spot in self.spots.items():
+            spot.init()
+            self.setup_spot_instance_discretization_factor(spot, index)
+        for mode in self.pulsations.values() if hasattr(self.pulsations, "values") else self.pulsations:
+            mode.init()
 
     def has_pulsations(self) -> bool:
         """Return True when the star has defined pulsation modes.
@@ -381,6 +439,9 @@ class Star(Body):
             {
                 "name": self.name,
                 "spots": deepcopy(self.spots),
+                # Modes hold mutable synthesis arrays as well as amplitudes;
+                # numerical snapshots must own both independently of Star.init().
+                "pulsations": deepcopy(self.pulsations),
             },
         )
         return props

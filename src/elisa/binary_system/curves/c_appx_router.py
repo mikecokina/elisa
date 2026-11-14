@@ -14,6 +14,7 @@ from elisa.binary_system.orbit.orbit import (
     component_distance_from_mean_anomaly,
     get_approx_ecl_angular_width,
 )
+from elisa.conf.enums import OrbitalSortKey
 from elisa.logger import getLogger
 from elisa.observer.mp_manager import manage_observations
 
@@ -26,7 +27,7 @@ if TYPE_CHECKING:
     from elisa.types import NP_BOOL_, Float
 
 
-logger = getLogger("binary_system.curves.c_appx_router")
+logger = getLogger(__name__)
 
 # Constant to avoid magic number lint warning
 _PHASES_COUNT_THRESHOLD = 10
@@ -394,7 +395,7 @@ def eval_symmetrical_counterparts_approximation(
         base_orbit_arr,
         orbit_supplement_arr,
     )
-    orbital_supplements = orbital_supplements.sort(by="distance")
+    orbital_supplements = orbital_supplements.sort(by=OrbitalSortKey.DISTANCE)
 
     idxs_where_nan = np.argwhere(np.isnan(orbital_supplements.mirror[:, 0]))
     if idxs_where_nan.shape[0] == orbital_supplements.mirror.shape[0]:
@@ -457,7 +458,10 @@ def eval_similar_neighbours_approximation(
     new_build_mask = np.logical_or(new_geometry_mask, new_irrad_mask)
 
     approx_test = not new_build_mask.all()
-    return approx_test, new_build_mask, sorted_all_orbital_pos_arr
+    # Workers retain original position indices, including across process batches.
+    original_order_mask = np.empty_like(new_build_mask)
+    original_order_mask[sorted_all_orbital_pos_arr[:, 0].astype(int)] = new_build_mask
+    return approx_test, original_order_mask, sorted_all_orbital_pos_arr
 
 
 def integrate_eccentric_curve_interp_appx(
@@ -507,7 +511,7 @@ def integrate_eccentric_curve_interp_appx(
         body=reduced_orbit_arr,
         mirror=counterpart_position_arr,
     )
-    orbital_supplements = orbital_supplements.sort(by="distance")
+    orbital_supplements = orbital_supplements.sort(by=OrbitalSortKey.DISTANCE)
 
     orbital_positions = np.stack(
         (orbital_supplements.body, orbital_supplements.mirror),

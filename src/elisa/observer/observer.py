@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -8,13 +9,22 @@ import numpy as np
 from elisa import settings
 from elisa import umpy as up
 from elisa import units as u
+from elisa.base.error import (
+    raise_elisa_not_implemented_error,
+    raise_elisa_operation_input_error,
+    raise_elisa_passband_error,
+    raise_elisa_unexpected_error,
+)
 from elisa.binary_system.curves.community import RadialVelocitySystem
+from elisa.conf.enums import NormalizationKind, RVMethod
 from elisa.logger import getLogger
 from elisa.observer import utils as outils
-from elisa.observer.passband import PassbandContainer, init_bolometric_passband
+
+# noinspection PyProtectedMember
+from elisa.observer.passband import PassbandContainer, _validated_passband_interval, init_bolometric_passband
 from elisa.observer.plot import Plot
 from elisa.photometric_standards.standards_handlers import load_standard
-from elisa.utils import is_empty, jd_to_phase
+from elisa.utils import file_source_identity, is_empty
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -22,7 +32,7 @@ if TYPE_CHECKING:
     from elisa import BinarySystem, SingleSystem
     from elisa.types import Float, UnitType, ZeroPointType
 
-logger = getLogger("observer.observer")
+logger = getLogger(__name__)
 
 
 class Observables:
@@ -171,6 +181,7 @@ class Observer:
         self.rv_unit: object | None = None
         # noinspection PyTypeChecker
         self.zero_points: ZeroPointType = {}
+        self._zero_points_source: tuple | None = None
 
         self.plot = Plot(self)
         self.observe = Observables(self)
@@ -226,7 +237,13 @@ class Observer:
         :type passband: str | list[str]
         """
         passband = [passband] if isinstance(passband, str) else passband
-        for band in passband:
+        try:
+            bands = iter(passband)
+        except TypeError as exc:
+            raise_elisa_passband_error("Passbands must be supplied as a name or iterable of names", exc)
+        for band in bands:
+            if not isinstance(band, str) or not band:
+                raise_elisa_passband_error(f"Invalid passband identifier: {band!r}")
             if band == "bolometric":
                 psbnd, right_bandwidth, left_bandwidth = init_bolometric_passband()
             else:
@@ -248,8 +265,28 @@ class Observer:
         :param right_bandwidth: Right (maximum) wavelength boundary of the passband.
         :type right_bandwidth: float
         """
+        left_bandwidth, right_bandwidth = _validated_passband_interval((left_bandwidth, right_bandwidth))
         self.left_bandwidth = min(self.left_bandwidth, left_bandwidth)
         self.right_bandwidth = max(self.right_bandwidth, right_bandwidth)
+
+    def _get_zero_points(self) -> ZeroPointType:
+        """Refresh the one-entry calibration cache when its source changes."""
+        system = settings.MAGNITUDE_SYSTEM.lower()
+        source_path = Path(settings.DATA_PATH) / "zero_points" / f"{system}.json"
+        try:
+            source = file_source_identity(source_path)
+        except FileNotFoundError as exc:
+            # Cache lookup must enforce the same packaged-resource contract as loading.
+            msg = f"Zero points file for system {system!r} not found at {source_path}"
+            raise_elisa_unexpected_error(msg, exc)
+        key = (system, source)
+        if (
+            is_empty(self.zero_points) or self._zero_points_source != key
+            or self.zero_points["system"] != system
+        ):
+            self.zero_points = load_standard(system, source_path=source[0])
+            self._zero_points_source = key
+        return self.zero_points
 
     def lc(
             self,
@@ -301,17 +338,14 @@ class Observer:
         :type flux_unit: object | None
         :returns: Tuple containing phases and flux curves for each passband.
         :rtype: tuple[NDArray, dict[str, NDArray]]
-        :raises ValueError: If flux_unit is specified with normalize=True (conflicting parameters).
+        :raises ElisaOperationInputError: If normalization conflicts with flux_unit or the output unit is unsupported.
         """
         if normalize:
             if flux_unit in [None, u.dimensionless_unscaled]:
                 self.flux_unit = u.dimensionless_unscaled
             else:
-                msg = (
-                    "You can either produce normalized light curve or specify `flux_unit` other "
-                    "than dimensionless unscaled. Change input parameters."
-                )
-                raise ValueError(msg)
+                msg = f"Normalized light curves require a dimensionless output unit; received {flux_unit!r}."
+                raise_elisa_operation_input_error(msg)
         else:
             self.flux_unit = u.Unit(flux_unit) if flux_unit is not None else self.flux_unit
 
@@ -359,7 +393,7 @@ class Observer:
         if normalize or self.flux_unit == u.dimensionless_unscaled:
             self.fluxes, _ = outils.normalize_light_curve(
                 y_data=curves,
-                kind="maximum",
+                kind=NormalizationKind.MAXIMUM,
                 top_fraction_to_average=0.0,
             )
         else:
@@ -367,13 +401,14 @@ class Observer:
             if self.flux_unit in [None, u.W / u.m ** 2]:
                 self.fluxes = curves
             elif self.flux_unit == u.mag:
-                if is_empty(self.zero_points) or self.zero_points["system"] != settings.MAGNITUDE_SYSTEM.lower():
-                    self.zero_points = load_standard(settings.MAGNITUDE_SYSTEM)
-                self.fluxes = outils.convert_to_magnitudes(curves, self.zero_points)
+                self.fluxes = outils.convert_to_magnitudes(curves, self._get_zero_points())
                 self.magnitudes = self.fluxes
             else:
-                msg = f"Unknown value for `Observer.flux_unit`: {self.flux_unit}"
-                raise ValueError(msg)
+                msg = (
+                    f"Unsupported light-curve output unit {self.flux_unit!r}; "
+                    "expected dimensionless, W / m2 or mag."
+                )
+                raise_elisa_operation_input_error(msg)
 
         logger.info("observation finished")
         return self.phases, self.fluxes
@@ -429,6 +464,9 @@ class Observer:
         :rtype: tuple[NDArray, dict[str, NDArray]]
         """
         method = settings.RV_METHOD if method is None else method
+        if method not in (RVMethod.KINEMATIC, RVMethod.RADIOMETRIC):
+            msg = f"Unsupported RV computation method {method!r}; expected kinematic or radiometric."
+            raise_elisa_operation_input_error(msg)
 
         phases = self.manage_time_series(
             from_phase,
@@ -467,7 +505,7 @@ class Observer:
 
         return self.phases, self.radial_velocities
 
-    def phase_interval_reduce(
+    def phase_interval_reduce(  # noqa: PLR0911 - system-specific returns plus a NoReturn helper fallback
         self,
         phases: NDArray,
     ) -> tuple[NDArray, NDArray]:
@@ -525,8 +563,8 @@ class Observer:
         ):
             return phases, up.arange(phases.shape[0], dtype=int)
 
-        msg = "Not implemented."
-        raise NotImplementedError(msg)
+        msg = f"Observer.phase_interval_reduce is not implemented for system class {self._system_cls!r}."
+        return raise_elisa_not_implemented_error(msg)
 
     def manage_time_series(
             self,
@@ -566,7 +604,7 @@ class Observer:
         :type times: NDArray | None
         :returns: Array of phases for observations.
         :rtype: NDArray
-        :raises ValueError: If time series parameters are invalid or inconsistently provided.
+        :raises ElisaOperationInputError: If neither domain is supplied completely or both domains are supplied.
         """
         phases_supplied = not (
                 phases is None
@@ -582,17 +620,19 @@ class Observer:
             "`time_step` or `times`."
         )
         if not (phases_supplied or times_supplied):
-            msg = f"Missing arguments.\n{message}"
-            raise ValueError(msg)
+            msg = f"No complete phase-domain or time-domain input was supplied.\n{message}"
+            raise_elisa_operation_input_error(msg)
         if phases_supplied and times_supplied:
-            msg = f"You specified time series in phase and time domain at once.\n{message}"
-            raise ValueError(msg)
+            msg = f"Phase-domain and time-domain inputs cannot be supplied together.\n{message}"
+            raise_elisa_operation_input_error(msg)
 
         if times_supplied:
             if is_empty(times):
                 times = up.arange(from_time, to_time, time_step)
 
-            phases = jd_to_phase(times, self._system.period, self._system.t0, centre=0.5)
+            # Preserve elapsed cycles for pulsations and asynchronous spots.
+            # phase_interval_reduce handles periodic geometry and deduplication.
+            phases = (np.asarray(times) - self._system.t0) / self._system.period
         elif is_empty(phases):
             phases = up.arange(from_phase, to_phase, phase_step)
 

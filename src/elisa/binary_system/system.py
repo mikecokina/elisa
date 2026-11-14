@@ -1,29 +1,42 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from functools import lru_cache
 from typing import TYPE_CHECKING, Literal, TypeAlias, cast
 
 import numpy as np
-from scipy import optimize
 
 from elisa import const, settings, utils
 from elisa import umpy as up
 from elisa import units as u
 from elisa.base.container import SystemPropertiesContainer
 from elisa.base.curves import utils as rv_utils
-from elisa.base.error import MorphologyError
+from elisa.base.error import (
+    raise_elisa_max_iteration_error,
+    raise_elisa_morphology_error,
+    raise_elisa_numeric_error,
+    raise_elisa_operation_input_error,
+    raise_elisa_unexpected_error,
+)
+from elisa.base.parameter_tracking import (
+    parameter_is_explicit,
+    preserve_explicit_inputs_during_reinitialization,
+    suspend_tracking_during_initialization,
+)
 from elisa.base.star import Star
 from elisa.base.system import System
 from elisa.base.types import FLOAT
-from elisa.binary_system import graphic, model
+from elisa.binary_system import dynamic, graphic, model
 from elisa.binary_system import radius as bsradius
 from elisa.binary_system import utils as bsutils
+from elisa.binary_system._radius_solver import RocheRay, bracket_root
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.curves import c_router, lc, rv
 from elisa.binary_system.orbit import orbit
 from elisa.binary_system.surface import mesh
 from elisa.binary_system.surface.temperature import interpolate_albedo
 from elisa.binary_system.transform import BinarySystemProperties
+from elisa.conf.enums import BinaryComponent, BinaryMorphology, BinarySystemKind, CurveType, RVMethod
 from elisa.logger import getLogger
 from elisa.opt.fsolver import fsolve
 
@@ -34,10 +47,11 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from elisa.binary_system.orbit.orbit import Orbit
+    from elisa.const import Position
     from elisa.types import ComponentName, Float
     from elisa.units import _DefaultBinarySystemInputUnits, _DefaultBinarySystemUnits
 
-logger = getLogger("binary_system.system")
+logger = getLogger(__name__)
 
 ComponentSelection: TypeAlias = Literal["primary", "secondary", "all", "both"]
 
@@ -45,7 +59,7 @@ NUM_LAGRANGE_POINTS = 5
 MAXIMAL_RADIUS_BOUNDARY = 30.0
 
 
-class BinarySystem(System):
+class BinarySystem(System[Star]):
     """Store and calculate properties of a binary system.
 
     Child class of :class:`elisa.base.system.System`.
@@ -131,7 +145,7 @@ class BinarySystem(System):
             gravity_darkening=1.0,
             discretization_factor=5,
             albedo=0.6,
-            metallicity=0.0,
+            metallicity=0.0
         )
 
         secondary = Star(
@@ -141,7 +155,7 @@ class BinarySystem(System):
             t_eff=8000 * u.K,
             gravity_darkening=1.0,
             albedo=0.6,
-            metallicity=0,
+            metallicity=0.0
         )
 
         bs = BinarySystem(
@@ -154,7 +168,7 @@ class BinarySystem(System):
             inclination=85 * u.deg,
             primary_minimum_time=2440000.00000 * u.d,
             phase_shift=0.0,
-            distance=162 * u.pc,
+            distance=162 * u.pc
         )
 
     It can also be initialized by using the
@@ -220,6 +234,7 @@ class BinarySystem(System):
     STAR_OPTIONAL_KWARGS = ("metallicity", "gravity_darkening", "albedo")
     STAR_ALL_KWARGS = STAR_MANDATORY_KWARGS + STAR_OPTIONAL_KWARGS
 
+    @suspend_tracking_during_initialization
     def __init__(self, primary: Star, secondary: Star, name: str | None = None, **kwargs: Any) -> None:
         """Initialize the binary system.
 
@@ -252,7 +267,7 @@ class BinarySystem(System):
 
         self.primary = primary
         self.secondary = secondary
-        self._components: dict[str, Star] = {"primary": self.primary, "secondary": self.secondary}
+        self._components = {"primary": self.primary, "secondary": self.secondary}
 
         self.orbit: Orbit | None = None
         self.period: Float = np.nan
@@ -432,7 +447,7 @@ class BinarySystem(System):
             bsutils.validate_binary_json(data_cp)
 
         kind_of = _kind_of or bsutils.resolve_json_kind(data_cp)
-        if kind_of == "community":
+        if kind_of == BinarySystemKind.COMMUNITY:
             data_cp = bsutils.transform_json_community_to_std(data_cp)
 
         primary = Star(**data_cp["primary"])
@@ -460,6 +475,8 @@ class BinarySystem(System):
         :return: Binary system created from fit results.
         :rtype: BinarySystem
         """
+        from elisa.analytics.models.serializers import DEFAULT_GAMMA, DEFAULT_SYNCHRONICITY  # noqa: PLC0415
+
         # Filter out None extra parameters upfront to avoid redundant checks in inner loop
         filtered_extras = {
             k: v
@@ -488,6 +505,10 @@ class BinarySystem(System):
                 if key in extra_dict:
                     data[key][extra_param] = extra_dict[key]
 
+        data.get("system", {}).setdefault("gamma", DEFAULT_GAMMA)
+        for component in ("primary", "secondary"):
+            data.get(component, {}).setdefault("synchronicity", DEFAULT_SYNCHRONICITY)
+
         return cls.from_json(data=data)
 
     def build_container(
@@ -500,7 +521,9 @@ class BinarySystem(System):
         """Build an :class:`OrbitalPositionContainer` at a given phase or time.
 
         The method returns a fully built model binary system at user-defined
-        photometric phase or time of observation.
+        photometric phase or time of observation. Eccentric snapshots use
+        volume-corrected instantaneous potentials; stored reference potentials
+        remain unchanged.
 
         :param phase: Photometric phase.
         :type phase: Float | None
@@ -510,14 +533,14 @@ class BinarySystem(System):
         :type build_pulsations: bool
         :return: Fully built orbital-position container.
         :rtype: OrbitalPositionContainer
-        :raises ValueError: If both ``phase`` and ``time`` are supplied.
+        :raises ElisaOperationInputError: If both ``phase`` and ``time`` are supplied.
         """
         if phase is not None and time is not None:
             message = (
                 "Please specify whether you want to build your container either at given "
                 "photometric `phase` or at given `time`."
             )
-            raise ValueError(message)
+            raise_elisa_operation_input_error(message)
 
         resolved_phase = phase if time is None else utils.jd_to_phase(time, period=self.period, t0=self.t0)
         position = self.calculate_orbital_motion(
@@ -526,6 +549,7 @@ class BinarySystem(System):
             calculate_from="phase",
         )[0]
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self, position)
+        self._set_container_phase_geometry(orbital_position_container, position, resolved_phase)
         orbital_position_container.build(build_pulsations=build_pulsations)
 
         logger.info(
@@ -534,6 +558,25 @@ class BinarySystem(System):
         )
         return orbital_position_container
 
+    def _set_container_phase_geometry(
+        self, container: OrbitalPositionContainer, position: Position, phase: Float,
+    ) -> None:
+        """Set volume-corrected eccentric potentials and phase-specific spots.
+
+        Potentials preserve periastron reference volumes; spot longitudes track
+        stellar rotation and orbital libration without changing reference inputs.
+        """
+        if self.eccentricity > 0:
+            potentials = self.correct_potentials(phases=[phase])
+            container.set_on_position_params(position, potentials["primary"][0], potentials["secondary"][0])
+        spots_longitudes = dynamic.calculate_spot_longitudes(self, phase, component="all")
+        dynamic.assign_spot_longitudes(container, spots_longitudes, index=None, component="all")
+
+    def reinitialization_kwargs(self) -> dict[str, Any]:
+        """Return current explicit system parameters in constructor units."""
+        return self._explicit_kwargs(self.kwargs_serializer())
+
+    @preserve_explicit_inputs_during_reinitialization
     def init(self) -> None:
         """Reinitialize the system after changing binary-system parameters.
 
@@ -543,10 +586,17 @@ class BinarySystem(System):
         :return: ``None``.
         :rtype: None
         """
+        self.object_params_validity_check(
+            {
+                BinaryComponent.PRIMARY: self.primary,
+                BinaryComponent.SECONDARY: self.secondary,
+            },
+            self.STAR_MANDATORY_KWARGS,
+        )
         for component in settings.BINARY_COUNTERPARTS:
             getattr(self, component).init()
 
-        self.__init__(primary=self.primary, secondary=self.secondary, **self.kwargs_serializer())
+        self.__init__(primary=self.primary, secondary=self.secondary, **self.reinitialization_kwargs())
 
     @property
     def components(self) -> dict[str, Star]:
@@ -643,16 +693,31 @@ class BinarySystem(System):
             if ((1 > self.secondary.filling_factor > 0) or (1 > self.primary.filling_factor > 0)) and abs(
                 self.primary.filling_factor - self.secondary.filling_factor,
             ) > precs:
-                message = "Detected over-contact binary system, but potentials of components are not the same."
-                raise MorphologyError(message)
+                message = (
+                    "Detected over-contact binary system, but potentials of components are not the same.\n"
+                    f"  primary: surface_potential={self.primary.surface_potential:.12g}, "
+                    f"filling_factor={self.primary.filling_factor:.12g}\n"
+                    f"  secondary: surface_potential={self.secondary.surface_potential:.12g}, "
+                    f"filling_factor={self.secondary.filling_factor:.12g}\n"
+                    "Filling-factor difference="
+                    f"{abs(self.primary.filling_factor - self.secondary.filling_factor):.12g} "
+                    f"exceeds tolerance={precs:g}\n"
+                    f"  inner_potential={lp[1]:.12g}, outer_potential={lp[2]:.12g}"
+                )
+                raise_elisa_morphology_error(message)
 
             if self.primary.filling_factor > 1 or self.secondary.filling_factor > 1:
                 message = (
-                    "Non-Physical system: primary_filling_factor or secondary_filling_factor is greater than 1. "
+                    "Non-Physical system: primary_filling_factor or secondary_filling_factor is greater than 1.\n"
+                    f"  primary: surface_potential={self.primary.surface_potential:.12g}, "
+                    f"filling_factor={self.primary.filling_factor:.12g}\n"
+                    f"  secondary: surface_potential={self.secondary.surface_potential:.12g}, "
+                    f"filling_factor={self.secondary.filling_factor:.12g}\n"
+                    f"  inner_potential={lp[1]:.12g}, outer_potential={lp[2]:.12g}\n"
                     "Filling factor is obtained as following: "
                     "(Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter})."
                 )
-                raise MorphologyError(message)
+                raise_elisa_morphology_error(message)
 
             if (
                 (abs(self.primary.filling_factor) < precs and self.secondary.filling_factor < 0)
@@ -666,7 +731,7 @@ class BinarySystem(System):
                 morphology = "over-contact"
             elif self.primary.filling_factor > 1 or self.secondary.filling_factor > 1:
                 message = "Non-Physical system: potential of components is too low."
-                raise MorphologyError(message)
+                raise_elisa_morphology_error(message)
         else:
             self.primary.filling_factor = None
             self.secondary.filling_factor = None
@@ -690,11 +755,32 @@ class BinarySystem(System):
             ):
                 morphology = "detached"
             else:
-                message = "Non-Physical system. Change stellar parameters."
-                raise MorphologyError(message)
+                component_details = "\n".join(
+                    f"  {name}:\n"
+                    f"    surface_potential: {star.surface_potential:.12g}\n"
+                    f"    critical_surface_potential: {star.critical_surface_potential:.12g}\n"
+                    f"    difference: {star.surface_potential - star.critical_surface_potential:.12g}\n"
+                    f"    above_critical: {star.surface_potential > star.critical_surface_potential}\n"
+                    f"    at_critical: {abs(star.surface_potential - star.critical_surface_potential) < precs}"
+                    for name, star in (("primary", self.primary), ("secondary", self.secondary))
+                )
+                message = (
+                    "Non-Physical system: eccentric/asynchronous morphology conditions failed.\n"
+                    "Required for each component:\n"
+                    "  surface_potential > critical_surface_potential, or\n"
+                    f"  abs(surface_potential - critical_surface_potential) < {precs:g}\n"
+                    "Critical potentials are evaluated at periastron.\n"
+                    f"{component_details}\n"
+                    "System:\n"
+                    f"  eccentricity: {self.eccentricity:.12g}\n"
+                    f"  primary_synchronicity: {self.primary.synchronicity:.12g}\n"
+                    f"  secondary_synchronicity: {self.secondary.synchronicity:.12g}"
+                )
+                raise_elisa_morphology_error(message)
 
         return morphology
 
+    @suspend_tracking_during_initialization
     def setup_discretisation_factor(self) -> None:  # noqa: C901
         """Adjust discretization factors of both components to similar sizes.
 
@@ -720,8 +806,8 @@ class BinarySystem(System):
         ref: Star | None = None
 
         if (
-            self.primary.kwargs.get("discretization_factor") is None
-            and self.secondary.kwargs.get("discretization_factor") is None
+            not parameter_is_explicit(self.primary, "discretization_factor")
+            and not parameter_is_explicit(self.secondary, "discretization_factor")
         ):
             cond_a = self.secondary.equivalent_radius * self.secondary.t_eff**2
             cond_b = self.primary.equivalent_radius * self.primary.t_eff**2
@@ -733,11 +819,11 @@ class BinarySystem(System):
                 adj = self.primary
                 ref = self.secondary
                 adj_comp = "primary"
-        elif self.secondary.kwargs.get("discretization_factor") is None:
+        elif not parameter_is_explicit(self.secondary, "discretization_factor"):
             adj = self.secondary
             ref = self.primary
             adj_comp = "secondary"
-        elif self.primary.kwargs.get("discretization_factor") is None:
+        elif not parameter_is_explicit(self.primary, "discretization_factor"):
             adj = self.primary
             ref = self.secondary
             adj_comp = "primary"
@@ -761,7 +847,7 @@ class BinarySystem(System):
             instance = getattr(self, component)
             if instance.has_spots():
                 for spot in instance.spots.values():
-                    if not spot.kwargs.get("discretization_factor"):
+                    if not parameter_is_explicit(spot, "discretization_factor"):
                         spot.discretization_factor = instance.discretization_factor
 
     def transform_input(self, **kwargs: Any) -> dict[str, Any]:
@@ -782,11 +868,17 @@ class BinarySystem(System):
 
         :return: ``None``.
         :rtype: None
+        :raises ElisaUnexpectedError: If the component mapping violates the binary-system contract.
         """
+        # BinarySystem construction must establish primary/secondary components.
+        # Candidate parameter changes cannot introduce another component name.
         for component, instance in self.components.items():
-            if component not in ("primary", "secondary"):
-                message = f"Invalid component name: {component}"
-                raise ValueError(message)
+            if component not in (BinaryComponent.PRIMARY, BinaryComponent.SECONDARY):
+                message = (
+                    f"BinarySystem contains an unexpected component {component!r}; "
+                    "expected 'primary' or 'secondary'."
+                )
+                raise_elisa_unexpected_error(message)
 
             critical_potential = self.critical_potential(
                 component=component,
@@ -814,7 +906,11 @@ class BinarySystem(System):
         mass_ratio: Float,
         synchronicity: Float,
     ) -> Float:
-        """Calculate critical potential for a binary-system component.
+        """Calculate the generalized inner critical potential of one component.
+
+        Uses that component's synchronicity and instantaneous separation in
+        its own local Roche coordinates, including the secondary zero point.
+        For eccentric binaries the caller supplies the periastron separation.
 
         :param component: Target component, either ``primary`` or ``secondary``.
         :type component: Literal["primary", "secondary"]
@@ -826,34 +922,50 @@ class BinarySystem(System):
         :type synchronicity: Float
         :return: Critical potential.
         :rtype: Float
-        :raises ValueError: If the solver fails or ``component`` is invalid.
+        :raises ElisaUnexpectedError: If the internal component selector is invalid.
+        :raises ElisaNumericError: If the solver returns a nonfinite solution.
+        :raises ElisaMaxIterationError: If the solver does not converge.
         """
-        args1 = (synchronicity, mass_ratio, components_distance)
-        args2 = (*args1, 0.0, const.HALF_PI)
-        solver_message = (
-            "Iteration process to solve critical potential seems to lead nowhere "
-            "(critical potential solver has failed)."
+        # Caller-selected component identity cannot change with candidate values.
+        if component not in (BinaryComponent.PRIMARY, BinaryComponent.SECONDARY):
+            message = (
+                f"Critical potential received an unexpected component {component!r}; expected primary or secondary."
+            )
+            raise_elisa_unexpected_error(message)
+
+        inputs = (synchronicity, mass_ratio, components_distance)
+        finite_inputs = all(np.isfinite(value) for value in inputs)
+        positive_geometry = mass_ratio > 0 and components_distance > 0
+        if not finite_inputs or not positive_geometry:
+            message = "Critical potential requires finite inputs and positive mass ratio and separation."
+            raise_elisa_numeric_error(message)
+
+        # Each ray starts at its own star and points toward the companion.
+        # The secondary convention swaps gravity coefficients and shifts Omega's zero point.
+        if component == BinaryComponent.PRIMARY:
+            own_gravity, companion_gravity = 1.0, mass_ratio
+            potential_offset = 0.0
+        else:
+            own_gravity, companion_gravity = mass_ratio, 1.0
+            potential_offset = (1 - mass_ratio) / 2
+
+        ray = RocheRay(
+            a=own_gravity,
+            b=companion_gravity,
+            d=components_distance,
+            c=1.0,  # Forward direction along the line joining the stellar centres.
+            rotation=synchronicity**2 * (1 + mass_ratio) / 2,
+            offset=potential_offset,
+            transverse_squared=0.0,
         )
-        solver_err = ValueError(solver_message)
 
-        if component == "primary":
-            solution = optimize.newton(model.primary_potential_derivative_x, x0=1e-6, args=args1, tol=1e-12)
-            if not up.isnan(solution):
-                precalc_args = model.pre_calculate_for_potential_value_primary(*args2)
-                args = (mass_ratio, *precalc_args)
-                return abs(model.potential_value_primary(solution, *args))
-            raise solver_err
-
-        if component == "secondary":
-            solution = optimize.newton(model.secondary_potential_derivative_x, x0=1e-6, args=args1, tol=1e-12)
-            if not up.isnan(solution):
-                precalc_args = model.pre_calculate_for_potential_value_secondary(*args2)
-                args = (mass_ratio, *precalc_args)
-                return abs(model.potential_value_secondary(components_distance - solution, *args))
-            raise solver_err
-
-        message = "Parameter `component` has incorrect value. Use `primary` or `secondary`."
-        raise ValueError(message)
+        # The forward ray is strictly convex between the two stellar centres.
+        # Bracket its unique stationary minimum without the surface-radius ceiling.
+        stationary_radius = bracket_root(ray.derivative, 0.0, components_distance)
+        potential = ray.potential(stationary_radius)
+        if not np.isfinite(potential):
+            raise_elisa_numeric_error("Critical potential solver returned a nonfinite potential.")
+        return potential
 
     def libration_potentials(self) -> list[Float]:
         """Return potentials in L3, L1, and L2 respectively.
@@ -868,6 +980,9 @@ class BinarySystem(System):
         """Return potentials in L3, L1, and L2 for supplied parameters.
 
         This is the static version of :meth:`libration_potentials`.
+        These are classical synchronous potentials in the primary convention.
+        A common critical equipotential applies to circular synchronous systems;
+        these values are not generalized eccentric/asynchronous component limits.
 
         :param periastron_distance: Periastron distance.
         :type periastron_distance: Float
@@ -886,8 +1001,9 @@ class BinarySystem(System):
             elif isinstance(radius, (list, tuple, np.ndarray)):
                 radii = list(radius)
             else:
-                message = "Incorrect value of variable `radius`."
-                raise TypeError(message)
+                # The internal Lagrange solver must return a numeric sequence.
+                message = f"Lagrange potential evaluation received an unsupported radius type: {type(radius).__name__}."
+                raise_elisa_unexpected_error(message)
 
             p_values: list[Float] = []
             for r_value in radii:
@@ -927,6 +1043,31 @@ class BinarySystem(System):
         :return: X values of libration points ``[L3, L1, L2]`` respectively.
         :rtype: list[Float]
         """
+        calculate = BinarySystem._lagrangian_points_static
+        # Exceptional inputs and caller-selected error policies retain the original
+        # arithmetic/error path, even when a normal-policy result is already cached.
+        if np.geterr() != {"divide": "warn", "over": "warn", "under": "ignore", "invalid": "warn"} or not all(
+            isinstance(value, (float, int, np.floating, np.integer))
+            and (isinstance(value, int) or np.isfinite(value))
+            and value > 0
+            for value in (periastron_distance, mass_ratio)
+        ):
+            calculate = calculate.__wrapped__
+        return list(calculate(periastron_distance, mass_ratio))
+
+    @staticmethod
+    @lru_cache(maxsize=128, typed=True)
+    def _lagrangian_points_static(periastron_distance: Float, mass_ratio: Float) -> tuple[Float, ...]:  # noqa: C901
+        """Cache immutable collinear roots; clear this cache before solver patching."""
+        # Python integers beyond NumPy's native integer range otherwise promote
+        # the callback result to object dtype, which MINPACK cannot consume.
+        try:
+            periastron_distance, mass_ratio = (
+                float(value) if isinstance(value, (int, np.integer)) else value
+                for value in (periastron_distance, mass_ratio)
+            )
+        except OverflowError as exc:
+            raise_elisa_numeric_error("Lagrange solver input exceeds floating-point range.", exc)
 
         def _potential_dx(x: Float, distance: Float) -> Float:
             """Evaluate derivative of the general potential along the x-axis.
@@ -956,13 +1097,13 @@ class BinarySystem(System):
         round_to = 10
         unique_points: list[Float] = []
         lagrange: list[Float] = []
+        converged = False
 
         for x_val in xs:
             try:
-                old_settings = np.seterr(divide="raise", invalid="raise")
-                _potential_dx(round(x_val, round_to), periastron_distance)
-                np.seterr(**old_settings)
-            except Exception as exc:  # noqa: BLE001
+                with np.errstate(divide="raise", invalid="raise"):
+                    _potential_dx(round(x_val, round_to), periastron_distance)
+            except (FloatingPointError, ZeroDivisionError) as exc:
                 logger.debug("invalid value passed to potential, exception: %s", str(exc))
                 continue
 
@@ -975,12 +1116,13 @@ class BinarySystem(System):
                     xtol=1e-12,
                 )
                 if ier == 1:
+                    converged = True
                     rounded_solution = round(solution[0], 5)
                     if rounded_solution not in unique_points:
                         try:
                             value_dx = abs(round(_potential_dx(solution[0], periastron_distance), 4))
                             use_solution = value_dx == 0
-                        except Exception as exc:  # noqa: BLE001
+                        except (FloatingPointError, ZeroDivisionError) as exc:
                             logger.debug("skipping solution for x: %s due to exception: %s", x_val, str(exc))
                             use_solution = False
 
@@ -989,11 +1131,16 @@ class BinarySystem(System):
                             lagrange.append(solution[0])
                             if len(lagrange) == NUM_LAGRANGE_POINTS - 2:
                                 break
-            except Exception as exc:  # noqa: BLE001
+            except (FloatingPointError, ZeroDivisionError) as exc:
                 logger.debug("solution for x: %s lead to nowhere, exception: %s", x_val, str(exc))
                 continue
 
-        return sorted(lagrange) if mass_ratio < 1.0 else sorted(lagrange, reverse=True)
+        if len(lagrange) != NUM_LAGRANGE_POINTS - 2:
+            if converged:
+                raise_elisa_numeric_error("Lagrange solver could not resolve three distinct validated roots.")
+            message = "Lagrange solver could not find all required collinear points."
+            raise_elisa_max_iteration_error(message)
+        return tuple(sorted(lagrange) if mass_ratio < 1.0 else sorted(lagrange, reverse=True))
 
     def compute_equipotential_boundary(  # noqa: C901, PLR0912
         self,
@@ -1012,7 +1159,7 @@ class BinarySystem(System):
         :return: Tuple ``(points_primary, points_secondary)`` with 2-D Cartesian
             coordinates.
         :rtype: tuple[NDArray[numpy.float64], NDArray[numpy.float64]]
-        :raises ValueError: If ``plane`` is invalid.
+        :raises ElisaOperationInputError: If ``plane`` is invalid.
         """
         components = ["primary", "secondary"]
         points_primary: list[list[Float]] = []
@@ -1036,7 +1183,7 @@ class BinarySystem(System):
                     args = (synchronicity, self.mass_ratio, components_distance, 0.0, angle)
                 else:
                     message = "Invalid choice of crossection plane, use only: `xy`, `yz`, `zx`."
-                    raise ValueError(message)
+                    raise_elisa_operation_input_error(message)
 
                 scipy_solver_init_value = np.array([components_distance / 10000.0])
                 aux_args = (self.mass_ratio, *fn_map[component][1](*args))
@@ -1194,6 +1341,7 @@ class BinarySystem(System):
                 narrowed_component = cast("ComponentSelection", component)
                 instance.equivalent_radius = self.calculate_equivalent_radius(narrowed_component)[component]
 
+    @suspend_tracking_during_initialization
     def setup_albedos(self) -> None:
         """Set up default component albedos.
 
@@ -1237,7 +1385,9 @@ class BinarySystem(System):
         """Correct potentials so that component volume is conserved.
 
         The function calculates potential for each phase or distance in a way
-        that conserves the volume of the component.
+        that conserves the volume of the component. The input surface potential
+        defines the reference surface at periastron and is returned unchanged
+        at that distance.
 
         :param phases: Orbital phases. Ignored when ``distances`` is supplied.
         :type phases: NDArray | None
@@ -1251,13 +1401,13 @@ class BinarySystem(System):
         :type distances: NDArray | None
         :return: Corrected potentials for requested components.
         :rtype: dict[str, NDArray[numpy.float64]]
-        :raises ValueError: If neither ``phases`` nor ``distances`` is
+        :raises ElisaOperationInputError: If neither ``phases`` nor ``distances`` is
             supplied.
         """
         if distances is None:
             if phases is None:
-                message = "Either `phases` or component `distances` have to be supplied."
-                raise ValueError(message)
+                message = "Potential correction requires either orbital phases or component distances."
+                raise_elisa_operation_input_error(message)
             data = self.orbit.orbital_motion(phases)
             distances_array = np.asarray(data[:, 0], dtype=FLOAT)
         else:
@@ -1266,34 +1416,42 @@ class BinarySystem(System):
         component_ = cast("ComponentSelection", component)
         components = bsutils.component_to_list(component_)
         potentials: dict[str, NDArray[np.float64]] = {}
+        reference_distance = self.orbit.periastron_distance
+        non_reference = distances_array != reference_distance
 
         for component_name in components:
             star = getattr(self, component_name)
-            new_potentials = star.surface_potential * np.ones(distances_array.shape, dtype=FLOAT)
+            corrected = np.full(distances_array.shape, star.surface_potential, dtype=FLOAT)
+            if not np.any(non_reference):
+                potentials[component_name] = corrected
+                continue
+
+            active_distances = distances_array[non_reference]
+            new_potentials = np.full(active_distances.shape, star.surface_potential, dtype=FLOAT)
 
             points_equator, points_meridian = self.generate_equator_and_meridian_points(
-                components_distance=1.0,
+                components_distance=self.orbit.periastron_distance,
                 component=component_name,
                 surface_potential=star.surface_potential,
             )
             reference_volume = utils.calculate_volume_ellipse_approx(points_equator, points_meridian)
             equiv_r_mean = utils.calculate_equiv_radius(reference_volume)
 
-            side_radii = np.empty(distances_array.shape, dtype=FLOAT)
-            volume = np.empty(distances_array.shape, dtype=FLOAT)
+            side_radii = np.empty(active_distances.shape, dtype=FLOAT)
+            volume = np.empty(active_distances.shape, dtype=FLOAT)
             for _ in range(iterations):
                 for idx, _potential in enumerate(new_potentials):
                     radii_args = (
                         star.synchronicity,
                         self.mass_ratio,
-                        distances_array[idx],
+                        active_distances[idx],
                         _potential,
                         component_name,
                     )
                     side_radii[idx] = bsradius.calculate_side_radius(*radii_args)
 
                     points_equator, points_meridian = self.generate_equator_and_meridian_points(
-                        components_distance=distances_array[idx],
+                        components_distance=active_distances[idx],
                         component=component_name,
                         surface_potential=_potential,
                     )
@@ -1310,16 +1468,17 @@ class BinarySystem(System):
                             corrected_side_radii[idx],
                             const.HALF_PI,
                             const.HALF_PI,
-                            distances_array[idx],
+                            active_distances[idx],
                             self.mass_ratio,
                             star.synchronicity,
                         )
-                        for idx in range(len(distances_array))
+                        for idx in range(len(active_distances))
                     ],
                     dtype=FLOAT,
                 )
 
-            potentials[component_name] = np.asarray(new_potentials, dtype=FLOAT)
+            corrected[non_reference] = new_potentials
+            potentials[component_name] = corrected
 
         return potentials
 
@@ -1327,7 +1486,8 @@ class BinarySystem(System):
         """Return equivalent radius of the given component or components.
 
         Equivalent radius is the radius of the sphere with the same volume as
-        the given component.
+        the given component. The reference volume is defined by the input
+        surface potential at periastron.
 
         :param component: Target component, ``primary``, ``secondary``, or
             ``all``.
@@ -1340,7 +1500,7 @@ class BinarySystem(System):
         for component_name in components:
             star = getattr(self, component_name)
             points_equator, points_meridian = self.generate_equator_and_meridian_points(
-                components_distance=1.0,
+                components_distance=self.orbit.periastron_distance,
                 component=component_name,
                 surface_potential=star.surface_potential,
             )
@@ -1394,6 +1554,7 @@ class BinarySystem(System):
         :type surface_potential: Float
         :return: Tuple ``(equator_points, meridian_points)``.
         :rtype: tuple[NDArray[numpy.float64], NDArray[numpy.float64]]
+        :raises ElisaUnexpectedError: If the established morphology has no supported contour geometry.
         """
         x: NDArray[np.float64]
 
@@ -1409,7 +1570,7 @@ class BinarySystem(System):
         )
         backward_radius = bsradius.calculate_backward_radius(*rad_args)
 
-        if self.morphology == "detached":
+        if self.morphology == BinaryMorphology.DETACHED:
             num = int(const.PI // discretization_factor)
             theta = np.linspace(
                 discretization_factor,
@@ -1421,7 +1582,7 @@ class BinarySystem(System):
             a = 0.5 * (forward_radius + backward_radius)
             c = forward_radius - a
             x = a * up.cos(theta) + c
-        elif self.morphology == "over-contact":
+        elif self.morphology == BinaryMorphology.OVER_CONTACT:
             num = int(const.HALF_PI // discretization_factor)
             theta = np.linspace(
                 const.HALF_PI + discretization_factor,
@@ -1431,7 +1592,7 @@ class BinarySystem(System):
             )
             forward_radius = (
                 mesh.calculate_neck_position(self, return_polynomial=False)
-                if component == "primary"
+                if component == BinaryComponent.PRIMARY
                 else 1 - mesh.calculate_neck_position(self, return_polynomial=False)
             )
             a = 0.5 * (forward_radius + backward_radius)
@@ -1439,7 +1600,7 @@ class BinarySystem(System):
             x_back = a * up.cos(theta) + c
             x_front = np.linspace(forward_radius, c, num=num + 1, endpoint=True)
             x = np.concatenate((x_front, x_back))
-        elif self.morphology in ["semi-detached", "double-contact"]:
+        elif self.morphology in (BinaryMorphology.SEMI_DETACHED, BinaryMorphology.DOUBLE_CONTACT):
             num = int(const.HALF_PI // discretization_factor)
             theta = np.linspace(
                 const.HALF_PI + discretization_factor,
@@ -1454,8 +1615,10 @@ class BinarySystem(System):
             x_back = a * up.cos(theta) + c
             x = np.concatenate((x_front, x_back))
         else:
-            message = f"Unsupported morphology `{self.morphology}`."
-            raise ValueError(message)
+            # System construction establishes a supported morphology before
+            # contour generation; invalid physical candidates must fail there.
+            message = f"Contour generation received an unexpected binary morphology {self.morphology!r}."
+            raise_elisa_unexpected_error(message)
 
         fn_cylindrical = getattr(model, f"potential_{component}_cylindrical_fn")
         precal_cylindrical = getattr(model, f"pre_calculate_for_potential_value_{component}_cylindrical")
@@ -1506,7 +1669,7 @@ class BinarySystem(System):
         :return: Generated light curve data by passband.
         :rtype: dict[str, NDArray[numpy.float64]]
         """
-        curve_fn = c_router.resolve_curve_method(self, curve="lc")
+        curve_fn = c_router.resolve_curve_method(self, curve=CurveType.LC)
         return curve_fn(**kwargs)
 
     def _compute_circular_synchronous_lightcurve(self, **kwargs: Any) -> dict[str, NDArray[np.float64]]:
@@ -1537,21 +1700,22 @@ class BinarySystem(System):
         :type kwargs: Any
         :return: Radial-velocity curves for primary and secondary component.
         :rtype: dict[str, NDArray[numpy.float64]]
-        :raises ValueError: If ``method`` is unknown.
+        :raises ElisaUnexpectedError: If the fixed RV method selector is unknown.
         """
-        if kwargs["method"] == "kinematic":
+        method: RVMethod | str = kwargs["method"]
+        if method == RVMethod.KINEMATIC:
             return rv.kinematic_radial_velocity(self, **kwargs)
 
-        if kwargs["method"] == "radiometric":
-            curve_fn = c_router.resolve_curve_method(self, curve="rv")
+        if method == RVMethod.RADIOMETRIC:
+            curve_fn = c_router.resolve_curve_method(self, curve=CurveType.RV)
             rv_kwargs = rv_utils.include_passband_data_to_kwargs(**kwargs)
             return curve_fn(**rv_kwargs)
 
-        message = (
-            f"Unknown RV computing method `{kwargs['method']}`.\n"
-            "List of available methods: [`kinematic`, `radiometric`]."
-        )
-        raise ValueError(message)
+        # The observer/settings choose this fixed dispatch mode before model
+        # evaluation; candidate parameters cannot change it during fitting.
+        supported = ", ".join(repr(item.value) for item in RVMethod)
+        message = f"Unexpected RV computation method {method!r}; expected one of: {supported}."
+        return raise_elisa_unexpected_error(message)
 
     def _compute_circular_synchronous_rv_curve(self, **kwargs: Any) -> dict[str, NDArray[np.float64]]:
         return rv.compute_circular_synchronous_rv_curve(self, **kwargs)

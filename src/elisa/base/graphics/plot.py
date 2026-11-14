@@ -2,24 +2,108 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, cast
 
 import numpy as np
 
 from elisa import const, settings, units, utils
+from elisa.base.error import raise_elisa_graphics_error
 from elisa.ld import limb_darkening_factor
 from elisa.pulse import container_ops
 from elisa.pulse import utils as putils
 from elisa.utils import transform_values
 
 if TYPE_CHECKING:
-    from matplotlib.colors import Colormap
     from numpy.typing import NDArray
 
     from elisa.base.container import StarContainer
+    from elisa.binary_system.container import OrbitalPositionContainer
     from elisa.const import Position
+    from elisa.single_system.container import SinglePositionContainer
     from elisa.types import AstropyUnit as Unit
     from elisa.types import Float
+
+
+def animation_phases(start_phase: Float, stop_phase: Float, phase_step: Float) -> NDArray:
+    """Sample unwrapped phases at a fixed step, including an on-grid stop."""
+    start_phase, stop_phase, phase_step = map(float, (start_phase, stop_phase, phase_step))
+    if not np.isfinite([start_phase, stop_phase, phase_step]).all():
+        raise_elisa_graphics_error("Animation phase bounds and phase_step must be finite.")
+    if phase_step <= 0:
+        raise_elisa_graphics_error("Animation phase_step must be positive.")
+    if stop_phase < start_phase:
+        raise_elisa_graphics_error(f"Starting phase {start_phase} is greater than stop phase {stop_phase}")
+
+    step_count = (stop_phase - start_phase) / phase_step
+    if not np.isfinite(step_count):
+        raise_elisa_graphics_error("Animation phase range and step produce a non-finite frame count.")
+
+    # Four ULPs cover rounding in the interval count, independent of absolute phase.
+    tolerance = 4 * float(np.spacing(step_count))
+    nearest_step = round(step_count)
+    stop_is_on_grid = (
+        abs(step_count - nearest_step) <= tolerance
+        or start_phase + nearest_step * phase_step == stop_phase
+    )
+    last_step = nearest_step if stop_is_on_grid else int(np.floor(step_count))
+    phases = start_phase + np.arange(last_step + 1) * phase_step
+    if stop_is_on_grid:
+        phases[-1] = stop_phase
+    if np.any(phases[1:] <= phases[:-1]):
+        raise_elisa_graphics_error(
+            "Animation phase_step is too small to produce "
+            "distinct float64 phases over the requested range.",
+        )
+    return phases
+
+
+def build_surface_with_temperature_reference(
+    container: SinglePositionContainer | OrbitalPositionContainer,
+    colormap: str | None,
+    *,
+    subtract_equilibrium: bool = False,
+    components_distance: float | None = None,
+    component: Literal["all", "both"] = "all",
+) -> dict[str, NDArray]:
+    """Build a graphics surface and return plot-local equilibrium temperatures.
+
+    References are keyed by ``star`` or by ``primary`` and ``secondary``.
+    Only temperature subtraction splits the build, at the boundary after
+    equilibrium synthesis (including reflection) and flattening. Copies survive
+    the in-place pulsations update and belong solely to this plot or frame.
+
+    Binary graphics build both stars using the recognized ``component`` selector;
+    ``all`` and ``both`` are existing aliases. Single-star phase and time are
+    already established on the container before this operation.
+    """
+    from elisa.binary_system.container import OrbitalPositionContainer  # noqa: PLC0415
+
+    # Preserve the ordinary build for every diagnostic that needs no temperature reference.
+    capture = colormap == "temperature" and subtract_equilibrium
+    if isinstance(container, OrbitalPositionContainer):
+        container.build(
+            components_distance=components_distance, component=component, build_pulsations=not capture,
+        )
+        if not capture:
+            return {}
+        # Both components must finish reflection before copying their flattened temperatures.
+        references = {
+            name: getattr(container, name).temperatures.copy()
+            for name in ("primary", "secondary")
+        }
+        # Use the same distance and component selection as the equilibrium build.
+        container.build_pulsations(components_distance=components_distance, component=component)
+    else:
+        container.build(build_pulsations=not capture)
+        if not capture:
+            return {}
+        # Independent storage is required because incorporation adds temperatures in place.
+        # A successful build has populated temperatures; the container annotation
+        # also allows None for its earlier, unbuilt state.
+        # noinspection PyUnnecessaryCast
+        references = {"star": cast("NDArray", container.star.temperatures).copy()}
+        container.build_pulsations()
+    return references
 
 
 def add_colormap_to_plt_kwargs(*args, **kwargs) -> NDArray | None:
@@ -43,17 +127,16 @@ def add_colormap_to_plt_kwargs(*args, **kwargs) -> NDArray | None:
     - **inclination** (:class:`float`) - Inclination of the system.
     - **position** (:class:`elisa.const.Position`) - Position object.
 
-    :param kwargs: Keyword arguments for colormap computation
-    :type kwargs: dict
+    :param kwargs: Colormap options. Additional keyword arguments are accepted.
 
     **kwargs options:**
 
-    - **scale** (:class:`str`) - Scale type: ``'log'``, ``'logarithmic'``, or ``'linear'``.
-      Default: ``'linear'``.
-    - **unit** (:class:`astropy.units.Unit`) - Unit for the colormap values.
-      Default: ``'default'``.
-    - **subtract_equilibrium** (:class:`bool`) - If ``True``, return only perturbation
-      from equilibrium state. Default: ``False``.
+    - **scale** - Scale type: ``'log'``, ``'logarithmic'`` or ``'linear'``.
+    - **unit** - Output unit, or ``'default'`` to retain the native unit.
+    - **subtract_equilibrium** - Select the intrinsic pulsation diagnostic defined
+      by the requested colormap; this is not generally subtraction of magnitudes.
+    - **equilibrium_temperatures** - Plot-local pre-pulsation face temperatures,
+      required for temperature equilibrium subtraction.
 
     **available colormap options:**
 
@@ -62,7 +145,7 @@ def add_colormap_to_plt_kwargs(*args, **kwargs) -> NDArray | None:
     - ``'velocity'`` - Absolute values of surface element velocities relative to observer
     - ``'radial_velocity'`` - Radial component of surface velocities relative to observer
     - ``'normal_radiance'`` - Surface element radiance perpendicular to surface
-    - ``'radiance'`` - Surface element radiance in direction towards observer
+    - ``'radiance'`` - Projected directional radiance, including limb darkening and the area cosine
     - ``'radius'`` - Distance of surface elements from center of mass
     - ``'horizontal_displacement'`` - Distribution of horizontal component of surface displacement
     - ``'horizontal_acceleration'`` - Distribution of horizontal surface acceleration component
@@ -71,11 +154,11 @@ def add_colormap_to_plt_kwargs(*args, **kwargs) -> NDArray | None:
 
     :return: Colormap array for the requested physical parameter, or None
     :rtype: NDArray | None
-    :raises KeyError: If colormap name is not recognized
-    :raises ValueError: If ``subtract_equilibrium=True`` but star has no pulsations
+    :raises ElisaGraphicsError: If colormap name is not recognized
+    :raises ElisaGraphicsError: If ``subtract_equilibrium=True`` but star has no pulsations
     """
     star: StarContainer
-    colormap: Colormap
+    colormap: str | None
     model_scale: Float
     inclination: Float
     position: Position
@@ -99,13 +182,14 @@ def add_colormap_to_plt_kwargs(*args, **kwargs) -> NDArray | None:
     scale: str = kwargs.get("scale", "linear")
     unit = kwargs.get("unit", "default")
     subtract_equilibrium: bool = kwargs.get("subtract_equilibrium", False)
+    equilibrium_temperatures = kwargs.get("equilibrium_temperatures")
 
     if colormap is None:
         return None
 
     if colormap not in colorbar_fn:
         error_msg: str = f"Unknown `colormap` argument {colormap}. Options: {list(colorbar_fn.keys())}"
-        raise KeyError(error_msg)
+        raise_elisa_graphics_error(error_msg)
 
     if subtract_equilibrium and not star.has_pulsations():
         error_msg = (
@@ -113,7 +197,7 @@ def add_colormap_to_plt_kwargs(*args, **kwargs) -> NDArray | None:
             "`subtract_equilibrium=True` but the surface of the star "
             "does not oscillate."
         )
-        raise ValueError(error_msg)
+        raise_elisa_graphics_error(error_msg)
 
     args_colormap: tuple = (
         scale,
@@ -123,7 +207,11 @@ def add_colormap_to_plt_kwargs(*args, **kwargs) -> NDArray | None:
         inclination,
         position,
     )
-    retval: NDArray | None = colorbar_fn[colormap](star, *args_colormap)
+    # Only the temperature diagnostic consumes the caller-owned equilibrium snapshot.
+    diagnostic_kwargs = (
+        {"equilibrium_temperatures": equilibrium_temperatures} if colormap == "temperature" else {}
+    )
+    retval: NDArray | None = colorbar_fn[colormap](star, *args_colormap, **diagnostic_kwargs)
 
     return retval
 
@@ -144,10 +232,12 @@ def r_cmap(star: StarContainer, *args) -> NDArray:
 
     - **scale** (:class:`str`) - Scale type: ``'log'``, ``'logarithmic'``, or ``'linear'``
     - **unit** - Unit for the colormap values
-    - **subtract_equilibrium** (:class:`bool`) - Include pulsation perturbations
+    - **subtract_equilibrium** (:class:`bool`) - Use equilibrium radial displacement projection when True
     - **model_scale** (:class:`float`) - Scale factor for the system
 
-    :return: Radius values at surface face centers
+    :return: Mean vertex radii per face, or mean radial displacement projections
+             when subtract_equilibrium is True. The latter uses physical vectors,
+             not finite spherical radius differences.
     :rtype: NDArray
     """
     scale: str
@@ -161,14 +251,10 @@ def r_cmap(star: StarContainer, *args) -> NDArray:
         points: NDArray = star.points - star.com[None, :]
         value: NDArray = utils.cartesian_to_spherical(points)[:, 0]
     else:
-        pargs: tuple = (star, 0.0)
-        kwargs = {
-            "update_container": True,
-            "return_perturbation": False,
-            "spherical_perturbation": False,
-        }
-        perturbation: NDArray = container_ops.position_perturbation(*pargs, **kwargs)
-        value = perturbation[:, 0]
+        perturbation = container_ops.position_perturbation(
+            star, update_container=False, return_perturbation=True,
+        )
+        value = putils.spherical_vector_components(perturbation, star.points_spherical)[:, 0]
 
     value = value[star.faces].mean(axis=1) * model_scale
     unt = units.DISTANCE_UNIT if unit == "default" else unit
@@ -197,7 +283,7 @@ def horizonatal_displacement_cmap(star: StarContainer, *args) -> NDArray:
 
     :return: Horizontal displacement values at surface face centers
     :rtype: NDArray
-    :raises ValueError: If star has no pulsations
+    :raises ElisaGraphicsError: If star has no pulsations
     """
     scale: str
     unit: str
@@ -208,18 +294,17 @@ def horizonatal_displacement_cmap(star: StarContainer, *args) -> NDArray:
 
     if not subtract_equilibrium and not star.has_pulsations():
         error_msg: str = "Horizontal displacement colormap is relevant only for stars with pulsations."
-        raise ValueError(error_msg)
+        raise_elisa_graphics_error(error_msg)
 
-    pargs: tuple = (star, 0.0)
-    pkwargs: dict = {
-        "update_container": False,
-        "return_perturbation": True,
-        "spherical_perturbation": True,
-    }
-
-    perturbation: NDArray = container_ops.position_perturbation(*pargs, **pkwargs)
-
-    value: NDArray = putils.horizontal_component(perturbation, star.points_spherical)
+    # Project the linear Cartesian displacement, not finite angular increments.
+    # Average vertex tangent norms, then convert mesh lengths to physical units.
+    perturbation = container_ops.position_perturbation(
+        star,
+        update_container=False,
+        return_perturbation=True,
+    )
+    components = putils.spherical_vector_components(perturbation, star.points_spherical)
+    value: NDArray = np.linalg.norm(components[:, 1:], axis=1)
     value = value[star.faces].mean(axis=1) * model_scale
     unt = units.DISTANCE_UNIT if unit == "default" else unit
     value = transform_values(value, units.DISTANCE_UNIT, unt)
@@ -230,9 +315,9 @@ def horizonatal_displacement_cmap(star: StarContainer, *args) -> NDArray:
 def v_cmap(star: StarContainer, *args) -> NDArray:
     """Return surface element speed as a colormap.
 
-    Computes the absolute speed of surface elements in the reference frame,
-    optionally including pulsation perturbations, and returns values suitable
-    for visualization as a colormap.
+    Return total observer-frame face speed, or ``|v_p|`` for intrinsic
+    pulsational face velocity when subtraction is requested. The latter is
+    not ``|v_total| - |v_equilibrium|``.
 
     :param star: Star container with velocity data
     :type star: StarContainer
@@ -243,10 +328,11 @@ def v_cmap(star: StarContainer, *args) -> NDArray:
 
     - **scale** (:class:`str`) - Scale type: ``'log'``, ``'logarithmic'``, or ``'linear'``
     - **unit** - Unit for the colormap values
-    - **subtract_equilibrium** (:class:`bool`) - Include pulsation perturbations
+    - **subtract_equilibrium** (:class:`bool`) - Return intrinsic pulsational speed when True;
+      not a difference of total speed magnitudes
     - **model_scale** (:class:`float`) - Scale factor for the system
 
-    :return: Speed values at surface points
+    :return: Norms of face velocity vectors
     :rtype: NDArray
     """
     scale: str
@@ -260,7 +346,6 @@ def v_cmap(star: StarContainer, *args) -> NDArray:
     pkwargs: dict = {
         "update_container": False,
         "return_perturbation": True,
-        "spherical_perturbation": False,
     }
     velocities: NDArray = (
         container_ops.velocity_perturbation(*pargs, **pkwargs)
@@ -280,9 +365,9 @@ def v_rad_cmap(
 ) -> NDArray:
     """Return radial velocity as a colormap (with respect to the observer).
 
-    Computes the radial component of surface element velocities relative to
-    the observer, optionally including pulsation perturbations, and returns
-    values suitable for visualization as a colormap.
+    Return the observer x component of total face velocity, or of intrinsic
+    pulsational velocity when subtraction is requested. Positive values mean
+    recession. These are local face velocities, not disk-integrated RVs.
 
     :param star: Star container with velocity data
     :type star: StarContainer
@@ -293,12 +378,13 @@ def v_rad_cmap(
 
     - **scale** (:class:`str`) - Scale type: ``'log'``, ``'logarithmic'``, or ``'linear'``
     - **unit** - Unit for the colormap values
-    - **subtract_equilibrium** (:class:`bool`) - Include pulsation perturbations
+    - **subtract_equilibrium** (:class:`bool`) - Return the observer x component of
+      intrinsic pulsational velocity when True
     - **model_scale** (:class:`float`) - Scale factor for the system
     - **inclination** (:class:`float`) - Inclination angle
     - **position** (:class:`elisa.const.Position`) - Position object
 
-    :return: Radial velocity values at surface points
+    :return: Observer x velocities per face, positive for recession
     :rtype: NDArray
     :note: Logarithmic scale is not supported for radial velocity
     """
@@ -315,7 +401,6 @@ def v_rad_cmap(
     pkwargs: dict = {
         "update_container": False,
         "return_perturbation": True,
-        "spherical_perturbation": False,
     }
     velocities: NDArray = (
         utils.rotate_item(
@@ -332,7 +417,7 @@ def v_rad_cmap(
 
     if scale in ["log", "logarithmic"]:
         warn_msg: str = "`log` scale is not allowed for radial velocity colormap."
-        raise Warning(warn_msg)
+        raise_elisa_graphics_error(warn_msg)
 
     return value
 
@@ -355,9 +440,9 @@ def v_rad_pert_cmap(star: StarContainer, *args) -> NDArray:
     - **subtract_equilibrium** (:class:`bool`) - Not used for this colormap
     - **model_scale** (:class:`float`) - Scale factor for the system
 
-    :return: Radial velocity perturbation values at surface points
+    :return: Radial projections of face velocity perturbations in the selected units
     :rtype: NDArray
-    :raises ValueError: If star has no pulsations
+    :raises ElisaGraphicsError: If star has no pulsations
     """
     scale: str
     unit: str
@@ -368,15 +453,17 @@ def v_rad_pert_cmap(star: StarContainer, *args) -> NDArray:
 
     if not subtract_equilibrium and not star.has_pulsations():
         error_msg: str = "`v_r_perturbed` is relevant only for stars with pulsations."
-        raise ValueError(error_msg)
+        raise_elisa_graphics_error(error_msg)
 
     pargs: tuple = (star, model_scale)
     pkwargs: dict = {
         "update_container": False,
         "return_perturbation": True,
-        "spherical_perturbation": True,
     }
-    velocities: NDArray = container_ops.velocity_perturbation(*pargs, **pkwargs)[:, 0]
+    velocities = container_ops.velocity_perturbation(*pargs, **pkwargs)
+    face_centers = star.pulsation_equilibrium_points[star.faces].mean(axis=1)
+    coordinates = np.atleast_2d(utils.cartesian_to_spherical(face_centers))
+    velocities = putils.spherical_vector_components(velocities, coordinates)[:, 0]
     unt = units.m / units.s if unit == "default" else unit
     value: NDArray = transform_values(velocities, units.VELOCITY_UNIT, unt)
 
@@ -403,7 +490,7 @@ def v_horizontal_pert_cmap(star: StarContainer, *args) -> NDArray:
 
     :return: Horizontal velocity perturbation values at surface face centers
     :rtype: NDArray
-    :raises ValueError: If star has no pulsations
+    :raises ElisaGraphicsError: If star has no pulsations
     """
     scale: str
     unit: str
@@ -414,20 +501,20 @@ def v_horizontal_pert_cmap(star: StarContainer, *args) -> NDArray:
 
     if not subtract_equilibrium and not star.has_pulsations():
         error_msg: str = "`v_horizontal_perturbed` colormap is relevant only for stars with pulsations."
-        raise ValueError(error_msg)
+        raise_elisa_graphics_error(error_msg)
 
     pargs: tuple = (star, model_scale)
     pkwargs: dict = {
         "update_container": False,
         "return_perturbation": True,
-        "spherical_perturbation": True,
     }
-    velocities: NDArray = container_ops.velocity_perturbation(*pargs, **pkwargs)
-    face_centres_sph: NDArray = star.points_spherical[star.faces].mean(axis=1)
-    velocities = (
-        putils.horizontal_component(velocities, face_centres_sph, treat_poles=True)
-        * model_scale
-    )
+    # Average physical Cartesian vectors first; project in the face-center
+    # basis before taking the tangent norm, without a second mesh scaling.
+    velocities = container_ops.velocity_perturbation(*pargs, **pkwargs)
+    face_centers = star.pulsation_equilibrium_points[star.faces].mean(axis=1)
+    coordinates = np.atleast_2d(utils.cartesian_to_spherical(face_centers))
+    components = putils.spherical_vector_components(velocities, coordinates)
+    velocities = np.linalg.norm(components[:, 1:], axis=1)
     unt = units.m / units.s if unit == "default" else unit
     value: NDArray = transform_values(velocities, units.VELOCITY_UNIT, unt)
 
@@ -437,9 +524,10 @@ def v_horizontal_pert_cmap(star: StarContainer, *args) -> NDArray:
 def g_cmap(star: StarContainer, *args) -> NDArray:
     """Return gravity acceleration colormap.
 
-    Computes the surface distribution of gravitational acceleration magnitude,
-    optionally including pulsation perturbations, and returns values suitable
-    for visualization as a colormap.
+    Return the stored effective-gravity magnitude ``10**log_g``. With subtraction
+    requested, return ``mean(a_p) dot e_r`` in the equilibrium face-centre basis:
+    signed radial intrinsic acceleration, not the difference between perturbed
+    and equilibrium effective-gravity magnitudes.
 
     :param star: Star container with gravity acceleration data
     :type star: StarContainer
@@ -450,12 +538,13 @@ def g_cmap(star: StarContainer, *args) -> NDArray:
 
     - **scale** (:class:`str`) - Scale type: ``'log'``, ``'logarithmic'``, or ``'linear'``
     - **unit** - Unit for the colormap values
-    - **subtract_equilibrium** (:class:`bool`) - Include pulsation perturbations
+    - **subtract_equilibrium** (:class:`bool`) - Return signed radial intrinsic acceleration
+      when True, not a gravity-magnitude difference
     - **model_scale** (:class:`float`) - Scale factor for the system
 
-    :return: Gravity acceleration values at surface points
+    :return: Effective-gravity magnitudes, or signed radial intrinsic accelerations, per face
     :rtype: NDArray
-    :raises ValueError: If logarithmic scale is used with ``subtract_equilibrium=True``
+    :raises ElisaGraphicsError: If logarithmic scale is used with ``subtract_equilibrium=True``
     """
     scale: str
     unit: Unit
@@ -467,14 +556,16 @@ def g_cmap(star: StarContainer, *args) -> NDArray:
     if subtract_equilibrium:
         if scale in ["log", "logarithmic"]:
             error_msg: str = "Logarithmic scale is not permitted with the `subtract_equilibrium=True`."
-            raise ValueError(error_msg)
+            raise_elisa_graphics_error(error_msg)
         pargs: tuple = (star, model_scale)
         pkwargs: dict = {
             "update_container": False,
             "return_perturbation": True,
-            "spherical_perturbation": True,
         }
-        g: NDArray = container_ops.gravity_acc_perturbation(*pargs, **pkwargs)[:, 0]
+        acceleration = container_ops.gravity_acc_perturbation(*pargs, **pkwargs)
+        face_centers = star.pulsation_equilibrium_points[star.faces].mean(axis=1)
+        coordinates = np.atleast_2d(utils.cartesian_to_spherical(face_centers))
+        g: NDArray = putils.spherical_vector_components(acceleration, coordinates)[:, 0]
     else:
         log_g: NDArray = star.log_g
         g = np.power(10, log_g)
@@ -503,9 +594,9 @@ def horizontal_g_pert_cmap(star: StarContainer, *args) -> NDArray:
     - **subtract_equilibrium** (:class:`bool`) - Not used for this colormap
     - **model_scale** (:class:`float`) - Scale factor for the system
 
-    :return: Horizontal gravity acceleration perturbation values at surface points
+    :return: Horizontal intrinsic acceleration magnitudes at surface face centers
     :rtype: NDArray
-    :raises ValueError: If star has no pulsations
+    :raises ElisaGraphicsError: If star has no pulsations
     """
     scale: str
     unit: str
@@ -516,32 +607,36 @@ def horizontal_g_pert_cmap(star: StarContainer, *args) -> NDArray:
 
     if not subtract_equilibrium and not star.has_pulsations():
         error_msg: str = "`horizontal_acceleration` colormap is relevant only for stars with pulsations."
-        raise ValueError(error_msg)
+        raise_elisa_graphics_error(error_msg)
 
     pargs: tuple = (star, model_scale)
     pkwargs: dict = {
         "update_container": False,
         "return_perturbation": True,
-        "spherical_perturbation": True,
     }
-    acceleration: NDArray = container_ops.gravity_acc_perturbation(*pargs, **pkwargs)
-    face_centres_sph: NDArray = star.points_spherical[star.faces].mean(axis=1)
-    acceleration = (
-        putils.horizontal_component(acceleration, face_centres_sph, treat_poles=True)
-        * model_scale
-    )
+    # Project face vectors explicitly; the tangent norm remains in m/s**2.
+    acceleration = container_ops.gravity_acc_perturbation(*pargs, **pkwargs)
+    face_centers = star.pulsation_equilibrium_points[star.faces].mean(axis=1)
+    coordinates = np.atleast_2d(utils.cartesian_to_spherical(face_centers))
+    components = putils.spherical_vector_components(acceleration, coordinates)
+    acceleration = np.linalg.norm(components[:, 1:], axis=1)
     unt = units.ACCELERATION_UNIT if unit == "default" else unit
     value: NDArray = transform_values(acceleration, units.ACCELERATION_UNIT, unt)
 
     return to_log(value, scale)
 
 
-def t_cmap(star: StarContainer, *args) -> NDArray:
+def t_cmap(star: StarContainer, *args, equilibrium_temperatures: NDArray | None = None) -> NDArray:
     """Return temperature colormap.
 
-    Computes the surface distribution of effective temperature, optionally
-    including pulsation perturbations, and returns values suitable for
-    visualization as a colormap.
+    Return total face temperatures, or their actual difference from the
+    equilibrium face temperatures supplied by the plotting call. The caller
+    captures this local snapshot after flattening and before pulsation incorporation.
+    Direct subtraction remains defined even when the fractional perturbation is -1;
+    reconstructing equilibrium from the final temperature would lose information.
+    This diagnostic does not evaluate or apply physical perturbations again.
+
+    :param equilibrium_temperatures: Pre-pulsation face temperatures, required for subtraction.
 
     :param star: Star container with temperature data
     :type star: StarContainer
@@ -552,29 +647,28 @@ def t_cmap(star: StarContainer, *args) -> NDArray:
 
     - **scale** (:class:`str`) - Scale type: ``'log'``, ``'logarithmic'``, or ``'linear'``
     - **unit** - Unit for the colormap values
-    - **subtract_equilibrium** (:class:`bool`) - Include pulsation perturbations
+    - **subtract_equilibrium** (:class:`bool`) - Subtract equilibrium face temperatures
     - **model_scale** (:class:`float`) - Scale factor for the system
 
-    :return: Temperature values at surface points
+    :return: Temperature values on surface faces
     :rtype: NDArray
     """
     scale: str
     unit: Unit
     subtract_equilibrium: bool
-    model_scale: float
 
-    scale, unit, subtract_equilibrium, model_scale = args[:4]
+    scale, unit, subtract_equilibrium = args[:3]
 
-    pargs: tuple = (star, model_scale)
-    pkwargs: dict = {
-        "update_container": False,
-        "return_perturbation": True,
-    }
-    temperatures: NDArray = (
-        container_ops.temp_perturbation(*pargs, **pkwargs)
-        if subtract_equilibrium
-        else star.temperatures
-    )
+    if subtract_equilibrium:
+        if equilibrium_temperatures is None:
+            message = "Temperature equilibrium subtraction requires pre-pulsation face temperatures."
+            raise_elisa_graphics_error(message)
+        # Observer rotations preserve scalar temperatures and face order, so the
+        # pre-pulsation snapshot is still aligned. Direct subtraction also works
+        # at f = -1, where T*f/(1+f) cannot recover the lost equilibrium value.
+        temperatures = star.temperatures - equilibrium_temperatures
+    else:
+        temperatures = star.temperatures
     value: NDArray = transform_values(temperatures, units.DefaultStarInputUnits.t_eff, unit)
 
     return to_log(value, scale)
@@ -612,11 +706,13 @@ def norm_radiance_cmap(star: StarContainer, *args) -> NDArray:
 
 
 def radiance_cmap(star: StarContainer, *args) -> NDArray:
-    """Return radiance in the direction of the observer as a colormap.
+    """Return projected directional radiance towards the observer as a colormap.
 
-    Computes the radiance of surface elements in the direction towards the
-    observer, accounting for limb darkening effects, and returns values suitable
-    for visualization as a colormap.
+    Observer-facing faces return ``L_normal * LD(mu) * mu``; other faces return
+    zero. ``LD(mu)`` is the limb-darkening factor. The separate cosine ``mu``
+    weights projected area and is not part of limb darkening. Thus this is the
+    directional contribution per physical surface area, without a face-area
+    multiplier, rather than directional radiance ``L_normal * LD(mu)`` alone.
 
     :param star: Star container with radiance data
     :type star: StarContainer
@@ -629,7 +725,7 @@ def radiance_cmap(star: StarContainer, *args) -> NDArray:
     - **unit** - Unit for the colormap values
     - **subtract_equilibrium** (:class:`bool`) - Not used for this colormap
 
-    :return: Radiance values at surface face centers with limb darkening applied
+    :return: Projected directional radiance per face, including limb darkening and the area cosine
     :rtype: NDArray
     :note: Logarithmic scale is not supported for radiance
     """
@@ -656,7 +752,7 @@ def radiance_cmap(star: StarContainer, *args) -> NDArray:
 
     if scale in ["log", "logarithmic"]:
         warn_msg: str = "`log` scale is not allowed for radiance colormap."
-        raise Warning(warn_msg)
+        raise_elisa_graphics_error(warn_msg)
 
     return value
 

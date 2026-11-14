@@ -8,6 +8,7 @@ import numpy as np
 
 from elisa import BinarySystem, opt, settings, u, utils
 from elisa import umpy as up
+from elisa.base.error import raise_value_error
 from elisa.base.types import FLOAT
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.model import (
@@ -85,10 +86,19 @@ def _horizon_base_component(
         binary.init()
 
     position_container = OrbitalPositionContainer.from_binary_system(binary, position)
-    position_container.build_mesh(components_distance=1.0, component="primary")
-    position_container.build_faces(components_distance=1.0, component="primary")
+    if binary.eccentricity != 0.0:
+        potentials = binary.correct_potentials(distances=np.array([position.distance]))
+        position_container.set_on_position_params(
+            position, potentials["primary"][0], potentials["secondary"][0],
+        )
+        radii = binary.calculate_components_radii(position.distance)
+        for component, values in radii.items():
+            for name, value in values.items():
+                setattr(getattr(position_container, component), name, value)
+    position_container.build_mesh(components_distance=position.distance, component="primary")
+    position_container.build_faces(components_distance=position.distance, component="primary")
     position_container.build_faces_orientation(
-        components_distance=1.0,
+        components_distance=position.distance,
         component="primary",
     )
     position_container.build_surface_areas(component="primary")
@@ -331,7 +341,9 @@ def get_analytics_horizon(
         "rtol": 1e-10,
         "args": (
             (binary.mass_ratio, *precalc_vals),
-            star.surface_potential,
+            binary.correct_potentials(
+                distances=np.array([position.distance]), component="primary",
+            )["primary"][0],
         ),
     }
 
@@ -373,7 +385,7 @@ def get_analytics_horizon(
 
     if utils.is_empty(horizon_points):
         error_msg: str = f"No horizon points found in given tolerance {tol}. Decrease tolerance."
-        raise ValueError(error_msg)
+        raise_value_error(error_msg)
 
     horizon_points_array: NDArray = np.array(horizon_points)
     horizon_points_array = utils.around_axis_rotation(

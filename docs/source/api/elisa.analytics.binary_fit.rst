@@ -4,82 +4,122 @@ elisa.analytics.binary\_fit package
 Submodules
 ----------
 
+elisa.analytics.binary\_fit.chain\_tools module
+-----------------------------------------------
+
+.. automodule:: elisa.analytics.binary_fit.chain_tools
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+elisa.analytics.binary\_fit.failure\_policy module
+--------------------------------------------------
+
+.. automodule:: elisa.analytics.binary_fit.failure_policy
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+elisa.analytics.binary\_fit.initial\_ensemble module
+----------------------------------------------------
+
+.. automodule:: elisa.analytics.binary_fit.initial_ensemble
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 elisa.analytics.binary\_fit.io\_tools module
 --------------------------------------------
 
 .. automodule:: elisa.analytics.binary_fit.io_tools
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.analytics.binary\_fit.lc\_fit module
 ------------------------------------------
 
 .. automodule:: elisa.analytics.binary_fit.lc_fit
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
+
+elisa.analytics.binary\_fit.lc\_prediction module
+-------------------------------------------------
+
+.. automodule:: elisa.analytics.binary_fit.lc_prediction
+   :members:
+   :show-inheritance:
+   :undoc-members:
 
 elisa.analytics.binary\_fit.least\_squares module
 -------------------------------------------------
 
 .. automodule:: elisa.analytics.binary_fit.least_squares
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.analytics.binary\_fit.mcmc module
 ---------------------------------------
 
 .. automodule:: elisa.analytics.binary_fit.mcmc
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
+
+elisa.analytics.binary\_fit.mcmc\_diagnostics module
+----------------------------------------------------
+
+.. automodule:: elisa.analytics.binary_fit.mcmc_diagnostics
+   :members:
+   :show-inheritance:
+   :undoc-members:
 
 elisa.analytics.binary\_fit.mixins module
 -----------------------------------------
 
 .. automodule:: elisa.analytics.binary_fit.mixins
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.analytics.binary\_fit.plot module
 ---------------------------------------
 
 .. automodule:: elisa.analytics.binary_fit.plot
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.analytics.binary\_fit.rv\_fit module
 ------------------------------------------
 
 .. automodule:: elisa.analytics.binary_fit.rv_fit
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.analytics.binary\_fit.shared module
 -----------------------------------------
 
 .. automodule:: elisa.analytics.binary_fit.shared
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.analytics.binary\_fit.summary module
 ------------------------------------------
 
 .. automodule:: elisa.analytics.binary_fit.summary
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: elisa.analytics.binary_fit
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

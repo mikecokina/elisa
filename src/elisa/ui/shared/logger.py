@@ -12,6 +12,8 @@ import sys
 from collections import deque
 from io import StringIO
 
+from elisa.conf.logconfig import restore_console_stream
+
 
 class CircularBuffer(StringIO):
     """A StringIO subclass that maintains a maximum size circular buffer.
@@ -173,6 +175,11 @@ class DualLoggingHandler(logging.Handler):
         :returns: ``None``
         :rtype: None
         """
+        # The same UI handler is attached to elisa and root. Capture each record
+        # once when it propagates through both attachments.
+        if getattr(record, "elisa_capture_buffer", None) is self.buffer:
+            return
+        record.elisa_capture_buffer = self.buffer
         # noinspection PyBroadException
         try:
             msg = self.format(record)
@@ -220,6 +227,7 @@ class TerminalCapture:
         """
         sys.stdout = self.original_stdout
         sys.stderr = self.original_stderr
+        restore_console_stream(self.buffer, self.original_stdout)
 
 
 class UILogger:

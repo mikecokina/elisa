@@ -4,11 +4,12 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from elisa import atm, const, settings
+from elisa import const, settings
+from elisa.atm import atm
 from elisa.base.curves.utils import get_component_limbdarkening_cfs
+from elisa.base.error import raise_elisa_unexpected_error
 from elisa.binary_system import radius as bsradius
 from elisa.binary_system import utils as butils
-from elisa.observer.passband import init_bolometric_passband
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -109,7 +110,7 @@ def _get_normal_radiance(
                 temperature=temperatures[component_name],
                 log_g=log_g[component_name],
                 metallicity=comp.metallicity,
-                atlas=(comp.atmosphere or settings.ATM_ATLAS),
+                atlas=comp.atmosphere,
                 **kwargs,
             ),
         )
@@ -166,26 +167,7 @@ def prep_surface_params(
     # compute normal radiance for each face and each component
     normal_radiance = _get_normal_radiance(system, **kwargs)
 
-    # checking if `bolometric` filter is already used
-    if "bolometric" in ld_cfs["primary"]:
-        bol_ld_cfs = {
-            component_name: {"bolometric": ld_cfs[component_name]["bolometric"]}
-            for component_name in settings.BINARY_COUNTERPARTS
-        }
-    else:
-        passband, left_bandwidth, right_bandwidth = init_bolometric_passband()
-        bol_kwargs = {
-            "passband": {"bolometric": passband},
-            "left_bandwidth": left_bandwidth,
-            "right_bandwith": right_bandwidth,
-            "atlas": "whatever",
-        }
-        bol_ld_cfs = get_limbdarkening_cfs(system, **bol_kwargs)
-
-    normal_radiance = atm.correct_normal_radiance_to_optical_depth(
-        normal_radiance,
-        bol_ld_cfs,
-    )
+    normal_radiance = atm.correct_normal_radiance_to_optical_depth(normal_radiance, ld_cfs)
 
     if write_to_containers:
         for component_name in settings.BINARY_COUNTERPARTS:
@@ -239,8 +221,10 @@ def update_surface_params(
             **kwargs,
         )
         if prepared is None:
+            # return_values=True guarantees a result; parameter drift cannot
+            # legitimately change this function's return contract.
             message = "Surface parameter preparation unexpectedly returned None."
-            raise RuntimeError(message)
+            raise_elisa_unexpected_error(message)
         normal_radiance, ld_cfs = prepared
     else:
         for component_name in settings.BINARY_COUNTERPARTS:
@@ -355,6 +339,11 @@ def compute_rel_d_geometry(
     return d_flux / np.sum(total_flux)
 
 
+# Dimensionless irradiation approximation proxy, not the physical intercepted-luminosity fraction.
+# For isotropic spherical stars: Q_target = (R_target/d)^2 * L_source/L_total
+# = 4 * P_intercepted/L_total; the 4 is sphere surface area / projected cross-section.
+# This normalization is historically coupled to MAX_D_FLUX thresholds established in 2021;
+# removing the factor 4 without recalibrating thresholds changes approximation eligibility.
 def relative_irradiation(
     binary: BinarySystem,
     distances: NDArray,

@@ -9,21 +9,21 @@ elisa.managers.download\_manager module
 
 .. automodule:: elisa.managers.download_manager
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.managers.settings\_manager module
 ---------------------------------------
 
 .. automodule:: elisa.managers.settings_manager
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: elisa.managers
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

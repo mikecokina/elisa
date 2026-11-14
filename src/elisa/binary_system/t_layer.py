@@ -4,7 +4,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from elisa.base import error
+from elisa.base.error import raise_elisa_parameters_error
+from elisa.base.transform import SystemProperties
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -19,11 +20,10 @@ def validate_period(period: Float) -> None:
     :type period: Float
     :return: ``None``.
     :rtype: None
-    :raises error.ValidationError: If ``period`` is not greater than zero.
+    :raises ElisaParametersError: If ``period`` is nonpositive, nonfinite or malformed.
     """
-    if period <= 0:
-        message = "Period has to be > 0."
-        raise error.ValidationError(message)
+    # Validate only: the arithmetic below keeps the caller's time units.
+    SystemProperties.period(period)
 
 
 def validate_primary_minimum_time(t0: Float) -> None:
@@ -33,11 +33,11 @@ def validate_primary_minimum_time(t0: Float) -> None:
     :type t0: Float
     :return: ``None``.
     :rtype: None
-    :raises error.ValidationError: If ``t0`` is not greater than zero.
+    :raises ElisaParametersError: If ``t0`` is not greater than zero.
     """
     if t0 <= 0:
         message = "Primary minimum time has to be > 0."
-        raise error.ValidationError(message)
+        raise_elisa_parameters_error(message)
 
 
 def adjust_phases(
@@ -47,7 +47,7 @@ def adjust_phases(
     """Shift phases to center them on the given value.
 
     The returned phases are wrapped into an interval spanning approximately
-    ``centre - 0.5`` to ``centre + 0.5``.
+    ``center - 0.5`` to ``center + 0.5``.
 
     :param phases: Input phase value or phase array.
     :type phases: Float | NDarray
@@ -85,7 +85,7 @@ def jd_to_phase(
     :type centre: Float
     :return: Converted phase value or phase array.
     :rtype: Float | NDArray[numpy.float64]
-    :raises error.ValidationError: If ``period`` or ``t0`` is invalid.
+    :raises ElisaParametersError: If ``period`` is invalid or ``t0`` is not positive.
     """
     validate_period(period)
     validate_primary_minimum_time(t0)
@@ -117,7 +117,7 @@ def phase_to_jd(
     :type phases: Float | NDarray
     :return: Converted Julian Date value or array.
     :rtype: Float | NDArray[numpy.float64]
-    :raises error.ValidationError: If ``period`` or ``t0`` is invalid.
+    :raises ElisaParametersError: If ``period`` is invalid or ``t0`` is not positive.
     """
     validate_period(period)
     validate_primary_minimum_time(t0)

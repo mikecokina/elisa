@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from elisa.logger import getLogger
 from elisa.single_system.curves import c_router, lc_point
 
-logger = getLogger("single_system.curves.lc")
+logger = getLogger(__name__)
 
 # TYPE_CHECKING block at the end of import header
 if TYPE_CHECKING:

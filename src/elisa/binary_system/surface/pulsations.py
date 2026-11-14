@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal, TypeAlias
 
-import numpy as np
-
 from elisa import const
 from elisa.binary_system import utils as bsutils
 from elisa.pulse.container_ops import (
@@ -44,19 +42,19 @@ def build_harmonics(
             system.mass_ratio,
             system.secondary.com,
         )[0]
-        asini = system.semi_major_axis * np.sin(system.inclination)
 
         if star.has_pulsations():
             phase = bsutils.calculate_rotational_phase(system, component_name)
             com_x = 0.0 if component_name == "primary" else components_distance
 
             # LTE effect
-            time_correction = (star.com[0] - pos_correction) * asini / const.C
+            # Observer-frame COM coordinates already include the inclination projection.
+            delay = (star.com[0] - pos_correction) * system.semi_major_axis / const.C
             generate_harmonics(
                 star,
                 com_x=com_x,
                 phase=phase,
-                time=system.time + time_correction,
+                time=system.time - delay,
             )
 
     return system
@@ -68,6 +66,10 @@ def build_perturbations(
     components_distance: Float,
 ) -> OrbitalPositionContainer:
     """Incorporate pulsation perturbations into the position container.
+
+    Binary mesh lengths are normalized by the orbital semi-major axis.
+    Incorporation receives scale = system.semi_major_axis in metres to convert
+    between mesh-coordinate displacements and physical SI quantities.
 
     :param system: Orbital position container instance.
     :type system: OrbitalPositionContainer

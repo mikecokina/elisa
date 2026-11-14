@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from elisa.pypex.base.error import raise_value_error
 from elisa.pypex.poly2d.point import Point
 
 if TYPE_CHECKING:
@@ -192,7 +193,7 @@ class Shape2D(metaclass=ABCMeta):
             pass
         if _raise:
             msg = "invalid 2D polygon shape"
-            raise ValueError(msg)
+            raise_value_error(msg)
         return False
 
     @classmethod

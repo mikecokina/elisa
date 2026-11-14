@@ -6,5 +6,5 @@ Module contents
 
 .. automodule:: elisa.conf.logging_schemas
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

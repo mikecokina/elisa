@@ -16,6 +16,7 @@ import numpy as np
 
 from elisa.binary_system import system
 from elisa.conf import settings
+from elisa.conf.logconfig import LoggingProfile
 from elisa.observer.observer import Observer
 
 if TYPE_CHECKING:
@@ -247,6 +248,7 @@ def _benchmark_circular(
                 print_row("circular", alpha, phs, circ_times)
 
 
+@settings.settings.logging_context(LoggingProfile.FIT.value)
 def main() -> None:
     """Run the light curve generation benchmark.
 
@@ -273,8 +275,7 @@ def main() -> None:
     n_phases = [50, 100]
     # =========================================================================
 
-    # Configure settings
-    settings.settings.configure(LOG_CONFIG="fit")
+    # Scientific settings retain their existing configuration path.
     settings.LIMB_DARKENING_LAW = "logarithmic"
 
     # Load binary system configurations

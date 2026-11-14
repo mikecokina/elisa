@@ -1,25 +1,44 @@
 from __future__ import annotations
 
-import multiprocessing.pool
+import multiprocessing
 from typing import TYPE_CHECKING
 
 from elisa import settings
+from elisa.base.error import raise_elisa_unexpected_error
 from elisa.logger import getLogger
 from elisa.utils import renormalize_async_result, split_to_batches
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    # noinspection PyProtectedMember
+    from multiprocessing.context import BaseContext
     from typing import Any
 
     from numpy.typing import NDArray
 
-logger = getLogger("observer.mp")
+logger = getLogger(__name__)
 
-# Use forkserver so pool workers are forked from a clean, single-threaded
-# server process rather than directly from the main process.  This avoids
-# the Python 3.12 DeprecationWarning that fires when fork() is called from
-# a multithreaded process (the atmosphere table reader uses threads).
-_MP_CONTEXT = multiprocessing.get_context("forkserver")
+
+def get_mp_context() -> BaseContext:
+    """Return ELISA's fork context without changing the application's default.
+
+    Resolve it only when multiprocessing is requested so serial use remains
+    available on platforms without fork. Workers inherit the parent's state at
+    pool creation; callers must account for active threads and native runtimes.
+
+    :raises ElisaUnexpectedError: If the platform does not support fork.
+    """
+    try:
+        return multiprocessing.get_context("fork")
+    except ValueError as exc:
+        msg = (
+            "ELISA multiprocessing requires the 'fork' start method, which is unavailable "
+            "on this platform. Use serial execution (NUMBER_OF_PROCESSES and "
+            "NUMBER_OF_MCMC_PROCESSES <= 1)."
+        )
+        # Platform support cannot change with a candidate's physical parameters.
+        return raise_elisa_unexpected_error(msg, exc)
 
 
 def manage_observations(
@@ -49,7 +68,7 @@ def manage_observations(
     if len(position) >= settings.NUMBER_OF_PROCESSES > 1:
         logger.info("starting multiprocessor workers")
         phase_batches = split_to_batches(array=position, n_proc=settings.NUMBER_OF_PROCESSES)
-        pool = _MP_CONTEXT.Pool(processes=settings.NUMBER_OF_PROCESSES)
+        pool = get_mp_context().Pool(processes=settings.NUMBER_OF_PROCESSES)
 
         result = [pool.apply_async(fn, (*args[:2], batch, *args[2:])) for batch in phase_batches]
         pool.close()

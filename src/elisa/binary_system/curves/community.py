@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
     from elisa.types import Float
 
-logger = getLogger("binary_system.curves.community")
+logger = getLogger(__name__)
 
 
 class RadialVelocitySystem:

@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from elisa import atm, settings
+from elisa.atm import atm
 from elisa.base.curves.utils import get_component_limbdarkening_cfs
-from elisa.observer.passband import init_bolometric_passband
 
 # TYPE_CHECKING block at the end of import header
 if TYPE_CHECKING:
@@ -47,20 +46,7 @@ def prep_surface_params(
     # compute normal radiance for each face and each component
     normal_radiance = get_normal_radiance(system, **kwargs)
 
-    # checking if "bolometric" filter is already present
-    if "bolometric" in ld_cfs["star"]:
-        bol_ld_cfs = {"star": {"bolometric": ld_cfs["star"]["bolometric"]}}
-    else:
-        # build minimal kwargs for bolometric computation; do not fabricate extra keys
-        passband_obj, left_bw, right_bw = init_bolometric_passband()
-        bol_kwargs = {
-            "passband": {"bolometric": passband_obj},
-            "left_bandwidth": left_bw,
-            "right_bandwidth": right_bw,
-        }
-        bol_ld_cfs = get_limbdarkening_cfs(system, **bol_kwargs)
-
-    normal_radiance = atm.correct_normal_radiance_to_optical_depth(normal_radiance, bol_ld_cfs)
+    normal_radiance = atm.correct_normal_radiance_to_optical_depth(normal_radiance, ld_cfs)
 
     if write_to_containers:
         # write results into the container's star sub-object
@@ -102,7 +88,7 @@ def get_normal_radiance(system: SinglePositionContainer, **kwargs: Any) -> dict[
             temperature=temperatures,
             log_g=log_g,
             metallicity=star.metallicity,
-            atlas=(star.atmosphere or settings.ATM_ATLAS),
+            atlas=star.atmosphere,
             **kwargs,
         ),
     }

@@ -9,13 +9,13 @@ elisa.analytics.dataset.graphic.plot module
 
 .. automodule:: elisa.analytics.dataset.graphic.plot
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: elisa.analytics.dataset.graphic
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

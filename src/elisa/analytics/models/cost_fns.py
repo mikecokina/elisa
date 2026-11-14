@@ -2,18 +2,161 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from math import exp, log1p
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 import numpy as np
 
+from elisa.base.error import (
+    raise_elisa_analytics_data_error,
+    raise_elisa_numeric_error,
+    raise_elisa_prediction_alignment_error,
+    raise_elisa_unexpected_error,
+)
 from elisa.const import PI
 
 _TWO_PI = 2.0 * PI
+_LOG_TWO = np.log(2.0)
+_HALF_LOG_TWO_PI = 0.5 * np.log(_TWO_PI)
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from elisa.types import Float
+
+
+class PreparedObservations(NamedTuple):
+    """Per-setup observation arrays and Gaussian constants; no global cache."""
+
+    labels: tuple[str, ...]
+    observed: tuple[NDArray[np.float64], ...]
+    log_errors: tuple[NDArray[np.float64], ...]
+    log_normalization: Float
+    size: int
+
+
+def _log_noise_scale(ln_f: Float) -> Float:
+    """Return log(sqrt(1 + exp(2*ln_f))) without exponential overflow.
+
+    :param ln_f: Current finite scalar noise parameter.
+    :return: Logarithm of the standard-deviation multiplier.
+    :raises ElisaUnexpectedError: If the scalar parameter contract is violated.
+    :raises ElisaNumericError: If the candidate noise parameter is nonfinite.
+    """
+    # Fitting may change the value, but must preserve the scalar parameter contract.
+    if np.ndim(ln_f) != 0:
+        raise_elisa_unexpected_error("ln_f must be scalar")
+    # A numerically unusable candidate must be rejected just like a physical exclusion.
+    if not np.isfinite(ln_f):
+        raise_elisa_numeric_error("ln_f must be finite")
+    small = exp(-abs(ln_f))
+    return max(0.0, ln_f) + 0.5 * log1p(small * small)
+
+
+def prepare_observations(
+    y_data: dict[str, NDArray], y_errs: dict[str, NDArray],
+) -> PreparedObservations:
+    """Validate immutable data and prepare arrays/statistical constants once.
+
+    :param y_data: Nonempty finite observed vectors in residual order.
+    :param y_errs: Matching strictly positive errors in observation units.
+    :return: Reusable arrays and constants. New setup replaces this record.
+    :raises ElisaAnalyticsDataError: If keys, dimensions, values or uncertainties are invalid.
+    """
+    if not y_data or y_data.keys() != y_errs.keys():
+        msg = "Likelihood observation, model and uncertainty dataset keys must match"
+        raise_elisa_analytics_data_error(msg)
+    observed_arrays, log_errors = [], []
+    for key, data in y_data.items():
+        try:
+            observed = np.asarray(data, dtype=float)
+            errors = np.asarray(y_errs[key], dtype=float)
+        except (TypeError, ValueError, OverflowError) as exc:
+            msg = f"Likelihood arrays for {key} must contain numeric observations and uncertainties"
+            raise_elisa_analytics_data_error(msg, exc)
+
+        if observed.ndim != 1 or observed.size == 0 or errors.shape != observed.shape:
+            msg = f"Likelihood arrays for {key} must be matching nonempty one-dimensional vectors"
+            raise_elisa_analytics_data_error(msg)
+        if not np.all(np.isfinite(observed)) or not np.all(np.isfinite(errors)) or np.any(errors <= 0):
+            msg = f"Likelihood arrays for {key} must be finite with strictly positive uncertainties"
+            raise_elisa_analytics_data_error(msg)
+
+        observed_arrays.append(observed)
+        log_errors.append(np.log(errors))
+    size = sum(array.size for array in observed_arrays)
+    normalization = sum(np.sum(logs + _HALF_LOG_TWO_PI) for logs in log_errors)
+    return PreparedObservations(tuple(y_data), tuple(observed_arrays), tuple(log_errors), normalization, size)
+
+
+def validate_predictions(prepared: PreparedObservations, synthetic: dict[str, NDArray]) -> None:
+    """Validate current synthetic output at a standalone public cost boundary.
+
+    Fitters check dynamic output in the forward mapping and omit this duplicate.
+
+    :param prepared: Validated observations and expected array dimensions.
+    :param synthetic: Current synthetic output.
+    :raises ElisaPredictionAlignmentError: If prediction keys or shapes differ.
+    :raises ElisaNumericError: If predictions contain nonfinite values.
+    """
+    if len(synthetic) != len(prepared.labels) or any(key not in synthetic for key in prepared.labels):
+        msg = "Likelihood observation, model and uncertainty dataset keys must match"
+        raise_elisa_prediction_alignment_error(msg)
+    for key, observed in zip(prepared.labels, prepared.observed, strict=True):
+        model = np.asarray(synthetic[key])
+        if model.shape != observed.shape:
+            msg = f"Likelihood prediction shape differs from observations for {key}"
+            raise_elisa_prediction_alignment_error(msg)
+        if not np.all(np.isfinite(model)):
+            msg = f"Likelihood arrays for {key} must be matching finite one-dimensional vectors"
+            raise_elisa_numeric_error(msg)
+
+
+def prepared_likelihood(prepared: PreparedObservations, synthetic: dict[str, NDArray], ln_f: Float) -> Float:
+    """Evaluate the existing Gaussian using prepared data and checked predictions.
+
+    :param prepared: Per-setup observation statistics.
+    :param synthetic: Dynamically checked, observation-aligned predictions.
+    :param ln_f: Current scalar noise parameter.
+    :return: Gaussian log likelihood; no observation validation occurs here.
+    """
+    log_scale = _log_noise_scale(ln_f)
+    try:
+        with np.errstate(over="raise", invalid="raise", divide="ignore", under="ignore"):
+            total = -prepared.log_normalization - prepared.size * log_scale
+            for key, observed, logs in zip(prepared.labels, prepared.observed, prepared.log_errors, strict=True):
+                log_residual = np.log(np.abs(observed - synthetic[key]))
+                total -= np.sum(np.exp(2.0 * (log_residual - logs - log_scale) - _LOG_TWO))
+    except FloatingPointError:
+        total = _extended_likelihood(prepared, synthetic, log_scale)
+    if not np.isfinite(total):
+        # Direct callers receive the numerical error; MCMC rejects this candidate.
+        msg = "Nonfinite likelihood: Gaussian log density is not representable as a finite float"
+        raise_elisa_numeric_error(msg)
+    return total
+
+
+def _extended_likelihood(prepared: PreparedObservations, synthetic: dict[str, NDArray], log_scale: Float) -> Float:
+    """Resolve rare intermediate overflows before testing float64 representability.
+
+    Half the quadratic is evaluated directly, so a representable density is not
+    rejected merely because its squared standardized residual exceeds float64.
+    Extended subtraction also handles opposite-sign observations near float64 max.
+
+    :param prepared: Validated observation statistics.
+    :param synthetic: Aligned model predictions.
+    :param log_scale: Stable logarithm of the noise multiplier.
+    :return: Finite float64 density.
+    :raises ElisaNumericError: If the resulting density cannot be represented.
+    """
+    with np.errstate(over="raise", invalid="raise", divide="ignore", under="ignore"):
+        total = np.longdouble(0)
+        for key, observed, logs in zip(prepared.labels, prepared.observed, prepared.log_errors, strict=True):
+            residual = observed.astype(np.longdouble) - np.asarray(synthetic[key], dtype=np.longdouble)
+            log_sigma = logs.astype(np.longdouble) + log_scale
+            half_square = np.exp(2 * (np.log(np.abs(residual)) - log_sigma) - _LOG_TWO)
+            total -= np.sum(half_square + log_sigma + _HALF_LOG_TWO_PI)
+        return float(total)
 
 
 def s_squared(
@@ -65,12 +208,9 @@ def likelihood_fn(
     :returns: Log-likelihood value.
     :rtype: Float
     """
-    sigma2 = s_squared(y_errs, ln_f)
-
-    return -0.5 * sum(
-        np.sum((y_data[key] - synthetic[key]) ** 2 / sigma2[key] + np.log(_TWO_PI * sigma2[key]))
-        for key in synthetic
-    )
+    prepared = prepare_observations(y_data, y_errs)
+    validate_predictions(prepared, synthetic)
+    return prepared_likelihood(prepared, synthetic, ln_f)
 
 
 def wssr(
@@ -95,3 +235,105 @@ def wssr(
     :rtype: Float
     """
     return sum(np.sum(((synthetic[item] - y_data[item]) / y_err[item]) ** 2) for item in synthetic)
+
+
+def standardized_residuals(
+    y_data: dict[str, NDArray[Any]],
+    y_err: dict[str, NDArray[Any]],
+    synthetic: dict[str, NDArray[Any]],
+    *,
+    validate: bool = True,
+) -> NDArray[Any]:
+    """Return a flat standardized residual vector in observation insertion order.
+
+    :param y_data: Per-dataset observed vectors; their insertion order fixes the
+        residual and Jacobian row order throughout an optimization.
+    :param y_err: Per-datum errors or the existing per-dataset scalar fallback.
+    :param synthetic: Per-dataset predictions already mapped to observation order.
+    :param validate: Check dataset and array shapes. Prepared LC fitting passes
+        False after setup validation and dynamic prediction alignment checks.
+    :return: Concatenated (observed - synthetic) / uncertainty. Its squared norm
+        is chi² and SciPy's default linear-loss cost is half that value.
+    :raises ElisaPredictionAlignmentError: If prediction keys or shapes differ from observations.
+        Observation and uncertainty shapes must also align; scalar uncertainties remain supported.
+    :raises ElisaAnalyticsDataError: If observations or uncertainties have invalid values.
+    :raises ElisaNumericError: If predictions or residuals are nonfinite, or the squared residual norm is unusable.
+    """
+    if validate:
+        _validate_residual_shapes(y_data, y_err, synthetic)
+        _validate_residual_values(y_data, y_err, synthetic)
+    with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+        residuals = np.concatenate([
+            (observed - synthetic[key]) / y_err[key]
+            for key, observed in y_data.items()
+        ])
+    _validate_residual_norm(residuals)
+    return residuals
+
+
+def _validate_residual_norm(residuals: NDArray) -> None:
+    """Require finite residuals and a representable chi-square without squaring large values."""
+    if not np.all(np.isfinite(residuals)):
+        raise_elisa_numeric_error("Standardized residuals are nonfinite")
+    largest_residual = np.max(np.abs(residuals), initial=0.0)
+    # N * max(abs(r))**2 bounds the sum of squares. Ordinary residuals
+    # need no scaled vector or norm calculation. Half the limit leaves rounding headroom;
+    # borderline cases use the scaled check below.
+    safe_residual_bound = np.sqrt(0.5 * (np.finfo(float).max / max(residuals.size, 1)))
+    if largest_residual <= safe_residual_bound:
+        return
+
+    # ||r||² = largest_residual² * ||r / largest_residual||².
+    # Compare before multiplication so even the validation cannot overflow.
+    scaled_norm = np.linalg.norm(residuals / largest_residual)
+    largest_safe_residual = np.sqrt(np.finfo(float).max) / scaled_norm
+    if largest_residual > largest_safe_residual:
+        raise_elisa_numeric_error("Squared standardized residual norm is not representable as a finite float")
+
+
+def _validate_residual_shapes(y_data: dict, y_err: dict, synthetic: dict) -> None:
+    """Reject broadcasting mismatches in RV or standalone residual construction.
+
+    :param y_data: Observed vectors by dataset.
+    :param y_err: Matching uncertainty vectors or scalar uncertainty fallbacks.
+    :param synthetic: Predictions mapped into each observation vector's order.
+    :raises ElisaPredictionAlignmentError: If observation, prediction or uncertainty keys/shapes differ.
+    """
+    if set(y_data) != set(synthetic):
+        message = "Residual observation and prediction datasets differ"
+        raise_elisa_prediction_alignment_error(message)
+    if set(y_data) != set(y_err):
+        message = "Residual observation, prediction and uncertainty datasets differ"
+        raise_elisa_prediction_alignment_error(message)
+    for key, observed in y_data.items():
+        if np.ndim(observed) != 1:
+            message = f"Residual prediction shape differs from observations for {key}"
+            raise_elisa_prediction_alignment_error(message)
+        if np.shape(synthetic[key]) != np.shape(observed):
+            message = f"Residual prediction shape differs from observations for {key}"
+            raise_elisa_prediction_alignment_error(message)
+        if np.shape(y_err[key]) not in ((), np.shape(observed)):
+            message = f"Residual uncertainty shape differs from observations for {key}"
+            raise_elisa_prediction_alignment_error(message)
+
+
+def _validate_residual_values(y_data: dict, y_err: dict, synthetic: dict) -> None:
+    """Reject invalid standalone observations and nonfinite synthetic predictions.
+
+    :param y_data: Observed vectors with validated shapes.
+    :param y_err: Matching uncertainty vectors or scalar uncertainty fallbacks.
+    :param synthetic: Predictions with validated shapes.
+    :raises ElisaAnalyticsDataError: If observations or uncertainties have invalid values.
+    :raises ElisaNumericError: If predictions contain nonfinite values.
+    """
+    for key, observed in y_data.items():
+        if (
+            not np.all(np.isfinite(observed))
+            or not np.all(np.isfinite(y_err[key]))
+            or np.any(np.asarray(y_err[key]) <= 0)
+        ):
+            msg = f"Residual observations for {key} must be finite with strictly positive uncertainties"
+            raise_elisa_analytics_data_error(msg)
+        if not np.all(np.isfinite(synthetic[key])):
+            msg = f"Residual prediction for {key} must be finite"
+            raise_elisa_numeric_error(msg)

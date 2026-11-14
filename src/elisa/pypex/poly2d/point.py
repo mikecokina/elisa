@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from elisa.pypex.base.conf import ROUND_PRECISION
+from elisa.pypex.base.error import raise_value_error
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -31,8 +32,11 @@ def _line_side(p1: NDArray, p2: NDArray, a: NDArray, b: NDArray) -> float:
     :rtype: float
     """
     p1, p2, a, b = np.array(p1), np.array(p2), np.array(a), np.array(b)
-    cp1 = np.cross(b - a, p1 - a)
-    cp2 = np.cross(b - a, p2 - a)
+    # Explicit z-components of the cross products for 2D vectors.
+    ab = b - a
+    ap1, ap2 = p1 - a, p2 - a
+    cp1 = ab[..., 0] * ap1[..., 1] - ab[..., 1] * ap1[..., 0]
+    cp2 = ab[..., 0] * ap2[..., 1] - ab[..., 1] * ap2[..., 0]
     return np.dot(cp1, cp2)
 
 
@@ -66,7 +70,7 @@ def is_point_in_polygon(point: Point, polygon: Polygon) -> bool:
     """
     if len(polygon) < MIN_POLYGON_POINTS:
         msg = "invalid polygon shape, expected at least 3 corners polygon"
-        raise ValueError(msg)
+        raise_value_error(msg)
     return polygon.mplpath.contains_point(point.to_array())
 
 

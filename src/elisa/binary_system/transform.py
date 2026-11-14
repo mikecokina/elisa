@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+from numbers import Number
 from typing import Any
 
 import numpy as np
 
 from elisa import const, units
-from elisa.base.transform import WHEN_FLOAT64, SystemProperties, quantity_transform
+from elisa.base.error import raise_elisa_parameters_error
+from elisa.base.transform import (
+    WHEN_FLOAT64,
+    SystemProperties,
+    quantity_transform,
+    scalar_transform,
+)
 from elisa.base.types import FLOAT, INT
 from elisa.units import DefaultBinarySystemInputUnits
 
@@ -18,12 +25,12 @@ class BinarySystemProperties(SystemProperties):
         :param value: Numeric eccentricity value.
         :returns: Eccentricity as float.
         """
-        if not isinstance(value, (int, INT, float, FLOAT)):
-            msg = "Input of variable `eccentricity` is not (numpy.)int or (numpy.)float."
-            raise TypeError(msg)
+        value = scalar_transform(
+            value, parameter="eccentricity", accepted_types=(int, INT, float, FLOAT),
+        )
         if value < 0 or value >= 1:
             msg = "Input of variable `eccentricity` is out of boundaries [0, 1)."
-            raise ValueError(msg)
+            raise_elisa_parameters_error(msg)
         return float(np.float64(value))
 
     @staticmethod
@@ -35,21 +42,13 @@ class BinarySystemProperties(SystemProperties):
         :param value: Numeric value or astropy Quantity.
         :returns: Argument of periastron as float.
         """
-        if isinstance(value, (units.Quantity, str)):
-            value = units.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(units.DefaultBinarySystemUnits.system.argument_of_periastron))
-        elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(
-                (value * DefaultBinarySystemInputUnits.system.argument_of_periastron).to(
-                    units.DefaultBinarySystemUnits.system.argument_of_periastron,
-                ),
-            )
-        else:
-            msg = (
-                "Input of variable `argument_of_periastron` is not (numpy.)int or (numpy.)float "
-                "nor astropy.unit.quantity.Quantity instance."
-            )
-            raise TypeError(msg)
+        value = quantity_transform(
+            value,
+            units.DefaultBinarySystemUnits.system.argument_of_periastron,
+            WHEN_FLOAT64,
+            DefaultBinarySystemInputUnits.system.argument_of_periastron,
+            parameter="argument_of_periastron",
+        )
         if not 0 <= value <= const.FULL_ARC:
             value %= const.FULL_ARC
         return float(value)
@@ -64,7 +63,12 @@ class BinarySystemProperties(SystemProperties):
         :param value: Phase shift value.
         :returns: Phase shift as float.
         """
-        return float(np.float64(value))
+        value = scalar_transform(
+            value,
+            parameter="phase_shift",
+            accepted_types=(Number, str, bytes, np.bool_, np.ndarray, units.Quantity),
+        )
+        return float(value)
 
     @staticmethod
     def primary_minimum_time(value: Any) -> float:
@@ -78,6 +82,7 @@ class BinarySystemProperties(SystemProperties):
             units.DefaultBinarySystemUnits.system.primary_minimum_time,
             WHEN_FLOAT64,
             units.DefaultBinarySystemInputUnits.system.primary_minimum_time,
+            parameter="primary_minimum_time",
         )
 
     @classmethod
@@ -105,9 +110,10 @@ class RadialVelocityObserverProperties(SystemProperties):
         :param value: Mass ratio value (must be > 0).
         :returns: Mass ratio as float.
         """
+        value = scalar_transform(value, parameter="mass_ratio")
         if not value > 0:
             msg = f"Invalid value of property `mass_ratio`. Expected > 0, given {value}."
-            raise ValueError(msg)
+            raise_elisa_parameters_error(msg)
         return float(np.float64(value))
 
     @staticmethod
@@ -119,18 +125,8 @@ class RadialVelocityObserverProperties(SystemProperties):
         :param value: Numeric value or astropy Quantity.
         :returns: asini value as float.
         """
-        if isinstance(value, (units.Quantity, str)):
-            value = units.Quantity(value) if isinstance(value, str) else value
-            value = np.float64(value.to(units.solRad))
-        elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(value)
-        else:
-            msg = (
-                "Input of variable `asini` is not (numpy.)int or (numpy.)float "
-                "nor astropy.unit.quantity.Quantity instance."
-            )
-            raise TypeError(msg)
+        value = quantity_transform(value, units.solRad, WHEN_FLOAT64, parameter="asini")
         if value < 0:
             msg = "Value of `asini` cannot be negative."
-            raise ValueError(msg)
+            raise_elisa_parameters_error(msg)
         return float(value)

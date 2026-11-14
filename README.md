@@ -1,98 +1,25 @@
 # <img src="src/elisa/ui/assets/logo.png" width="80" align="middle"> ELISa
 
-[![Python](https://img.shields.io/badge/Python-3.10--3.14-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.11--3.14-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-GPLv3-green.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
-[![Version](https://img.shields.io/badge/Version-1.0.0dev0-yellow.svg)](https://github.com/mikecokina/elisa/commits/dev)
+[![Version](https://img.shields.io/badge/Version-1.0.0.dev0-yellow.svg)](https://github.com/mikecokina/elisa/commits/feature/optimizations)
 [![Build](https://img.shields.io/badge/Build-setuptools-blue.svg)](https://pypi.org/project/setuptools/)
 [![Build](https://img.shields.io/badge/OS-Linux|Windows-magenta.svg)](https://en.wikipedia.org/wiki/Operating_system)
-
-
-## Desktop UI:
-
-The Gradio-based desktop UI is under active development in a separate branch: `feature/ui`.
-You can preview and test the UI from this branch; it contains the latest UI work-in-progress.
-
-If you want the latest Gradio desktop UI work-in-progress without
-checking out the repository locally you can install directly from the
-`feature/ui` branch on GitHub using pip. This is useful for quick testing
-or when you don't need to edit the source.
-
-- Branch on GitHub: https://github.com/mikecokina/elisa/tree/feature/ui
-
-Non-editable install (package is installed into the environment):
-
-The following PEP 508 direct-URL form installs the package and the UI extras
-in one step. This is the form tested and known to install Gradio and other UI
-extras correctly in most shells:
-
-```bash
-pip install "elisa[dev,test,ui] @ git+https://github.com/mikecokina/elisa.git@dev"
-```
-
-Notes and troubleshooting
-
-- Shell quoting matters: include the quotes (double or single) around the whole PEP 508
-  URL expression so your shell does not split the argument. On POSIX shells use double
-  quotes as shown above; on Windows PowerShell you may need single quotes.
-- If you later see "ModuleNotFoundError: No module named 'gradio'", extras were not
-  installed. You can either re-run the PEP 508 install (make sure it's quoted), or
-  install Gradio manually:
-
-```bash
-pip install gradio
-# or re-run the PEP 508 form above with correct quoting
-```
-
-After installation, launch the desktop UI the same way:
-
-```bash
-python -m elisa.ui
-```
 
 
 ## Publications
 
 [ELISa: A new tool for fast modelling of eclipsing binaries](https://arxiv.org/abs/2106.10116)
 
-## Desktop UI:
-
-The Gradio-based desktop UI is under active development in a separate branch: `feature/ui`.
-You can preview and test the UI from this branch; it contains the latest UI work-in-progress.
-
-- Branch on GitHub: https://github.com/mikecokina/elisa/tree/feature/ui
-
-How to try the UI locally
-
-```bash
-# fetch the branch and check it out locally
-git fetch origin
-git checkout -b feature-ui origin/feature/ui
-
-# install the package with UI extras (editable install) and launch the desktop app
-pip install -e ".[dev,test,ui]"
-python -m elisa.ui
-```
-
-Reporting issues
-
-- This branch may be unstable; use it for testing and experimentation only.
-- If you find bugs or UX issues while testing, please open a GitHub Issue and:
-  - Prefix the issue title with `[UI]` to help triage.
-  - Mention you tested `feature/ui` and include steps to reproduce, screenshots, and terminal output when possible.
-
-Once UI features are ready they will be merged into the main `dev` branch. Contributions and feedback are very welcome.
-
-
-
 ## Introduction
 
-**ELISa** is a cross-platform Python package for modeling the light curves of close eclipsing binary systems, including surface features such as spots. Support for pulsations is planned.
+**ELISa** is a cross-platform Python package for modeling the light curves of close eclipsing binary systems, including surface features such as spots. Low-amplitude pulsations are modeled using spherical harmonics.
 
 Current capabilities include:
 
 - **`BinarySystem`** - modeling detached, semi-detached, and over-contact binary systems
-- **`SingleSystem`** - modeling single-star light curves with spot support (pulsations planned)
-- **`Observer`** - generating synthetic observables such as light curves (with more observables planned)
+- **`SingleSystem`** - modeling single-star light curves with spot and pulsation support
+- **`Observer`** - generating synthetic light curves and radial velocity curves
 - **`Spots`** - defining stellar spots by longitude, latitude, radius, and temperature factor
 - **`Pulsations`** - low-amplitude pulsations modeled using spherical harmonics
 - **`Fitting methods`** - fitting light curves and radial velocity curves using:
@@ -111,7 +38,7 @@ Planned features include:
 
 ## Installation
 
-ELISa requires **Python 3.10 or newer**.
+ELISa requires **Python 3.11 or newer**.
 
 It is strongly recommended to install ELISa inside a virtual environment.
 
@@ -139,13 +66,22 @@ Install the latest stable release from PyPI:
 pip install elisa
 ```
 
-Install the latest development version from GitHub:
+Install the current development source (version **1.0.0.dev0**) from GitHub:
 
 ```bash
-pip install git+https://github.com/mikecokina/elisa.git@dev
+pip install git+https://github.com/mikecokina/elisa.git@feature/optimizations
 ```
 
 ---
+
+For editable development installation from a local checkout of this branch:
+
+```bash
+pip install -e ".[dev,test]"
+```
+
+The `dev`, `test`, and `ui` extras provide development tools, test tools, and the desktop UI, respectively.
+The stable PyPI release may differ from the development source documented here.
 
 ### Optional: Jupyter Notebooks
 
@@ -168,7 +104,7 @@ jupyter lab
 
 Starting from version **0.6**, ELISa includes a built-in **Settings Manager** and **Download Manager** to simplify first-time setup.
 
-When ELISa is executed for the first time and no configuration file is detected, a setup wizard will guide you through the basic configuration process. A default configuration file will be created at:
+When ELISa is executed for the first time and no configuration file is detected, a setup wizard will guide you through the basic configuration process. The wizard offers the following default configuration path:
 
 ```
 ~/.elisa/config.ini
@@ -177,8 +113,7 @@ When ELISa is executed for the first time and no configuration file is detected,
 The wizard will prompt you to:
 
 - Select directories for storing atmosphere models and limb darkening tables  
-- Choose a default atmosphere atlas  
-- Optionally download required data files automatically  
+- Confirm downloading the scientific tables after configuration (declining exits the first import)
 
 This allows most users to get started without any manual configuration.
 
@@ -186,14 +121,14 @@ This allows most users to get started without any manual configuration.
 
 ### Manual Configuration
 
-ELISa requires atmosphere models and limb darkening tables before it can run.
+Tabulated atmosphere models require the corresponding atmosphere files; limb darkening tables are also needed unless coefficients are supplied explicitly. Blackbody synthesis does not require atmosphere tables.
 
 You can download them from:
 
 - Atmosphere models:  
-  https://github.com/mikecokina/elisa/tree/dev/atmosphere  
+  https://github.com/mikecokina/elisa-assets/tree/main/atmosphere
 - Limb darkening tables:  
-  https://github.com/mikecokina/elisa/tree/dev/limbdarkening  
+  https://github.com/mikecokina/elisa-assets/tree/main/limbdarkening
 
 ---
 
@@ -201,10 +136,11 @@ You can download them from:
 
 By default, ELISa searches for data files in:
 
-- Atmospheres: `$HOME/.elisa/atmosphere/`
-- Limb darkening tables: `$HOME/.elisa/limbdarkening/`
+- CK04 atmospheres: `$HOME/.elisa/atmosphere/ck04/`
+- K93 atmospheres: `$HOME/.elisa/atmosphere/k93/`
+- Limb darkening tables: `$HOME/.elisa/limbdarkening/ld/`
 
-If the files are stored in these directories, no additional configuration is required.
+These are the default data paths; a configuration file is still needed to bypass the first-run wizard.
 
 ---
 
@@ -229,12 +165,11 @@ With minimal content such as:
 [support]
 ld_tables = /home/user/ld
 castelli_kurucz_04_atm_tables = /home/user/castelli_kurucz/ck04
-atlas = ck04
 ```
 
 A complete configuration reference is available here:
 
-https://github.com/mikecokina/elisa/blob/master/src/elisa/conf/elisa_conf_docs.ini
+[Configuration reference](./src/elisa/conf/elisa_conf_docs.ini)
 
 ---
 
@@ -261,16 +196,12 @@ You can place this command in your shell configuration file (for example, `.bash
 On Windows (PowerShell):
 
 ```powershell
-setx ELISA_CONFIG "C:\Users\user\.elisa\elisa_config.ini"
+$env:ELISA_CONFIG = "C:\Users\user\.elisa\elisa_config.ini"
 ```
 
-Alternatively, you may use the default `config.ini` file located in:
-
-```
-src/elisa/conf/
-```
-
-without defining any environment variable.
+Configuration lookup uses the first existing file in this order: `ELISA_CONFIG`,
+`$VIRTUAL_ENV/conf/elisa_conf.ini`, then `~/.elisa/config.ini`.
+A nonexistent `ELISA_CONFIG` path falls back to the other locations.
 
 ---
 
@@ -282,7 +213,9 @@ Once configured, ELISa is ready to use.
 For a detailed description of the physical assumptions and numerical methods used in ELISa,  
 please refer to the **ELISa Handbook**:
 
-https://github.com/mikecokina/elisa/blob/dev/ELISa_handbook.pdf
+[ELISa Handbook](./ELISa_handbook.pdf)
+
+The handbook describes ELISa 0.5.0 (2021). It remains a scientific reference, but some implementation and API details differ from the current version.
 
 The handbook explains the modeling of single stars and binary systems, including surface discretization, 
 radiative treatment, orbital dynamics, and observable synthesis.
@@ -399,6 +332,12 @@ community_params = {
 community_binary = BinarySystem.from_json(community_params)
 ```
 
+Each component defaults to the `ck04` atmosphere. Set `"atmosphere": "ck04"`,
+`"atmosphere": "k93"`, or `"atmosphere": "black_body"` in its parameter dictionary
+to choose its model independently. The light curve example below requires CK04
+atmosphere and limb darkening tables. Bare periods are in days, angles in degrees,
+temperatures in kelvin, and component masses (when supplied) in solar masses.
+
 See Tutorials 1-4 for a detailed explanation of system construction and parameter choices.
 
 ---
@@ -429,10 +368,13 @@ phases, fluxes = o.observe.lc(
 )
 ```
 
-The returned arrays:
+By default, fluxes are absolute observer fluxes in W/m², scaled by the system distance
+(default 10 pc). Set `normalize=True` to normalize each passband to its maximum.
+
+The return values:
 
 - `phases` - orbital phase values  
-- `fluxes` - computed fluxes for each selected passband  
+- `fluxes` - dictionary mapping each passband name to its flux array
 
 This provides a complete minimal workflow: define the system, instantiate the observer, and generate synthetic light curves.
 
@@ -458,18 +400,24 @@ The plotting interface supports visualization of multi-passband light curves and
 ELISa ships with an interactive desktop application built on [Gradio](https://www.gradio.app/). It covers the full
 workflow - modeling, fitting, and visualization - without writing any code.
 
+Install the UI extra from the current source checkout:
+
+```bash
+pip install -e ".[ui]"
+```
+
 **Launch the UI:**
 
 ```bash
-`python -m elisa.ui`
+python -m elisa.ui
 ```
 
 The app opens in your browser at `http://localhost:7860` and provides five tabs:
 
 - **Light Curve Modeling** - generate synthetic light curves
 - **Radial Velocity Modeling** - generate synthetic RV curves (kinematic or radiometric method)
-- **Light Curve Fitting** - fit observed LC data using The Least Squares or MCMC
-- **Radial Velocity Fitting** - fit observed RV data using The Least Squares or MCMC
+- **Light Curve Fitting** - fit observed LC data using least squares or MCMC
+- **Radial Velocity Fitting** - fit observed RV data using least squares or MCMC
 - **System Visualization** - render surface, mesh, orbit, and equipotential plots
 
 For full usage instructions, parameter descriptions, and worked examples see
@@ -483,7 +431,7 @@ ELISa provides built-in functionality for inferring binary system parameters fro
 binary system construction demonstrated above, the fitting parameters are supplied as a dictionary (or JSON object) in 
 the following format:
 
-```python
+```text
 fit_params = {
     "system": {
         "mass_ratio": {...},
@@ -516,11 +464,11 @@ ELISa supports three types of parameters:
 The parameter remains constant during optimization.
 
 ```python
-"t_eff": {
+{"t_eff": {
     "value": 5774,
     "fixed": True,
     "unit": "K"
-}
+}}
 ```
 
 ---
@@ -530,26 +478,27 @@ The parameter remains constant during optimization.
 The parameter is optimized within a specified interval.
 
 ```python
-"surface_potential": {
+{"surface_potential": {
     "value": 5.2,     # initial value
     "fixed": False,
     "min": 4.0,
     "max": 7.0,
     "unit": None      # optional
-}
+}}
 ```
 
-For MCMC fitting, parameters may also use Gaussian priors:
+For MCMC fitting, parameters may also use Gaussian priors within finite bounds
+(explicit bounds or parameter defaults); `sigma` must be finite and positive:
 
 ```python
-"t_eff": {
+{"t_eff": {
     "value": 6300,     # mean
     "sigma": 400,      # standard deviation
     "fixed": False,
-    "min": 3500,       # The normal distribution can be optionally clipped to prevent the sampler from exploring invalid regions of parameter space.
-    "max": 50000,      # the normal distribution can be optionally clipped to prevent the sampler from exploring invalid regions of parameter space.
+    "min": 3500,       # finite lower bound
+    "max": 50000,      # finite upper bound
     "unit": "K"
-}
+}}
 ```
 
 ---
@@ -559,10 +508,10 @@ For MCMC fitting, parameters may also use Gaussian priors:
 The parameter is computed from other parameters during optimization.
 
 ```python
-"semi_major_axis": {
+{"semi_major_axis": {
     "value": 16.515,
     "constraint": "16.515 / sin(radians(system@inclination))"
-}
+}}
 ```
 
 This feature is particularly useful when incorporating parameters such as `a sin(i)`, derived from radial velocity fitting, 
@@ -613,12 +562,47 @@ being `detached` and `over-contact`.
 
 ---
 
+## Observational Uncertainties
+
+LC and RV datasets accept `y_err=None` in both least squares and MCMC. Supplied
+uncertainties must be finite, strictly positive, one-dimensional arrays matching
+`y_data`. Observations and coordinates must be nonempty, finite, matching vectors.
+Malformed file rows raise an error rather than being silently discarded; use
+`data_columns=(0, 1)` for two-column files without uncertainties. Smoothing preserves
+`y_err=None` when errors were omitted.
+
+When uncertainties are omitted, fitting setup estimates a constant scale separately
+for each passband or RV component:
+
+- LC: `0.05 * abs(mean(flux))`, after magnitude conversion and before normalization.
+  Fitting divides both flux and its uncertainties by the same positive mean flux.
+- RV: `0.05 * 1.482602218505602 * median(abs(v - median(v)))`. If ties make MAD zero
+  despite nonzero variation, the fallback is `0.05 * std(v, ddof=1)`. The latter
+  fallback is sensitive to outliers. Constant, singleton or numerically unresolved
+  RV data require explicit positive errors; no absolute velocity floor is added.
+
+The RV estimate is invariant under an additive velocity offset, within floating-point
+rounding. It retains small representable variation; offsets that erase variation in
+the input cannot be undone. The factor 0.05 is a compatibility convention. These
+scales include astrophysical variability and do not estimate instrument precision.
+Each estimate emits a warning: these are heuristic weights, not calibrated measurement
+uncertainties. MCMC posterior credible intervals depend on the assumed uncertainties,
+priors and likelihood. Supply measured errors for scientific inference.
+
+For magnitude or mmag data, supply errors in the same unit and set
+`reference_magnitude`. The existing Gaussian-flux approximation is propagated
+pointwise as `sigma_F = ln(10)/2.5 * F * sigma_mag`; mmag errors are divided by 1000
+first. Direct callers of `convert_flux_error` must now supply the converted pointwise
+`flux` as well as the reference `zero_point`; the zero point alone cannot determine
+absolute flux uncertainties.
+
 ## Executing the Fit
 
 The fitting procedure can then be initiated with the following command:
 
 ```python
-task.fit(x0=fit_params, **kwargs)
+# Supply a complete fit_params dictionary; the schematic above is not executable.
+task.fit(x0=fit_params)
 task.save_result("result.json")
 ```
 
@@ -707,6 +691,6 @@ Metallicity (log10(X_Fe/X_H)):                       0.0                   -    
 Detailed step-by-step fitting guides are available in:
 
 - **[UI_GUIDE.md](./UI_GUIDE.md)** - complete user guide for the desktop application
-- Notebook 10 - Working with ELISa datasets
-- Notebook 11 - Light curve fitting
-- Notebook 12 - Radial velocity fitting
+- [Notebook 10 - Working with ELISa datasets](./jupyter_tutorials/demo10-datasets.ipynb)
+- [Notebook 11 - Radial velocity fitting](./jupyter_tutorials/demo11-rv_fitting.ipynb)
+- [Notebook 12 - Light curve fitting](./jupyter_tutorials/demo12-lc_fitting.ipynb)

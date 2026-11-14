@@ -1,18 +1,32 @@
 from __future__ import annotations
 
-import json
 import os
 import warnings
 from configparser import ConfigParser
-from logging import config as log_conf
+from configparser import Error as ConfigParserError
+from contextlib import contextmanager
+from numbers import Integral, Real
 from pathlib import Path
-from typing import ClassVar
+from types import MappingProxyType, SimpleNamespace
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 
+from elisa.atm.const import ATLAS_TO_ATM_FILE_PREFIX
+from elisa.base.error import raise_elisa_settings_error
+from elisa.conf.enums import (
+    IntersectionBackend,
+    LoggingProfile,
+    MeanAnomalySolver,
+    RVMethod,
+)
+from elisa.conf.logconfig import configure_logging
 from elisa.conf.parsers import parse_tuple_interval
 from elisa.managers.settings_manager import DefaultSettings, SettingsManager
 from elisa.schema_registry import registry
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 first_time_user = False
 c_parse = ConfigParser()
@@ -32,6 +46,14 @@ else:
     config_file = str(default_config)
     first_time_user = True
     SettingsManager.run()
+
+
+def _create_settings_directory(path: str | os.PathLike) -> None:
+    """Create a settings directory or expose an actionable configuration error."""
+    try:
+        Path(path).mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise_elisa_settings_error(f"Cannot create settings directory {path!s}: {exc}", exc)
 
 
 class _Const:
@@ -104,32 +126,11 @@ class _Const:
 
     BINARY_COUNTERPARTS: ClassVar = {"primary": "secondary", "secondary": "primary"}
 
-    ATLAS_TO_ATM_FILE_PREFIX: ClassVar = {
-        "castelli": "ck",
-        "castelli-kurucz": "ck",
-        "ck": "ck",
-        "ck04": "ck",
-        "kurucz": "k",
-        "k": "k",
-        "k93": "k",
-    }
-
-    ATM_ATLAS_NORMALIZER: ClassVar = {
-        **ATLAS_TO_ATM_FILE_PREFIX,
-        "bb": "bb", "black_body": "bb",
-    }
-
-    ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX: ClassVar = {
-        "temperature": "TEMPERATURE_LIST_ATM",
-        "gravity": "GRAVITY_LIST_ATM",
-        "metallicity": "METALLICITY_LIST_ATM",
-    }
-
     DATETIME_MASK = "%Y-%m-%dT%H.%M.%S"
     DATE_MASK = "%Y-%m-%d"
 
     DATASET_MANDATORY_KWARGS: ClassVar = ("x_data", "y_data", "x_unit", "y_unit")
-    DATASET_OPTIONAL_KWARGS: ClassVar = ("y_err", )
+    DATASET_OPTIONAL_KWARGS: ClassVar = ("y_err",)
 
     DELIM_WHITESPACE = r"\s+|\t+|\s+\t+|\t+\s+"
     DATA_PATH = Path(__file__).resolve().parent.parent / "data"
@@ -137,93 +138,148 @@ class _Const:
     # paths to mesh correction factors
     PATH_TO_SINGLE_CORRECTIONS = DATA_PATH / "mesh_corrections" / "correction_factors_single.npy"
     PATH_TO_DETACHED_CORRECTIONS = DATA_PATH / "mesh_corrections" / "correction_factors_detached.npy"
-    PATH_TO_OVER_CONTACT_CORRECTIONS = (
-            DATA_PATH / "mesh_corrections" / "correction_factors_over-contact.npy"
-    )
+    PATH_TO_OVER_CONTACT_CORRECTIONS = DATA_PATH / "mesh_corrections" / "correction_factors_over-contact.npy"
     PATH_TO_ALBEDOS = DATA_PATH / "albedos.json"
     PATH_TO_BETA = DATA_PATH / "gravity_darkening.json"
 
 
-class Settings(_Const, DefaultSettings):
+class Settings(_Const):
+    """Mutable process settings, changed between calculations.
+
+    Effective values live only on the singleton instance. Transactions replace
+    its attribute dictionary after validation; numerical reads stay ordinary
+    Python attribute reads. Existing scientific objects retain their inputs.
+    """
+
+    # Type declarations only: effective values are initialized on the instance.
+    CONFIG_FILE: str
+    LOG_CONFIG: str
+    SUPPRESS_WARNINGS: bool
+    SUPPRESS_LOGGER: bool | None
+    HOME: str
+    REFLECTION_EFFECT: bool
+    REFLECTION_EFFECT_ITERATIONS: int
+    LIMB_DARKENING_LAW: str
+    DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT: float
+    SURFACE_DISPLACEMENT_TOL: float
+    RV_METHOD: str
+    RV_LAMBDA_INTERVAL: tuple[float, float]
+    MAX_DISCRETIZATION_FACTOR: float
+    MIN_DISCRETIZATION_FACTOR: float
+    DEFAULT_DISCRETIZATION_FACTOR: int
+    NUMBER_OF_THREADS: int
+    NUMBER_OF_PROCESSES: int
+    INTERSECTION_BACKEND: str
+    MEAN_ANOMALY_SOLVER: str
+    NUMBER_OF_MCMC_PROCESSES: int
+    MAX_NU_SEPARATION: float
+    MAX_D_FLUX: float
+    MAX_SPOT_D_LONGITUDE: float
+    MAX_SOLVER_ITERS: int
+    PRESERVE_INPUT_PHASES: bool
+    MAX_CURVE_DATAPOINTS: int
+    MIN_POINTS_IN_ECLIPSE: int
+    TIMER: float
+    PASSBAND_TABLES: str
+    LD_TABLES: str
+    CK04_ATM_TABLES: str
+    K93_ATM_TABLES: str
+    MESH_GENERATOR: str
+    DEFORMATION_TOL: float
+    PULSATION_MODEL: str
+    PENALIZE_ALL_EXCEPTIONS: bool
+    MCMC_DIAGNOSTICS_INTERVAL_STEPS: int
+    MCMC_SAVE_INTERVAL: int
+    MCMC_INITIAL_WALKER_MAX_ATTEMPTS: int
+    MCMC_AUTOCORR_TOL: int
+    CUDA: bool
+    USE_SINGLE_LD_COEFFICIENTS: bool
+    USE_INTERPOLATION_APPROXIMATION: bool
+    USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION: bool
+    USE_SIMILAR_NEIGHBOURS_APPROXIMATION: bool
+    MAGNITUDE_SYSTEM: str
+    ATLAS_TO_BASE_DIR: MappingProxyType[str, str]
+
     _instance = None
-
-    # defaults #########################################################################################################
-    DEFAULT_SETTINGS: ClassVar = {}
-
-    # schema registry
+    BASE_DIR = DefaultSettings.BASE_DIR
     SCHEMA_REGISTRY = registry.Registry()
-
-    # basic app configuration
-    CONFIG_FILE = config_file
     FIRST_TIME_USER = first_time_user
-
-    ####################################################################################################################
+    _fields = (
+        "CONFIG_FILE",
+        "LOG_CONFIG",
+        "SUPPRESS_WARNINGS",
+        "SUPPRESS_LOGGER",
+        "HOME",
+        "REFLECTION_EFFECT",
+        "REFLECTION_EFFECT_ITERATIONS",
+        "LIMB_DARKENING_LAW",
+        "DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT",
+        "SURFACE_DISPLACEMENT_TOL",
+        "RV_METHOD",
+        "RV_LAMBDA_INTERVAL",
+        "MAX_DISCRETIZATION_FACTOR",
+        "MIN_DISCRETIZATION_FACTOR",
+        "DEFAULT_DISCRETIZATION_FACTOR",
+        "NUMBER_OF_THREADS",
+        "NUMBER_OF_PROCESSES",
+        "INTERSECTION_BACKEND",
+        "MEAN_ANOMALY_SOLVER",
+        "NUMBER_OF_MCMC_PROCESSES",
+        "MAX_NU_SEPARATION",
+        "MAX_D_FLUX",
+        "MAX_SPOT_D_LONGITUDE",
+        "MAX_SOLVER_ITERS",
+        "PRESERVE_INPUT_PHASES",
+        "MAX_CURVE_DATAPOINTS",
+        "MIN_POINTS_IN_ECLIPSE",
+        "TIMER",
+        "PASSBAND_TABLES",
+        "LD_TABLES",
+        "CK04_ATM_TABLES",
+        "K93_ATM_TABLES",
+        "MESH_GENERATOR",
+        "DEFORMATION_TOL",
+        "PULSATION_MODEL",
+        "PENALIZE_ALL_EXCEPTIONS",
+        "MCMC_SAVE_INTERVAL",
+        "MCMC_DIAGNOSTICS_INTERVAL_STEPS",
+        "MCMC_INITIAL_WALKER_MAX_ATTEMPTS",
+        "MCMC_AUTOCORR_TOL",
+        "CUDA",
+        "USE_SINGLE_LD_COEFFICIENTS",
+        "USE_INTERPOLATION_APPROXIMATION",
+        "USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION",
+        "USE_SIMILAR_NEIGHBOURS_APPROXIMATION",
+        "MAGNITUDE_SYSTEM",
+    )
+    _defaults: ClassVar = {name: getattr(DefaultSettings, name) for name in _fields if name != "CONFIG_FILE"}
+    _defaults["CONFIG_FILE"] = config_file
+    DEFAULT_SETTINGS = MappingProxyType(_defaults)
 
     def __new__(cls) -> Settings:  # noqa: PYI034
-        """Create or return the singleton Settings instance.
-
-        :returns: The singleton Settings instance.
-        :rtype: Settings
-        """
+        """Create or return the process singleton."""
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls.DEFAULT_SETTINGS = cls.settings_serializer()
-            # Put any initialization here.
-            cls.read_and_update_config()
-            cls._update_atlas_to_base_dir()
-            cls._create_home()
-
+            instance = super().__new__(cls)
+            object.__setattr__(instance, "__dict__", dict(cls._defaults))
+            instance._update_atlas_to_base_dir()
+            instance.read_and_update_config()
+            instance._create_home()
+            cls._instance = instance
         return cls._instance
 
-    @classmethod
-    def settings_serializer(cls) -> dict:
-        """Serialize all current settings to a dictionary.
+    def __setattr__(self, name: str, value: object) -> None:
+        """Route public writes through the same transaction as configure()."""
+        if name not in self._fields:
+            raise_elisa_settings_error(f"{name} is not a mutable setting")
+        self.configure(**{name: value})
 
-        :returns: Dictionary containing all current settings with their values.
-        :rtype: dict
-        """
-        return {
-            "CONFIG_FILE": cls.CONFIG_FILE,
-            "LOG_CONFIG": cls.LOG_CONFIG,
-            "SUPPRESS_WARNINGS": cls.SUPPRESS_WARNINGS,
-            "SUPPRESS_LOGGER": cls.SUPPRESS_LOGGER,
-            "HOME": cls.HOME,
-            "REFLECTION_EFFECT": cls.REFLECTION_EFFECT,
-            "REFLECTION_EFFECT_ITERATIONS": cls.REFLECTION_EFFECT_ITERATIONS,
-            "LIMB_DARKENING_LAW": cls.LIMB_DARKENING_LAW,
-            "DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT": cls.DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT,
-            "SURFACE_DISPLACEMENT_TOL": cls.SURFACE_DISPLACEMENT_TOL,
-            "RV_METHOD": cls.RV_METHOD,
-            "RV_LAMBDA_INTERVAL": cls.RV_LAMBDA_INTERVAL,
-            "MAX_DISCRETIZATION_FACTOR": cls.MAX_DISCRETIZATION_FACTOR,
-            "MIN_DISCRETIZATION_FACTOR": cls.MIN_DISCRETIZATION_FACTOR,
-            "DEFAULT_DISCRETIZATION_FACTOR": cls.DEFAULT_DISCRETIZATION_FACTOR,
-            "NUMBER_OF_THREADS": cls.NUMBER_OF_THREADS,
-            "NUMBER_OF_PROCESSES": cls.NUMBER_OF_PROCESSES,
-            "NUMBER_OF_MCMC_PROCESSES": cls.NUMBER_OF_MCMC_PROCESSES,
-            "MAX_NU_SEPARATION": cls.MAX_NU_SEPARATION,
-            "MAX_D_FLUX": cls.MAX_D_FLUX,
-            "MAX_SPOT_D_LONGITUDE": cls.MAX_SPOT_D_LONGITUDE,
-            "MAX_SOLVER_ITERS": cls.MAX_SOLVER_ITERS,
-            "MAX_CURVE_DATAPOINTS": cls.MAX_CURVE_DATAPOINTS,
-            "MIN_POINTS_IN_ECLIPSE": cls.MIN_POINTS_IN_ECLIPSE,
-            "TIMER": cls.TIMER,
-            "PASSBAND_TABLES": cls.PASSBAND_TABLES,
-            "LD_TABLES": cls.LD_TABLES,
-            "CK04_ATM_TABLES": cls.CK04_ATM_TABLES,
-            "K93_ATM_TABLES": cls.K93_ATM_TABLES,
-            "ATM_ATLAS": cls.ATM_ATLAS,
-            "MESH_GENERATOR": cls.MESH_GENERATOR,
-            "DEFORMATION_TOL": cls.DEFORMATION_TOL,
-            "PULSATION_MODEL": cls.PULSATION_MODEL,
-            "MCMC_SAVE_INTERVAL": cls.MCMC_SAVE_INTERVAL,
-            "CUDA": cls.CUDA,
-            "USE_SINGLE_LD_COEFFICIENTS": cls.USE_SINGLE_LD_COEFFICIENTS,
-            "USE_INTERPOLATION_APPROXIMATION": cls.USE_INTERPOLATION_APPROXIMATION,
-            "USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION": cls.USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION,
-            "USE_SIMILAR_NEIGHBOURS_APPROXIMATION": cls.USE_SIMILAR_NEIGHBOURS_APPROXIMATION,
-            "MAGNITUDE_SYSTEM": cls.MAGNITUDE_SYSTEM,
-        }
+    def __delattr__(self, name: str) -> None:
+        raise_elisa_settings_error(f"Settings attributes cannot be deleted: {name}")
+
+    def settings_serializer(self) -> dict:
+        """Return an independent dictionary of the effective user settings."""
+        values = self.__dict__
+        return {name: values[name] for name in self._fields}
 
     @staticmethod
     def load_conf(path: str) -> None:
@@ -234,30 +290,44 @@ class Settings(_Const, DefaultSettings):
         :returns: None
         :rtype: None
         """
-        conf_dict = json.loads(Path(path).read_text())
-        log_conf.dictConfig(conf_dict)
+        settings.configure_logging(path)
 
-    @classmethod
-    def set_up_logging(cls) -> None:
-        """Set up logging configuration from file or default schema.
+    def set_up_logging(self) -> None:
+        """Apply the selected logging policy without resolving LOG_CONFIG in place.
 
-        :returns: None
-        :rtype: None
+        :returns: None.
         """
-        if Path(cls.LOG_CONFIG).is_file():
-            cls.load_conf(cls.LOG_CONFIG)
-            return
-        if cls.LOG_CONFIG == "default":
-            cls.LOG_CONFIG = str(Path(__file__).resolve().parent / "logging_schemas" / "default.json")
-        elif cls.LOG_CONFIG == "fit":
-            cls.LOG_CONFIG = str(Path(__file__).resolve().parent / "logging_schemas" / "fit.json")
-        else:
-            cls.LOG_CONFIG = str(Path(__file__).resolve().parent / "logging_schemas" / "default.json")
+        profile = self.LOG_CONFIG
+        # The historical default points at a nonexistent managers/logging_schemas
+        # file. Retain its startup fallback without hiding missing custom files.
+        if profile == DefaultSettings.LOG_CONFIG and not Path(profile).is_file():
+            profile = LoggingProfile.DEFAULT.value
+        self.configure_logging(profile)
 
-        cls.load_conf(cls.LOG_CONFIG)
+    def configure_logging(self, profile: str) -> None:
+        """Configure logging independently of other Settings mutations.
 
-    @classmethod
-    def read_and_update_config(cls, *, conf_path: str | None = None) -> None:
+        :param profile: ``default``, ``fit`` or a trusted custom JSON file path.
+        :raises ElisaSettingsError: If the profile or logging policy is invalid.
+        :returns: None.
+        """
+        self.configure(LOG_CONFIG=profile)
+
+    @contextmanager
+    def logging_context(self, profile: str) -> Iterator[None]:
+        """Temporarily change logging and reload the previously selected JSON policy.
+
+        :param profile: Built-in profile name or trusted custom JSON file path.
+        :yields: Control with the temporary policy applied.
+        """
+        previous_selector = self.LOG_CONFIG
+        self.configure_logging(profile)
+        try:
+            yield
+        finally:
+            self.configure_logging(previous_selector)
+
+    def read_and_update_config(self, *, conf_path: str | None = None) -> None:
         """Read configuration from file and update settings.
 
         :param conf_path: Path to the configuration file. If None, uses CONFIG_FILE.
@@ -266,7 +336,7 @@ class Settings(_Const, DefaultSettings):
         :rtype: None
         """
         if not conf_path:
-            conf_path = cls.CONFIG_FILE
+            conf_path = self.CONFIG_FILE
 
         if not Path(conf_path).is_file():
             msg = (
@@ -278,227 +348,348 @@ class Settings(_Const, DefaultSettings):
             warnings.warn(msg, Warning, stacklevel=2)
             return
 
-        c_parse.read(conf_path)
-        cls.update_config()
-        cls._update_atlas_to_base_dir()
-        cls._create_home()
+        parser = ConfigParser()
+        try:
+            parser.read(conf_path)
+        except (ConfigParserError, OSError, UnicodeError) as exc:
+            raise_elisa_settings_error(f"Cannot read settings file {conf_path!s}: {exc}", exc)
+        self.update_config(parser)
 
-    @classmethod
-    def configure(cls, **kwargs: object) -> None:
-        """Update configuration settings from keyword arguments.
+    @contextmanager
+    def override(self, **kwargs: object) -> Iterator[None]:
+        """Temporarily configure settings, restoring all effective values on exit.
 
-        :param kwargs: Configuration settings to update (key=value pairs).
-        :type kwargs: object
-        :returns: None
-        :rtype: None
-        :raises ValueError: If a configuration key does not exist.
+        Nested contexts restore their own entry state, including settings changed
+        in the body that were not named in the override.
         """
-        for key, value in kwargs.items():
-            if not hasattr(cls, key):
-                msg = "You are about to set configuration which doesn't exist"
-                raise ValueError(msg)
-            setattr(cls, key, value)
-            if key == "LOG_CONFIG":
-                cls.set_up_logging()
-        cls._update_atlas_to_base_dir()
+        previous = self.settings_serializer()
+        self.configure(**kwargs)
+        try:
+            yield
+        finally:
+            self.configure(**previous)
 
-    @classmethod
-    def _create_home(cls) -> None:
+    def configure(self, **kwargs: object) -> None:
+        """Validate a full candidate and publish it once, or retain all old values.
+
+        Constants, services and derived values are not configuration fields.
+        Logging is applied last before publication; arbitrary custom dictConfig
+        side effects cannot be rolled back, but failed logging never publishes
+        candidate Settings values.
+        """
+        unknown = kwargs.keys() - self._fields
+        if unknown:
+            raise_elisa_settings_error(f"Unknown or read-only setting(s): {', '.join(sorted(unknown))}")
+        candidate = self.settings_serializer()
+        candidate.update(kwargs)
+        self._validate_candidate(candidate)
+        candidate["ATLAS_TO_BASE_DIR"] = self._atlas_to_base_dir(candidate)
+        if "HOME" in kwargs:
+            _create_settings_directory(candidate["HOME"])
+        if "LOG_CONFIG" in kwargs:
+            profile = candidate["LOG_CONFIG"]
+            if profile == DefaultSettings.LOG_CONFIG and not Path(profile).is_file():
+                profile = LoggingProfile.DEFAULT.value
+            configure_logging(profile)
+            candidate["LOG_CONFIG"] = str(profile)
+        object.__setattr__(self, "__dict__", candidate)
+
+    @staticmethod
+    def _validate_candidate(values: dict) -> None:  # noqa: C901, PLR0912
+        """Use INI types and constraints without restricting scientific modes."""
+        float_fields = {
+            "MAX_DISCRETIZATION_FACTOR",
+            "MIN_DISCRETIZATION_FACTOR",
+        }
+        for name, value in values.items():
+            default = Settings._defaults[name]
+            valid = True
+            if name == "RV_LAMBDA_INTERVAL":
+                valid = (
+                    isinstance(value, tuple)
+                    and len(value) == 2  # noqa: PLR2004
+                    and all(isinstance(v, Real) and not isinstance(v, (bool, np.bool_)) for v in value)
+                    and value[0] <= value[1]
+                )
+            elif name == "SUPPRESS_LOGGER":
+                valid = value is None or isinstance(value, (bool, np.bool_))
+            elif isinstance(default, bool):
+                valid = isinstance(value, (bool, np.bool_))
+            elif name in float_fields or isinstance(default, float):
+                valid = isinstance(value, Real) and not isinstance(value, (bool, np.bool_))
+            elif isinstance(default, int):
+                valid = isinstance(value, Integral) and not isinstance(value, (bool, np.bool_))
+            elif name in {
+                "CONFIG_FILE",
+                "LOG_CONFIG",
+                "HOME",
+                "PASSBAND_TABLES",
+                "LD_TABLES",
+                "CK04_ATM_TABLES",
+                "K93_ATM_TABLES",
+            }:
+                valid = isinstance(value, (str, os.PathLike))
+                if valid:
+                    values[name] = str(value)
+            elif isinstance(default, str):
+                valid = isinstance(value, str)
+            if not valid:
+                raise_elisa_settings_error(f"Invalid value for {name}: {value!r}")
+        if values["LIMB_DARKENING_LAW"] not in _Const.AVAILABLE_LD_LAWS:
+            raise_elisa_settings_error(
+                f"{values['LIMB_DARKENING_LAW']} is not valid name of limb darkening law. "
+                f"Available limb darkening laws are: {_Const.AVAILABLE_LD_LAWS}",
+            )
+        rv_methods = tuple(method.value for method in RVMethod)
+        if values["RV_METHOD"] not in rv_methods:
+            raise_elisa_settings_error(f"RV_METHOD must be one of: {', '.join(rv_methods)}")
+        backends = tuple(backend.value for backend in IntersectionBackend)
+        if values["INTERSECTION_BACKEND"] not in backends:
+            raise_elisa_settings_error(f"INTERSECTION_BACKEND must be one of: {', '.join(backends)}")
+        solvers = tuple(solver.value for solver in MeanAnomalySolver)
+        if values["MEAN_ANOMALY_SOLVER"] not in solvers:
+            raise_elisa_settings_error(f"MEAN_ANOMALY_SOLVER must be one of: {', '.join(solvers)}")
+        interval = values["MCMC_DIAGNOSTICS_INTERVAL_STEPS"]
+        if type(interval) is not int or interval <= 0:
+            raise_elisa_settings_error("MCMC_DIAGNOSTICS_INTERVAL_STEPS must be a positive integer")
+        if values["MCMC_INITIAL_WALKER_MAX_ATTEMPTS"] <= 0:
+            raise_elisa_settings_error("MCMC_INITIAL_WALKER_MAX_ATTEMPTS must be a positive integer")
+        if values["NUMBER_OF_THREADS"] <= 0:
+            raise_elisa_settings_error("Invalid value for `number_of_threads`, allowed >= 1")
+        if values["NUMBER_OF_PROCESSES"] > 1 and values["NUMBER_OF_MCMC_PROCESSES"] > 1:
+            raise_elisa_settings_error("Parallel MCMC and parallel synthesis cannot be enabled simultaneously.")
+        for name in ("NUMBER_OF_PROCESSES", "NUMBER_OF_MCMC_PROCESSES"):
+            cores = os.cpu_count() or 1
+            if values[name] > cores:
+                if not values["SUPPRESS_WARNINGS"]:
+                    warnings.warn(
+                        f"argument {name.lower()} is too big, fallback to number of machine cores", stacklevel=3,
+                    )
+                values[name] = cores
+
+    def _create_home(self) -> None:
         """Create the home directory if it does not exist.
 
         :returns: None
         :rtype: None
         """
-        Path(cls.HOME).mkdir(parents=True, exist_ok=True)
+        _create_settings_directory(self.HOME)
 
-    @classmethod
-    def update_config(cls) -> None:  # noqa: C901, PLR0912, PLR0915
+    def update_config(self, parser: ConfigParser | None = None) -> None:
         """Update settings from the parsed configuration file.
 
         Reads all configuration sections (general, physics, computational, support)
-        and updates the corresponding class attributes.
+        and publishes the validated candidate in one transaction.
 
         :returns: None
         :rtype: None
         """
-        cls.CUDA = False
+        try:
+            self._update_config(parser)
+        except (ConfigParserError, ValueError, TypeError) as exc:
+            raise_elisa_settings_error(f"Invalid INI settings: {exc}", exc)
+
+    def _update_config(self, parser: ConfigParser | None) -> None:  # noqa: C901, PLR0912, PLR0915
+        """Prepare INI values before publishing them in one transaction."""
+        parser = c_parse if parser is None else parser
+        candidate = SimpleNamespace(**self.settings_serializer())
+        candidate.CUDA = False
         # **************************************************************************************************************
-        if c_parse.has_section("general"):
-            cls.SUPPRESS_WARNINGS = c_parse.getboolean("general", "suppress_warnings", fallback=cls.SUPPRESS_WARNINGS)
-            cls.LOG_CONFIG = c_parse.get("general", "log_config", fallback=cls.LOG_CONFIG)
-
-            cls.set_up_logging()
-
-            cls.SUPPRESS_LOGGER = c_parse.getboolean("general", "suppress_logger", fallback=cls.SUPPRESS_LOGGER)
-            cls.HOME = c_parse.get("general", "home", fallback=cls.HOME)
-        # **************************************************************************************************************
-        if c_parse.has_section("physics"):
-            cls.REFLECTION_EFFECT = c_parse.getboolean("physics", "reflection_effect", fallback=cls.REFLECTION_EFFECT)
-            cls.REFLECTION_EFFECT_ITERATIONS = c_parse.getint("physics", "reflection_effect_iterations",
-                                                              fallback=cls.REFLECTION_EFFECT_ITERATIONS)
-            cls.LIMB_DARKENING_LAW = c_parse.get("physics", "limb_darkening_law", fallback=cls.LIMB_DARKENING_LAW)
-            if cls.LIMB_DARKENING_LAW not in ["linear", "cosine", "logarithmic", "square_root"]:
-                msg = (
-                    f"{cls.LIMB_DARKENING_LAW} is not valid name of limb darkening law. "
-                    f"Available limb darkening laws are: `linear` "
-                    f"or `cosine`, `logarithmic`, `square_root`"
-                )
-                raise ValueError(msg)
-
-            cls.DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT = \
-                c_parse.getfloat("physics", "default_temperature_perturbation_phase_shift",
-                                 fallback=cls.DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT)
-            cls.SURFACE_DISPLACEMENT_TOL = \
-                c_parse.getfloat("physics", "surface_displacement_tol", fallback=cls.SURFACE_DISPLACEMENT_TOL)
-            cls.RV_METHOD = c_parse.get("physics", "rv_method", fallback=cls.RV_METHOD)
-
-            cls.RV_LAMBDA_INTERVAL = parse_tuple_interval(c_parse.get(
-                "physics",
-                "rv_lambda_interval",
-                fallback=f"({cls.RV_LAMBDA_INTERVAL[0]}, {cls.RV_LAMBDA_INTERVAL[1]})",
-            ), name="rv_lambda_interval")
-
-            cls.PULSATION_MODEL = c_parse.get("physics", "pulsation_model", fallback=cls.PULSATION_MODEL)
-        # **************************************************************************************************************
-        if c_parse.has_section("computational"):
-            cls.MAX_DISCRETIZATION_FACTOR = c_parse.getfloat("computational", "max_discretization_factor",
-                                                             fallback=cls.MAX_DISCRETIZATION_FACTOR)
-            cls.MIN_DISCRETIZATION_FACTOR = c_parse.getfloat("computational", "min_discretization_factor",
-                                                             fallback=cls.MIN_DISCRETIZATION_FACTOR)
-            cls.DEFAULT_DISCRETIZATION_FACTOR = c_parse.getint(
-                "computational", "default_discretization_factor", fallback=cls.DEFAULT_DISCRETIZATION_FACTOR,
+        if parser.has_section("general"):
+            candidate.SUPPRESS_WARNINGS = parser.getboolean(
+                "general", "suppress_warnings", fallback=candidate.SUPPRESS_WARNINGS,
             )
-            cls.NUMBER_OF_THREADS = c_parse.getint("computational", "number_of_threads", fallback=cls.NUMBER_OF_THREADS)
-            if cls.NUMBER_OF_THREADS <= 0:
-                msg = "Invalid value for `number_of_threads`, allowed >= 1"
-                raise ValueError(msg)
+            log_config = parser.get("general", "log_config", fallback=None)
+            if log_config is None:
+                candidate.LOG_CONFIG = self.LOG_CONFIG
+            else:
+                candidate.LOG_CONFIG = log_config
 
-            cls.NUMBER_OF_PROCESSES = c_parse.getint("computational", "number_of_processes",
-                                                     fallback=cls.NUMBER_OF_PROCESSES)
-            if os.cpu_count() < cls.NUMBER_OF_PROCESSES:
-                if not cls.SUPPRESS_WARNINGS:
-                    warnings.warn(
-                        "argument number_of_processes is too big, fallback to number of machine cores",
-                        stacklevel=2,
-                    )
-                cls.NUMBER_OF_PROCESSES = int(os.cpu_count())
+            candidate.SUPPRESS_LOGGER = parser.getboolean(
+                "general", "suppress_logger", fallback=candidate.SUPPRESS_LOGGER,
+            )
+            candidate.HOME = parser.get("general", "home", fallback=candidate.HOME)
+        # **************************************************************************************************************
+        if parser.has_section("physics"):
+            candidate.REFLECTION_EFFECT = parser.getboolean(
+                "physics", "reflection_effect", fallback=candidate.REFLECTION_EFFECT,
+            )
+            candidate.REFLECTION_EFFECT_ITERATIONS = parser.getint(
+                "physics", "reflection_effect_iterations", fallback=candidate.REFLECTION_EFFECT_ITERATIONS,
+            )
+            candidate.LIMB_DARKENING_LAW = parser.get(
+                "physics", "limb_darkening_law", fallback=candidate.LIMB_DARKENING_LAW,
+            )
+            candidate.DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT = parser.getfloat(
+                "physics",
+                "default_temperature_perturbation_phase_shift",
+                fallback=candidate.DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT,
+            )
+            candidate.SURFACE_DISPLACEMENT_TOL = parser.getfloat(
+                "physics", "surface_displacement_tol", fallback=candidate.SURFACE_DISPLACEMENT_TOL,
+            )
+            candidate.RV_METHOD = parser.get("physics", "rv_method", fallback=candidate.RV_METHOD)
 
-            cls.NUMBER_OF_MCMC_PROCESSES = c_parse.getint("computational", "number_of_mcmc_processes",
-                                                          fallback=cls.NUMBER_OF_MCMC_PROCESSES)
-            if os.cpu_count() < cls.NUMBER_OF_MCMC_PROCESSES:
-                if not cls.SUPPRESS_WARNINGS:
-                    warnings.warn(
-                        "argument number_of_mcmc_processes is too big, fallback to number of machine cores",
-                        stacklevel=2,
-                    )
-                cls.NUMBER_OF_MCMC_PROCESSES = int(os.cpu_count())
+            if parser.has_option("physics", "rv_lambda_interval"):
+                candidate.RV_LAMBDA_INTERVAL = parse_tuple_interval(
+                    parser.get("physics", "rv_lambda_interval"),
+                    name="rv_lambda_interval",
+                )
 
-            cls.MAX_NU_SEPARATION = c_parse.getfloat("computational", "max_nu_separation",
-                                                     fallback=cls.MAX_NU_SEPARATION)
-            cls.MAX_D_FLUX = c_parse.getfloat("computational", "max_d_flux", fallback=cls.MAX_D_FLUX)
-            cls.MAX_SPOT_D_LONGITUDE = c_parse.getfloat("computational", "max_spot_d_longitude",
-                                                        fallback=cls.MAX_SPOT_D_LONGITUDE)
-            cls.MAX_SOLVER_ITERS = c_parse.getint("computational", "max_solver_iters", fallback=cls.MAX_SOLVER_ITERS)
-            cls.MAX_CURVE_DATAPOINTS = c_parse.getint("computational", "max_curve_datapoints",
-                                                      fallback=cls.MAX_CURVE_DATAPOINTS)
-            cls.MIN_POINTS_IN_ECLIPSE = c_parse.getint("computational", "min_points_in_eclipse",
-                                                       fallback=cls.MIN_POINTS_IN_ECLIPSE)
-            cls.MESH_GENERATOR = c_parse.get("computational", "mesh_generator", fallback=cls.MESH_GENERATOR)
-            cls.DEFORMATION_TOL = c_parse.getfloat("computational", "deformation_tol", fallback=cls.DEFORMATION_TOL)
-            cls.MCMC_SAVE_INTERVAL = c_parse.getint("computational", "mcmc_save_interval",
-                                                    fallback=cls.MCMC_SAVE_INTERVAL)
+            candidate.PULSATION_MODEL = parser.get("physics", "pulsation_model", fallback=candidate.PULSATION_MODEL)
+        # **************************************************************************************************************
+        if parser.has_section("computational"):
+            candidate.MEAN_ANOMALY_SOLVER = parser.get(
+                "computational", "mean_anomaly_solver", fallback=candidate.MEAN_ANOMALY_SOLVER,
+            )
+            backend = parser.get("computational", "intersection_backend", fallback=candidate.INTERSECTION_BACKEND)
+            candidate.INTERSECTION_BACKEND = backend
+            candidate.MAX_DISCRETIZATION_FACTOR = parser.getfloat(
+                "computational", "max_discretization_factor", fallback=candidate.MAX_DISCRETIZATION_FACTOR,
+            )
+            candidate.MIN_DISCRETIZATION_FACTOR = parser.getfloat(
+                "computational", "min_discretization_factor", fallback=candidate.MIN_DISCRETIZATION_FACTOR,
+            )
+            candidate.DEFAULT_DISCRETIZATION_FACTOR = parser.getint(
+                "computational",
+                "default_discretization_factor",
+                fallback=candidate.DEFAULT_DISCRETIZATION_FACTOR,
+            )
+            candidate.NUMBER_OF_THREADS = parser.getint(
+                "computational", "number_of_threads", fallback=candidate.NUMBER_OF_THREADS,
+            )
+            candidate.NUMBER_OF_PROCESSES = parser.getint(
+                "computational", "number_of_processes", fallback=candidate.NUMBER_OF_PROCESSES,
+            )
+            candidate.NUMBER_OF_MCMC_PROCESSES = parser.getint(
+                "computational", "number_of_mcmc_processes", fallback=candidate.NUMBER_OF_MCMC_PROCESSES,
+            )
 
-            cls.CUDA = c_parse.getboolean("computational", "cuda", fallback=cls.CUDA)
+            candidate.MAX_NU_SEPARATION = parser.getfloat(
+                "computational", "max_nu_separation", fallback=candidate.MAX_NU_SEPARATION,
+            )
+            candidate.MAX_D_FLUX = parser.getfloat("computational", "max_d_flux", fallback=candidate.MAX_D_FLUX)
+            candidate.MAX_SPOT_D_LONGITUDE = parser.getfloat(
+                "computational", "max_spot_d_longitude", fallback=candidate.MAX_SPOT_D_LONGITUDE,
+            )
+            candidate.MAX_SOLVER_ITERS = parser.getint(
+                "computational", "max_solver_iters", fallback=candidate.MAX_SOLVER_ITERS,
+            )
+            candidate.PRESERVE_INPUT_PHASES = parser.getboolean(
+                "computational", "preserve_input_phases", fallback=candidate.PRESERVE_INPUT_PHASES,
+            )
+            candidate.MAX_CURVE_DATAPOINTS = parser.getint(
+                "computational", "max_curve_datapoints", fallback=candidate.MAX_CURVE_DATAPOINTS,
+            )
+            candidate.MIN_POINTS_IN_ECLIPSE = parser.getint(
+                "computational", "min_points_in_eclipse", fallback=candidate.MIN_POINTS_IN_ECLIPSE,
+            )
+            candidate.MESH_GENERATOR = parser.get("computational", "mesh_generator", fallback=candidate.MESH_GENERATOR)
+            candidate.DEFORMATION_TOL = parser.getfloat(
+                "computational", "deformation_tol", fallback=candidate.DEFORMATION_TOL,
+            )
+            candidate.PENALIZE_ALL_EXCEPTIONS = parser.getboolean(
+                "computational", "penalize_all_exceptions", fallback=candidate.PENALIZE_ALL_EXCEPTIONS,
+            )
+            candidate.MCMC_DIAGNOSTICS_INTERVAL_STEPS = parser.getint(
+                "computational", "mcmc_diagnostics_interval_steps",
+                fallback=candidate.MCMC_DIAGNOSTICS_INTERVAL_STEPS,
+            )
+            candidate.MCMC_SAVE_INTERVAL = parser.getint(
+                "computational", "mcmc_save_interval", fallback=candidate.MCMC_SAVE_INTERVAL,
+            )
+            candidate.MCMC_INITIAL_WALKER_MAX_ATTEMPTS = parser.getint(
+                "computational", "mcmc_initial_walker_max_attempts",
+                fallback=candidate.MCMC_INITIAL_WALKER_MAX_ATTEMPTS,
+            )
+            candidate.MCMC_AUTOCORR_TOL = parser.getint(
+                "computational", "mcmc_autocorr_tol", fallback=candidate.MCMC_AUTOCORR_TOL,
+            )
 
-            if cls.CUDA:
+            candidate.CUDA = parser.getboolean("computational", "cuda", fallback=candidate.CUDA)
+
+            if candidate.CUDA:
                 try:
                     # noinspection PyUnresolvedReferences
                     import cumpy  # noqa: PLC0415
+
                     if not cumpy.cuda.is_available():
-                        cls.CUDA = False
+                        candidate.CUDA = False
                         warnings.warn(
-                            "You have no CUDA enabled/available on your device. "
-                            "Runtime continue with CPU.",
+                            "You have no CUDA enabled/available on your device. Runtime continue with CPU.",
                             UserWarning,
                             stacklevel=2,
                         )
 
                 except ImportError:
                     warnings.warn(
-                        "You need to install `pytorch` with cuda to be "
-                        "able to use CUDA features. Fallback to CPU.",
+                        "You need to install `pytorch` with cuda to be able to use CUDA features. Fallback to CPU.",
                         UserWarning,
                         stacklevel=2,
                     )
-                    cls.CUDA = False
+                    candidate.CUDA = False
 
-            cls.USE_SINGLE_LD_COEFFICIENTS = c_parse.getboolean("computational", "use_single_ld_coefficients",
-                                                                fallback=cls.USE_SINGLE_LD_COEFFICIENTS)
-
-            cls.USE_INTERPOLATION_APPROXIMATION = c_parse.getboolean(
-                "computational", "use_interpolation_approximation", fallback=cls.USE_INTERPOLATION_APPROXIMATION,
+            candidate.USE_SINGLE_LD_COEFFICIENTS = parser.getboolean(
+                "computational", "use_single_ld_coefficients", fallback=candidate.USE_SINGLE_LD_COEFFICIENTS,
             )
 
-            cls.USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION = c_parse.getboolean(
-                "computational", "use_symmetrical_counterparts_approximation",
-                fallback=cls.USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION,
+            candidate.USE_INTERPOLATION_APPROXIMATION = parser.getboolean(
+                "computational",
+                "use_interpolation_approximation",
+                fallback=candidate.USE_INTERPOLATION_APPROXIMATION,
             )
 
-            cls.USE_SIMILAR_NEIGHBOURS_APPROXIMATION = c_parse.getboolean(
-                "computational", "use_similar_neighbours_approximation",
-                fallback=cls.USE_SIMILAR_NEIGHBOURS_APPROXIMATION,
+            candidate.USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION = parser.getboolean(
+                "computational",
+                "use_symmetrical_counterparts_approximation",
+                fallback=candidate.USE_SYMMETRICAL_COUNTERPARTS_APPROXIMATION,
+            )
+
+            candidate.USE_SIMILAR_NEIGHBOURS_APPROXIMATION = parser.getboolean(
+                "computational",
+                "use_similar_neighbours_approximation",
+                fallback=candidate.USE_SIMILAR_NEIGHBOURS_APPROXIMATION,
             )
 
         # **************************************************************************************************************
-        if c_parse.has_section("support"):
-            cls.LD_TABLES = c_parse.get("support", "ld_tables", fallback=cls.LD_TABLES)
+        if parser.has_section("support"):
+            candidate.LD_TABLES = parser.get("support", "ld_tables", fallback=candidate.LD_TABLES)
 
-            if not Path(cls.LD_TABLES).is_dir() and not cls.SUPPRESS_WARNINGS:
+            if not Path(candidate.LD_TABLES).is_dir() and not candidate.SUPPRESS_WARNINGS:
                 warnings.warn(
-                    f"path {cls.LD_TABLES} to limb darkening tables doesn't exists\n"
+                    f"path {candidate.LD_TABLES} to limb darkening tables doesn't exists\n"
                     f"Specifiy it in elisa_conf.ini file",
                     stacklevel=2,
                 )
 
-            cls.CK04_ATM_TABLES = c_parse.get("support", "castelli_kurucz_04_atm_tables", fallback=cls.CK04_ATM_TABLES)
+            candidate.CK04_ATM_TABLES = parser.get(
+                "support", "castelli_kurucz_04_atm_tables", fallback=candidate.CK04_ATM_TABLES,
+            )
 
-            if not Path(cls.CK04_ATM_TABLES).is_dir() and not cls.SUPPRESS_WARNINGS:
+            if not Path(candidate.CK04_ATM_TABLES).is_dir() and not candidate.SUPPRESS_WARNINGS:
                 warnings.warn(
-                    f"path {cls.CK04_ATM_TABLES}\n"
+                    f"path {candidate.CK04_ATM_TABLES}\n"
                     f"to castelli-kurucz 2004 atmosphere atlas doesn't exists\n"
                     f"Specifiy it in elisa_conf.ini file",
                     stacklevel=2,
                 )
 
-            cls.K93_ATM_TABLES = c_parse.get("support", "kurucz_93_atm_tables", fallback=cls.K93_ATM_TABLES)
+            candidate.K93_ATM_TABLES = parser.get("support", "kurucz_93_atm_tables", fallback=candidate.K93_ATM_TABLES)
 
-            if not Path(cls.K93_ATM_TABLES).is_dir() and not cls.SUPPRESS_WARNINGS:
+            if not Path(candidate.K93_ATM_TABLES).is_dir() and not candidate.SUPPRESS_WARNINGS:
                 warnings.warn(
-                    f"path {cls.K93_ATM_TABLES}\n"
+                    f"path {candidate.K93_ATM_TABLES}\n"
                     "to kurucz 1993 atmosphere atlas doesn't exists\n"
                     "Specifiy it in elisa_conf.ini file",
                     UserWarning,
                     stacklevel=2,
                 )
 
-            if c_parse.get("support", "atlas", fallback=None):
-                with np.errstate(divide="ignore", invalid="ignore"):
-                    if not cls.SUPPRESS_WARNINGS:
-                        warnings.simplefilter("always", DeprecationWarning)
-                        warnings.warn(
-                            "Variable `atlas` in configuration section `support` is not "
-                            "longer supported and will be removed in future version.\n"
-                            "Use atmosphere definition as initial parameter for given celestial object",
-                            DeprecationWarning,
-                            stacklevel=2,
-                        )
-                        warnings.simplefilter("ignore", DeprecationWarning)
-            cls.ATM_ATLAS = c_parse.get("support", "atlas", fallback=cls.ATM_ATLAS)
-            cls.PASSBAND_TABLES = c_parse.get("support", "passband_tables", fallback=cls.PASSBAND_TABLES)
+            candidate.PASSBAND_TABLES = parser.get("support", "passband_tables", fallback=candidate.PASSBAND_TABLES)
 
-            if not Path(cls.PASSBAND_TABLES).is_dir() and not cls.SUPPRESS_WARNINGS:
+            if not Path(candidate.PASSBAND_TABLES).is_dir() and not candidate.SUPPRESS_WARNINGS:
                 warnings.warn(
-                    f"path {cls.PASSBAND_TABLES} to passband tables doesn't exists\n"
+                    f"path {candidate.PASSBAND_TABLES} to passband tables doesn't exists\n"
                     f"Specifiy it in elisa_conf.ini file",
                     UserWarning,
                     stacklevel=2,
@@ -506,22 +697,28 @@ class Settings(_Const, DefaultSettings):
 
         # **************************************************************************************************************
 
-    @classmethod
-    def _update_atlas_to_base_dir(cls) -> None:
-        """Update atlas-to-base-directory mapping with current configuration paths.
+        changes = vars(candidate)
+        if not parser.has_section("general"):
+            # Preserve the existing rule: file loading sets up logging only
+            # when the general section is present.
+            changes.pop("LOG_CONFIG")
+        self.configure(**changes)
 
-        :returns: None
-        :rtype: None
-        """
-        cls.ATLAS_TO_BASE_DIR.update({
-            "castelli": cls.CK04_ATM_TABLES,
-            "castelli-kurucz": cls.CK04_ATM_TABLES,
-            "ck": cls.CK04_ATM_TABLES,
-            "ck04": cls.CK04_ATM_TABLES,
-            "kurucz": cls.K93_ATM_TABLES,
-            "k": cls.K93_ATM_TABLES,
-            "k93": cls.K93_ATM_TABLES,
-        })
+    @staticmethod
+    def _atlas_to_base_dir(values: dict) -> MappingProxyType:
+        """Derive a fresh, read-only map as part of the published candidate."""
+        return MappingProxyType(
+            {
+                alias: values["CK04_ATM_TABLES" if prefix == "ck" else "K93_ATM_TABLES"]
+                for alias, prefix in ATLAS_TO_ATM_FILE_PREFIX.items()
+            },
+        )
+
+    def _update_atlas_to_base_dir(self) -> None:
+        """Compatibility helper; normal transactions already synchronize the map."""
+        candidate = dict(self.__dict__)
+        candidate["ATLAS_TO_BASE_DIR"] = self._atlas_to_base_dir(candidate)
+        object.__setattr__(self, "__dict__", candidate)
 
 
 settings = Settings()

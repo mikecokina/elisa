@@ -20,7 +20,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypedDict
 
 import gradio as gr
-import matplotlib.pyplot as plt
 import pandas as pd
 
 from elisa import units as u
@@ -28,7 +27,7 @@ from elisa.analytics import LCBinaryAnalyticsTask, LCData
 from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.ui.shared.const import MAX_SPOTS
 from elisa.ui.shared.logging_config import fit_logging
-from elisa.ui.shared.plotting import capture_figure, figure_to_pil
+from elisa.ui.shared.plotting import capture_figure, figure_to_pil, serialized_plot
 from elisa.ui.shared.utils import opt_float as _opt_float
 from elisa.ui.shared.utils import result_temp_path
 
@@ -609,12 +608,17 @@ def detect_approach_from_json(path: str) -> str:
     :raises ValueError: If the file cannot be read or the approach cannot be determined.
     """
     from elisa.binary_system.utils import resolve_json_kind  # noqa: PLC0415
+    from elisa.conf.enums import BinarySystemKind  # noqa: PLC0415
 
     try:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
     except Exception as exc:
         msg = f"Cannot read result file: {exc}"
         raise ValueError(msg) from exc
+
+    if not isinstance(data, dict):
+        msg = "Result file must contain a JSON object."
+        raise ValueError(msg)  # noqa: TRY004 - malformed file content follows the public ValueError contract
 
     # resolve_json_kind expects plain values, not the fitting meta-dicts.
     # Extract just the first-level keys per section so it can check presence.
@@ -635,7 +639,7 @@ def detect_approach_from_json(path: str) -> str:
         msg = f"Cannot determine fitting approach from JSON: {exc}"
         raise ValueError(msg) from exc
 
-    return "Community" if kind == "community" else "Standard"
+    return "Community" if kind == BinarySystemKind.COMMUNITY else "Standard"
 
 
 def load_params_from_json(path: str) -> dict[str, object]:  # noqa: C901
@@ -662,7 +666,7 @@ def load_params_from_json(path: str) -> dict[str, object]:  # noqa: C901
         msg = f"Cannot read result file: {exc}"
         raise ValueError(msg) from exc
 
-    if "system" not in data:
+    if not isinstance(data, dict) or "system" not in data:
         msg = "File does not look like an ELISa LC result - missing 'system' key."
         raise ValueError(msg)
 
@@ -797,7 +801,6 @@ def run_lsqrt(
         json.dumps(x0_dict, indent=2, default=str),
     )
 
-    plt.close("all")
     # noinspection PyTypeChecker
     with fit_logging():
         if task is None:
@@ -811,7 +814,7 @@ def run_lsqrt(
         # else: caller already constructed the task with real data; use it directly.
         result = task.fit(x0=x0)
 
-    model_fig: Figure = task.plot.model(return_figure_instance=True)
+    model_fig: Figure = serialized_plot(task.plot.model)(return_figure_instance=True)
     df = result_to_dataframe(task.fit_cls.flat_result)
 
     json_path = result_temp_path("lc", "lsqrt")
@@ -860,7 +863,6 @@ def load_chain(
     traces_fig: Figure | None = None
     results_df: pd.DataFrame | None = None
 
-    plt.close("all")
     try:
         with capture_figure() as corner_captured:
             task.plot.corner(truths=True)
@@ -869,7 +871,6 @@ def load_chain(
         msg = f"Corner plot generation failed: {exc}"
         gr.Warning(msg)
 
-    plt.close("all")
     try:
         with capture_figure() as traces_captured:
             task.plot.traces(truths=True)
@@ -995,7 +996,6 @@ def run_mcmc(
         json.dumps(x0_dict, indent=2, default=str),
     )
 
-    plt.close("all")
     # noinspection PyTypeChecker
     with fit_logging():
         if task is None:
@@ -1018,7 +1018,7 @@ def run_mcmc(
             fit_kwargs["initial_state"] = initial_state
         result = task.fit(**fit_kwargs)
 
-    model_fig: Figure = task.plot.model(return_figure_instance=True)
+    model_fig: Figure = serialized_plot(task.plot.model)(return_figure_instance=True)
 
     with capture_figure() as corner_captured:
         task.plot.corner(truths=True)

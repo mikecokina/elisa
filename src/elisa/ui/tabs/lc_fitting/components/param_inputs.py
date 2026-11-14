@@ -385,6 +385,17 @@ def is_key_interactive_for_approach(key: str, approach: Literal["community", "st
     return not any(key.startswith(f"{prefix}_") for prefix in prefixes)
 
 
+def is_field_interactive(key: str, approach: Literal["community", "standard"], mode: str) -> bool:
+    """Combine approach gating with the row's current fitting mode."""
+    if not is_key_interactive_for_approach(key, approach):
+        return False
+    if key.endswith("_constraint"):
+        return mode == "constrained"
+    if key.endswith(("_min", "_max")):
+        return mode == "free"
+    return True
+
+
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
@@ -517,7 +528,7 @@ def _param_row(
             container=True,
         )
 
-    mode_comp.change(
+    mode_comp.input(
         fn=_mode_handler,
         inputs=[mode_comp],
         outputs=[constraint_comp, min_comp, max_comp],
@@ -707,7 +718,9 @@ def build(
         if key not in components:
             continue
         component = components[key]
-        component.interactive = is_key_interactive_for_approach(key, normalized_approach)
+        prefix = key.rsplit("_", 1)[0]
+        mode = str(components[f"{prefix}_mode"].value)
+        component.interactive = is_field_interactive(key, normalized_approach, mode)
 
     # Apply initial label color so disabled approach-specific params are visibly
     # marked on first render before any radio-change event fires.

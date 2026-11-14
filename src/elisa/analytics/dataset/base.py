@@ -14,15 +14,37 @@ from elisa import units as u
 from elisa.analytics.dataset import utils as dutils
 from elisa.analytics.dataset.graphic import plot
 from elisa.analytics.dataset.transform import LCDataProperties, RVDataProperties
-from elisa.base.types import INT
+from elisa.base.error import raise_elisa_analytics_data_error, raise_elisa_not_implemented_error
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from numpy.typing import NDArray
 
     from elisa.analytics.dataset.graphic.plot import Plot
-    from elisa.types import TransformPropertiesType
+    from elisa.types import Float, TransformPropertiesType
 
-logger = logger_module.getLogger("analytics.dataset.base")
+logger = logger_module.getLogger(__name__)
+
+
+def _observation_vector(value: NDArray | Sequence[Float] | None, name: str) -> NDArray[np.generic]:
+    """Validate a single nonempty finite observation vector without unit conversion.
+
+    :param value: Coordinate, observable or uncertainty values.
+    :param name: Dataset field name used in diagnostics.
+    :returns: The validated values as a one-dimensional NumPy array.
+    :raises ElisaAnalyticsDataError: If the values are empty, nonfinite or not a vector.
+    """
+    msg = f"`{name}` must be a nonempty finite one-dimensional array of numeric values"
+    try:
+        array = np.asarray(value)
+        is_nonempty_vector = array.ndim == 1 and array.size > 0
+        valid = is_nonempty_vector and np.all(np.isfinite(array))
+    except (TypeError, ValueError, ArithmeticError) as exc:
+        raise_elisa_analytics_data_error(msg, exc)
+    if not valid:
+        raise_elisa_analytics_data_error(msg)
+    return array
 
 
 class DataSet(metaclass=ABCMeta):  # noqa: B024
@@ -64,7 +86,7 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
         :type name: str | None
         :param kwargs: Additional keyword arguments for data initialization.
         :type kwargs: Any
-        :raises ValueError: If data shapes or validity checks fail.
+        :raises ElisaAnalyticsDataError: If data shapes or validity checks fail.
         """
         # initial kwargs
         self.kwargs: dict[str, Any] = copy(kwargs)
@@ -97,8 +119,20 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
         :type kwargs: Any
         :returns: Transformed and validated parameters.
         :rtype: dict[str, Any]
+        :raises ElisaAnalyticsDataError: If a property has an invalid type or unit.
         """
-        return self.__class__.TRANSFORM_PROPERTIES_CLS.transform_input(**kwargs)
+        properties = {}
+        for name, value in kwargs.items():
+            properties.update(self._transform_property(name, value))
+        return properties
+
+    def _transform_property(self, name: str, value: Any) -> dict[str, Any]:
+        """Transform one property and report input failures with its name."""
+        try:
+            return self.__class__.TRANSFORM_PROPERTIES_CLS.transform_input(**{name: value})
+        except (TypeError, ValueError, AttributeError, ArithmeticError) as exc:
+            msg = f"Invalid dataset property `{name}`: {exc}"
+            raise_elisa_analytics_data_error(msg, exc)
 
     def copy(self) -> DataSet:
         """Create a deep copy of the DataSet instance.
@@ -116,33 +150,32 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
 
         - Checks that x_data and y_data have the same shape
         - Checks that y_err (if present) has the same shape as x_data and y_data
-        - Checks for NaN values in all arrays
+        - Requires nonempty finite one-dimensional arrays and positive supplied errors
 
         :param kwargs: Dictionary containing data arrays (x_data, y_data, y_err).
         :type kwargs: Any
-        :raises ValueError: If data shapes are incompatible or NaN values are found.
+        :raises ElisaAnalyticsDataError: If arrays are malformed, nonfinite,
+            or supplied errors are not positive.
         """
-        if np.shape(kwargs["x_data"]) != np.shape(kwargs["y_data"]):
-            error_msg = "`x_data` and `y_data` are not of the same shape."
-            raise ValueError(error_msg)
-        if (
-            "y_err" in kwargs
-            and not utils.is_empty(kwargs["y_err"])
-            and np.shape(kwargs["x_data"]) != np.shape(kwargs["y_err"])
-        ):
-            error_msg = "`y_err` are not of the same shape to `x_data` and `y_data`."
-            raise ValueError(error_msg)
-
-        # check for nans
-        if np.isnan(kwargs["x_data"]).any():
-            error_msg = "`x_data` contains NaN"
-            raise ValueError(error_msg)
-        if np.isnan(kwargs["y_data"]).any():
-            error_msg = "`y_data` contains NaN"
-            raise ValueError(error_msg)
-        if "y_err" in kwargs and not utils.is_empty(kwargs["y_err"]) and np.isnan(kwargs["y_err"]).any():
-            error_msg = "`y_err` contains NaN"
-            raise ValueError(error_msg)
+        coordinates = _observation_vector(kwargs.get("x_data"), "x_data")
+        observed = _observation_vector(kwargs.get("y_data"), "y_data")
+        if observed.shape != coordinates.shape:
+            msg = "`y_data` must have the same shape as `x_data`"
+            raise_elisa_analytics_data_error(msg)
+        if kwargs.get("y_err") is None:
+            return
+        errors = _observation_vector(kwargs["y_err"], "y_err")
+        if errors.shape != coordinates.shape:
+            msg = "`y_err` must have the same shape as `x_data`"
+            raise_elisa_analytics_data_error(msg)
+        try:
+            nonpositive = np.any(np.less_equal(errors, 0))
+        except (TypeError, ValueError, ArithmeticError) as exc:
+            msg = "`y_err` must contain strictly positive numeric uncertainties"
+            raise_elisa_analytics_data_error(msg, exc)
+        if nonpositive:
+            msg = "`y_err` must contain strictly positive uncertainties"
+            raise_elisa_analytics_data_error(msg)
 
     @classmethod
     def load_from_file(
@@ -172,27 +205,24 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
         :type data_columns: tuple[int, ...] | None
         :param delimiter: Regex pattern defining column separator.
         :type delimiter: str
-        :param downselect_ratio: Optional selection ratio in range (0, 1) to uniformly
-            subsample the data. If provided, returns approximately 1/downselect_ratio
-            of the original data points.
+        :param downselect_ratio: Optional selection ratio in range (0, 1] to uniformly
+            subsample the data using a stride of int(1/downselect_ratio).
+            None or 1 preserves all points.
         :type downselect_ratio: float | None
         :param kwargs: Additional keyword arguments passed to the constructor
             (e.g., reference_magnitude for LCData).
         :type kwargs: Any
         :returns: DataSet instance with loaded data.
         :rtype: DataSet
+        :raises ElisaAnalyticsDataError: If observations or downselect_ratio are invalid.
+        :raises OSError: If the file cannot be opened.
         """
         data_columns = (0, 1, 2) if data_columns is None else data_columns
         data = dutils.read_data_file(filename, data_columns, delimiter=delimiter)
+        observation_columns = dict(zip(("x_data", "y_data", "y_err"), data.T, strict=False))
+        cls.check_data_validity(**observation_columns)
 
-        if downselect_ratio is not None:
-            idxs = np.arange(
-                0,
-                data.shape[0],
-                step=int(1.0 / downselect_ratio),
-                dtype=INT,
-            )
-            data = data[idxs]
+        data = dutils.downselect_data(data, downselect_ratio)
 
         try:
             errs = data[:, 2]
@@ -280,7 +310,7 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
         :type kwargs: Any
         :returns: None (modifies dataset in-place).
         :rtype: None
-        :raises NotImplementedError: If specified method is not available.
+        :raises ElisaNotImplementedError: If specified method is not available.
         """
         available_methods = ["central_moving_average"]
         if method == "central_moving_average":
@@ -295,7 +325,7 @@ class DataSet(metaclass=ABCMeta):  # noqa: B024
             )
         else:
             error_msg = f"Method {method} is not implemented. Try one of these: {available_methods}"
-            raise NotImplementedError(error_msg)
+            raise_elisa_not_implemented_error(error_msg)
 
 
 class RVData(DataSet):
@@ -362,8 +392,9 @@ class RVData(DataSet):
         :type name: str | None
         :param kwargs: Keyword arguments including x_data, y_data, y_err, x_unit, y_unit.
         :type kwargs: Any
-        :raises ValueError: If data validity checks fail or mandatory kwargs are missing.
-        :raises TypeError: If invalid kwargs are provided.
+        :raises ElisaAnalyticsDataError: If arrays, properties or unit conversions are invalid.
+        :raises ElisaInvalidKwargsError: If keyword argument names are unknown.
+        :raises ElisaMissingKwargsError: If mandatory kwargs are missing.
         """
         utils.invalid_kwarg_checker(kwargs, self.__slots__, RVData)
         utils.check_missing_kwargs(self.MANDATORY_KWARGS, kwargs, instance_of=RVData)
@@ -403,31 +434,36 @@ class RVData(DataSet):
         :type kwargs: Any
         :returns: Dictionary with converted data and units.
         :rtype: dict[str, Any]
+        :raises ElisaAnalyticsDataError: If arrays or units cannot be converted.
         """
-        # converting x-axis
-        kwargs["x_data"] = dutils.convert_data(
-            kwargs["x_data"],
-            kwargs["x_unit"],
-            u.DEFAULT_PERIOD_UNIT,
-        )
-        kwargs["x_unit"] = dutils.convert_unit(kwargs["x_unit"], u.DEFAULT_PERIOD_UNIT)
+        try:
+            # converting x-axis
+            kwargs["x_data"] = dutils.convert_data(
+                kwargs["x_data"],
+                kwargs["x_unit"],
+                u.DEFAULT_PERIOD_UNIT,
+            )
+            kwargs["x_unit"] = dutils.convert_unit(kwargs["x_unit"], u.DEFAULT_PERIOD_UNIT)
 
-        # converting y-axis
-        kwargs["y_data"] = dutils.convert_data(
-            kwargs["y_data"],
-            kwargs["y_unit"],
-            u.VELOCITY_UNIT,
-        )
-
-        # convert errors
-        if "y_err" in kwargs:
-            kwargs["y_err"] = dutils.convert_data(
-                kwargs["y_err"],
+            # converting y-axis
+            kwargs["y_data"] = dutils.convert_data(
+                kwargs["y_data"],
                 kwargs["y_unit"],
                 u.VELOCITY_UNIT,
             )
-        kwargs["y_unit"] = dutils.convert_unit(kwargs["y_unit"], u.VELOCITY_UNIT)
 
+            # convert errors
+            if kwargs.get("y_err") is not None:
+                kwargs["y_err"] = dutils.convert_data(
+                    kwargs["y_err"],
+                    kwargs["y_unit"],
+                    u.VELOCITY_UNIT,
+                )
+            kwargs["y_unit"] = dutils.convert_unit(kwargs["y_unit"], u.VELOCITY_UNIT)
+
+        except (TypeError, ValueError, AttributeError, ArithmeticError) as exc:
+            msg = f"Cannot convert RVData to internal units: {exc}"
+            raise_elisa_analytics_data_error(msg, exc)
         return kwargs
 
 
@@ -506,8 +542,9 @@ class LCData(DataSet):
         :param kwargs: Keyword arguments including x_data, y_data, y_err, x_unit, y_unit,
             and optionally reference_magnitude and passband.
         :type kwargs: Any
-        :raises ValueError: If data validity checks fail or mandatory kwargs are missing.
-        :raises TypeError: If invalid kwargs are provided.
+        :raises ElisaAnalyticsDataError: If arrays, properties or unit conversions are invalid.
+        :raises elisa.base.error.ElisaInvalidKwargsError: If keyword argument names are unknown.
+        :raises elisa.base.error.ElisaMissingKwargsError: If mandatory kwargs are missing.
         """
         self.passband: str | None = None
         self.reference_magnitude: float | None = None
@@ -553,35 +590,32 @@ class LCData(DataSet):
         :type kwargs: Any
         :returns: Dictionary with converted data and units.
         :rtype: dict[str, Any]
+        :raises ElisaAnalyticsDataError: If arrays or units cannot be converted.
         """
-        # converting x-axis
-        kwargs["x_data"] = dutils.convert_data(
-            kwargs["x_data"],
-            kwargs["x_unit"],
-            u.DEFAULT_PERIOD_UNIT,
-        )
-        kwargs["x_unit"] = dutils.convert_unit(kwargs["x_unit"], u.DEFAULT_PERIOD_UNIT)
-        kwargs["reference_magnitude"] = kwargs.get("reference_magnitude")
+        try:
+            # converting x-axis
+            kwargs["x_data"] = dutils.convert_data(
+                kwargs["x_data"],
+                kwargs["x_unit"],
+                u.DEFAULT_PERIOD_UNIT,
+            )
+            kwargs["x_unit"] = dutils.convert_unit(kwargs["x_unit"], u.DEFAULT_PERIOD_UNIT)
+            kwargs["reference_magnitude"] = kwargs.get("reference_magnitude")
 
-        # convert errors
-        if "y_err" in kwargs:
-            kwargs["y_err"] = dutils.convert_flux_error(
-                kwargs["y_err"],
-                kwargs["y_unit"],
-                zero_point=kwargs["reference_magnitude"],
+            flux = dutils.convert_flux(
+                kwargs["y_data"], kwargs["y_unit"], zero_point=kwargs["reference_magnitude"],
+            )
+            if kwargs.get("y_err") is not None:
+                kwargs["y_err"] = dutils.convert_flux_error(
+                    kwargs["y_err"], kwargs["y_unit"],
+                    zero_point=kwargs["reference_magnitude"], flux=flux,
+                )
+            kwargs["y_data"] = flux
+            kwargs["y_unit"] = dutils.convert_unit(
+                kwargs["y_unit"], u.dimensionless_unscaled,
             )
 
-        # converting y-axis
-        kwargs["y_data"] = dutils.convert_flux(
-            kwargs["y_data"],
-            kwargs["y_unit"],
-            zero_point=kwargs["reference_magnitude"],
-        )
-        kwargs["y_unit"] = dutils.convert_unit(
-            kwargs["y_unit"], u.dimensionless_unscaled,
-        )
-
+        except (TypeError, ValueError, AttributeError, ArithmeticError) as exc:
+            msg = f"Cannot convert LCData to internal units: {exc}"
+            raise_elisa_analytics_data_error(msg, exc)
         return kwargs
-
-
-

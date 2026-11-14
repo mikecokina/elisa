@@ -17,45 +17,45 @@ elisa.pulse.container\_ops module
 
 .. automodule:: elisa.pulse.container_ops
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.pulse.mode module
 -----------------------
 
 .. automodule:: elisa.pulse.mode
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.pulse.pulsations module
 -----------------------------
 
 .. automodule:: elisa.pulse.pulsations
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.pulse.transform module
 ----------------------------
 
 .. automodule:: elisa.pulse.transform
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 elisa.pulse.utils module
 ------------------------
 
 .. automodule:: elisa.pulse.utils
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: elisa.pulse
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

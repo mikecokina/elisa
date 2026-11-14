@@ -1,5 +1,3 @@
-from elisa.binary_system.surface import mesh
-from elisa.binary_system.surface import faces
-from elisa.binary_system.surface import gravity
-from elisa.binary_system.surface import temperature
-from elisa.binary_system.surface import coverage
+from elisa.binary_system.surface import coverage, faces, gravity, mesh, temperature
+
+__all__ = ("coverage", "faces", "gravity", "mesh", "temperature")

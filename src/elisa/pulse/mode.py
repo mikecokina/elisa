@@ -9,23 +9,32 @@ import numpy as np
 from elisa import const as c
 from elisa import settings, units, utils
 from elisa import umpy as up
+from elisa.base.error import raise_elisa_parameters_error
+from elisa.base.parameter_tracking import (
+    ParameterTracking,
+    preserve_explicit_inputs_during_reinitialization,
+    suspend_tracking_during_initialization,
+)
 from elisa.logger import getLogger
 from elisa.pulse.transform import PulsationModeProperties
 
 if TYPE_CHECKING:
     from elisa.units import _DefaultPulsationsInputUnits, _DefaultPulsationsUnits
 
-logger = getLogger("pulse.mode")
+logger = getLogger(__name__)
 
 
-class PulsationMode:
+class PulsationMode(ParameterTracking):
     """Container for pulsation mode parameters and computed properties.
 
     Stores all parameters defining a single pulsation mode including spherical
     harmonic degree, azimuthal order, amplitude, frequency, and optional
     orientation and displacement parameters. Automatically computes derived
     properties such as angular frequency and spherical harmonic normalization
-    constant.
+    constant. Surface evaluation and amplitude normalization belong to the
+    pulsation mathematics/kinematics layers; this object stores their results.
+    Geometry and all intrinsic time derivatives share complex_displacement.
+    The synthesis pipeline uses mode 0's axis and locking settings for all modes.
 
     Attributes
     ----------
@@ -34,13 +43,14 @@ class PulsationMode:
     m : int
         Azimuthal order (integer with ``|m| <= l``).
     amplitude : float
-        Radial velocity amplitude in m/s.
+        Velocity coefficient scale V in m/s, not necessarily a sampled RMS
+        or the radial velocity amplitude of any mesh point.
     frequency : float
         Pulsation frequency in s^-1.
     start_phase : float
         Initial phase offset in radians. Defaults to 0.
     mode_axis_theta : float
-        Latitude of mode axis in radians. Defaults to 0.
+        Polar angle of the mode axis from stellar +z, in radians. Defaults to 0.
     mode_axis_phi : float
         Longitude of mode axis in radians. Defaults to 0.
     temperature_perturbation_phase_shift : float
@@ -52,25 +62,26 @@ class PulsationMode:
     tidally_locked : bool
         Whether mode axis is tidally locked. Defaults to False.
     radial_amplitude : float | None
-        Computed radial displacement amplitude (set externally).
+        Physical radial length scale A_r in metres (set externally).
     horizontal_amplitude : float | None
-        Computed horizontal displacement amplitude (set externally).
+        Signed physical horizontal length scale A_h in metres (set externally).
     angular_frequency : float
         Angular frequency (2π * frequency).
     renorm_const : float
-        Spherical harmonics renormalization constant.
-    points : np.ndarray | None
-        Surface points in tilted spherical coordinates.
+        sqrt(4*pi), giving unit mean squared magnitude over an ideal sphere.
     point_harmonics : np.ndarray | None
-        Spherical harmonics values at surface points.
-    point_harmonics_derivatives : np.ndarray | None
-        Derivatives of harmonics at surface points.
+        Dimensionless complex harmonic values, including the temporal factor.
+    point_harmonics_gradient : np.ndarray | None
+        Dimensionless Cartesian tangent gradient in the pulsation-axis frame.
+    complex_radial_displacement : np.ndarray | None
+        Complex radial scalar coefficient A_r*Y/scale in mesh length units,
+        retained separately for radial-displacement diagnostics.
     complex_displacement : np.ndarray | None
-        Complex displacement vector at surface points.
+        Complex Cartesian displacement in component axes and mesh length units.
     tilt_phi : float | None
-        Azimuthal tilt angle correction.
+        Evaluated shared-axis azimuth, including drift, stored on mode 0.
     tilt_theta : float | None
-        Latitudinal tilt angle correction.
+        Evaluated shared-axis polar angle from +z, stored on mode 0.
 
     """
 
@@ -87,6 +98,7 @@ class PulsationMode:
     )
     ALL_KWARGS: tuple[str, ...] = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
+    @suspend_tracking_during_initialization
     def __init__(self, **kwargs: Any) -> None:
         """Initialize a PulsationMode instance.
 
@@ -101,9 +113,11 @@ class PulsationMode:
 
         Raises
         ------
-        ValueError
-            If mandatory parameters are missing or invalid values provided.
-        TypeError
+        ElisaParametersError
+            If parameter validation fails or ``|m| > l``.
+        ElisaMissingKwargsError
+            If mandatory parameters are missing.
+        ElisaInvalidKwargsError
             If invalid keyword arguments are supplied.
 
         Examples
@@ -169,10 +183,11 @@ class PulsationMode:
         self.radial_amplitude: float | None = None
         self.horizontal_amplitude: float | None = None
 
-        # Initialize surface-related auxiliary variables
-        self.points: np.ndarray | None = None
+        # Harmonics/gradients are evaluated in mode axes; displacement vectors
+        # are stored in component axes. All remain unset until surface evaluation.
         self.point_harmonics: np.ndarray | None = None
-        self.point_harmonics_derivatives: np.ndarray | None = None
+        self.point_harmonics_gradient: np.ndarray | None = None
+        self.complex_radial_displacement: np.ndarray | None = None
         self.complex_displacement: np.ndarray | None = None
         self.tilt_phi: float | None = None
         self.tilt_theta: float | None = None
@@ -183,7 +198,7 @@ class PulsationMode:
         # Compute derived properties
         self.angular_frequency: float = c.FULL_ARC * self.frequency
 
-        # Spherical harmonics renormalization constant to rms = 1
+        # Unit analytic full-sphere RMS, not a discrete mesh normalization.
         self.renorm_const: float = 2 * c.PI**0.5
 
         # Validate mode parameters
@@ -233,12 +248,41 @@ class PulsationMode:
         """
         return PulsationModeProperties.transform_input(**kwargs)
 
+    def kwargs_serializer(self) -> dict[str, Any]:
+        """Return current mode descriptors with their internal physical units."""
+        kwargs: dict[str, Any] = {}
+        for kwarg in self.ALL_KWARGS:
+            value = getattr(self, kwarg)
+            # This optional default is calculated during system initialization;
+            # passing None explicitly to its input validator is invalid.
+            if kwarg == "horizontal_to_radial_amplitude_ratio" and value is None:
+                continue
+            unit = self.default_internal_units[kwarg]
+            if unit not in (units.dimensionless_unscaled, bool) and not isinstance(value, units.Quantity):
+                value = value * unit
+            kwargs[kwarg] = value
+        return kwargs
+
+    def reinitialization_kwargs(self) -> dict[str, Any]:
+        """Serialize explicit mode inputs without parent-computed factors."""
+        values = self.kwargs_serializer()
+        # Explicit None must still reach validation, including the ratio.
+        for key in self._explicit_parameters:
+            if key not in values:
+                values[key] = getattr(self, key)
+        return self._explicit_kwargs(values)
+
+    @preserve_explicit_inputs_during_reinitialization
+    def init(self) -> None:
+        """Rebuild independent mode state; the parent calculates amplitudes."""
+        self.__init__(**self.reinitialization_kwargs())
+
     def validate_mode(self) -> None:
         """Validate that azimuthal order constraint ``|m| <= l`` is satisfied.
 
         Raises
         ------
-        ValueError
+        ElisaParametersError
             If ``|m| > l``, which is physically invalid for spherical harmonics.
 
         """
@@ -246,8 +290,9 @@ class PulsationMode:
             error_msg = (
                 f"Absolute value of azimuthal order m: {self.m} cannot be higher than degree of the mode l: {self.l}."
             )
-            raise ValueError(error_msg)
+            raise_elisa_parameters_error(error_msg)
 
+    @suspend_tracking_during_initialization
     def init_properties(self, **kwargs) -> None:
         """Initialize pulsation mode properties from input keyword arguments.
 

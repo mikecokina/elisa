@@ -9,13 +9,13 @@ elisa.base.graphics.plot module
 
 .. automodule:: elisa.base.graphics.plot
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: elisa.base.graphics
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

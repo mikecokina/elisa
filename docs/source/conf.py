@@ -13,38 +13,17 @@
 
 from __future__ import annotations
 
+import os
 import sys
-import warnings
 from pathlib import Path
-from typing import Any
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
+# Resolve paths relative to this file so builds work from any directory.
+DOCS_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(DOCS_DIR.parent / "src"))
 
-# ---------------------------------------------------------------------------
-# elisa's settings.py calls warnings.simplefilter("always", DeprecationWarning)
-# *without* a catch_warnings() guard, so standard filter-based suppression
-# cannot override it.  Patching warnings.warn itself is the only hook that
-# survives that, because catch_warnings() only saves/restores
-# warnings.filters and warnings.showwarning - not warnings.warn.
-# ---------------------------------------------------------------------------
-_original_warn = warnings.warn
-
-
-def _suppress_atlas_deprecation(
-    message: str | Warning,
-    category: type[Warning] | None = None,
-    stacklevel: int = 1,
-    *,
-    source: Any = None,
-) -> None:
-    """Suppress atlas-related DeprecationWarning but pass through others."""
-    if "atlas" in str(message) and "not longer supported" in str(message):
-        return
-    _original_warn(message, category, stacklevel, source=source)
-
-
-warnings.warn = _suppress_atlas_deprecation
+# Autodoc imports ELISa modules. Use a dedicated configuration to avoid the
+# first-run wizard and dependencies on the user's ~/.elisa/config.ini.
+os.environ["ELISA_CONFIG"] = str(DOCS_DIR / "elisa-docs.ini")
 
 from elisa import __version__ as release  # noqa: E402, F401
 
@@ -69,7 +48,7 @@ extensions = [
 ]
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ["_templates"]
+templates_path = []
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.

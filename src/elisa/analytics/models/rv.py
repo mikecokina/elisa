@@ -4,12 +4,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
+
+from elisa import const, settings
+from elisa import units as u
 from elisa.analytics.models import serializers
 from elisa.analytics.tools.utils import time_layer_resolver
-from elisa.base.error import InitialParamsError
+from elisa.base.error import raise_elisa_parameters_error
+from elisa.base.transform import StarProperties, SystemProperties
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.binary_system.system import BinarySystem
 from elisa.binary_system.utils import resolve_json_kind
+from elisa.conf.enums import BinaryComponent, BinarySystemKind, RVMethod
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -42,7 +48,9 @@ def central_rv_synthetic(
 
     Generates a synthetic radial velocity (RV) curve of a binary system
     based on a set of model parameters. The function supports both
-    standard and community RV system types.
+    standard and community orbital parameterizations for kinematic RV.
+    Radiometric RV requires complete physical component parameters; it is
+    available for direct synthesis, not through the public RV fitting API.
 
     :param phases: Orbital phases (in range 0-1) for which RV curve will be generated.
     :type phases: NDArray[Float]
@@ -64,46 +72,43 @@ def central_rv_synthetic(
     :type kwargs: dict[str, Any]
     :returns: Radial velocities for each component (primary and secondary).
     :rtype: dict[str, NDArray[Float]]
-    :raises InitialParamsError: If initial parameters lead to an unknown model type.
+    :raises ElisaParametersError: If initial parameters lead to an unknown model type.
     """
-    # Set default values for parameters not provided
-    kwargs.update(
-        {
-            "primary@surface_potential": 100,
-            "secondary@surface_potential": 100,
-            "primary@t_eff": 10000.0,
-            "secondary@t_eff": 10000.0,
-            "primary@metallicity": 10000.0,
-            "secondary@metallicity": 10000.0,
-        },
-    )
-
     x_data_resolved, kwargs = time_layer_resolver(phases, pop=True, **kwargs)
-
-    # Extract component-specific parameters
     system_kwargs = serializers.serialize_system_kwargs(**kwargs)
-    primary_kwargs = serializers.serialize_primary_kwargs(**kwargs)
-    secondary_kwargs = serializers.serialize_secondary_kwargs(**kwargs)
-
-    # Build system configuration dictionary
-    json_config = {
-        "primary": primary_kwargs,
-        "secondary": secondary_kwargs,
-        "system": system_kwargs,
-    }
-
-    # Determine system type and create appropriate observable
-    kind_of = resolve_json_kind(data=json_config, _sin=True)
-
-    if kind_of == "std":
+    if settings.RV_METHOD == RVMethod.KINEMATIC:
+        kind = resolve_json_kind(data={
+            "system": system_kwargs,
+            BinaryComponent.PRIMARY: {"mass": kwargs.get("primary@mass")},
+            BinaryComponent.SECONDARY: {"mass": kwargs.get("secondary@mass")},
+        }, _sin=True)
+        if kind == BinarySystemKind.STANDARD:
+            # Match BinarySystem observer phase folding for the standard model.
+            x_data_resolved = np.round(x_data_resolved % 1, 9)
+            primary_mass = StarProperties.mass(kwargs["primary@mass"])
+            secondary_mass = StarProperties.mass(kwargs["secondary@mass"])
+            period = SystemProperties.period(system_kwargs["period"])
+            inclination = SystemProperties.inclination(system_kwargs["inclination"])
+            period_seconds = (period * u.DefaultBinarySystemUnits.system.period).to_value(u.TIME_UNIT)
+            axis = (
+                const.G * (primary_mass + secondary_mass) * period_seconds**2 / (4 * const.PI**2)
+            ) ** (1.0 / 3)
+            system_kwargs.update(
+                mass_ratio=secondary_mass / primary_mass,
+                asini=axis * np.sin(inclination) * u.m,
+            )
+        observable = RadialVelocitySystem(**RadialVelocitySystem.prepare_json(system_kwargs))
+    elif settings.RV_METHOD == RVMethod.RADIOMETRIC:
+        json_config = {
+            BinaryComponent.PRIMARY: serializers.serialize_primary_kwargs(**kwargs),
+            BinaryComponent.SECONDARY: serializers.serialize_secondary_kwargs(**kwargs),
+            "system": system_kwargs,
+        }
+        if resolve_json_kind(data=json_config, _sin=True) != BinarySystemKind.STANDARD:
+            raise_elisa_parameters_error("Radiometric RV requires a complete physical binary model.")
         observable = prepare_central_rv_binary(**json_config)
-    elif kind_of == "community":
-        observable = RadialVelocitySystem(
-            **RadialVelocitySystem.prepare_json(json_config["system"]),
-        )
     else:
-        error_msg = "Initial parameters led to unknown model."
-        raise InitialParamsError(error_msg)
+        raise_elisa_parameters_error(f"Unsupported RV computation method {settings.RV_METHOD!r}.")
 
     # Set observer system and retrieve RV
     observer._system = observable  # noqa: SLF001

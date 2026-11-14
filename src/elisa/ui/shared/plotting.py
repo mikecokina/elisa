@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import contextlib
+from functools import wraps
 from io import BytesIO
-from typing import TYPE_CHECKING
+from threading import RLock
+from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -12,13 +14,30 @@ import numpy as np
 from PIL import Image
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
     from matplotlib.figure import Figure
     from numpy.typing import NDArray
 
 # Ensure a non-interactive backend suitable for server-side rendering.
 mpl.use("Agg")
+
+# All UI pyplot/rcParams access shares this lock. Fits and synthesis outside
+# plotting calls remain concurrent. RLock permits capture and rasterization
+# helpers to nest inside a plotting section.
+PLOT_LOCK = RLock()
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+
+
+def serialized_plot(func: Callable[_P, _R]) -> Callable[_P, _R]:
+    """Protect a plotting section from other UI plotting callbacks."""
+    @wraps(func)
+    def locked(*args: _P.args, **kwargs: _P.kwargs) -> _R:
+        with PLOT_LOCK:
+            return func(*args, **kwargs)
+    return locked
+
 
 # Curated color palette - colorblind-friendly, used as fallback for unknown passbands.
 _PALETTE: list[str] = [
@@ -100,19 +119,28 @@ def _capture_figure() -> Iterator[list[Figure]]:
     :yields: List populated with captured figures.
     :rtype: list[matplotlib.figure.Figure]
     """
-    captured: list[Figure] = []
-    original_show = plt.show
+    with PLOT_LOCK:
+        captured: list[Figure] = []
+        original_show = plt.show
+        existing = set(plt.get_fignums())
 
-    def _mock_show(*_args: object, **_kwargs: object) -> None:
-        fig = plt.gcf()
-        if fig is not None:
-            captured.append(fig)
+        def _mock_show(*_args: object, **_kwargs: object) -> None:
+            # Do not create an empty figure or capture one from another request.
+            if set(plt.get_fignums()) - existing:
+                fig = plt.gcf()
+                if fig.number not in existing and fig not in captured:
+                    captured.append(fig)
 
-    plt.show = _mock_show  # type: ignore[assignment]
-    try:
-        yield captured
-    finally:
-        plt.show = original_show  # type: ignore[assignment]
+        plt.show = _mock_show
+        try:
+            yield captured
+        finally:
+            plt.show = original_show
+            # Only figures created in this capture belong to this operation.
+            # Closing a manager does not prevent rendering its Figure later.
+            for number in set(plt.get_fignums()) - existing:
+                plt.close(number)
+
 
 
 def capture_figure() -> contextlib.AbstractContextManager[list[Figure]]:
@@ -128,6 +156,7 @@ def capture_figure() -> contextlib.AbstractContextManager[list[Figure]]:
     return _capture_figure()
 
 
+@serialized_plot
 def figure_to_pil(fig: Figure | None) -> Image.Image | None:
     """Convert a matplotlib Figure to a PIL Image for efficient Gradio rendering.
 
@@ -162,6 +191,7 @@ def figure_to_pil(fig: Figure | None) -> Image.Image | None:
     return img_copy
 
 
+@serialized_plot
 def render_lc_figure(
     phases: NDArray,
     fluxes: dict[str, NDArray],
@@ -189,10 +219,8 @@ def render_lc_figure(
     with mpl.rc_context(_RC):
         fig, ax = plt.subplots(figsize=(10, 5))
 
-        for (passband, flux), fallback in zip(
-            fluxes.items(), _PALETTE, strict=False,
-        ):
-            color = _PASSBAND_COLORS.get(passband, fallback)
+        for index, (passband, flux) in enumerate(fluxes.items()):
+            color = _PASSBAND_COLORS.get(passband, _PALETTE[index % len(_PALETTE)])
             ax.plot(phases, flux, label=passband, linewidth=1.8, color=color)
 
 
@@ -230,6 +258,7 @@ def render_lc_figure(
     return fig
 
 
+@serialized_plot
 def render_rv_figure(
     phases: NDArray,
     rvs: dict[str, NDArray],

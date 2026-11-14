@@ -8,6 +8,11 @@ import numpy as np
 
 from elisa import const, utils
 from elisa import umpy as up
+from elisa.atm.const import DEFAULT_ATM
+from elisa.base.error import (
+    raise_elisa_not_implemented_error,
+    raise_elisa_unexpected_error,
+)
 from elisa.base.surface.faces import mirror_face_values, symmetry_face_reduction
 from elisa.base.surface.mesh import symmetry_point_reduction
 from elisa.logger import getLogger
@@ -17,9 +22,9 @@ if TYPE_CHECKING:
 
     from elisa.base.star import Star
     from elisa.const import Position
-    from elisa.types import Float
+    from elisa.types import Float, VertexMap, VertexMapEntry
 
-logger = getLogger("base.container")
+logger = getLogger(__name__)
 
 
 class PropertiesContainer:
@@ -73,31 +78,35 @@ class PositionContainer(ABC):
     @abstractmethod
     def build(self, *args, **kwargs) -> None:
         """Build per-position data for the container."""
-        raise NotImplementedError
+        raise_elisa_not_implemented_error("PositionContainer.build must be implemented by subclasses.")
 
     @abstractmethod
     def build_mesh(self, *args, **kwargs) -> None:
-        raise NotImplementedError
+        raise_elisa_not_implemented_error("PositionContainer.build_mesh must be implemented by subclasses.")
 
     @abstractmethod
     def build_faces(self, *args, **kwargs) -> None:
-        raise NotImplementedError
+        raise_elisa_not_implemented_error("PositionContainer.build_faces must be implemented by subclasses.")
 
     @abstractmethod
     def build_surface_areas(self, *args, **kwargs) -> None:
-        raise NotImplementedError
+        raise_elisa_not_implemented_error("PositionContainer.build_surface_areas must be implemented by subclasses.")
 
     @abstractmethod
     def build_faces_orientation(self, *args, **kwargs) -> None:
-        raise NotImplementedError
+        raise_elisa_not_implemented_error(
+            "PositionContainer.build_faces_orientation must be implemented by subclasses.",
+        )
 
     @abstractmethod
     def build_surface_gravity(self, *args, **kwargs) -> None:
-        raise NotImplementedError
+        raise_elisa_not_implemented_error("PositionContainer.build_surface_gravity must be implemented by subclasses.")
 
     @abstractmethod
     def build_temperature_distribution(self, *args, **kwargs) -> None:
-        raise NotImplementedError
+        raise_elisa_not_implemented_error(
+            "PositionContainer.build_temperature_distribution must be implemented by subclasses.",
+        )
 
     def is_flat(self) -> bool:
         return self._flatten
@@ -338,6 +347,9 @@ class StarContainer:
         Line-of-sight cosines array.
     """
 
+    # Factory initialization copies this attribute dynamically from Star.
+    name: str
+
     def __init__(
         self,
         points: NDArray | None = None,
@@ -383,10 +395,6 @@ class StarContainer:
         self.face_symmetry_vector = np.array([])
         self.base_symmetry_faces_number = 0
 
-        # aux variables for treating singularities at poles
-        self.pole_idx = np.array([])
-        self.pole_idx_neighbour = np.array([])
-
         # those are used only if case of spots are NOT used ------------------------------------------------------------
         self.base_symmetry_points = np.array([])
         self.base_symmetry_faces = np.array([])
@@ -417,11 +425,18 @@ class StarContainer:
         self.surface_potential = None
         self.albedo = up.NaN
         self.polar_log_g = up.NaN
-        self.atmosphere = ""
+        self.atmosphere = DEFAULT_ATM
         self.synchronicity = None
         # --------------------------------------------------------------------------------------------------------------
 
         self._flatten = False
+
+        # Cartesian pulsations -----------------------------------------------------------------------------------------
+        # Reference data remain unset until generate_harmonics prepares the equilibrium surface and mode frame.
+        self.pulsation_rotation: NDArray | None = None
+        self.pulsation_directions: NDArray | None = None
+        self.pulsation_equilibrium_points: NDArray | None = None
+        # --------------------------------------------------------------------------------------------------------------
 
     @classmethod
     def from_star_instance(cls, star: Star) -> StarContainer:
@@ -470,21 +485,25 @@ class StarContainer:
         """
         del self.spots[spot_index]
 
-    def get_flatten_points_map(self) -> tuple[NDArray, list]:
+    def get_flatten_points_map(self) -> tuple[NDArray, VertexMap]:
         """Return all surface points and a vertex map describing object/spot ownership.
 
-        :returns: Tuple of (points, vertices_map).
+        :returns: Tuple of (points, vertices_map). The map is a list without
+            spots and a NumPy object array when spots are appended.
+        :rtype: tuple[numpy.typing.NDArray, elisa.types.VertexMap]
         """
         points = copy(self.points)
         for spot_instance in self.spots.values():
             points = up.concatenate([points, spot_instance.points])
 
-        vertices_map = [{"type": "object", "enum": -1}] * len(self.points)
+        object_entry: VertexMapEntry = {"type": "object", "enum": -1}
+        vertices_map: VertexMap = [object_entry] * len(self.points)
         for idx, spot_instance in enumerate(self.spots.values()):
+            spot_entry: VertexMapEntry = {"type": "spot", "enum": idx}
             vertices_map = up.concatenate(
                 [
                     vertices_map,
-                    [{"type": "spot", "enum": idx}] * len(spot_instance.points),
+                    [spot_entry] * len(spot_instance.points),
                 ],
             )
         return points, vertices_map
@@ -493,10 +512,14 @@ class StarContainer:
         """Compute areas for each surface face (excluding spots unless flattened).
 
         :returns: Array of face areas.
+        :raises ElisaUnexpectedError: If the container has no built surface points or faces.
         """
         if len(self.faces) == 0 or len(self.points) == 0:
-            msg = "Faces or/and points of object {self.name} have not been set yet.\nRun build method first."
-            raise ValueError(msg)
+            # These are the built mesh arrays, not a visibility/coverage subset.
+            # The caller must build the surface before calculating its areas;
+            # candidate-dependent geometry failures belong in the builders.
+            msg = f"Cannot calculate areas for {self.name!r}: build surface points and faces first."
+            raise_elisa_unexpected_error(msg)
         if self.symmetry_test():
             base_areas = utils.triangle_areas(self.symmetry_faces(self.faces), self.symmetry_points())
             return self.mirror_face_values(base_areas)
@@ -620,10 +643,13 @@ class StarContainer:
         """Return points belonging to the base symmetry patch of the surface.
 
         :returns: Subset of ``points`` corresponding to the symmetric patch.
+        :raises ElisaUnexpectedError: If the caller requests symmetry points on a spotted surface.
         """
+        # The caller must select the full-surface path when spots are present;
+        # changing spot parameters cannot make this interface valid.
         if self.has_spots():
-            msg = "Surface symmetry is not applicable in this case"
-            raise ValueError(msg)
+            msg = "Cannot select symmetry points from a surface with spots."
+            raise_elisa_unexpected_error(msg)
         return symmetry_point_reduction(self.points, self.base_symmetry_points_number)
 
     def mirror_face_values(self, values: NDArray) -> NDArray:
@@ -631,10 +657,13 @@ class StarContainer:
 
         :param values: Values on the base symmetry faces.
         :returns: Full-sized array remapped to all faces.
+        :raises ElisaUnexpectedError: If the caller requests mirroring on an asymmetric surface.
         """
+        # Surface construction must route spots and pulsations through the
+        # asymmetric path; a wrong route is an internal contract failure.
         if not self.symmetry_test():
-            msg = "Surface symmetry is not applicable in this case."
-            raise ValueError(msg)
+            msg = "Cannot mirror face values on a surface with spots or pulsations."
+            raise_elisa_unexpected_error(msg)
         return mirror_face_values(values, self.face_symmetry_vector)
 
     def symmetry_faces(self, values: NDArray) -> NDArray:
@@ -642,8 +671,11 @@ class StarContainer:
 
         :param values: Full-surface array of values.
         :returns: Reduced array defined on the symmetry patch.
+        :raises ElisaUnexpectedError: If the caller requests reduction on an asymmetric surface.
         """
+        # The caller must select full-surface faces for spots and pulsations.
+        # Reducing an asymmetric surface violates the internal routing contract.
         if not self.symmetry_test():
-            msg = "Surface symmetry is not applicable in this case."
-            raise ValueError(msg)
+            msg = "Cannot select symmetry faces from a surface with spots or pulsations."
+            raise_elisa_unexpected_error(msg)
         return symmetry_face_reduction(values, self.base_symmetry_faces_number)
