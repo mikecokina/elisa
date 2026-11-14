@@ -5,12 +5,13 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from elisa import settings
 from elisa.base.error import raise_elisa_analytics_data_error
 from elisa.base.types import FLOAT
 from elisa.binary_system import t_layer
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
 
     from numpy.typing import NDArray
 
@@ -101,10 +102,48 @@ def is_time_dependent(labels: list[str]) -> bool:
     )
 
 
+def should_preserve_lc_input_phases(model_parameters: Mapping[str, Any]) -> bool:
+    """Decide whether LC fitting should retain the supplied orbital cycle coordinates.
+
+    With ``PRESERVE_INPUT_PHASES=True``, a phase-domain light curve spanning
+    -1.5 to 5 is modeled over that full interval instead of folding its samples
+    into [0, 1). Integer cycle offsets carry elapsed-time information: asynchronous
+    spots and pulsations need not repeat after one orbital period. Folding would
+    discard that information before the physical synthesis can use it.
+
+    Coordinate policy (each column is the same observation)::
+
+        supplied phase:       -1.5     -0.5      0.5      1.5      4.5
+                                |        |        |        |        |
+        setting = False:       0.5      0.5      0.5      0.5      0.5
+        setting = True:       -1.5     -0.5      0.5      1.5      4.5
+
+    Folding retains the observations but loses their distinct cycle coordinates.
+    Automatic interpolation support for input spanning -1.5 to 5::
+
+        False:                  [0----------1]     (+ boundary padding)
+        True:  [-1.5------------0----------1---------- ... ----------5]
+               <------ full supplied interval + boundary padding ---->
+
+    This policy controls fitting coordinates and automatic support preparation;
+    Observer remains responsible for physical synthesis and any valid periodic
+    reductions. With the setting disabled, fitting retains its original folding.
+
+    Dataset validation permits ``system@primary_minimum_time`` only for time-domain
+    observations, so its presence identifies JD input here. JD conversion remains
+    unchanged regardless of the setting. Call this after coordinate-domain validation.
+
+    :param model_parameters: Flat fitting parameters for the validated dataset domain.
+    :return: True only when preservation is enabled and observations are phases.
+    """
+    return settings.PRESERVE_INPUT_PHASES and "system@primary_minimum_time" not in model_parameters
+
+
 def time_layer_resolver(
     x_data: NDArray,
     *,
     pop: bool = False,
+    preserve_phases: bool = False,
     **kwargs: Any,
 ) -> tuple[NDArray, dict]:
     """Resolve time layer and convert between JD and phase data.
@@ -114,8 +153,15 @@ def time_layer_resolver(
     case, x_data (observational time) is converted to orbital phases
     using the system period and primary minimum time.
 
+    Phase input is folded into [0, 1) by default. With ``preserve_phases=True``,
+    negative phases and integer cycle offsets are retained without modifying the
+    input array. LC fitting selects this policy explicitly; other callers retain
+    the default behavior. The flag does not change JD conversion or phase shifts
+    applied later by Observer.
+
     :param x_data: Observational times or phases
     :type x_data: NDArray
+    :param preserve_phases: Retain phase coordinates; JD conversion is unchanged.
     :param pop: If True, remove the 'system@primary_minimum_time' parameter
                 from the fit parameters after conversion (default: False)
     :type pop: bool
@@ -132,7 +178,5 @@ def time_layer_resolver(
         period: Float = kwargs["system@period"]
         x_data_new: NDArray = t_layer.jd_to_phase(t0, period, x_data, centre=0.5)
     else:
-        x_data_new = x_data % 1.0
+        x_data_new = x_data if preserve_phases else x_data % 1.0
     return x_data_new, kwargs
-
-

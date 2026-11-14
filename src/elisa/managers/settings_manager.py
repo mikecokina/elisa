@@ -50,6 +50,7 @@ class DefaultSettings:
     MAX_SPOT_D_LONGITUDE: float = np.pi / 180.0  # in radians
     MIN_POINTS_IN_ECLIPSE: int = 35
     MAX_SOLVER_ITERS: int = 100
+    PRESERVE_INPUT_PHASES: bool = False
     MAX_CURVE_DATAPOINTS: int = 300
     MESH_GENERATOR: str = "auto"
     DEFORMATION_TOL: float = 0.05

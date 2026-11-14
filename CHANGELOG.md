@@ -13,6 +13,13 @@ Planned work is tracked in the [roadmap](ROADMAP.md).
 
 #### Added
 
+- Optional `PRESERVE_INPUT_PHASES` / `[computational].preserve_input_phases`
+  (default `False`) retains negative phases and elapsed orbital cycles in LC
+  fitting, preserving cycle coordinates needed by asynchronous spots and
+  pulsations. Uniform and adaptive interpolation support covers the full supplied
+  phase interval while retaining per-orbit sampling density; manual support must
+  cover the observation phases. LSQ and MCMC share this behavior. Default phase
+  folding, JD conversion, RV fitting, and direct Observer synthesis are unchanged.
 - Cartesian pulsation regression checks for pole continuity, signed amplitudes,
   radius-weighted normalization, frozen-equilibrium time derivatives, physical
   vector units, colormap projections and single/binary observable synthesis.

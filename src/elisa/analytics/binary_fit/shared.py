@@ -8,6 +8,8 @@ import numpy as np
 
 from elisa import settings, units
 from elisa.analytics.binary_fit.lc_prediction import (
+    _synthesis_support,
+    extend_phase_support,
     predict_light_curves,
     validate_observations,
 )
@@ -23,6 +25,7 @@ from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.analytics.tools.utils import (
     _radialcurves_mean_error,
     lightcurves_mean_error,
+    should_preserve_lc_input_phases,
     time_layer_resolver,
 )
 from elisa.base.error import (
@@ -746,7 +749,10 @@ class AbstractLCFit(AbstractFit):
             self.constrained,
             self.fixed,
         )
-        phases, kwargs = time_layer_resolver(self.x_data_reduced, pop=False, **kwargs)
+        preserve_phases = should_preserve_lc_input_phases(kwargs)
+        phases, kwargs = time_layer_resolver(
+            self.x_data_reduced, pop=False, preserve_phases=preserve_phases, **kwargs,
+        )
         if np.shape(phases)[0] < self.interp_treshold:
             return None
 
@@ -761,10 +767,10 @@ class AbstractLCFit(AbstractFit):
             )
             raise_elisa_analytics_task_error(error_msg, exc)
         if method is SamplingMethod.UNIFORM:
-            diff = 1.0 / self.interp_treshold
-            return np.linspace(0.0 - diff, 1.0 + diff, num=self.interp_treshold + 2)
+            return _synthesis_support(phases, self.interp_treshold, None, preserve_phases=preserve_phases)
         logger.info("Generating equidistant samples along the light curve using adaptive sampling method")
-        return self.adaptive_sampling()
+        support = self.adaptive_sampling()
+        return extend_phase_support(support, phases) if preserve_phases else support
 
     def adaptive_sampling(self) -> NDArray[Float]:
         """Prepare phase support equidistant along the initial normalized light curve.

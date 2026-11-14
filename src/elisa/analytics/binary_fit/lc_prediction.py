@@ -20,7 +20,7 @@ from scipy.interpolate import interp1d
 
 from elisa.analytics.models import lc
 from elisa.analytics.params import parameters
-from elisa.analytics.tools.utils import time_layer_resolver
+from elisa.analytics.tools.utils import should_preserve_lc_input_phases, time_layer_resolver
 from elisa.base.error import (
     raise_elisa_numeric_error,
     raise_elisa_prediction_alignment_error,
@@ -109,22 +109,66 @@ def validate_observations(
     return {band: _validate_band(band, xs, y_data[band], x_data_reducer[band], x_data, y_err) for band in y_data}
 
 
+def extend_phase_support(reference: NDArray, phases: NDArray) -> NDArray:
+    """Extend adaptive reference coordinates across the observed orbital cycles.
+
+    Integer offsets retain the reference grid's concentration around eclipses and
+    other selected features without synthesizing a new reference curve per cycle.
+    The sorted, unique result keeps one neighboring point beyond each observation
+    boundary where available, so interpolation covers the entire supplied interval.
+
+    Only coordinates are repeated: the prediction layer evaluates fresh synthetic
+    flux at every unwrapped support phase. Tiling flux would incorrectly impose
+    one-orbit periodicity on asynchronous spots or pulsations.
+
+    Coordinate repetition, schematically (dense groups retain eclipse sampling)::
+
+        reference:              |... .    . ...|
+        integer offsets:  ...   |... .    . ...|... .    . ...|   ...
+                                k             k+1           k+2
+        synthesis:              F(phi + k)     F(phi + k + 1)
+                                ^ evaluated separately at each coordinate
+
+    The repeated sampling pattern does not require the resulting fluxes to repeat.
+
+    :param reference: One-cycle adaptive phase support, including its boundary padding.
+    :param phases: Unwrapped observation coordinates to cover.
+    :return: Strictly increasing support covering the observation interval.
+    """
+    lower, upper = np.min(phases), np.max(phases)
+    offsets = range(int(np.floor(lower)), int(np.ceil(upper)) + 1)
+    support = np.unique(np.concatenate([reference + offset for offset in offsets]))
+    start = max(0, int(np.searchsorted(support, lower)) - 1)
+    stop = min(support.size, int(np.searchsorted(support, upper, side="right")) + 1)
+    return support[start:stop]
+
+
 def _synthesis_support(
     phases: NDArray,
     interp_treshold: int,
     fit_xs: NDArray | None,
+    *,
+    preserve_phases: bool = False,
 ) -> NDArray:
     """Select prepared support or the common direct/uniform fallback grid.
 
     Prepared uniform, adaptive or manual support is already in orbital phases
     and is retained unchanged. Without prepared support, observations below the
     threshold are synthesized directly. At or above the threshold, use T+2
-    uniform points on [-1/T, 1+1/T], matching fitting setup. Interpolation-specific
-    checks for distinct phases and observation coverage occur in the caller.
+    uniform points on [-1/T, 1+1/T] by default, matching fitting setup.
+
+    When preserving phases, the uniform grid instead spans the observed minimum
+    to maximum, padded by 1/T at each end. Its point count grows with the interval
+    so spacing is no larger than on the original one-cycle grid. For example,
+    observations from -1.5 to 5 require synthesis across that full range, not a
+    fixed-size grid stretched over 6.5 cycles. Direct synthesis uses the supplied
+    phases unchanged. Explicit support is never tiled or replaced here; the caller
+    validates distinct coordinates and coverage before interpolation.
 
     :param phases: Observation-coordinate union converted to orbital phases.
     :param interp_treshold: Positive sampling threshold T from fitting setup.
     :param fit_xs: Prepared phase support, or None to select the fallback grid.
+    :param preserve_phases: Extend automatic uniform support over unwrapped phases.
     :return: Nonempty, finite, one-dimensional synthesis support array.
     :raises ElisaPredictionAlignmentError: If the selected support is malformed.
     """
@@ -132,6 +176,11 @@ def _synthesis_support(
         if phases.size >= interp_treshold:
             diff = 1.0 / interp_treshold
             fit_xs = np.linspace(-diff, 1.0 + diff, num=interp_treshold + 2)
+            if preserve_phases:
+                spacing = (1.0 + 2.0 * diff) / (interp_treshold + 1)
+                lower, upper = np.min(phases) - diff, np.max(phases) + diff
+                count = max(4, int(np.ceil((upper - lower) / spacing)) + 1)
+                fit_xs = np.linspace(lower, upper, num=count)
         else:
             fit_xs = phases
     support = np.asarray(fit_xs)
@@ -210,8 +259,9 @@ def predict_light_curves(
         if _validated_reducers is None
         else _validated_reducers
     )
-    phases, kwargs = time_layer_resolver(xs, pop=False, **model_parameters)
-    support = _synthesis_support(phases, interp_treshold, fit_xs)
+    preserve_phases = should_preserve_lc_input_phases(model_parameters)
+    phases, kwargs = time_layer_resolver(xs, pop=False, preserve_phases=preserve_phases, **model_parameters)
+    support = _synthesis_support(phases, interp_treshold, fit_xs, preserve_phases=preserve_phases)
     interpolate = not np.array_equal(support, phases)
     if interpolate:
         if support.size < _MIN_CUBIC_SUPPORT or np.unique(support).size != support.size:

@@ -176,6 +176,7 @@ class Settings(_Const):
     MAX_D_FLUX: float
     MAX_SPOT_D_LONGITUDE: float
     MAX_SOLVER_ITERS: int
+    PRESERVE_INPUT_PHASES: bool
     MAX_CURVE_DATAPOINTS: int
     MIN_POINTS_IN_ECLIPSE: int
     TIMER: float
@@ -228,6 +229,7 @@ class Settings(_Const):
         "MAX_D_FLUX",
         "MAX_SPOT_D_LONGITUDE",
         "MAX_SOLVER_ITERS",
+        "PRESERVE_INPUT_PHASES",
         "MAX_CURVE_DATAPOINTS",
         "MIN_POINTS_IN_ECLIPSE",
         "TIMER",
@@ -572,6 +574,9 @@ class Settings(_Const):
             )
             candidate.MAX_SOLVER_ITERS = parser.getint(
                 "computational", "max_solver_iters", fallback=candidate.MAX_SOLVER_ITERS,
+            )
+            candidate.PRESERVE_INPUT_PHASES = parser.getboolean(
+                "computational", "preserve_input_phases", fallback=candidate.PRESERVE_INPUT_PHASES,
             )
             candidate.MAX_CURVE_DATAPOINTS = parser.getint(
                 "computational", "max_curve_datapoints", fallback=candidate.MAX_CURVE_DATAPOINTS,
