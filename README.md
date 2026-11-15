@@ -1,4 +1,4 @@
-# <img src="src/elisa/ui/assets/logo.png" width="80" align="middle"> ELISa
+# <img src="https://raw.githubusercontent.com/mikecokina/elisa/release/1.0.0/src/elisa/ui/assets/logo.png" width="80" align="middle"> ELISa
 
 [![Python](https://img.shields.io/badge/Python-3.11--3.14-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-GPLv3-green.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
@@ -169,7 +169,7 @@ castelli_kurucz_04_atm_tables = /home/user/castelli_kurucz/ck04
 
 A complete configuration reference is available here:
 
-[Configuration reference](./src/elisa/conf/elisa_conf_docs.ini)
+[Configuration reference](https://github.com/mikecokina/elisa/blob/release/1.0.0/src/elisa/conf/elisa_conf_docs.ini)
 
 ---
 
@@ -213,7 +213,7 @@ Once configured, ELISa is ready to use.
 For a detailed description of the physical assumptions and numerical methods used in ELISa,  
 please refer to the **ELISa Handbook**:
 
-[ELISa Handbook](./ELISa_handbook.pdf)
+[ELISa Handbook](https://github.com/mikecokina/elisa/blob/release/1.0.0/ELISa_handbook.pdf)
 
 The handbook describes ELISa 0.5.0 (2021). It remains a scientific reference, but some implementation and API details differ from the current version.
 
@@ -404,7 +404,7 @@ For example, a light curve computed with an `Observer` instance `o` can be displ
 o.plot.lc()
 ```
 
-![Light curve example](./docs/source/_static/readme/lc_bvri.png)
+![Light curve example](https://raw.githubusercontent.com/mikecokina/elisa/release/1.0.0/docs/source/_static/readme/lc_bvri.png)
 
 The plotting interface supports visualization of multi-passband light curves and other model outputs.
 
@@ -436,7 +436,7 @@ The app opens in your browser at `http://localhost:7860` and provides five tabs:
 - **System Visualization** - render surface, mesh, orbit, and equipotential plots
 
 For full usage instructions, parameter descriptions, and worked examples see
-**[UI_GUIDE.md](./UI_GUIDE.md)**.
+**[UI_GUIDE.md](https://github.com/mikecokina/elisa/blob/release/1.0.0/UI_GUIDE.md)**.
 
 ---
 
@@ -705,7 +705,7 @@ Metallicity (log10(X_Fe/X_H)):                       0.0                   -    
 
 Detailed step-by-step fitting guides are available in:
 
-- **[UI_GUIDE.md](./UI_GUIDE.md)** - complete user guide for the desktop application
-- [Notebook 10 - Working with ELISa datasets](./jupyter_tutorials/demo10-datasets.ipynb)
-- [Notebook 11 - Radial velocity fitting](./jupyter_tutorials/demo11-rv_fitting.ipynb)
-- [Notebook 12 - Light curve fitting](./jupyter_tutorials/demo12-lc_fitting.ipynb)
+- **[UI_GUIDE.md](https://github.com/mikecokina/elisa/blob/release/1.0.0/UI_GUIDE.md)** - complete user guide for the desktop application
+- [Notebook 10 - Working with ELISa datasets](https://github.com/mikecokina/elisa/blob/release/1.0.0/jupyter_tutorials/demo10-datasets.ipynb)
+- [Notebook 11 - Radial velocity fitting](https://github.com/mikecokina/elisa/blob/release/1.0.0/jupyter_tutorials/demo11-rv_fitting.ipynb)
+- [Notebook 12 - Light curve fitting](https://github.com/mikecokina/elisa/blob/release/1.0.0/jupyter_tutorials/demo12-lc_fitting.ipynb)
