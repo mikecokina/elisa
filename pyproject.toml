@@ -8,7 +8,8 @@ dynamic = ["version"]
 description = "Eclipsing Binary Modeling Software"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
-license = { text = "GPLv3" }
+license = "GPL-3.0-only"
+license-files = ["LICENCE"]
 authors = [
     { name = "Michal Cokina", email = "mikecokina@gmail.com" },
     { name = "Miroslav Fedurco", email = "mirofedurco@gmail.com" },
@@ -19,7 +20,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Topic :: Scientific/Engineering :: Astronomy",
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",

@@ -133,8 +133,9 @@ setup(
     author="Michal Cokina, Miroslav Fedurco",
     author_email="mikecokina@gmail.com, mirofedurco@gmail.com",
 
-    # Choose your license
-    license="GPLv3",
+    # SPDX license expression and the bundled license text.
+    license="GPL-3.0-only",
+    license_files=["LICENCE"],
 
     classifiers=[
         # How mature is this project? Common values are
@@ -146,9 +147,6 @@ setup(
         # Indicate who your project is intended for
         "Intended Audience :: Developers",
         "Topic :: Scientific/Engineering :: Astronomy",
-
-        # Pick your license as you wish (should match "license" above)
-        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
 
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.
