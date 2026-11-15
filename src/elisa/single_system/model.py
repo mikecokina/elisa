@@ -1,75 +1,133 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
-from .. import const
+
+from elisa import const
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+    from elisa.types import Float
 
 
-def surface_potential_from_polar_log_g(polar_log_g, mass):
+def surface_potential_from_polar_log_g(
+        polar_log_g: NDArray[Float] | Float,
+        mass: NDArray[Float] | Float,
+) -> NDArray[Float] | Float:
+    """Calculate surface potential from polar surface gravity.
+
+    The polar surface gravity (log10) and mass are combined to produce a
+    surface potential value for the polar point. The function accepts
+    scalar or array-like inputs and returns a NumPy array of float values.
+
+    :param polar_log_g: Polar gravity acceleration in log10 units.
+    :type polar_log_g: numpy.typing.NDArray[elisa.types.Float] | elisa.types.Float
+    :param mass: Stellar mass.
+    :type mass: numpy.typing.NDArray[elisa.types.Float] | elisa.types.Float
+    :returns: Surface potential value(s) (negative-valued).
+    :rtype: numpy.typing.NDArray[elisa.types.Float] | elisa.types.Float
     """
-    calculation of surface potential based from polar gravity acceleration
+    polar_gravity_acceleration = np.power(10.0, polar_log_g)
+    return -np.power(const.G * mass * polar_gravity_acceleration, 0.5)
 
-    :param polar_log_g: float; polar gravity acceleration
-    :param mass: float; stellar mass
-    :return:
+
+def potential_fn(
+        radius: NDArray[Float] | Float,
+        precalc_vals: NDArray[Float] | Float,
+        target_potential: Float,
+) -> NDArray[Float] | Float:
+    """Implicit potential function used by the root solver.
+
+    This adapts the generic :func:`potential` to the solver's calling
+    convention by taking precomputed coefficients and the desired target
+    potential and returning the residual: potential(radius) - target.
+
+    :param radius: Radial coordinate(s) in spherical units.
+    :type radius: numpy.typing.NDArray[elisa.types.Float] | elisa.types.Float
+    :param precalc_vals: Precomputed coefficients (``a``, ``b``) produced by :func:`pre_calculate_for_potential_value`.
+    :type precalc_vals: numpy.typing.NDArray[elisa.types.Float] | elisa.types.Float
+    :param target_potential: Desired potential value to match.
+    :type target_potential: elisa.types.Float
+    :returns: Residual(s) of the potential equation.
+    :rtype: numpy.typing.NDArray[elisa.types.Float] | elisa.types.Float
     """
-    polar_gravity_acceleration = np.power(10, polar_log_g)
-    return - np.power(const.G * mass * polar_gravity_acceleration, 0.5)
+    return potential(radius, precalc_vals[0], precalc_vals[1]) - target_potential
 
 
-def potential_fn(radius, *args):
+def potential(
+    radius: NDArray[Float],
+    a: NDArray[Float],
+    b: NDArray[Float],
+) -> NDArray[Float]:
+    r"""Compute potential ``\Psi`` at a given radius.
+
+    The potential is given by the expression::
+
+        \Psi(r) = -a / r - b r^2
+
+    :param radius: Radial position(s).
+    :type radius: numpy.typing.NDArray[elisa.types.Float]
+    :param a: Coefficient ``a`` (G*M).
+    :type a: numpy.typing.NDArray[elisa.types.Float]
+    :param b: Coefficient ``b`` (rotation term).
+    :type b: numpy.typing.NDArray[elisa.types.Float]
+    :returns: Potential value(s) at supplied radius(es).
+    :rtype: numpy.typing.NDArray[elisa.types.Float]
     """
-    implicit potential function
-
-    :param radius: (np.)float; spherical variable
-    :param args: (array), float; (polar angles) and desired value of potential
-    :return:
-    """
-    return potential(radius, *args[0]) - args[1]
+    return -a / radius - b * np.power(radius, 2.0)
 
 
-def potential(radius, *args):
-    """
-    function calculates potential on the given point of the star
+def pre_calculate_for_potential_value(
+    *args: Float,
+    return_as_tuple: bool = False,
+) -> NDArray[Float] | tuple[Float, Float] | tuple[NDArray[Float], NDArray[Float]]:
+    r"""Precompute coefficients ``a`` and ``b`` for potential evaluation.
 
-    :param radius: (np.)float; spherical variable
-    :param args: Tuple; (A, B) - such that: Psi = -a/r - b*r**2
-    :return: (np.)float
-    """
-    a, b = args
+    ``a`` equals ``G * mass`` and ``b`` equals ``0.5 * (omega * sin(theta))**2``.
+    The function accepts scalar or array-like ``theta``. When ``theta`` is
+    scalar the scalars ``(a, b)`` are returned. For array ``theta`` the
+    function returns either a stacked ``NDArray`` of shape (N, 2) or a tuple
+    ``(a_array, b_array)`` when ``return_as_tuple`` is ``True``.
 
-    return - a / radius - b * np.power(radius, 2.0)
-
-
-def pre_calculate_for_potential_value(*args, return_as_tuple=False):
-    """
-    Function calculates auxiliary values for calculation of primary component potential,
-    and therefore they don't need to be wastefully recalculated every iteration in solver.
-
-    :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
+    :param args: Tuple (mass, angular_velocity, theta).
+    :type args: tuple[elisa.types.Float, elisa.types.Float, elisa.types.Float]
+    :param return_as_tuple: If True return a tuple of arrays instead of a
+        2-column array (keyword-only).
     :type return_as_tuple: bool
-    :param args: Tuple; (mass, angular velocity of rotation, latitude angle (0, pi))
-    :return: Tuple; (a, b) such that: Psi = -a/r - b*r**2
+    :returns: Coefficients for potential evaluation. Either a 2-column array
+        or two arrays/floats.
+    :rtype: numpy.typing.NDArray[elisa.types.Float] |
+        tuple[elisa.types.Float, elisa.types.Float] |
+        tuple[numpy.typing.NDArray[elisa.types.Float], numpy.typing.NDArray[elisa.types.Float]]
     """
-    mass, angular_velocity, theta, = args
+    mass, angular_velocity, theta = args
 
     a = const.G * mass
     b = 0.5 * np.power(angular_velocity * np.sin(theta), 2)
 
     if np.isscalar(theta):
         return a, b
-    else:
-        aa = a * np.ones(np.shape(theta))
-        return (aa, b) if return_as_tuple else np.column_stack((aa, b))
+
+    aa = a * np.ones(np.shape(theta))
+    return (aa, b) if return_as_tuple else np.column_stack((aa, b))
 
 
-def radial_potential_derivative(radius, *args):
+def radial_potential_derivative(radius: NDArray[Float], a: NDArray[Float], b: NDArray[Float]) -> NDArray[Float]:
+    r"""Radial derivative of the potential in spherical coordinates.
+
+    The radial derivative of :math:`\Psi` is::
+
+        d\Psi/dr = a / r^2 - 2 b r
+
+    :param radius: Radial coordinate(s).
+    :type radius: numpy.typing.NDArray[elisa.types.Float]
+    :param a: Coefficient a.
+    :type a: numpy.typing.NDArray[elisa.types.Float]
+    :param b: Coefficient b.
+    :type b: numpy.typing.NDArray[elisa.types.Float]
+    :returns: Radial derivative values.
+    :rtype: numpy.typing.NDArray[elisa.types.Float]
     """
-    function calculate radial derivative of potential function in spherical coordinates
-
-    :param radius: float; radius of given point(s) in spherical coordinates
-    :param args: Tuple; (A, B) - such that: Psi = -a/r**2 - 2*b*r
-    :type args: Tuple;
-    :return:
-    """
-    a, b = args
-
     return a / np.power(radius, 2) - 2 * b * radius
-

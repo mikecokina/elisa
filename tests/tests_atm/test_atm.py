@@ -1,0 +1,865 @@
+from __future__ import annotations
+
+# The tests package selects Astropy constants before test-module imports.
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import pytest
+from numpy.testing import assert_allclose, assert_array_equal
+from pandas.testing import assert_frame_equal
+
+from elisa import const, settings
+from elisa import umpy as up
+from elisa.atm import atm
+from elisa.atm import const as atm_const
+from elisa.atm.atm import (
+    AtmDataContainer,
+    AtmModel,
+    IntensityContainer,
+    compute_integral_si_intensity_from_atm_data_containers,
+    get_standard_wavelengths,
+    planck_function,
+)
+from elisa.base import error
+from elisa.base.types import FLOAT
+from elisa.observer.passband import PassbandContainer
+from tests import set_astropy_units
+from tests.utils import ElisaTestCase
+
+# Additional lightweight tests for atm module
+
+set_astropy_units()
+
+
+set_astropy_units()
+
+
+class TestMapDict(ElisaTestCase):
+    def test_ATLAS_TO_ATM_FILE_PREFIX(self) -> None:
+        supplied = ["castelli", "castelli-kurucz", "ck", "ck04", "kurucz", "k93", "k"]
+        expected = ["ck", "ck", "ck", "ck", "k", "k", "k"]
+        obtained = [atm_const.ATLAS_TO_ATM_FILE_PREFIX[s] for s in supplied]
+        assert_array_equal(obtained, expected)
+
+    def test_ATLAS_TO_BASE_DIR(self) -> None:
+        settings.configure(
+            CK04_ATM_TABLES=str(Path(__file__).resolve().parent.joinpath("ck04")),
+            K93_ATM_TABLES=str(Path(__file__).resolve().parent.joinpath("k93")),
+        )
+        supplied = ["castelli", "castelli-kurucz", "ck", "ck04", "kurucz", "k93", "k"]
+        expected = [str(Path(__file__).resolve().parent.joinpath("ck04"))] * 4 + [
+            str(Path(__file__).resolve().parent.joinpath("k93")),
+        ] * 3
+        obtained = [settings.ATLAS_TO_BASE_DIR[s] for s in supplied]
+        assert_array_equal(obtained, expected)
+
+    def test_ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX(self) -> None:
+        supplied = ["temperature", "gravity", "metallicity"]
+        expected = ["TEMPERATURE_LIST_ATM", "GRAVITY_LIST_ATM", "METALLICITY_LIST_ATM"]
+        obtained = [atm_const.ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX[s] for s in supplied]
+        assert_array_equal(expected, obtained)
+
+
+class TestAtmDataContainer(ElisaTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        df = pd.DataFrame(
+            {
+                settings.ATM_MODEL_DATAFRAME_FLUX: np.array([1, 2, 3, 4, 5]),
+                settings.ATM_MODEL_DATAFRAME_WAVE: np.array([10, 20, 30, 40, 50]),
+            },
+        )
+        self.container = atm.AtmDataContainer(df, 10, 10, 10, fpath="path")
+
+    def test_bandwidth(self) -> None:
+        assert_array_equal([10, 50], [self.container.left_bandwidth, self.container.right_bandwidth])
+
+    def test_flux_to_si_mult(self) -> None:
+        assert self.container.flux_to_si_mult == 1e-7 * 1e4 * 1e10
+
+    def test_wave_to_si_mult(self) -> None:
+        assert self.container.wave_to_si_mult == 1e-10
+
+
+class TestAtmModuleGeneral(ElisaTestCase):
+    def test_arange_atm_to_same_wavelength(self) -> None:
+        c1 = atm.AtmDataContainer(
+            AtmModel(flux=np.array([1, 2, 3, 4, 5]), wavelength=np.array([1, 2, 3, 4, 5])),
+            10,
+            10,
+            10,
+        )
+
+        c2 = atm.AtmDataContainer(
+            AtmModel(flux=np.array([0.4, 2, 3, 4.3, 5]), wavelength=np.array([0.9, 2, 3, 4.1, 5])),
+            5,
+            5,
+            5,
+        )
+
+        result = atm.arange_atm_to_same_wavelength([c1, c2])
+        expected_wavelength = np.array([0.9, 1, 2, 3, 4, 4.1, 5])
+
+        # are aligned?
+        assert_array_equal(result[0].model.wavelength, result[1].model.wavelength)
+        # are xpected
+        assert_array_equal(result[0].model.wavelength, expected_wavelength)
+
+    def test_strip_empty_atmosphere_is_internal_contract_failure(self) -> None:
+        container = atm.AtmDataContainer(AtmModel(np.ones(3), np.arange(3)), 10, 10, 10)
+        container.model.wavelength = np.array([])
+        with pytest.raises(error.ElisaUnexpectedError, match="Atmosphere container is empty"):
+            atm.strip_atm_container_by_bandwidth(container, 0.0, 2.0)
+
+    def test_strip_atm_container_by_bandwidth(self) -> None:
+        c = atm.AtmDataContainer(
+            AtmModel.from_dataframe(
+                pd.DataFrame(
+                    {
+                        settings.ATM_MODEL_DATAFRAME_FLUX: up.arange(0, 100, 10, dtype=FLOAT),
+                        settings.ATM_MODEL_DATAFRAME_WAVE: up.arange(10, dtype=FLOAT),
+                    },
+                ),
+            ),
+            10,
+            10,
+            10,
+        )
+
+        l_band, r_band = 3.1, 7.8
+        result = atm.strip_atm_container_by_bandwidth(c, l_band, r_band)
+        expected_df = pd.DataFrame(
+            {
+                settings.ATM_MODEL_DATAFRAME_FLUX: [31, 40, 50, 60, 70, 78],
+                settings.ATM_MODEL_DATAFRAME_WAVE: [3.1, 4.0, 5.0, 6.0, 7.0, 7.8],
+            },
+        )
+        assert_frame_equal(expected_df, result.model.to_dataframe(), check_dtype=False)
+
+        # global is set but right and left are valid for given model
+        gl_band, gr_band = 4.0, 6.5
+        result = atm.strip_atm_container_by_bandwidth(c, l_band, r_band, global_left=gl_band, global_right=gr_band)
+        assert_frame_equal(expected_df, result.model.to_dataframe(), check_dtype=False)
+
+        # global is set
+        l_band, r_band = -1, 10000
+        gl_band, gr_band = 4.0, 6.5
+        result = atm.strip_atm_container_by_bandwidth(c, l_band, r_band, global_left=gl_band, global_right=gr_band)
+        expected_df = pd.DataFrame(
+            {
+                settings.ATM_MODEL_DATAFRAME_FLUX: [40, 50, 60, 65],
+                settings.ATM_MODEL_DATAFRAME_WAVE: [4, 5.0, 6, 6.5],
+            },
+        )
+        assert_frame_equal(expected_df, result.model.to_dataframe(), check_dtype=False)
+
+    def test_find_global_atm_bandwidth(self) -> None:
+        c1 = atm.AtmDataContainer(
+            AtmModel(flux=np.array([1, 2, 3, 4, 5]), wavelength=np.array([1, 2, 3, 4, 5])),
+            10,
+            10,
+            10,
+        )
+
+        c2 = atm.AtmDataContainer(
+            AtmModel(flux=np.array([0.4, 2, 3, 4.3, 5]), wavelength=np.array([0.9, 2, 3, 4.1, 5])),
+            5,
+            5,
+            5,
+        )
+
+        result = atm.find_global_atm_bandwidth([c1, c2])
+        expected = (1, 5)
+        self.assertTupleEqual(result, expected)
+
+    def test_extend_atm_container_on_bandwidth_boundary(self) -> None:
+        c = atm.AtmDataContainer(
+            AtmModel.from_dataframe(
+                pd.DataFrame(
+                    {
+                        settings.ATM_MODEL_DATAFRAME_FLUX: up.arange(0, 100, 10, dtype=FLOAT),
+                        settings.ATM_MODEL_DATAFRAME_WAVE: up.arange(10, dtype=FLOAT),
+                    },
+                ),
+            ),
+            10,
+            10,
+            10,
+        )
+
+        l_band, r_band = 0.4, 8.8
+        result = (
+            atm.extend_atm_container_on_bandwidth_boundary(c, l_band, r_band).model.to_dataframe().sort_index(axis=1)
+        )
+        expected = pd.DataFrame(
+            {
+                settings.ATM_MODEL_DATAFRAME_WAVE: [0.4, *list(range(1, 9, 1)), 8.8],
+                settings.ATM_MODEL_DATAFRAME_FLUX: [4, *list(range(10, 90, 10)), 88],
+            },
+        ).sort_index(axis=1)
+        assert_frame_equal(result, expected, check_dtype=False)
+
+    def test_atm_file_prefix_to_quantity_list(self) -> None:
+        atlas = ["ck", "k", "ck"]
+        quantities = ["temperature", "gravity", "metallicity"]
+        expected = [
+            [3500.0, 3750.0, 4000.0],
+            [3500.0, 3750.0, 4000.0],
+            [3500.0, 3750.0, 4000.0],
+            [0.0, 0.5, 1.0],
+            [0.0, 0.5, 1.0],
+            [0.0, 0.5, 1.0],
+            [-2.5, -2.0, -1.5],
+            [-5.0, -4.5, -4.0],
+            [-2.5, -2.0, -1.5],
+        ]
+
+        obtained = [atm.atm_file_prefix_to_quantity_list(q, a)[:3] for q in quantities for a in atlas]
+        assert_array_equal(expected, obtained)
+
+    def test_get_metallicity_from_atm_table_filename(self) -> None:
+        filename = [
+            "km05",
+            "ckp02",
+            "km10_3500_g05.csv",
+            "km10_6500_g45",
+            str(Path("x").joinpath("y", "kp03_3500_g00.csv")),
+        ]
+        expected = [-0.5, 0.2, -1, -1, 0.3]
+        obtained = [atm.get_metallicity_from_atm_table_filename(f) for f in filename]
+        assert_array_equal(expected, obtained)
+
+    def test_get_logg_from_atm_table_filename(self) -> None:
+        filename = ["km10_3500_g05.csv", "km10_6500_g45", str(Path("x").joinpath("y", "kp03_3500_g00.csv"))]
+        expected = [0.5, 4.5, 0.0]
+        obtained = [atm.get_logg_from_atm_table_filename(f) for f in filename]
+        assert_array_equal(expected, obtained)
+
+    def test_get_temperature_from_atm_table_filename(self) -> None:
+        filename = ["km10_3500_g05.csv", "km10_6500_g45", str(Path("x").joinpath("y", "kp03_35000_g00.csv"))]
+        expected = [3500, 6500, 35000]
+        obtained = [atm.get_temperature_from_atm_table_filename(f) for f in filename]
+        assert_array_equal(expected, obtained)
+
+    def test_get_atm_table_filename(self) -> None:
+        t = [3500, 10250, 13000]
+        log_g = [0.0, 2.5, 4]
+        m_h = [-0.1, 0.0, 1]
+
+        obtained = [
+            atm.get_atm_table_filename(_t, _g, _m, atlas="ck") for _t, _g, _m in zip(t, log_g, m_h, strict=True)
+        ]
+        expected = ["ckm01_3500_g00.csv", "ckp00_10250_g25.csv", "ckp10_13000_g40.csv"]
+        assert_array_equal(expected, obtained)
+
+    def test_get_atm_directory(self) -> None:
+        m_h = [-0.1, -5, 0.0, 0.1, 2]
+        atlas = ["ck", "ck", "k", "k", "k"]
+        obtained = [atm.get_atm_directory(_m, _a) for _m, _a in zip(m_h, atlas, strict=True)]
+        expected = ["ckm01", "ckm50", "kp00", "kp01", "kp20"]
+        assert_array_equal(obtained, expected)
+
+    def test_get_list_of_all_atm_tables(self) -> None:
+        # Fixed directory inventory fixture; independent of an installed atlas.
+        settings.configure(CK04_ATM_TABLES=str(Path(__file__).parent.joinpath("../data/ck04")))
+        obtained = sorted([Path(f).name for f in atm.get_list_of_all_atm_tables("ck04")])
+        expected = sorted(
+            [
+                "ckp00_10000_g40.csv",
+                "ckp00_10250_g40.csv",
+                "ckp00_25000_g45.csv",
+                "ckp00_26000_g45.csv",
+                "ckp00_4500_g50.csv",
+                "ckp00_5250_g30.csv",
+                "ckp00_5500_g30.csv",
+                "ckp05_4750_g15.csv",
+                "ckp05_5000_g15.csv",
+                "ckp05_11250_g20.csv",
+                "ckp05_11500_g20.csv",
+            ],
+        )
+        assert_array_equal(expected, obtained)
+
+    def test_get_atm_table(self) -> None:
+        # Exact parser reference fixture.
+        settings.configure(CK04_ATM_TABLES=str(Path(__file__).parent.joinpath("../data/ck04")))
+        expected = pd.read_csv(
+            str(
+                Path(__file__).resolve().parent.joinpath(
+                    "../data",
+                    "ck04",
+                    "ckp00",
+                    "ckp00_10250_g40.csv",
+                ),
+            ),
+        )
+        obtained = atm.get_atm_table(10250, 4.0, 0, "ck")
+        assert_frame_equal(expected, obtained, check_dtype=False)
+
+    def test_compute_normal_intensity(self) -> None:
+        spectral_flux = np.array([list(range(5)), list(range(5, 10, 1)), list(range(5))])
+        wavelength = np.array(list(range(5)))
+        result = np.round(atm.compute_normal_intensity(spectral_flux, wavelength), 4)
+        expected = np.round(np.array([25.1327, 87.9646, 25.1327]) * (1.0 / const.PI), 4)
+        result = np.round(result, 4)
+        assert_array_equal(result, expected)
+
+        result = np.round(atm.compute_normal_intensity(spectral_flux, wavelength, flux_mult=2.0), 4)
+        expected = np.round(np.array([50.2655, 175.9292, 50.2655]) * (1.0 / const.PI), 4)
+        result = np.round(result, 4)
+        assert_array_equal(result, expected)
+
+        result = np.round(atm.compute_normal_intensity(spectral_flux, wavelength, wave_mult=2.5), 4)
+        expected = np.round(np.array([62.8319, 219.9115, 62.8319]) * (1.0 / const.PI), 4)
+        result = np.round(result, 4)
+        assert_array_equal(result, expected)
+
+    def test_unique_atm_fpaths(self) -> None:
+        paths = ["path1", "path1", "path2", "path3", "path2", "path4"]
+        expected_fset = ["path1", "path2", "path3", "path4"]
+        expected_fmap = {"path3": [3], "path2": [2, 4], "path4": [5], "path1": [0, 1]}
+
+        fset, fmap = atm.unique_atm_fpaths(paths)
+        assert_array_equal(sorted(fset), expected_fset)
+        self.assertDictEqual(fmap, expected_fmap)
+
+    def test_remap_unique_atm_container_to_origin(self) -> None:
+        class MockAtm:
+            def __init__(self, p: str) -> None:
+                self.fpath = p
+
+        expected = ["path1", "path1", "path2", "path3", "path2", "path4"]
+
+        models = [MockAtm(f) for f in ["path1", "path2", "path3", "path4"]]
+        fmap = {"path3": [3], "path2": [2, 4], "path4": [5], "path1": [0, 1]}
+
+        obtained = [model.fpath for model in atm.remap_unique_atm_container_to_origin(models, fmap)]
+        assert_array_equal(expected, obtained)
+
+    def test_read_unique_atm_tables(self) -> None:
+        base_path = str(Path(__file__).resolve().parent.joinpath("../data", "ck04", "ckp00"))
+        paths = [
+            str(Path(base_path).joinpath("ckp00_4500_g50.csv")),
+            str(Path(base_path).joinpath("ckp00_10250_g40.csv")),
+            str(Path(base_path).joinpath("ckp00_4500_g50.csv")),
+        ]
+        result, _ = atm.read_unique_atm_tables(paths)
+        expected_paths = sorted(
+            [str(Path(base_path).joinpath("ckp00_4500_g50.csv")), str(Path(base_path).joinpath("ckp00_10250_g40.csv"))],
+        )
+
+        obtained_paths = sorted([r.fpath for r in result])
+        assert_array_equal(obtained_paths, expected_paths)
+
+    def test_empty_atmosphere_collections_are_internal_contract_failures(self) -> None:
+        for extract in (atm.find_atm_si_multiplicators, atm.find_atm_defined_wavelength):
+            with pytest.raises(error.ElisaUnexpectedError, match="No valid atmospheric container"):
+                extract([])
+
+    def test_find_atm_si_multiplicators(self) -> None:
+        expected = (1e-7 * 1e4 * 1e10, 1e-10)
+        cs = [
+            atm.AtmDataContainer(
+                AtmModel.from_dataframe(
+                    pd.DataFrame(
+                        {settings.ATM_MODEL_DATAFRAME_WAVE: [1, 2, 3], settings.ATM_MODEL_DATAFRAME_FLUX: [1, 2, 3]},
+                    ),
+                ),
+                0,
+                0,
+                0,
+            ),
+        ] * 10
+        mults = atm.find_atm_si_multiplicators(cs)
+        self.assertTupleEqual(mults, expected)
+
+    def test_find_atm_defined_wavelength(self) -> None:
+        cs = [
+            atm.AtmDataContainer(
+                pd.DataFrame(
+                    {
+                        settings.ATM_MODEL_DATAFRAME_WAVE: list(range(10)),
+                        settings.ATM_MODEL_DATAFRAME_FLUX: list(range(10)),
+                    },
+                ),
+                0,
+                0,
+                0,
+            ),
+        ] * 10
+        expected = list(range(10))
+        obtained = atm.find_atm_defined_wavelength(cs)
+        assert_array_equal(expected, obtained)
+
+    def test_apply_passband(self) -> None:
+        atmc = atm.AtmDataContainer(
+            AtmModel.from_dataframe(
+                pd.DataFrame(
+                    {
+                        settings.ATM_MODEL_DATAFRAME_FLUX: up.arange(10, dtype=FLOAT),
+                        settings.ATM_MODEL_DATAFRAME_WAVE: up.arange(0, 100, 10, dtype=FLOAT),
+                    },
+                ),
+            ),
+            0,
+            0,
+            0,
+        )
+
+        bandc = PassbandContainer(
+            pd.DataFrame(
+                {
+                    settings.PASSBAND_DATAFRAME_THROUGHPUT: [0.2, 1.0, 0.2, 0.2, 0.4],
+                    settings.PASSBAND_DATAFRAME_WAVE: [1, 10, 25, 40, 50],
+                },
+            ),
+            passband="bandc",
+        )
+
+        passband = {"bandc": bandc}
+
+        obtained = np.round(atm.apply_passband([atmc], passband)["bandc"][0].model.to_dataframe(), 4)
+        expected = pd.DataFrame(
+            {
+                settings.ATM_MODEL_DATAFRAME_FLUX: [0.02, 1.0, 0.8117, 0.5077, 0.8, 2.0],
+                settings.ATM_MODEL_DATAFRAME_WAVE: [1.0, 10.0, 20.0, 30.0, 40.0, 50.0],
+            },
+        )
+        assert_frame_equal(expected, obtained, check_dtype=False)
+
+
+class TestNaiveInterpolation(ElisaTestCase):
+    def test_atm_files(self) -> None:
+        g = np.array([1.5, 2, 2])
+        t = np.array([4999, 11300, 11500])
+
+        obtained = sorted([Path(v).name for v in atm.NaiveInterpolatedAtm.atm_files(t, g, 0.5, "ck")])
+        expected = [
+            "ckp05_11250_g40.csv",
+            "ckp05_11500_g40.csv",
+            "ckp05_11500_g40.csv",
+            "ckp05_11500_g40.csv",
+            "ckp05_4750_g35.csv",
+            "ckp05_5000_g35.csv",
+        ]
+        assert_array_equal(obtained, expected)
+
+    def test_compute_interpolation_weights(self) -> None:
+        class MockAtm:
+            def __init__(self, t: int) -> None:
+                self.temperature = t
+
+        top = [MockAtm(t) for t in [16000, 3750, 4750, 3500]]
+        bottom = [MockAtm(t) for t in [15000, 3500, 4500, 3500]]
+        temperatures = np.array([15010, 3555, 4562, 3500])
+        weights = np.round(atm.NaiveInterpolatedAtm.compute_interpolation_weights(temperatures, top, bottom), 4)
+        expected = [0.0091, 0.2025, 0.233, 1.0]
+        assert_array_equal(expected, weights)
+
+    def test_compute_unknown_intensity_from_surounded_flux_matrices(self) -> None:
+        bottom = np.array([[10, 11, 12, 13], [100, 150, 180, 120]])
+
+        top = np.array([[10, 12, 14, 16], [110, 150, 180, 120]])
+
+        weights = np.array([0.2, 1.0])
+
+        obtained = atm.NaiveInterpolatedAtm.compute_unknown_intensity_from_surounded_flux_matrices(weights, top, bottom)
+        expected = np.array([[10.0, 11.2, 12.4, 13.6], [110.0, 150.0, 180.0, 120.0]], dtype=np.float32)
+        assert_array_equal(expected, obtained)
+
+    def test_compute_unknown_intensity_from_surounded_containers_basic(self) -> None:
+        # Prepare simple top and bottom atmosphere DataFrames
+        flux_col = settings.ATM_MODEL_DATAFRAME_FLUX
+        wave_col = settings.ATM_MODEL_DATAFRAME_WAVE
+
+        top_df = pd.DataFrame({flux_col: np.array([10.0, 20.0]), wave_col: np.array([1.0, 2.0])})
+        bottom_df = pd.DataFrame({flux_col: np.array([0.0, 5.0]), wave_col: np.array([1.0, 2.0])})
+
+        # Create containers by passing DataFrame models directly (public API)
+        top_container = atm.AtmDataContainer(top_df, 10.0, 4.0, 0.0)
+        bottom_container = atm.AtmDataContainer(bottom_df, 5.0, 4.0, 0.0)
+
+        # Weight array (per-wavelength interpolation weights)
+        weights = np.array([0.5, 0.2])
+
+        intensity, wavelengths = atm.NaiveInterpolatedAtm.compute_unknown_intensity_from_surounded_containers(
+            weights,
+            top_container,
+            bottom_container,
+        )
+
+        expected = (
+            weights * (top_df[flux_col].to_numpy() - bottom_df[flux_col].to_numpy()) + bottom_df[flux_col].to_numpy()
+        )
+
+        assert_allclose(intensity, expected)
+        assert_allclose(wavelengths, top_df[wave_col].values)
+
+
+class TestAtmAdditional(ElisaTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+
+    @staticmethod
+    def test_atmmodel_from_dataframe_and_len_getitem() -> None:
+        df = pd.DataFrame(
+            {
+                settings.ATM_MODEL_DATAFRAME_FLUX: np.array([1.0, 2.0, 3.0], dtype=FLOAT),
+                settings.ATM_MODEL_DATAFRAME_WAVE: np.array([10.0, 20.0, 30.0], dtype=FLOAT),
+            },
+        )
+        model = AtmModel.from_dataframe(df)
+        assert_array_equal(model.flux, np.array([1.0, 2.0, 3.0]))
+        assert_array_equal(model.wavelength, np.array([10.0, 20.0, 30.0]))
+        assert len(model) == 3
+        sub = model[1:]
+        assert_array_equal(sub.flux, np.array([2.0, 3.0]))
+
+    @staticmethod
+    def test_atmdata_container_model_setter_with_atmmodel() -> None:
+        model = AtmModel(flux=np.array([5.0, 6.0], dtype=FLOAT), wavelength=np.array([100.0, 200.0], dtype=FLOAT))
+        adc = AtmDataContainer(model, temperature=5000, log_g=4.0, metallicity=0.0)
+        assert_array_equal(adc.model.flux, np.array([5.0, 6.0]))
+        assert adc.left_bandwidth == 100.0
+        assert adc.right_bandwidth == 200.0
+
+    @staticmethod
+    def test_intensity_container_fields() -> None:
+        ic = IntensityContainer(intensity=1.23, temperature=5500, log_g=4.2, metallicity=0.1)
+        assert ic.intensity == 1.23
+        assert ic.temperature == 5500
+        assert ic.log_g == 4.2
+        assert ic.metallicity == 0.1
+
+    @staticmethod
+    def test_compute_integral_si_intensity_from_atm_data_containers() -> None:
+        # Simple linear flux over wavelength: flux = wavelength, so integral simps(wave, wave) from 0..2 = (2^2)/2 = 2
+        df = pd.DataFrame(
+            {
+                settings.ATM_MODEL_DATAFRAME_FLUX: np.array([0.0, 1.0, 2.0], dtype=FLOAT),
+                settings.ATM_MODEL_DATAFRAME_WAVE: np.array([0.0, 1.0, 2.0], dtype=FLOAT),
+            },
+        )
+        adc = AtmDataContainer(df, temperature=5000, log_g=4.0, metallicity=0.0)
+        results = compute_integral_si_intensity_from_atm_data_containers([adc])
+        # result is list of IntensityContainer
+        assert len(results) == 1
+        ic = results[0]
+        # expected intensity = pi * simps(flux*flux_to_si_mult, wave*wave_to_si_mult)
+        # flux_to_si_mult default is 1e7 and wave_to_si_mult is 1e-10 -> combined small scaling, but sanity check shape
+        assert hasattr(ic, "intensity")
+
+    @staticmethod
+    def test_planck_function_and_standard_wavelengths() -> None:
+        waves = np.array([1e-7, 5e-7])  # in meters
+        temp = 5000
+        p = planck_function(waves, temp)
+        assert p.shape == (2,)
+        assert np.all(p > 0)
+
+        std = get_standard_wavelengths()
+        assert isinstance(std, np.ndarray)
+        assert std.size > 0
+
+
+# Tests for edge cases in atm module to ensure optimizations don't break anything
+
+
+class TestAtmEdgeCases(ElisaTestCase):
+    """Test edge cases and boundary conditions for atm module optimizations."""
+
+    def test_arange_atm_already_aligned(self) -> None:
+        """Test that already aligned wavelengths are handled correctly."""
+        c1 = AtmDataContainer(
+            AtmModel(flux=np.array([1, 2, 3]), wavelength=np.array([1.0, 2.0, 3.0])),
+            10,
+            10,
+            10,
+        )
+        c2 = AtmDataContainer(
+            AtmModel(flux=np.array([1, 2, 3]), wavelength=np.array([1.0, 2.0, 3.0])),
+            5,
+            5,
+            5,
+        )
+
+        result = atm.arange_atm_to_same_wavelength([c1, c2])
+
+        # Should still work and be aligned
+        assert_array_equal(result[0].model.wavelength, result[1].model.wavelength)
+        # Should not add unnecessary interpolation
+        assert len(result[0].model.wavelength) == 3
+
+    def test_arange_atm_single_container(self) -> None:
+        """Test that single container is handled correctly."""
+        c1 = AtmDataContainer(
+            AtmModel(flux=np.array([1, 2, 3]), wavelength=np.array([1.0, 2.0, 3.0])),
+            10,
+            10,
+            10,
+        )
+
+        result = atm.arange_atm_to_same_wavelength([c1])
+
+        assert len(result) == 1
+        assert_array_equal(result[0].model.wavelength, c1.model.wavelength)
+        assert_array_equal(result[0].model.flux, c1.model.flux)
+
+    def test_arange_atm_different_lengths(self) -> None:
+        """Test alignment of containers with different wavelength array lengths."""
+        c1 = AtmDataContainer(
+            AtmModel(flux=np.array([1, 2, 3]), wavelength=np.array([1.0, 2.0, 3.0])),
+            10,
+            10,
+            10,
+        )
+        c2 = AtmDataContainer(
+            AtmModel(
+                flux=np.array([1, 2, 3, 4, 5]),
+                wavelength=np.array([0.5, 1.5, 2.5, 3.5, 4.5]),
+            ),
+            5,
+            5,
+            5,
+        )
+
+        result = atm.arange_atm_to_same_wavelength([c1, c2])
+
+        # Both should have same wavelength length
+        assert len(result[0].model.wavelength) == len(result[1].model.wavelength)
+        # Both should have same wavelengths
+        assert_array_equal(result[0].model.wavelength, result[1].model.wavelength)
+        # Both should have same flux length
+        assert len(result[0].model.flux) == len(result[1].model.flux)
+
+    def test_compute_interpolation_weights_edge_cases(self) -> None:
+        """Test interpolation weight computation with edge cases."""
+
+        class MockAtm:
+            def __init__(self, t: int) -> None:
+                self.temperature = t
+
+        # Case 1: Same top and bottom temperatures (would cause division by zero)
+        top = [MockAtm(5000)]
+        bottom = [MockAtm(5000)]
+        temperatures = np.array([5000])
+
+        weights = atm.NaiveInterpolatedAtm.compute_interpolation_weights(
+            temperatures,
+            top,
+            bottom,
+        )
+        # Should be replaced with 1.0 due to NaN handling
+        assert weights[0] == 1.0
+
+    def test_temperature_array_extraction_vectorized(self) -> None:
+        """Test that temperature array extraction works correctly."""
+
+        class MockAtm:
+            def __init__(self, t: int) -> None:
+                self.temperature = t
+
+        containers = [MockAtm(t) for t in [3000, 4000, 5000, 6000]]
+
+        # Extract temperatures as the code would
+        temps = np.array([a.temperature for a in containers])
+
+        expected = np.array([3000, 4000, 5000, 6000])
+        assert_array_equal(temps, expected)
+
+    def test_wavelength_stacking_different_shapes(self) -> None:
+        """Test wavelength stacking with containers of different sizes."""
+        c1 = AtmDataContainer(
+            AtmModel(flux=np.array([1, 2, 3]), wavelength=np.array([1.0, 2.0, 3.0])),
+            10,
+            10,
+            10,
+        )
+        c2 = AtmDataContainer(
+            AtmModel(
+                flux=np.array([1, 2, 3, 4]),
+                wavelength=np.array([1.0, 2.0, 3.0, 4.0]),
+            ),
+            5,
+            5,
+            5,
+        )
+
+        # This is the operation that fails with inhomogeneous arrays
+        # We need to handle this correctly
+        wavelengths_list = [c1.model.wavelength, c2.model.wavelength]
+
+        # Using concatenate works for different sizes
+        wavelengths = np.unique(np.concatenate(wavelengths_list))
+        wavelengths.sort()
+
+        expected = np.array([1.0, 2.0, 3.0, 4.0])
+        assert_array_equal(wavelengths, expected)
+
+    def test_flux_matrix_building(self) -> None:
+        """Test flux matrix building correctness."""
+        c1 = AtmDataContainer(
+            AtmModel(flux=np.array([1, 2, 3]), wavelength=np.array([1.0, 2.0, 3.0])),
+            10,
+            10,
+            10,
+            fpath="path1",
+        )
+        c2 = AtmDataContainer(
+            AtmModel(flux=np.array([4, 5, 6]), wavelength=np.array([1.0, 2.0, 3.0])),
+            5,
+            5,
+            5,
+            fpath="path2",
+        )
+
+        fpaths_map = {"path1": [0], "path2": [1]}
+
+        # Build matrix
+        total = 2
+        wavelengths_length = 3
+        models_matrix = up.zeros((total, wavelengths_length))
+
+        for atm_container in [c1, c2]:
+            models_matrix[fpaths_map[atm_container.fpath]] = atm_container.model.flux
+
+        expected = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype=np.float32)
+        assert_array_equal(models_matrix, expected)
+
+    def test_global_bandwidth_with_single_container(self) -> None:
+        """Test find_global_atm_bandwidth with single container."""
+        c1 = AtmDataContainer(
+            AtmModel(flux=np.array([1, 2, 3]), wavelength=np.array([1.0, 2.0, 3.0])),
+            10,
+            10,
+            10,
+        )
+
+        result = atm.find_global_atm_bandwidth([c1])
+        expected = (1.0, 3.0)
+
+        self.assertTupleEqual(result, expected)
+
+    def test_global_bandwidth_identical_ranges(self) -> None:
+        """Test find_global_atm_bandwidth with identical ranges."""
+        c1 = AtmDataContainer(
+            AtmModel(flux=np.array([1, 2, 3]), wavelength=np.array([1.0, 2.0, 3.0])),
+            10,
+            10,
+            10,
+        )
+        c2 = AtmDataContainer(
+            AtmModel(flux=np.array([1, 2, 3]), wavelength=np.array([1.0, 2.0, 3.0])),
+            5,
+            5,
+            5,
+        )
+
+        result = atm.find_global_atm_bandwidth([c1, c2])
+        expected = (1.0, 3.0)
+
+        self.assertTupleEqual(result, expected)
+
+    def test_passband_application_multiple_passbands(self) -> None:
+        """Test passband application doesn't modify original containers."""
+        atmc = AtmDataContainer(
+            AtmModel(flux=np.array([1.0, 2.0, 3.0]), wavelength=np.array([1.0, 2.0, 3.0])),
+            10,
+            10,
+            10,
+        )
+
+        # Store original values
+        original_flux = atmc.model.flux.copy()
+
+        # Get passband containers (would be real in actual use)
+        from elisa.observer.passband import PassbandContainer
+
+        bandc = PassbandContainer(
+            pd.DataFrame(
+                {
+                    settings.PASSBAND_DATAFRAME_THROUGHPUT: [1.0, 1.0, 1.0],
+                    settings.PASSBAND_DATAFRAME_WAVE: [1.0, 2.0, 3.0],
+                },
+            ),
+            passband="test",
+        )
+
+        result = atm.apply_passband([atmc], {"test": bandc})
+
+        # Original container should be unchanged (apply_passband makes copies)
+        assert_array_equal(atmc.model.flux, original_flux)
+        # Result should exist
+        assert "test" in result
+        assert len(result["test"]) > 0
+
+
+class TestAtmDataContainerEdgeCases(ElisaTestCase):
+    """Test edge cases for AtmDataContainer."""
+
+    def test_container_with_nan_handling(self) -> None:
+        """Test that containers handle NaN values appropriately."""
+        df = pd.DataFrame(
+            {
+                settings.ATM_MODEL_DATAFRAME_FLUX: np.array([1, 2, np.nan, 4, 5]),
+                settings.ATM_MODEL_DATAFRAME_WAVE: np.array([1, 2, 3, 4, 5]),
+            },
+        )
+
+        container = AtmDataContainer(df, 5000, 4.0, 0.0)
+
+        # Container should preserve the data structure
+        assert container.model.flux.shape == (5,)
+        # NaN should be present (not replaced)
+        assert np.isnan(container.model.flux[2])
+
+    def test_container_bandwidth_with_unsorted_wavelengths(self) -> None:
+        """Test bandwidth extraction with unsorted wavelengths."""
+        # Note: This might not be expected input, but test robustness
+        df = pd.DataFrame(
+            {
+                settings.ATM_MODEL_DATAFRAME_FLUX: np.array([1, 2, 3, 4, 5]),
+                settings.ATM_MODEL_DATAFRAME_WAVE: np.array([5, 2, 4, 1, 3]),
+            },
+        )
+
+        container = AtmDataContainer(df, 5000, 4.0, 0.0)
+
+        # Should find min and max
+        assert container.left_bandwidth == 1.0
+        assert container.right_bandwidth == 5.0
+
+    def test_container_model_setter_with_dataframe(self) -> None:
+        """Test that model setter correctly handles DataFrame input."""
+        df = pd.DataFrame(
+            {
+                settings.ATM_MODEL_DATAFRAME_FLUX: np.array([1.0, 2.0, 3.0]),
+                settings.ATM_MODEL_DATAFRAME_WAVE: np.array([10.0, 20.0, 30.0]),
+            },
+        )
+
+        container = AtmDataContainer(df, 5000, 4.0, 0.0)
+
+        assert isinstance(container.model, AtmModel)
+        assert_array_equal(container.model.wavelength, np.array([10.0, 20.0, 30.0]))
+        assert_array_equal(container.model.flux, np.array([1.0, 2.0, 3.0]))
+
+
+def test_missing_atmosphere_source_boundary_is_domain_error(tmp_path: Path) -> None:
+    from elisa import settings
+    from elisa.atm import atm
+
+    previous = settings.settings_serializer()
+    try:
+        settings.configure(CK04_ATM_TABLES=str(tmp_path))
+        with pytest.raises(error.ElisaAtmosphereError, match="There is no file like"):
+            atm.get_atm_table(5000.0, 4.0, 0.0, "ck04")
+    finally:
+        settings.configure(**previous)
+
+
+if __name__ == "__main__":
+    import unittest
+
+    unittest.main()

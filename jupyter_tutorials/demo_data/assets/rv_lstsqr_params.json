@@ -1,35 +1,35 @@
 {
     "system": {
         "eccentricity": {
-            "value": 0.027038272557156646,
+            "value": 0.02607188778989801,
             "fixed": false,
-            "unit": null,
+            "unit": "",
             "min": 0.0,
             "max": 0.1
         },
         "argument_of_periastron": {
-            "value": 207.99792708494553,
+            "value": 211.95877327258574,
             "fixed": false,
             "unit": "deg",
             "min": 0.0,
             "max": 360.0
         },
         "gamma": {
-            "value": -24367.42200585189,
+            "value": -24510.702435043495,
             "fixed": false,
             "unit": "m / s",
             "min": -50000.0,
             "max": -0.0
         },
         "mass_ratio": {
-            "value": 1.0773030912768242,
+            "value": 1.0777007811478483,
             "fixed": false,
-            "unit": null,
+            "unit": "",
             "min": 0.9,
             "max": 1.2
         },
         "asini": {
-            "value": 11.546926546107361,
+            "value": 11.514685802730813,
             "fixed": false,
             "unit": "solRad",
             "min": 8.0,
@@ -51,12 +51,12 @@
             "value": -5.0,
             "fixed": false,
             "unit": null,
-            "min": -10,
-            "max": 0
+            "min": -10.0,
+            "max": 0.0
         }
     },
     "r_squared": {
-        "value": 0.9931155766403489,
+        "value": 0.9931107947249087,
         "unit": null
     }
 }

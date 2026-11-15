@@ -1,118 +1,261 @@
-import numpy as np
-import matplotlib.gridspec as gridspec
+from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
+import numpy as np
 from corner import corner as _corner
+from matplotlib import gridspec
 from matplotlib import pyplot as plt
 
+from elisa.base.error import raise_elisa_graphics_error
 
-class Plot(object):
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from matplotlib.axes import Axes
+    from numpy.typing import NDArray
+
+    from elisa.types import Float
+
+
+_FLAT_NDIM = 2
+_ENSEMBLE_NDIM = 3
+
+
+def validate_selection(variable_labels: Sequence[str], selection: Sequence[str]) -> None:
+    """Reject ambiguous source labels and empty, repeated or unknown panels."""
+    if len(variable_labels) == 0 or len(set(variable_labels)) != len(variable_labels):
+        raise_elisa_graphics_error("Variable labels must be nonempty and unique")
+    if len(selection) == 0 or len(set(selection)) != len(selection):
+        raise_elisa_graphics_error("Parameter selection must be nonempty and unique")
+    if any(label not in variable_labels for label in selection):
+        raise_elisa_graphics_error("Parameter selection contains unknown variable labels")
+
+
+class Plot:
+    """Utility plotting helpers for MCMC diagnostics and posterior summaries."""
+
     @staticmethod
-    def corner(**kwargs):
-        """
-        Evaluate mcmc corner plot.
+    def corner(
+        *,
+        flat_chain: NDArray[Float],
+        fit_params: dict[str, dict[str, Any]],
+        variable_labels: list[str],
+        labels: list[str],
+        **kwargs: object,
+    ) -> None:
+        """Evaluate an MCMC corner plot.
 
-        """
-        flat_chain = kwargs.pop('flat_chain')
-        fit_params = kwargs.pop('fit_params')
-        variable_labels = kwargs.pop('variable_labels')
-        figure = _corner(flat_chain, **kwargs)
+        The function renders a corner plot from a flattened MCMC chain and adds
+        formatted parameter summaries to the diagonal panels using fitted values,
+        confidence intervals, and units.
 
-        # Extract the axes
+        :param flat_chain: Flattened MCMC chain with shape ``(n_samples, ndim)``.
+        :type flat_chain: NDArray[Float]
+        :param fit_params: Mapping containing fitted parameter values,
+            confidence intervals, and units keyed by variable label.
+        :type fit_params: dict[str, dict[str, object]]
+        :param variable_labels: Internal variable identifiers corresponding to
+            the columns of ``flat_chain``.
+        :type variable_labels: list[str]
+        :param labels: Display labels used in the plot.
+        :type labels: list[str]
+        :param kwargs: Additional keyword arguments forwarded to
+            :func:`corner.corner`.
+        :type kwargs: object
+        :return: ``None``.
+        :rtype: None
+        """
         ndim = flat_chain.shape[1]
+        # corner's truth overlay indexes a scalar Axes for one-dimensional chains.
+        # Draw that marker ourselves while preserving its normal multi-panel path.
+        single_truths = kwargs.pop("truths", None) if ndim == 1 else None
+        figure = _corner(flat_chain, labels=labels, **kwargs)
+        if single_truths is not None and single_truths[0] is not None:
+            figure.axes[0].axvline(single_truths[0], color=kwargs.get("truth_color", "#4682b4"))
+
         axes = np.array(figure.axes).reshape((ndim, ndim))
 
-        # Loop over the diagonal, adding units
-        for i, label in enumerate(variable_labels):
-            ax = axes[i, i]
-            value = fit_params[label]['value']
-            bottom = fit_params[label]["confidence_interval"]['min'] - value
-            top = fit_params[label]["confidence_interval"]['max'] - value
+        for index, label in enumerate(variable_labels):
+            ax = axes[index, index]
+            value = fit_params[label]["value"]
+            confidence_interval = fit_params[label]["confidence_interval"]
+            bottom = confidence_interval["min"] - value
+            top = confidence_interval["max"] - value
 
-            unit = fit_params[label]['unit']
-            unit = '' if unit == 'dimensionless' or unit is None else unit
-            if any(x in label for x in ['t_eff', 'argument_of_periastron']):
-                title = r'{0}=${1:.0f}^{{{2:+.0f}}}_{{{3:+.0f}}}$ {4}'.format(kwargs['labels'][i], value, top, bottom,
-                                                                              unit)
-            elif any(x in label for x in ['eccentricity']):
-                title = r'{0}=${1:.3f}^{{{2:+.3f}}}_{{{3:+.3f}}}$ {4}'.format(kwargs['labels'][i], value, top, bottom,
-                                                                              unit)
+            unit = fit_params[label]["unit"]
+            unit = "" if unit == "dimensionless" or unit is None else unit
+
+            if any(item in label for item in ["t_eff", "argument_of_periastron"]):
+                title = rf"{labels[index]}=${value:.0f}^{{{top:+.0f}}}_{{{bottom:+.0f}}}$ {unit}"
+            elif "eccentricity" in label:
+                title = rf"{labels[index]}=${value:.3f}^{{{top:+.3f}}}_{{{bottom:+.3f}}}$ {unit}"
             else:
-                title = r'{0}=${1:.3f}^{{{2:+.3f}}}_{{{3:+.3f}}}$ {4}'.format(kwargs['labels'][i], value, top, bottom,
-                                                                              unit)
+                title = rf"{labels[index]}=${value:.3f}^{{{top:+.3f}}}_{{{bottom:+.3f}}}$ {unit}"
+
             ax.set_title(title)
 
         plt.show()
 
     @staticmethod
-    def paramtrace(**kwargs):
-        """
-        Show traces of mcmc chain.
-        """
-        labels = kwargs['labels']
-        hash_map = {label: idx for idx, label in enumerate(kwargs['variable_labels']) 
-                    if label in kwargs['traces_to_plot']}
+    def paramtrace(
+        *,
+        flat_chain: NDArray[Float],
+        fit_params: dict[str, dict[str, Any]],
+        variable_labels: list[str],
+        traces_to_plot: list[str],
+        labels: list[str],
+        truths: bool,
+    ) -> None:
+        """Show traces of an MCMC chain.
 
-        height = len(kwargs['traces_to_plot'])
-        fig = plt.figure(figsize=(8, 2.5*height))
+        The function plots individual walkers for structured chains and sample points
+        for flat chains without temporal metadata.
+        Optionally, it overlays the fitted central value and confidence interval
+        bounds for each plotted parameter.
 
+        :param flat_chain: Samples with shape ``(samples, parameters)`` or
+            ``(steps, walkers, parameters)``.
+        :type flat_chain: NDArray[Float]
+        :param fit_params: Mapping containing fitted parameter values,
+            confidence intervals, and units keyed by variable label.
+        :type fit_params: dict[str, dict[str, object]]
+        :param variable_labels: Internal variable identifiers corresponding to
+            the columns of ``flat_chain``.
+        :type variable_labels: list[str]
+        :param traces_to_plot: Variable identifiers to include in the trace
+            plot.
+        :type traces_to_plot: list[str]
+        :param labels: Display labels used in the plot.
+        :type labels: list[str]
+        :param truths: Whether to plot the fitted value and confidence interval
+            bounds.
+        :type truths: bool
+        :return: ``None``.
+        :rtype: None
+        """
+        validate_selection(variable_labels, traces_to_plot)
+
+        height = len(traces_to_plot)
+        fig = plt.figure(figsize=(8, 2.5 * height))
         gs = gridspec.GridSpec(height, 1)
-        ax = []
+        axes: list[Axes] = []
 
-        plot_conter = 0
-        for idx, label in enumerate(kwargs['variable_labels']):
-            if label not in kwargs['traces_to_plot']:
+        plot_counter = 0
+        for idx, label in enumerate(variable_labels):
+            if label not in traces_to_plot:
                 continue
-            ax.append(fig.add_subplot(gs[plot_conter])) \
-                if plot_conter == 0 else ax.append(fig.add_subplot(gs[plot_conter], sharex=ax[0]))
-            plot_conter += 1
-            ax[-1].scatter(np.arange(kwargs['flat_chain'].shape[0]), kwargs['flat_chain'][:, hash_map[label]],
-                           label=labels[idx], s=0.2)
-            ax[-1].legend(loc=1)
 
-            unit = kwargs['fit_params'][label]['unit']
-            unit = '' if unit == 'dimensionless' or unit is None else ' / [{0}]'.format(unit)
-            ax[-1].set_ylabel(f'{labels[idx]}{unit}')
+            if plot_counter == 0:
+                axes.append(fig.add_subplot(gs[plot_counter]))
+            else:
+                axes.append(fig.add_subplot(gs[plot_counter], sharex=axes[0]))
 
-            if kwargs['truths']:
-                ax[-1].axhline(kwargs['fit_params'][label]['value'], linestyle='dashed', color='black')
-                ax[-1].axhline(kwargs['fit_params'][label]["confidence_interval"]['min'],
-                               linestyle='dotted', color='black')
-                ax[-1].axhline(kwargs['fit_params'][label]["confidence_interval"]['max'],
-                               linestyle='dotted', color='black')
+            samples = flat_chain[..., idx]
+            steps = np.arange(flat_chain.shape[0])
+            if samples.ndim == _FLAT_NDIM:  # One connected line per walker, along ensemble steps.
+                lines = axes[-1].plot(steps, samples, linewidth=0.5, alpha=0.35)
+                lines[0].set_label(labels[idx])
+            else:
+                axes[-1].scatter(steps, samples, label=labels[idx], s=0.2)
+            axes[-1].legend(loc=1)
 
-        ax[-1].set_xlabel('N')
+            unit = fit_params[label]["unit"]
+            unit = "" if unit == "dimensionless" or unit is None else f" / [{unit}]"
+            axes[-1].set_ylabel(f"{labels[idx]}{unit}")
+
+            if truths:
+                axes[-1].axhline(
+                    fit_params[label]["value"],
+                    linestyle="dashed",
+                    color="black",
+                )
+                axes[-1].axhline(
+                    fit_params[label]["confidence_interval"]["min"],
+                    linestyle="dotted",
+                    color="black",
+                )
+                axes[-1].axhline(
+                    fit_params[label]["confidence_interval"]["max"],
+                    linestyle="dotted",
+                    color="black",
+                )
+
+            plot_counter += 1
+
+        xlabel = "Retained ensemble step" if flat_chain.ndim == _ENSEMBLE_NDIM else "Flattened sample index"
+        axes[-1].set_xlabel(xlabel)
 
         plt.subplots_adjust(right=1.0, top=1.0, hspace=0)
         plt.show()
 
     @staticmethod
-    def autocorr(**kwargs):
-        """
-        Show autocorrelation function.
-        """
-        labels = kwargs['labels']
-        hash_map = {label: idx for idx, label in enumerate(kwargs['variable_labels']) if label in
-                    kwargs['correlations_to_plot']}
+    def autocorr(
+        *,
+        autocorr_fns: NDArray[Float],
+        autocorr_time: NDArray[Float],
+        variable_labels: list[str],
+        correlations_to_plot: list[str],
+        labels: list[str],
+    ) -> None:
+        """Show autocorrelation functions for selected variables.
 
-        height = len(kwargs['correlations_to_plot'])
+        The function plots autocorrelation functions for selected parameters and
+        annotates each subplot with the corresponding correlation time.
+
+        :param autocorr_fns: Autocorrelation function values with shape
+            ``(n_lags, ndim_selected)`` or compatible indexing layout.
+        :type autocorr_fns: NDArray[Float]
+        :param autocorr_time: Autocorrelation times for plotted variables.
+        :type autocorr_time: NDArray[Float]
+        :param variable_labels: Internal variable identifiers corresponding to
+            the chain parameters.
+        :type variable_labels: list[str]
+        :param correlations_to_plot: Variable identifiers to include in the
+            autocorrelation plot.
+        :type correlations_to_plot: list[str]
+        :param labels: Display labels used in the plot.
+        :type labels: list[str]
+        :return: ``None``.
+        :rtype: None
+        """
+        validate_selection(variable_labels, correlations_to_plot)
+
+        height = len(correlations_to_plot)
         fig = plt.figure(figsize=(8, 2.5 * height))
-
         gs = gridspec.GridSpec(height, 1)
-        ax = []
+        axes: list[Axes] = []
 
-        for idx, label in enumerate(kwargs['variable_labels']):
-            if label not in kwargs['correlations_to_plot']:
+        plot_counter = 0
+        for idx, label in enumerate(variable_labels):
+            if label not in correlations_to_plot:
                 continue
 
-            ax.append(fig.add_subplot(gs[idx])) if idx == 0 else ax.append(fig.add_subplot(gs[idx], sharex=ax[0]))
+            if plot_counter == 0:
+                axes.append(fig.add_subplot(gs[plot_counter]))
+            else:
+                axes.append(fig.add_subplot(gs[plot_counter], sharex=axes[0]))
 
-            lbl = 'corr_time = {0:.2f}'.format(kwargs['autocorr_time'][idx])
-            ax[-1].scatter(np.arange(kwargs['autocorr_fns'].shape[0]), kwargs['autocorr_fns'][:, hash_map[label]],
-                           label=lbl, s=0.2)
-            ax[-1].set_ylabel(f'{labels[idx]} correlation fn')
-            ax[-1].legend()
+            if np.isfinite(autocorr_time[idx]):
+                correlation_label = f"Integrated time = {autocorr_time[idx]:.2f} steps"
+            else:
+                correlation_label = "Integrated time unavailable\n(chain too short or estimate unreliable)"
+            axes[-1].plot(
+                np.arange(autocorr_fns.shape[0]),
+                autocorr_fns[:, idx],
+                label=correlation_label,
+                linewidth=1.0,
+            )
+            if not np.any(np.isfinite(autocorr_fns[:, idx])):
+                axes[-1].text(
+                    0.5, 0.5, "ACF unavailable: constant walker", ha="center", transform=axes[-1].transAxes,
+                )
+            axes[-1].set_ylabel(f"{labels[idx]} correlation fn")
+            axes[-1].legend()
 
-        ax[-1].set_xlabel('N')
+            plot_counter += 1
+
+        axes[-1].set_xlabel("Lag (ensemble steps)")
 
         plt.subplots_adjust(right=1.0, top=1.0, hspace=0)
         plt.show()

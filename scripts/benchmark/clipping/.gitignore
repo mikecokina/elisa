@@ -1,0 +1,9 @@
+# Generated benchmark outputs; regenerate with the scripts in this directory.
+/results.json
+/exact_audit.json
+/compilation.json
+/eclipse_geometry.npz
+/flux_*.npz
+/profile_*.txt
+/*.log
+/__pycache__/

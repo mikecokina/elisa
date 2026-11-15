@@ -17,6 +17,7 @@ atmosphere/k93/*
 atmosphere/*.csv
 conf/elisa_conf.ini
 objects/HD_99458.py
+audits/*
 
 *.log
 __main__.py
@@ -25,10 +26,24 @@ __main__.py
 
 sandbox.py
 
-build/*
-dist/*
+build/
+dist/
 elisa.egg-info
-docs/build/*
+docs/build/
 /jupyter_tutorials/.ipynb_checkpoints/
 /env37/
 /my_scripts/
+
+# Alternative Sphinx build directory
+/docs/_build/
+
+# Demo 12 chain cache downloaded by the notebook (see jupyter_tutorials/demo12-lc_fitting.ipynb)
+/jupyter_tutorials/demo_data/demo12/chains/
+
+# Demo 13 locally generated chain cache
+/jupyter_tutorials/demo_data/demo13/chains/
+
+# Original PHOENIX acquisition files
+/atmosphere/phoenix/data/
+/atmosphere/phoenix/**/*.fits
+/atmosphere/phoenix/**/*.part

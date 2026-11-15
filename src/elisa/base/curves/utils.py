@@ -1,33 +1,108 @@
+from __future__ import annotations
+
+from functools import lru_cache
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
 
-from .. types import INT
-from ... import settings, ld, umpy as up
-from ... observer.passband import init_rv_passband
+from elisa import ld, settings, utils
+from elisa import umpy as up
+from elisa.base.error import raise_elisa_initial_parameters_error
+from elisa.base.types import FLOAT, INT
+from elisa.observer.passband import init_rv_passband
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+    from elisa.base.container import StarContainer
+    from elisa.types import Float
 
 
-def include_passband_data_to_kwargs(**kwargs):
+def _get_rv_passband() -> tuple[Any, Any, Any]:
+    """Resolve the current interval/schema before looking up the RV passband."""
+    return _get_rv_passband_cached(
+        tuple(settings.RV_LAMBDA_INTERVAL),
+        settings.PASSBAND_DATAFRAME_WAVE,
+        settings.PASSBAND_DATAFRAME_THROUGHPUT,
+    )
+
+
+@lru_cache(maxsize=1)
+def _get_rv_passband_cached(
+    interval: tuple,
+    wave_column: str,
+    throughput_column: str,
+) -> tuple[Any, Any, Any]:
+    return init_rv_passband(
+        wavelength_interval=interval,
+        wave_column=wave_column,
+        throughput_column=throughput_column,
+    )
+
+
+_get_rv_passband.cache_clear = _get_rv_passband_cached.cache_clear
+_get_rv_passband.cache_info = _get_rv_passband_cached.cache_info
+_get_rv_passband.cache_parameters = _get_rv_passband_cached.cache_parameters
+
+
+# noinspection PyUnusedLocal
+@lru_cache(maxsize=128)
+def interpolate_on_ld_grid_cached(
+    temps_key: tuple[tuple[int, ...], bytes],
+    logg_key: tuple[tuple[int, ...], bytes],
+    metallicity: float,
+    passbands_key: tuple[str, ...],
+    source_key: tuple[ld.LDSourceIdentity, ...],  # noqa: ARG001 - Used by @lru_cache as part of the cache key.
+) -> dict[str, NDArray]:
+    """Cache exact evaluations for a source revision, until eviction/explicit clear.
+
+    The @lru_cache key includes ALL arguments: temps_key, logg_key,
+    metallicity, passbands_key and source_key. A hit requires all of them to
+    match; changing any argument causes a new evaluation.
+
+    source_key is used only by the decorator to identify source tables and
+    configuration. The function body does not need it for the calculation.
+    The caller supplies the current source identity before every lookup so
+    changed tables/configuration cannot reuse stale evaluated coefficients.
+
+    The component helper mirrors or copies cached arrays before returning them.
     """
-    Including dummy passband from which radiometric radial velocities will be calculated.
+    temps = utils.float64_array_from_cache_key(temps_key)
+    logg = utils.float64_array_from_cache_key(logg_key)
+    result = ld.interpolate_on_ld_grid(
+        temperature=temps,
+        log_g=logg,
+        metallicity=metallicity,
+        passband=list(passbands_key),
+    )
+    for values in result.values():
+        values.setflags(write=False)
+    return result
 
-    :param kwargs: Tuple;
-    :return: Tuple;
+
+def include_passband_data_to_kwargs(**kwargs: Any) -> dict[str, Any]:
+    """Include a radial-velocity passband object and bandwidths into kwargs.
+
+    Initialize a minimal RV passband and insert the passband instance and its
+    left/right bandwidth values into :attr:`kwargs` under the standardized
+    keys ``passband``, ``left_bandwidth`` and ``right_bandwidth``.
     """
-    psbnd, right_bandwidth, left_bandwidth = init_rv_passband()
-    kwargs.update({
-        'passband': {'rv_band': psbnd},
-        'left_bandwidth': left_bandwidth,
-        'right_bandwidth': right_bandwidth
-    })
+    psbnd, right_bandwidth, left_bandwidth = _get_rv_passband()
+    kwargs.update(
+        {
+            "passband": {"rv_band": psbnd},
+            "left_bandwidth": left_bandwidth,
+            "right_bandwidth": right_bandwidth,
+        },
+    )
     return kwargs
 
 
-def calculate_surface_element_fluxes(band, star):
-    """
-    Function generates outgoing flux from each surface element of given star container in certain band.
+def calculate_surface_element_fluxes(band: str, star: StarContainer) -> NDArray:
+    """Generate outgoing flux for each surface element of a star in a band.
 
-    :param star: elisa.base.container.StarContainer; star container with all necessary parameters pre-calculated
-    :param band: str; name of the photometric band compatible with supported names in config
-    :return: numpy.array
+    The returned array contains the flux contribution of each surface element
+    computed as radiance * cos(theta) * coverage * limb-darkening correction.
     """
     indices = star.indices
     radiance = star.normal_radiance[band][indices]
@@ -35,36 +110,43 @@ def calculate_surface_element_fluxes(band, star):
     cosines = star.los_cosines[indices]
     coverage = star.coverage[indices]
 
-    ld_cors = ld.limb_darkening_factor(coefficients=ld_cfs,
-                                       limb_darkening_law=settings.LIMB_DARKENING_LAW,
-                                       cos_theta=cosines)
+    ld_cors = ld.limb_darkening_factor(
+        coefficients=ld_cfs,
+        limb_darkening_law=settings.LIMB_DARKENING_LAW,
+        cos_theta=cosines,
+    )
 
-    return radiance * cosines * coverage * ld_cors
+    # Combine multiplicative terms to reduce temporary allocations:
+    prod = cosines * coverage
+    prod *= ld_cors
+    return radiance * prod
 
 
-def flux_from_star_container(band, star):
+def flux_from_star_container(band: str, star: StarContainer) -> Float:
+    """Compute the integrated flux from a star container in a given band.
+
+    The function sums per-surface-element flux contributions computed by
+    :func:`calculate_surface_element_fluxes` and returns the total as the
+    project's FLOAT type.
     """
-    Function generates outgoing flux from given star container in certain band.
-
-    :param star: elisa.base.container.StarContainer; star container with all necessary parameters pre-calculated
-    :param band: str; name of the photometric band compatible with supported names in config,
-    :return: numpy.array;
-    """
-
-    return up.sum(calculate_surface_element_fluxes(band, star))
+    total = up.sum(calculate_surface_element_fluxes(band, star))
+    return FLOAT(total)
 
 
-def generate_teff_logg_for_ld_cfs(component_instance, symmetry_test):
-    """
-    Generates temperatures and log_g parameters either for full star or symmetrical part based on the symmetry test.
+def generate_teff_logg_for_ld_cfs(
+    component_instance: StarContainer,
+    *,
+    symmetry_test: bool,
+) -> tuple[NDArray, NDArray]:
+    """Return temperature and log(g) arrays for limb-darkening interpolation.
 
-    :param component_instance: elisa.base.container.StarContainer; star container
-    :param symmetry_test: bool; whether to use star symmetry
-    :return: Tuple;
+    Depending on configuration and the symmetry test this returns either a
+    single temperature/log_g pair (when single coefficients are used) or
+    arrays corresponding to the star's surface faces.
     """
     if settings.USE_SINGLE_LD_COEFFICIENTS:
-        temperatures = np.array([component_instance.t_eff, ])
-        log_g = np.array([np.max(component_instance.log_g), ])
+        temperatures = np.array([component_instance.t_eff])
+        log_g = np.array([np.max(component_instance.log_g)])
     elif symmetry_test:
         temperatures = component_instance.symmetry_faces(component_instance.temperatures)
         log_g = component_instance.symmetry_faces(component_instance.log_g)
@@ -75,39 +157,66 @@ def generate_teff_logg_for_ld_cfs(component_instance, symmetry_test):
     return temperatures, log_g
 
 
-def get_component_limbdarkening_cfs(component_instance, symmetry_test, passbands):
-    """
-    Returns limb darkening coefficients for given component in each passband.
+def get_component_limbdarkening_cfs(
+    component_instance: StarContainer,
+    passbands: list[str],
+    *,
+    symmetry_test: bool,
+) -> dict[str, NDArray]:
+    """Return limb-darkening coefficients for a component across passbands.
 
-    :param component_instance: elisa.base.container.StarContainer;
-    :param symmetry_test: bool;
-    :param passbands: list;
-    :return: Dict;
+    If the component provides explicit limb-darkening coefficients, they are
+    tiled or mirrored to match the number of surface faces. Otherwise, the
+    coefficients are interpolated from the limb-darkening grid.
+    Missing custom passband entries are fatal initial-configuration errors.
     """
     if component_instance.limb_darkening_coefficients is not None:
+        if isinstance(component_instance.limb_darkening_coefficients, ld.CustomLimbDarkeningCoefficients):
+            component_instance.limb_darkening_coefficients.validate_law()
         desired_repeats = (component_instance.temperatures.shape[0], 1)
         try:
-            ld_cfs = {passband: np.tile(component_instance.limb_darkening_coefficients[passband], desired_repeats)
-                      for passband in passbands}
-        except KeyError:
-            missing_passbands = list(set(passbands) - set(component_instance.limb_darkening_coefficients.keys()))
-            raise KeyError(f'Please supply limb-darkening factors for {missing_passbands} pasband(s) as well.')
+            # tile per-passband arrays to faces count (avoid unnecessary copies)
+            base_ld = component_instance.limb_darkening_coefficients
+            faces = desired_repeats[0]
+            ld_cfs = {}
+            for passband in passbands:
+                arr = np.asarray(base_ld[passband])
+                # If arr is 1-D (coeffs,), reshape to (1, coeffs) and broadcast to (faces, coeffs)
+                if arr.ndim == 1:
+                    cols = arr.shape[0]
+                    ld_cfs[passband] = np.broadcast_to(arr.reshape(1, cols), (faces, cols))
+                else:
+                    # fallback to tile for non-1D inputs to preserve existing behavior
+                    ld_cfs[passband] = np.tile(arr, desired_repeats)
+        except KeyError as err:
+            ld_passband = component_instance.limb_darkening_coefficients.keys()
+            missing_passbands = list(set(passbands) - set(ld_passband))
+            msg = f"Please supply also limb-darkening factors for {missing_passbands} passband(s)."
+            # Custom coefficients and requested passbands are fixed inputs. A
+            # missing entry cannot be corrected by proposal drift: abort the fit.
+            raise_elisa_initial_parameters_error(msg, err)
     else:
-        temperatures, log_g = generate_teff_logg_for_ld_cfs(component_instance, symmetry_test)
+        temperatures, log_g = generate_teff_logg_for_ld_cfs(component_instance, symmetry_test=symmetry_test)
 
-        ld_cfs = ld.interpolate_on_ld_grid(
-            temperature=temperatures,
-            log_g=log_g,
-            metallicity=component_instance.metallicity,
-            passband=passbands
+        # Use cached interpolation helper to avoid repeated expensive interpolation
+        temps_key = utils.float64_array_to_cache_key(temperatures)
+        logg_key = utils.float64_array_to_cache_key(log_g)
+        passbands_key = tuple(passbands)
+        ld_cfs = interpolate_on_ld_grid_cached(
+            temps_key,
+            logg_key,
+            float(component_instance.metallicity),
+            passbands_key,
+            ld.get_ld_source_identities(float(component_instance.metallicity), passbands_key),
         )
 
         if symmetry_test:
             if settings.USE_SINGLE_LD_COEFFICIENTS:
-                ld_cfs = {fltr: vals[np.zeros(component_instance.temperatures.shape, dtype=INT)]
-                          for fltr, vals in ld_cfs.items()}
+                _zeros_idx = np.zeros(component_instance.temperatures.shape, dtype=INT)
+                ld_cfs = {fltr: vals[_zeros_idx] for fltr, vals in ld_cfs.items()}
             else:
-                ld_cfs = {fltr: component_instance.mirror_face_values(vals)
-                          for fltr, vals in ld_cfs.items()}
+                ld_cfs = {fltr: component_instance.mirror_face_values(vals) for fltr, vals in ld_cfs.items()}
+        else:
+            ld_cfs = {fltr: vals.copy() for fltr, vals in ld_cfs.items()}
 
     return ld_cfs

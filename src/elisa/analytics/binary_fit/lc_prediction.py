@@ -1,0 +1,337 @@
+"""Shared observation-point predictions for light-curve LS, MCMC and R².
+
+Prepared fitters validate observation coordinates and inverse maps once per
+setup; standalone prediction calls validate their inputs on each call. The
+pipeline converts coordinates to orbital phases and synthesizes on prepared
+phase support. Each passband is then mapped or interpolated onto its own observation
+points before mean normalization. This order preserves observation cadence,
+duplicates and ordering in the flux arrays supplied to statistical costs.
+
+Structural alignment failures are distinct from physical synthesis failures so
+optimizers cannot silently treat malformed data as an improbable binary system.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+import numpy as np
+from scipy.interpolate import interp1d
+
+from elisa.analytics.models import lc
+from elisa.analytics.params import parameters
+from elisa.analytics.tools.utils import should_preserve_lc_input_phases, time_layer_resolver
+from elisa.base.error import (
+    raise_elisa_numeric_error,
+    raise_elisa_prediction_alignment_error,
+)
+from elisa.conf.enums import NormalizationKind
+from elisa.observer.utils import normalize_light_curve
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from numpy.typing import NDArray
+
+    from elisa.observer.observer import Observer
+
+_MIN_CUBIC_SUPPORT = 4
+
+
+def _validate_band(
+    band: str,
+    xs: NDArray,
+    observed: Any,
+    reducer: Any,
+    x_data: dict | None,
+    y_err: dict | None,
+) -> NDArray:
+    """Validate one passband's inverse coordinate map and uncertainty shape.
+
+    A reducer indexes the original coordinate union, before phase folding. Its
+    entries must reproduce the band's observation order, including duplicates.
+    A scalar uncertainty is accepted for the existing missing-error fallback;
+    an uncertainty array must have exactly one entry per observed flux.
+
+    :param band: Passband key used in the observation dictionaries.
+    :param xs: One-dimensional union of original phase or JD coordinates.
+    :param observed: Nonempty, one-dimensional observed flux array.
+    :param reducer: Integer indices mapping this band's observations into xs.
+    :param x_data: Original coordinates by band, or None to omit the exact
+        coordinate correspondence check.
+    :param y_err: Uncertainties by band, or None to omit their shape check.
+    :return: Validated reducer as a NumPy array, without reordering its entries.
+    :raises ElisaPredictionAlignmentError: If lengths, indices, coordinate order or
+        uncertainty shape are incompatible.
+    """
+    observed, reducer = np.asarray(observed), np.asarray(reducer)
+    if observed.ndim != 1 or observed.size == 0 or reducer.shape != observed.shape:
+        raise_elisa_prediction_alignment_error(f"LC observation/reducer lengths differ for {band}")
+    if reducer.dtype.kind not in "iu":
+        raise_elisa_prediction_alignment_error(f"Invalid LC observation reducer for {band}")
+    if np.any((reducer < 0) | (reducer >= xs.size)):
+        raise_elisa_prediction_alignment_error(f"Invalid LC observation reducer for {band}")
+    if x_data is not None and not np.array_equal(xs[reducer], x_data[band]):
+        raise_elisa_prediction_alignment_error(f"LC observation coordinates do not match reducer for {band}")
+    # Missing-error estimation supplies a scalar shared by the band's data.
+    if y_err is not None and np.shape(y_err[band]) not in ((), observed.shape):
+        raise_elisa_prediction_alignment_error(f"LC uncertainty length differs from observations for {band}")
+    return reducer
+
+
+def validate_observations(
+    xs: NDArray,
+    y_data: dict,
+    x_data_reducer: dict,
+    x_data: dict | None,
+    y_err: dict | None,
+) -> dict:
+    """Validate shared observation coordinates and all per-passband reducers.
+
+    :param xs: Nonempty, finite vector of original phase or JD coordinates.
+    :param y_data: Observed flux arrays keyed by passband.
+    :param x_data_reducer: Inverse coordinate maps keyed by the same passbands.
+    :param x_data: Optional original coordinates for exact reducer validation.
+    :param y_err: Optional uncertainties for per-band shape validation.
+    :return: Dictionary of validated NumPy reducer arrays.
+    :raises ElisaPredictionAlignmentError: If the coordinate vector, passband keys
+        or any band's observation/reducer alignment is invalid.
+    """
+    if xs.ndim != 1 or xs.size == 0 or not np.all(np.isfinite(xs)):
+        raise_elisa_prediction_alignment_error("LC observation coordinates must be a nonempty finite vector")
+    bands = set(y_data)
+    if not bands or set(x_data_reducer) != bands:
+        raise_elisa_prediction_alignment_error("LC observation and reducer passbands differ")
+    if x_data is not None and set(x_data) != bands:
+        raise_elisa_prediction_alignment_error("LC coordinate and flux passbands differ")
+    if y_err is not None and set(y_err) != bands:
+        raise_elisa_prediction_alignment_error("LC uncertainty and flux passbands differ")
+    return {band: _validate_band(band, xs, y_data[band], x_data_reducer[band], x_data, y_err) for band in y_data}
+
+
+def extend_phase_support(reference: NDArray, phases: NDArray) -> NDArray:
+    """Extend adaptive reference coordinates across the observed orbital cycles.
+
+    Integer offsets retain the reference grid's concentration around eclipses and
+    other selected features without synthesizing a new reference curve per cycle.
+    The sorted, unique result keeps one neighboring point beyond each observation
+    boundary where available, so interpolation covers the entire supplied interval.
+
+    If trimming leaves fewer than four points, add four evenly spaced phases
+    inside the observed interval for cubic interpolation. Degenerate intervals
+    may yield fewer distinct phases; then retain the nearest unused expanded
+    support neighbors until four distinct coordinates are available.
+
+    Narrow interval between adaptive nodes (schematic, not to scale)::
+
+        observations:                 [oooooooooooo]
+                                      lower        upper
+        trimmed support:      *                              *
+                              only 2 nodes: cubic needs >= 4 distinct nodes
+        supplemented:         *       +   +    +   +         *
+                                      <--- linspace --->
+
+    Here ``*`` denotes retained adaptive support, ``o`` an observation, and ``+``
+    a new synthesis coordinate. All existing support is retained; the new points
+    resolve the local observation interval rather than widening it to distant nodes.
+
+    Degenerate interval: repeated observations at the same phase::
+
+        expanded support:     *          *          *          *          *
+        observations:                         o
+                                              lower == upper
+        after local addition:            *    +     *
+                                              ^ four linspace values coincide
+        supplemented:                    *    +     *          *
+                                                               ^ reuse neighbor
+
+    Deduplication leaves only three points in this example, so one unused support
+    neighbor is restored. Extremely narrow floating-point intervals can likewise
+    produce fewer than four distinct linspace coordinates. No artificial phase
+    offsets are introduced; every added coordinate is synthesized normally.
+
+    Only coordinates are repeated: the prediction layer evaluates fresh synthetic
+    flux at every unwrapped support phase. Tiling flux would incorrectly impose
+    one-orbit periodicity on asynchronous spots or pulsations.
+
+    Coordinate repetition, schematically (dense groups retain eclipse sampling)::
+
+        reference:              |... .    . ...|
+        integer offsets:  ...   |... .    . ...|... .    . ...|   ...
+                                k             k+1           k+2
+        synthesis:              F(phi + k)     F(phi + k + 1)
+                                ^ evaluated separately at each coordinate
+
+    The repeated sampling pattern does not require the resulting fluxes to repeat.
+
+    :param reference: One-cycle adaptive phase support, including its boundary padding.
+    :param phases: Unwrapped observation coordinates to cover.
+    :return: Strictly increasing support covering the observation interval.
+    """
+    lower, upper = np.min(phases), np.max(phases)
+    offsets = range(int(np.floor(lower)), int(np.ceil(upper)) + 1)
+    support = np.unique(np.concatenate([reference + offset for offset in offsets]))
+    start = max(0, int(np.searchsorted(support, lower)) - 1)
+    stop = min(support.size, int(np.searchsorted(support, upper, side="right")) + 1)
+    trimmed = support[start:stop]
+    if trimmed.size >= _MIN_CUBIC_SUPPORT:
+        return trimmed
+
+    supplemented = np.unique(np.concatenate((trimmed, np.linspace(lower, upper, _MIN_CUBIC_SUPPORT))))
+    if supplemented.size < _MIN_CUBIC_SUPPORT:
+        neighbours = np.setdiff1d(support, supplemented, assume_unique=True)
+        distances = np.maximum(lower - neighbours, neighbours - upper)
+        nearest = np.argsort(distances, kind="stable")[:_MIN_CUBIC_SUPPORT - supplemented.size]
+        supplemented = np.unique(np.concatenate((supplemented, neighbours[nearest])))
+    return supplemented
+
+
+def _synthesis_support(
+    phases: NDArray,
+    interp_treshold: int,
+    fit_xs: NDArray | None,
+    *,
+    preserve_phases: bool = False,
+) -> NDArray:
+    """Select prepared support or the common direct/uniform fallback grid.
+
+    Prepared uniform, adaptive or manual support is already in orbital phases
+    and is retained unchanged. Without prepared support, observations below the
+    threshold are synthesized directly. At or above the threshold, use T+2
+    uniform points on [-1/T, 1+1/T] by default, matching fitting setup.
+
+    When preserving phases, the uniform grid instead spans the observed minimum
+    to maximum, padded by 1/T at each end. Its point count grows with the interval
+    so spacing is no larger than on the original one-cycle grid. For example,
+    observations from -1.5 to 5 require synthesis across that full range, not a
+    fixed-size grid stretched over 6.5 cycles. Direct synthesis uses the supplied
+    phases unchanged. Explicit support is never tiled or replaced here; the caller
+    validates distinct coordinates and coverage before interpolation.
+
+    :param phases: Observation-coordinate union converted to orbital phases.
+    :param interp_treshold: Positive sampling threshold T from fitting setup.
+    :param fit_xs: Prepared phase support, or None to select the fallback grid.
+    :param preserve_phases: Extend automatic uniform support over unwrapped phases.
+    :return: Nonempty, finite, one-dimensional synthesis support array.
+    :raises ElisaPredictionAlignmentError: If the selected support is malformed.
+    """
+    if fit_xs is None:
+        if phases.size >= interp_treshold:
+            diff = 1.0 / interp_treshold
+            fit_xs = np.linspace(-diff, 1.0 + diff, num=interp_treshold + 2)
+            if preserve_phases:
+                spacing = (1.0 + 2.0 * diff) / (interp_treshold + 1)
+                lower, upper = np.min(phases) - diff, np.max(phases) + diff
+                count = max(4, int(np.ceil((upper - lower) / spacing)) + 1)
+                fit_xs = np.linspace(lower, upper, num=count)
+        else:
+            fit_xs = phases
+    support = np.asarray(fit_xs)
+    if support.ndim != 1 or support.size == 0 or not np.all(np.isfinite(support)):
+        raise_elisa_prediction_alignment_error("LC synthesis support must be a nonempty finite vector")
+    return support
+
+
+def predict_light_curves(
+    x_data_reduced: NDArray,
+    y_data: dict,
+    x_data_reducer: dict,
+    discretization: float,
+    observer: Observer,
+    interp_treshold: int,
+    model_parameters: dict,
+    *,
+    fit_xs: NDArray | None = None,
+    x_data: dict | None = None,
+    y_err: dict | None = None,
+    atmosphere_model: dict | None = None,
+    limb_darkening_coefficients: dict | None = None,
+    synthesis: Callable[..., dict] = lc.synthetic_binary,
+    _validated_reducers: dict | None = None,
+) -> dict[str, NDArray]:
+    """Synthesize, map to each band's observations, then normalize by its mean.
+
+    Reducers refer to the original (possibly JD) coordinates, before phase
+    folding. Prepared support is already in phases. Exact coordinate equality,
+    including order, is required to use the direct branch. Otherwise, cubic
+    interpolation evaluates each curve at that band's reduced observation
+    phases; equal array lengths alone never select the direct branch.
+
+    Mean normalization occurs only after mapping to observation points. Thus
+    repeated observations retain their multiplicity in the normalization, and
+    each returned array has exactly the shape and order of its observed fluxes.
+    Observed fluxes and uncertainties are used for alignment validation here;
+    cost evaluation and observation normalization remain the caller's work.
+
+    :param x_data_reduced: Union of original observation coordinates, in phases
+        or JD as determined by the supplied ephemeris parameters.
+    :param y_data: Observed flux arrays keyed by passband.
+    :param x_data_reducer: Per-band inverse maps into x_data_reduced.
+    :param discretization: Stellar surface discretization factor passed to
+        synthesis, using the synthesis engine's degree convention.
+    :param observer: Observer configured for the observation passbands and
+        system class; synthesis updates its binary system.
+    :param interp_treshold: Positive support-selection threshold T.
+    :param model_parameters: Flat physical parameter dictionary with evaluated
+        constraints and any ephemeris needed for JD-to-phase conversion.
+    :param fit_xs: Optional prepared uniform, adaptive or manual phase support.
+    :param x_data: Optional original coordinates by band for exact validation
+        of the inverse maps before phase conversion.
+    :param y_err: Optional per-band uncertainty arrays or scalar fallbacks.
+    :param atmosphere_model: Optional per-component atmosphere overrides.
+    :param limb_darkening_coefficients: Optional per-component, per-passband
+        custom limb-darkening coefficients.
+    :param synthesis: Physical synthesis callable accepting support phases,
+        discretization, observer and flat model keyword arguments. Defaults to
+        the real binary light-curve synthesis engine.
+    :param _validated_reducers: Internal per-setup validated mappings. Prepared
+        fitters supply this to avoid rescanning static observations. Standalone
+        calls omit it and validate their inputs on every call. Manual changes to
+        prepared observations require fitter.validate_observations() or set_up().
+    :return: Per-band mean-normalized predictions at the observation points.
+    :raises ElisaPredictionAlignmentError: If observations, reducers, interpolation
+        support or returned synthesis arrays do not align or contain nonfinite
+        values. Callers must let this structural error escape physical-state
+        penalty handlers.
+
+    Synthesis exceptions propagate unchanged to the caller.
+    """
+    xs = np.asarray(x_data_reduced)
+    reducers = (
+        validate_observations(xs, y_data, x_data_reducer, x_data, y_err)
+        if _validated_reducers is None
+        else _validated_reducers
+    )
+    preserve_phases = should_preserve_lc_input_phases(model_parameters)
+    phases, kwargs = time_layer_resolver(xs, pop=False, preserve_phases=preserve_phases, **model_parameters)
+    support = _synthesis_support(phases, interp_treshold, fit_xs, preserve_phases=preserve_phases)
+    interpolate = not np.array_equal(support, phases)
+    if interpolate:
+        if support.size < _MIN_CUBIC_SUPPORT or np.unique(support).size != support.size:
+            raise_elisa_prediction_alignment_error("Cubic LC interpolation needs at least four distinct support phases")
+        if np.min(phases) < np.min(support) or np.max(phases) > np.max(support):
+            raise_elisa_prediction_alignment_error("LC synthesis support does not cover observation phases")
+
+    kwargs = parameters.extend_json_with_atm_params(
+        kwargs,
+        atmosphere_model=atmosphere_model,
+        limb_darkening_coefficients=limb_darkening_coefficients,
+    )
+    raw = synthesis(support, discretization, observer, **kwargs)
+    if raw.keys() != y_data.keys():
+        raise_elisa_prediction_alignment_error("LC synthesis and observation passbands differ")
+    predictions = {}
+    for band, raw_curve in raw.items():
+        curve = np.asarray(raw_curve)
+        if curve.shape != support.shape:
+            raise_elisa_prediction_alignment_error(f"LC synthetic length differs from support for {band}")
+        if not np.all(np.isfinite(curve)):
+            msg = f"LC synthetic values are nonfinite for {band}"
+            raise_elisa_numeric_error(msg)
+        predictions[band] = (
+            interp1d(support, curve, kind="cubic")(phases[reducers[band]]) if interpolate else curve[reducers[band]]
+        )
+        if predictions[band].shape != np.shape(y_data[band]):
+            raise_elisa_prediction_alignment_error(f"LC prediction length differs from observations for {band}")
+    predictions, _ = normalize_light_curve(predictions, kind=NormalizationKind.AVERAGE)
+    return predictions

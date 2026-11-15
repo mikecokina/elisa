@@ -1,212 +1,558 @@
+from __future__ import annotations
+
+from abc import ABCMeta, abstractmethod
+from copy import deepcopy
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
 
-from typing import Iterable, Dict
-from scipy import interpolate
-from abc import ABCMeta, abstractmethod
-
-from .. params import parameters
-from .. params.parameters import BinaryInitialParameters
-from .. tools.utils import (
-    radialcurves_mean_error,
-    lightcurves_mean_error,
-    time_layer_resolver
+from elisa import settings, units
+from elisa.analytics.binary_fit.lc_prediction import (
+    _synthesis_support,
+    extend_phase_support,
+    predict_light_curves,
+    validate_observations,
 )
-from .. models import lc as lc_model
-from .. models import rv as rv_model
-from ... utils import is_empty
-from ... import units
-from ... import settings
-from ... observer.observer import Observer
-from ... observer.utils import normalize_light_curve
-from ... binary_system.system import BinarySystem
-from ... binary_system.curves.community import RadialVelocitySystem
+from elisa.analytics.dataset.base import DataSet
+from elisa.analytics.models import cost_fns
+from elisa.analytics.models import lc as lc_model
+from elisa.analytics.models import rv as rv_model
+from elisa.analytics.params import parameters
+from elisa.analytics.params.conf import JOINT_POSTERIOR_PERCENTILES_ESTIMATE
+from elisa.analytics.params.parameters import BinaryInitialParameters
+
+# noinspection PyProtectedMember
+from elisa.analytics.tools.utils import (
+    _radialcurves_mean_error,
+    lightcurves_mean_error,
+    should_preserve_lc_input_phases,
+    time_layer_resolver,
+)
+from elisa.base.error import (
+    ElisaAtmosphereError,
+    ElisaInitialParametersError,
+    ElisaLimbDarkeningError,
+    ElisaMaxIterationError,
+    ElisaNumericError,
+    ElisaOperationInputError,
+    ElisaParametersError,
+    ElisaPassbandError,
+    ElisaPredictionAlignmentError,
+    ElisaSettingsError,
+    ElisaSpotError,
+    ElisaTemperatureError,
+    ElisaUnexpectedError,
+    MorphologyError,
+    PulsationModeError,
+    raise_elisa_analytics_data_error,
+    raise_elisa_analytics_task_error,
+    raise_elisa_initial_parameters_error,
+    raise_elisa_numeric_error,
+    raise_elisa_passband_error,
+    raise_elisa_prediction_alignment_error,
+    raise_elisa_unexpected_error,
+)
+from elisa.base.transform import StarProperties
+from elisa.binary_system.curves.community import RadialVelocitySystem
+from elisa.binary_system.system import BinarySystem
+from elisa.conf.enums import NormalizationKind, SamplingMethod
+from elisa.logger import getPersistentLogger
+from elisa.observer.observer import Observer
+from elisa.observer.utils import normalize_light_curve
+from elisa.utils import is_empty
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable, Mapping
+
+    from numpy.typing import NDArray
+
+    from elisa.types import Float, UnitType
+
+logger = getPersistentLogger(__name__)
 
 
-from ... logger import getLogger
+def _fit_passbands(passband: Iterable[str] | None, data: Mapping[str, DataSet]) -> str | list[str]:
+    """Resolve observer passbands and check their dataset correspondence.
 
-logger = getLogger("analytics.binary_fit.shared")
+    :param passband: Requested LC passbands, or None for RV fitting.
+    :param data: Observations keyed by passband or RV component.
+    :returns: Observer passbands, using bolometric for RV fitting.
+    :raises ElisaPassbandError: If a requested filter name is invalid.
+    :raises ElisaAnalyticsTaskError: If requested LC passbands differ from the dataset keys.
+    """
+    if passband is None:
+        return "bolometric"
+    bands = list(passband)
+    if any(not isinstance(band, str) or band not in settings.PASSBANDS for band in bands):
+        raise_elisa_passband_error(f"Invalid or unsupported fitting passbands: {bands!r}")
+    if set(bands) != set(data):
+        msg = "Fitting passbands must match observation dataset identifiers"
+        raise_elisa_analytics_task_error(msg)
+    return bands
+
+
+def _observation_coordinate_unit(data: Mapping[str, DataSet]) -> UnitType:
+    """Validate dataset identifiers and resolve their common coordinate unit.
+
+    :param data: Nonempty observations keyed by dataset identifier.
+    :returns: Common coordinate unit for the supplied observations.
+    :raises ElisaAnalyticsTaskError: If dataset identifiers are invalid.
+    :raises ElisaAnalyticsDataError: If observations are absent or coordinate units differ.
+    """
+    if not data:
+        msg = "Fitting requires at least one observational dataset"
+        raise_elisa_analytics_data_error(msg)
+    if any(not isinstance(key, str) or not key for key in data):
+        msg = "Observation dataset identifiers must be nonempty strings"
+        raise_elisa_analytics_task_error(msg)
+    x_units = {key: dataset.x_unit for key, dataset in data.items()}
+    unique_units = set(x_units.values())
+    if len(unique_units) > 1:
+        msg = (
+            "Please make sure that all synthetic observations are supplied "
+            f"in BJD or photometric phases. Current state: {x_units}"
+        )
+        raise_elisa_analytics_data_error(msg)
+    return unique_units.pop()
+
+
+def _validate_lc_normalization(
+    y_data: Mapping[str, NDArray],
+    kind: NormalizationKind | str,
+    top_fraction_to_average: Float,
+) -> None:
+    """Check normalization settings and the observed mean flux scales.
+
+    :param y_data: Observed flux vectors keyed by passband.
+    :param kind: Requested normalization method.
+    :param top_fraction_to_average: Finite fraction in ``(0, 1]``, used only for
+        maximum, global_maximum and minimum normalization; ignored for mean modes.
+    :raises ElisaAnalyticsTaskError: If the normalization fraction is invalid.
+    :raises ElisaAnalyticsDataError: If a mean normalization scale is unusable.
+    """
+    uses_fraction = kind in (NormalizationKind.MAXIMUM, NormalizationKind.GLOBAL_MAXIMUM, NormalizationKind.MINIMUM)
+    if uses_fraction and (not np.isfinite(top_fraction_to_average) or not 0 < top_fraction_to_average <= 1):
+        msg = "LC normalization fraction must be finite and satisfy 0 < fraction <= 1"
+        raise_elisa_analytics_task_error(msg)
+    if kind != "average":
+        return
+    for key, values in y_data.items():
+        scale = np.mean(values)
+        if not np.isfinite(scale) or scale <= 0:
+            msg = f"LC normalization requires a finite positive mean flux for {key}"
+            raise_elisa_analytics_data_error(msg)
+
+
+def _validated_normalized_errors(
+    y_data: Mapping[str, NDArray],
+    y_err: Mapping[str, NDArray | None] | None,
+) -> dict[str, NDArray]:
+    """Check normalized observations and return their usable uncertainties.
+
+    :param y_data: Normalized observed flux vectors.
+    :param y_err: Normalized errors returned by the public normalization utility.
+    :returns: Matching finite, strictly positive uncertainty vectors.
+    :raises ElisaAnalyticsDataError: If normalized fluxes or errors are nonfinite, or errors are nonpositive.
+    :raises ElisaUnexpectedError: If prepared uncertainties are missing after setup preparation.
+    """
+    if y_err is None:
+        msg = "LC uncertainty preparation must run before normalization validation"
+        raise_elisa_unexpected_error(msg)
+    validated: dict[str, NDArray] = {}
+    for key, values in y_data.items():
+        try:
+            errors = y_err[key]
+        except KeyError as exc:
+            msg = f"Prepared LC uncertainties are missing for dataset {key}"
+            raise_elisa_unexpected_error(msg, exc)
+        if errors is None:
+            msg = f"Prepared LC uncertainties must not be None for dataset {key}"
+            raise_elisa_unexpected_error(msg)
+        finite_flux = np.all(np.isfinite(values))
+        finite_errors = np.all(np.isfinite(errors))
+        if not finite_flux or not finite_errors:
+            msg = f"LC normalization produced nonfinite data or uncertainties for {key}"
+            raise_elisa_analytics_data_error(msg)
+        if np.any(errors <= 0):
+            msg = f"LC normalization requires strictly positive uncertainties for {key}"
+            raise_elisa_analytics_data_error(msg)
+        validated[key] = errors
+    return validated
 
 
 class AbstractFit(metaclass=ABCMeta):
-    """
-    General framework for solution of the inverse problem in ELISa.
+    """General framework for solution of the inverse problem in ELISa.
+
+    Base class for binary system fitting. Handles common functionality for both
+    light curve and radial velocity fitting, including data setup, normalization,
+    and constraint evaluation.
 
     Slotted attributes:
 
-        :constrained: Dict; list of constrained model parameters in flat JSON format
-        :discretization: int; discretization factor for primary component
-        :fitable: Dict; list of optimized model parameters in flat JSON format
-        :fixed: Dict; list of constant model parameters in flat JSON format
-        :initial_vector: List; array of starting values for variable parameters
-        :interp_treshold: int; Above this total number of datapoints, curve will be interpolated
-                               using model containing `interp_treshold` equidistant points per epoch.
-        :normalization: Dict[str, tuple]; normalization boundaries of variable parameters
-                                          {parameter@name: (min, max), ...}
-        :num_of_points: Dict[str, int]; number of points of observations in each passband
-        :observer: elisa.observer.observer.Observer; Observer instance
-        :x_data: Dict[str, numpy.array]; phases or times of observations in each filter
-        :x_data_reduced: numpy.array; phases or times of observations grouped from all filters without duplicate phases
-        :x_data_reducer: Dict[str, numpy.array]; x_data[passband] = x_data_reduced[x_data_reducer[passband]]
-        :y_data: Dict[str, numpy.array]; fluxes in each filter
-        :y_err: Dict[str, numpy.array]; observational errors of y_data
-        :atmosphere_model: Union[dict(), None]: atmosphere models for each component {component: atm_model, ...}
-        :limb_darkening_coefficients: Union[dict(), None]: custom limb-darkening coefficients used for components
-                                      in format {component: {passband: ld_coeffs, }, }
+        * ``atmosphere_model``: Dict | None; atmosphere models for each component
+        * ``constrained``: Dict; list of constrained model parameters in flat JSON format
+        * ``discretization``: float; discretization factor for primary component
+        * ``fitable``: Dict; list of optimized model parameters in flat JSON format
+        * ``fixed``: Dict; list of constant model parameters in flat JSON format
+        * ``fit_xs``: NDArray | None; photometric phases for synthetic observations (LC only)
+        * ``flat_result``: Dict; flattened result dictionary with fit results
+        * ``initial_vector``: List; array of starting values for variable parameters
+        * ``interp_treshold``: int; Above this total number of datapoints, curve will be interpolated
+          using model containing ``interp_treshold`` equidistant points per epoch
+        * ``limb_darkening_coefficients``: Dict | None; custom limb-darkening coefficients
+        * ``normalization``: Dict[str, tuple]; normalization boundaries of variable parameters
+          {parameter@name: (min, max), ...}
+        * ``num_of_points``: Dict[str, int]; number of points of observations in each passband
+        * ``observer``: Observer; Observer instance
+        * ``x_data``: Dict[str, NDArray]; phases or times of observations in each filter
+        * ``x_data_reduced``: NDArray; phases or times of observations grouped from all filters
+        * ``x_data_reducer``: Dict[str, NDArray]; x_data[passband] = x_data_reduced[x_data_reducer[passband]]
+        * ``y_data``: Dict[str, NDArray]; fluxes in each filter
+        * ``y_err``: Dict[str, NDArray]; observational errors of y_data
     """
-    MEAN_ERROR_FN = None
 
-    __slots__ = ['fixed', 'constrained', 'fitable', 'observer', 'x_data', 'y_data', 'num_of_points'
-                 'y_err', 'x_data_reduced', 'x_data_reducer', 'initial_vector', 'normalization', 'flat_result',
-                 'discretization', 'interp_treshold', 'atmosphere_model', 'limb_darkening_coefficients']
+    MEAN_ERROR_FN: Callable[..., Float]
 
-    def set_up(self, x0: BinaryInitialParameters, data: Dict, passband: Iterable = None, **kwargs):
+    # Attributes from set_up method (defined here to avoid "Instance attribute defined outside __init__" warnings)
+    constrained: dict[str, Any]
+    discretization: float
+    fitable: dict[str, Any]
+    fixed: dict[str, Any]
+    fit_xs: NDArray[Float] | None
+    flat_result: dict[str, Any]
+    initial_vector: list[Any]
+    interp_treshold: int
+    normalization: dict[str, tuple[Any, ...]]
+    num_of_points: dict[str, int]
+    observer: Observer
+    x_data: dict[str, Any]
+    x_data_reduced: NDArray
+    x_data_reducer: dict[str, NDArray]
+    y_data: dict[str, Any]
+    y_err: dict[str, Any]
+    atmosphere_model: dict[str, Any] | None
+    limb_darkening_coefficients: dict[str, Any] | None
+
+    _prepared_observations: cost_fns.PreparedObservations | None
+
+    __slots__ = [
+        "_candidate_failure_diagnostics",
+        "_prepared_observations",
+        "atmosphere_model",
+        "constrained",
+        "discretization",
+        "fit_xs",
+        "fitable",
+        "fixed",
+        "flat_result",
+        "initial_vector",
+        "interp_treshold",
+        "limb_darkening_coefficients",
+        "normalization",
+        "num_of_points",
+        "observer",
+        "x_data",
+        "x_data_reduced",
+        "x_data_reducer",
+        "y_data",
+        "y_err",
+    ]
+
+    def set_up(
+        self,
+        x0: BinaryInitialParameters,
+        data: dict[str, Any],
+        passband: Iterable[str] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Set up class attributes listed in __slots__.
+
+        Initializes all necessary attributes for fitting including observer,
+        data, normalization, and constraint parameters.
+
+        :param x0: Initial state of model parameters.
+        :type x0: BinaryInitialParameters
+        :param data: Observational data in photometric filters or radial velocity.
+        :type data: dict[str, Any]
+        :param passband: List of used passbands, use None in case of RV fit.
+        :type passband: Iterable[str] | None
+        :param kwargs: Class dependent content (see inheritor classes).
+        :type kwargs: Any
         """
-        Setting up the class attributes listed in __slots__.
-
-        :param x0: BinaryInitialParameters; initial state of model parameters
-        :param data: Dict[Union[elisa.analytics.dataset.base.LCData, elisa.analytics.dataset.base.RVData]];
-                     observational data in photometric filters
-        :param passband: List; list of used passbands, use None in case of RV fit
-        :param kwargs: Dict; class dependent content (see inheritor classes)
-        """
+        # InitialParameter validated input metadata on construction. Candidate
+        # values are validated by model properties before physical calculations.
+        x0.constraint_validator()
+        self.atmosphere_model = getattr(self, "atmosphere_model", None)
+        self.limb_darkening_coefficients = getattr(self, "limb_darkening_coefficients", None)
         self._check_data_param_consistency(x0, data)
-        setattr(self, 'fixed', x0.get_fixed(jsonify=False))
-        setattr(self, 'constrained', x0.get_constrained(jsonify=False))
-        setattr(self, 'fitable', x0.get_fitable(jsonify=False))
-        setattr(self, 'normalization', x0.get_normalization_map())
+        self.fixed = x0.get_fixed(jsonify=False)
+        self.constrained = x0.get_constrained(jsonify=False)
+        self.fitable = x0.get_fitable(jsonify=False)
+        self.normalization = x0.get_normalization_map()
 
-        observer = Observer(passband='bolometric' if passband is None else passband, system=None)
-        setattr(self, 'observer', observer)
-        setattr(self.observer, 'system_cls', kwargs.get('observer_system_cls'))
+        observer = Observer(passband=_fit_passbands(passband, data), system=None)
+        self.observer = observer
+        self.observer.system_cls = kwargs.get("observer_system_cls")
 
-        setattr(self, 'x_data', {key: val.x_data for key, val in data.items()})
-        setattr(self, 'y_data', {key: val.y_data for key, val in data.items()})
-        setattr(self, 'num_of_points', {key: np.shape(val.y_data)[0] for key, val in data.items()})
+        self.x_data = {key: val.x_data for key, val in data.items()}
+        self.y_data = {key: val.y_data for key, val in data.items()}
 
-        err = {key: abs(self.__class__.MEAN_ERROR_FN(val)) if data[key].y_err is None else data[key].y_err
-               for key, val in self.y_data.items()}
-        setattr(self, 'y_err', err)
+        self.y_err = self._prepare_observation_errors(data)
+        self._prepared_observations = None
+        self.num_of_points = {key: len(values) for key, values in self.y_data.items()}
 
-        x_data_reduced, x_data_reducer = parameters.xs_reducer({key: val.x_data for key, val in data.items()})
-        setattr(self, 'x_data_reduced', x_data_reduced)
-        setattr(self, 'x_data_reducer', x_data_reducer)
+        x_data_reduced, x_data_reducer = parameters.xs_reducer(
+            {key: val.x_data for key, val in data.items()},
+        )
+        self.x_data_reduced = x_data_reduced
+        self.x_data_reducer = x_data_reducer
 
-        setattr(self, 'initial_vector', [val.value for val in self.fitable.values()])
-        setattr(self, 'flat_result', dict())
+        self.initial_vector = [val.value for val in self.fitable.values()]
+        # Evaluate initial constraints once before either solver starts proposing candidates.
+        parameters.prepare_properties_set(
+            self.initial_vector,
+            self.fitable.keys(),
+            self.constrained,
+            self.fixed,
+            raise_initial=True,
+        )
+        self.flat_result = {}
 
-        if not isinstance(getattr(self, 'atmosphere_model', None), (dict, type(None))):
-            raise ValueError('Please provide argument `atmosphere_mode` in format '
-                             '{component (primary or secondary): atmosphere_model_name (ck04, bb, ...), }')
+        self._validate_atmosphere_parameters()
 
-        if not isinstance(getattr(self, 'limb_darkening_coefficients', None), (dict, type(None))):
-            raise ValueError('Please provide argument `limb_darkening_coefficients` in format '
-                             '{component (primary or secondary): {passband: ld_coeffs (float, list), }, }')
+    def _prepare_observation_errors(self, data: Mapping[str, DataSet]) -> dict[str, NDArray[np.float64]]:
+        """Validate observations and prepare supplied or estimated errors once.
+
+        :param data: Observations keyed by passband or RV component.
+        :returns: Uncertainty vectors, warning for each estimated dataset.
+        :raises ElisaAnalyticsDataError: If dataset validation fails or an estimated scale is unusable.
+        """
+        errors: dict[str, NDArray[np.float64]] = {}
+        for key, dataset in data.items():
+            DataSet.check_data_validity(x_data=dataset.x_data, y_data=dataset.y_data, y_err=dataset.y_err)
+            if dataset.y_err is not None:
+                errors[key] = dataset.y_err
+                continue
+            scale = abs(self.__class__.MEAN_ERROR_FN(dataset.y_data))
+            if not np.isfinite(scale) or scale <= 0:
+                msg = f"Cannot estimate positive y_err for {key}; supply explicit positive y_err"
+                raise_elisa_analytics_data_error(msg)
+            errors[key] = np.full(dataset.y_data.shape, scale, dtype=float)
+            logger.warning(
+                "Dataset %s uses estimated y_err=%s: heuristic weights, not calibrated measurement "
+                "uncertainties; MCMC posterior credible intervals depend on this assumed scale.",
+                key,
+                scale,
+            )
+        return errors
+
+    def _validate_atmosphere_parameters(self) -> None:
+        """Validate optional atmosphere and limb-darkening configuration dictionaries.
+
+        :raises ElisaAnalyticsTaskError: If configuration dictionaries or component names are invalid.
+        """
+        if not isinstance(getattr(self, "atmosphere_model", None), (dict, type(None))):
+            error_msg = (
+                "Please provide argument `atmosphere_model` in format "
+                "{component (primary or secondary): atmosphere_model_name (ck04, bb, ...), }"
+            )
+            raise_elisa_analytics_task_error(error_msg)
+
+        if not isinstance(getattr(self, "limb_darkening_coefficients", None), (dict, type(None))):
+            error_msg = (
+                "Please provide argument `limb_darkening_coefficients` in format "
+                "{component (primary or secondary): {passband: ld_coeffs (float, list), }, }"
+            )
+            raise_elisa_analytics_task_error(error_msg)
+
+        # Atlas choices are fixed task inputs, resolved before proposal evaluation.
+        # Internal atmosphere calculations rely on these canonical names.
+        normalized_atmospheres = {}
+        for component, atlas in (self.atmosphere_model or {}).items():
+            if component not in settings.BINARY_COUNTERPARTS:
+                msg = f"Unknown atmosphere component: {component}"
+                raise_elisa_analytics_task_error(msg)
+            normalized_atmospheres[component] = StarProperties.atmosphere(atlas)
+        if self.atmosphere_model is not None:
+            self.atmosphere_model = normalized_atmospheres
+        for component, coefficients in (self.limb_darkening_coefficients or {}).items():
+            if component not in settings.BINARY_COUNTERPARTS:
+                msg_0 = f"Unknown limb-darkening component: {component}"
+                raise_elisa_analytics_task_error(msg_0)
+            StarProperties.limb_darkening_coefficients(coefficients)
 
     @staticmethod
-    def _check_data_param_consistency(x0: BinaryInitialParameters, data: Dict):
-        """
-        Checking whether input observations have time stamps either in JD or photometric phase.
-        Function also cheks for compatibility between input observational data and initial parameters.
+    def _check_data_param_consistency(x0: BinaryInitialParameters, data: dict[str, Any]) -> None:
+        """Check compatibility between observational data and initial parameters.
 
-        :param x0: BinaryInitialParameters; initial state of model parameters
-        :param data: Dict[Union[elisa.analytics.dataset.base.LCData, elisa.analytics.dataset.base.RVData]];
-                     observational data in photometric filters:
-        :return: None
-        """
-        x_units = {key: val.x_unit for key, val in data.items()}
-        x_units_reduced = list(set(x_units.values()))
-        if len(x_units_reduced) > 1:
-            raise ValueError(f"Please make sure that all synthetic observations are supplied "
-                             f"in BJD or photometric phases. Current state: {x_units}")
+        Validates that input observations have time stamps either in JD or photometric phase,
+        and that they are compatible with the supplied initial parameters (i.e., if using JD
+        times, primary_minimum_time must be defined).
 
-        try:
-            getattr(x0, 'primary_minimum_time')
-        except AttributeError:
-            if x_units_reduced[0] == units.d:
-                raise ValueError("Your initial parameters do not contain `primary_minimum_time`, yet you provided "
-                                 "your synthetic observations in JD. Either convert your observations to photometric "
-                                 "phases using `DataSet.convert_to_phases(period, t0)` or include "
-                                 "`primary_minimum_time` to your initial fit parameters.")
-        else:
-            if x_units_reduced[0] == units.dimensionless_unscaled:
-                raise ValueError("Your initial parameters contain `primary_minimum_time`, yet you provided "
-                                 "your synthetic observations in photometric phases. Either convert your observations "
-                                 "to JD using `DataSet.convert_to_time(period, t0)` or remove `primary_minimum_"
-                                 "time` from your initial fit parameters.")
+        :param x0: Initial state of model parameters.
+        :type x0: BinaryInitialParameters
+        :param data: Observational data in photometric filters or RV.
+        :type data: dict[str, Any]
+        :raises ElisaAnalyticsTaskError: If data and parameter configuration are incompatible.
+        :raises ElisaAnalyticsDataError: If observations are absent or their coordinate units differ.
+        """
+        coordinate_unit = _observation_coordinate_unit(data)
+        has_epoch = hasattr(x0, "primary_minimum_time")
+        if coordinate_unit == units.d and not has_epoch:
+            msg = (
+                "Your initial parameters do not contain `primary_minimum_time`, yet you provided "
+                "your synthetic observations in JD. Either convert your observations to photometric "
+                "phases using `DataSet.convert_to_phases(period, t0)` or include "
+                "`primary_minimum_time` to your initial fit parameters."
+            )
+            raise_elisa_analytics_task_error(msg)
+        if coordinate_unit == units.dimensionless_unscaled and has_epoch:
+            msg = (
+                "Your initial parameters contain `primary_minimum_time`, yet you provided "
+                "your synthetic observations in photometric phases. Either convert your observations "
+                "to JD using `DataSet.convert_to_time(period, t0)` or remove `primary_minimum_"
+                "time` from your initial fit parameters."
+            )
+            raise_elisa_analytics_task_error(msg)
 
     @abstractmethod
-    def fit(self, *args, **kwargs):
-        pass
+    def fit(self, *args: Any, **kwargs: Any) -> Any:
+        """Abstract fit method to be implemented by subclasses.
 
-    # noinspection PyUnresolvedReferences
-    @staticmethod
-    def eval_constrained_results(result_dict: Dict[str, Dict], constraints: Dict[str, 'InitialParameter']):
+        :param args: Positional arguments.
+        :type args: Any
+        :param kwargs: Keyword arguments.
+        :type kwargs: Any
+        :return: Fit results.
+        :rtype: Any
         """
-        Function adds values of constrained parameters into the resulting dictionary based on the values of the
-        dependent variables.
+        ...
 
-        :param constraints: Dict; contains constrained parameters
-        :param result_dict: Dict; {'name': {'value': value, 'unit': unit, ...}
-        :return: Dict; {'name': {'value': value, 'unit': unit, ...} JSON with evaluated constraints
+    @staticmethod
+    def eval_constrained_results(
+        result_dict: dict[str, dict[str, Any]],
+        constraints: dict[str, Any],
+    ) -> dict[str, dict[str, Any]]:
+        """Add constrained parameters to result dictionary.
+
+        Evaluates values of constrained parameters based on their dependent variables
+        and adds them to the result dictionary.
+
+        :param result_dict: Result dictionary with format {'name': {'value': value, 'unit': unit, ...}}.
+        :type result_dict: dict[str, dict[str, Any]]
+        :param constraints: Dictionary containing constrained parameters.
+        :type constraints: dict[str, Any]
+        :return: Dictionary with evaluated constraint values added.
+        :rtype: dict[str, dict[str, Any]]
         """
         if is_empty(constraints):
             return result_dict
 
-        res_val_dict = {key: val['value'] for key, val in result_dict.items()}
-        constrained_values = parameters.constraints_evaluator(res_val_dict, constraints)
+        res_val_dict = {key: val["value"] for key, val in result_dict.items()}
+        constrained_values = parameters.constraints_evaluator(res_val_dict, constraints, raise_initial=False)
         result_dict.update(
             {
                 key: {
-                    'value': val,
-                    'constraint': constraints[key].constraint,
-                    'unit': constraints[key].to_dict()['unit']
-                } for key, val in constrained_values.items()
-            })
+                    "value": val,
+                    "constraint": constraints[key].constraint,
+                    "unit": constraints[key].to_dict()["unit"],
+                }
+                for key, val in constrained_values.items()
+            },
+        )
         return result_dict
 
 
 class AbstractRVFit(AbstractFit):
-    """
-    Abstract implementation of the RV fit.
-    """
-    MEAN_ERROR_FN = radialcurves_mean_error
+    """Abstract implementation of the RV fit."""
 
-    __slots__ = []  # inheriting attributes from parent
+    MEAN_ERROR_FN = _radialcurves_mean_error
+
+    # Attributes from parent class (set by set_up method)
+    y_err: dict[str, Any]
+    y_data: dict[str, NDArray]
+    x_data_reducer: dict[str, NDArray]
+    x_data_reduced: NDArray
+    observer: Observer
+    fitable: dict[str, Any]
+    constrained: dict[str, Any]
+    fixed: dict[str, Any]
+    initial_vector: list[Any]
+    normalization: dict[str, tuple[Any, ...]]
+    flat_result: dict[str, Any]
+
+    __slots__: list = []  # inheriting attributes from parent
 
     @abstractmethod
-    def fit(self, *args, **kwargs):
-        pass
+    def fit(self, *args: Any, **kwargs: Any) -> Any:
+        """Abstract fit method to be implemented by subclasses.
 
-    def set_up(self, x0: BinaryInitialParameters, data: Dict, **kwargs):
+        :param args: Positional arguments.
+        :type args: Any
+        :param kwargs: Keyword arguments.
+        :type kwargs: Any
+        :return: Fit results.
+        :rtype: Any
         """
-        Setting up class attributes inherited in __slots__.
+        ...
 
-        :param x0: BinaryInitialParameters; initial state of model parameters,
-        :param data: Dict[str, elisa.analytics.dataset.base.RVData]; RV data for primary and secondary component,
-        :param kwargs: Dict;
-        :**kwargs options**:
-            * :observer_system_cls: -- Union[BinarySystem, RadialVelocitySystem]; system used to evaluate synthetic
-                                                                                  observations
-        :return:
+    def set_up(self, x0: BinaryInitialParameters, data: dict[str, Any], **kwargs: Any) -> None:
+        """Set up class attributes inherited in __slots__.
+
+        :param x0: Initial state of model parameters.
+        :type x0: BinaryInitialParameters
+        :param data: RV data for primary and secondary component.
+        :type data: dict[str, Any]
+        :param kwargs: Dictionary with optional arguments:
+
+            * ``observer_system_cls`` - Union[BinarySystem, RadialVelocitySystem]; system used to
+              evaluate synthetic observations.
+        :type kwargs: Any
         """
+        x0.validate_rv_parameters()
+        if kwargs.get("observer_system_cls") is RadialVelocitySystem and settings.RV_METHOD != "kinematic":
+            msg = "Community RV fitting supports only the kinematic RV method."
+            raise_elisa_analytics_task_error(msg)
+        if not set(data).issubset(settings.BINARY_COUNTERPARTS):
+            msg = "RV datasets must be keyed by primary or secondary"
+            raise_elisa_analytics_task_error(msg)
         super().set_up(x0, data, passband=None, **kwargs)
+        validate_observations(self.x_data_reduced, self.y_data, self.x_data_reducer, self.x_data, self.y_err)
 
     # noinspection PyUnusedLocal
-    def coefficient_of_determination(self, model_parameters, data, discretization, interp_treshold):
-        """
-        Function returns R^2 for given model parameters and observed data.
+    def coefficient_of_determination(
+        self,
+        model_parameters: dict[str, Any],
+        data: dict[str, Any],
+        discretization: Float,  # noqa: ARG002
+        interp_treshold: int,  # noqa: ARG002
+    ) -> Float:
+        """Return R^2 for given model parameters and observed data.
 
-        :param model_parameters: Dict; set of model parameters in JSON format
-        :param data: Dict[str, RVData]; Dict[str, RVData]; observed RVs for each component
-        :param discretization: not (yet) used
-        :param interp_treshold: not (yet) used
-        :return: float; coefficient of determination (1.0 means a perfect fit to the observations)
+        :param model_parameters: Set of model parameters in JSON format.
+        :type model_parameters: dict[str, Any]
+        :param data: Observed RVs for each component.
+        :type data: dict[str, Any]
+        :param discretization: Not (yet) used.
+        :type discretization: float
+        :param interp_treshold: Not (yet) used.
+        :type interp_treshold: int
+        :return: Coefficient of determination (1.0 means a perfect fit).
+        :rtype: float
         """
-        self.set_up(parameters.BinaryInitialParameters(**model_parameters), data,
-                    observer_system_cls=RadialVelocitySystem)
-        r_squared_args = self.x_data_reduced, self.y_data, self.x_data_reducer, self.observer.system_cls
+        self.set_up(
+            parameters.BinaryInitialParameters(**model_parameters),
+            data,
+            observer_system_cls=RadialVelocitySystem,
+        )
+        r_squared_args: tuple[Any, ...] = (
+            self.x_data_reduced,
+            self.y_data,
+            self.x_data_reducer,
+            self.observer.system_cls,
+        )
         flat_result = parameters.deserialize_result(model_parameters)
-        r_dict = {key: value['value'] for key, value in flat_result.items()}
+        r_dict: dict[str, Any] = {key: value["value"] for key, value in flat_result.items()}
 
         logger.info("Evaluating light curve for calculation of R^2.")
         r_squared_result = rv_r_squared(rv_model.central_rv_synthetic, *r_squared_args, **r_dict)
@@ -215,254 +561,503 @@ class AbstractRVFit(AbstractFit):
 
 
 class AbstractLCFit(AbstractFit):
-    """
-    Abstract implementation the LC fitting.
-    """
+    """Abstract implementation the LC fitting."""
+
     MEAN_ERROR_FN = lightcurves_mean_error
 
-    __slots__ = []  # inheriting attributes from parent
+    # Attributes from parent class (set by set_up method)
+    fit_xs: NDArray[Float] | None
+    y_err: dict[str, Any]
+    y_data: dict[str, NDArray]
+    x_data_reducer: dict[str, NDArray]
+    x_data_reduced: NDArray
+    interp_treshold: int
+    discretization: float
+    observer: Observer
+    atmosphere_model: dict[str, Any] | None
+    limb_darkening_coefficients: dict[str, Any] | None
+    fitable: dict[str, Any]
+    constrained: dict[str, Any]
+    fixed: dict[str, Any]
+    initial_vector: list[Float] | NDArray[Float]
+    normalization: dict[str, tuple[Any, ...]]
+    flat_result: dict[str, Any]
 
-    def set_up(self, x0: BinaryInitialParameters, data: Dict, passband: Iterable = None, **kwargs):
+    _validated_reducers: dict[str, NDArray] | None
+
+    __slots__ = ["_validated_reducers"]
+
+    def set_up(
+        self,
+        x0: BinaryInitialParameters,
+        data: dict[str, Any],
+        passband: Iterable[str] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Set up class attributes inherited in __slots__.
+
+        :param x0: Initial state of model parameters.
+        :type x0: BinaryInitialParameters
+        :param data: Observations in each filter.
+        :type data: dict[str, Any]
+        :param passband: List of used passbands.
+        :type passband: Iterable[str] | None
+        :param kwargs: Optional arguments:
+
+            * ``observer_system_cls`` - System used to evaluate synthetic observations.
+            * ``discretization`` - Discretization factor for the primary component.
+            * ``samples`` - SamplingMethod, a legacy string value, or a manual phase list/array.
+        :type kwargs: Any
         """
-        Setting up class attributes inherited in __slots__.
+        x0.validate_lc_parameters(getattr(self, "MORPHOLOGY", "detached"))
+        super().set_up(x0, data, passband, observer_system_cls=kwargs.get("observer_system_cls"))
+        self.discretization = kwargs.pop("discretization")
+        self.interp_treshold = kwargs.pop("interp_treshold")
+        self.normalize_data(kind=NormalizationKind.AVERAGE)
+        self.fit_xs = self.generate_sample_phases(kwargs.pop("samples"))
 
-        :param x0: BinaryInitialParameters; initial state of model parameters,
-        :param data: Dict[str, elisa.analytics.dataset.base.LCData]; observations in each filter,
-        :param passband: List; list of used passbands
-        :param kwargs: Dict;
-        :**possible kwargs**:
-            * :observer_system_cls: Union[BinarySystem, RadialVelocitySystem]; system used to evaluate synthetic
-                observations
-            * :discretization: float; discretization factor for the primary component;
-            * :samples: Union[str, List]; `uniform`, `adaptive` or list with phases in (0, 1) interval
+    def validate_observations(self) -> None:
+        """Validate and prepare static observation mappings for this setup.
 
+        Called once by setup through normalize_data(). Observation coordinates,
+        shapes and reducers must remain unchanged during fitting. After manually
+        editing these internal arrays/dictionaries, call this method before any
+        evaluation, or use set_up() to replace the dataset. No global cache or
+        content fingerprint is retained. Flux/error value edits with unchanged
+        shapes do not change the mappings; normalize_data() revalidates them.
+
+        :raises ElisaPredictionAlignmentError: If observation alignment is invalid.
         """
-        super().set_up(x0, data, passband, observer_system_cls=kwargs.get('observer_system_cls'))
-        setattr(self, 'discretization', kwargs.pop('discretization'))
-        setattr(self, 'interp_treshold', kwargs.pop('interp_treshold'))
-        fit_xs = self.generate_sample_phases(kwargs.pop('samples'))
-        setattr(self, 'fit_xs', fit_xs)
-        self.normalize_data(kind='average')
+        self._validated_reducers = None
+        self._validated_reducers = validate_observations(
+            self.x_data_reduced,
+            self.y_data,
+            self.x_data_reducer,
+            self.x_data,
+            self.y_err,
+        )
+        self.num_of_points = {band: len(curve) for band, curve in self.y_data.items()}
+
+    def prediction_r_squared(self, model_parameters: dict[str, Any]) -> Float:
+        """Compute R² using this fitter's prepared mappings, support and Observer.
+
+        :param model_parameters: Flat physical parameters with constraints resolved.
+        :return: Coefficient of determination for observation-point predictions.
+        :raises ElisaPredictionAlignmentError: If dynamic synthesis alignment is invalid.
+        """
+        synthetic = self.predict_light_curves(model_parameters)
+        return r_squared(synthetic, self.y_data)
+
+    def predict_light_curves(self, model_parameters: dict[str, Any], **kwargs: Any) -> dict:
+        """Predict observation-point fluxes using this setup's validated mappings.
+
+        Static observation dimensions, keys, indices and coordinate correspondence
+        were validated by setup. This method reuses those mappings and the existing
+        Observer while retaining parameter-dependent phase, interpolation-support
+        and synthesis-output checks on every call.
+
+        :param model_parameters: Flat physical parameters with constraints resolved.
+        :param kwargs: Optional prediction arguments, such as a synthesis callable.
+        :return: Per-band mean-normalized flux arrays in observation order.
+        :raises ElisaPredictionAlignmentError: If dynamic prediction alignment is invalid.
+
+        Synthesis exceptions propagate unchanged.
+        """
+        return predict_light_curves(
+            self.x_data_reduced,
+            self.y_data,
+            self.x_data_reducer,
+            self.discretization,
+            self.observer,
+            self.interp_treshold,
+            model_parameters,
+            fit_xs=self.fit_xs,
+            x_data=self.x_data,
+            y_err=self.y_err,
+            _validated_reducers=self._validated_reducers,
+            atmosphere_model=self.atmosphere_model,
+            limb_darkening_coefficients=self.limb_darkening_coefficients,
+            **kwargs,
+        )
 
     @abstractmethod
-    def fit(self, *args, **kwargs):
-        pass
+    def fit(self, *args: Any, **kwargs: Any) -> Any:
+        """Abstract fit method to be implemented by subclasses.
 
-    def normalize_data(self, kind='global_maximum', top_fraction_to_average=0.1):
+        :param args: Positional arguments.
+        :type args: Any
+        :param kwargs: Keyword arguments.
+        :type kwargs: Any
+        :return: Fit results.
+        :rtype: Any
         """
-        Normalization of the input observational data using different methods. The result is assigned back to the
-        respective data attributes `y_data` and `y_err`.
+        ...
 
-        :param kind: str; normalization method
-        :**kind options**:
-            * **average** -- each curve is normalized to its average
-            * **global_average** -- curves are normalized to their global average
-            * **maximum** -- each curve is normalized to its own maximum
-            * **global_maximum** -- curves are normalized to their global maximum
-        :param top_fraction_to_average: float; top portion of the dataset (in y-axis direction) used in the
-                                               normalization process, from (0, 1) interval
+    def normalize_data(
+        self,
+        kind: NormalizationKind | str = NormalizationKind.GLOBAL_MAXIMUM,
+        top_fraction_to_average: float = 0.1,
+    ) -> None:
+        """Normalize input observational data using different methods.
+
+        The result is assigned back to the respective data attributes ``y_data``
+        and ``y_err``. Static observation alignment is validated before rescaling,
+        refreshing the prepared mappings for setup or a later normalization call.
+
+        :param kind: Normalization method. Options:
+
+            * ``average`` - Each curve is normalized to its average.
+            * ``global_average`` - Curves are normalized to their global average.
+            * ``maximum`` - Each curve is normalized to its own maximum.
+            * ``global_maximum`` - Curves are normalized to their global maximum (default).
+        :type kind: NormalizationKind | str
+        :param top_fraction_to_average: Finite fraction in ``(0, 1]`` used by maximum,
+            global_maximum and minimum normalization; ignored for average and global_average.
+        :type top_fraction_to_average: float
         """
-        # noinspection PyUnresolvedReferences
+        _validate_lc_normalization(self.y_data, kind, top_fraction_to_average)
+        self.validate_observations()
         y_data, y_err = normalize_light_curve(self.y_data, self.y_err, kind, top_fraction_to_average)
-        setattr(self, 'y_data', y_data)
-        setattr(self, 'y_err', y_err)
+        normalized_errors = _validated_normalized_errors(y_data, y_err)
+        self.y_data = y_data
+        self.y_err = normalized_errors
+        if self._prepared_observations is not None:
+            self._prepared_observations = cost_fns.prepare_observations(self.y_data, self.y_err)
 
-    def generate_sample_phases(self, samples):
-        """
-        Sampling photometric phases used to calculate the synthetic observations according to a rule or array of orbital
-        phases.
+    def generate_sample_phases(self, samples: SamplingMethod | str | list | NDArray) -> NDArray[Float] | None:
+        """Generate photometric phases for synthetic observations.
 
-        :param samples: Union[str, List]; `uniform`, `adaptive` or list with phases in (0, 1) interval
-        :**kind options**:
-            * :'uniform': phase equidistant sampling, use for initial stages of the fitting where a general shape for
-                           the solution model is not yet found
-            * :'adaptive': equidistant sampling along the synthetic curve, very useful for light curves with narrow
-                            eclipses. Use in later stages of fitting where a general shape of the curve is estabilished.
-            * :`numpy.array`: array of photometric phases can be set also manually
-        :return: Union[numpy.array, ValueError]; photometric phases
+        Sampling photometric phases are generated according to a specified rule or array
+        of orbital phases.
+
+        :param samples: Sampling method or phase array. Options:
+
+            * ``SamplingMethod.UNIFORM`` - Equidistant phase support.
+            * ``SamplingMethod.ADAPTIVE`` - Equidistant support along the initial curve.
+            * List/array - Manually provided photometric phases.
+
+        Legacy string values are converted to SamplingMethod at this boundary.
+        Below the sampling threshold, direct synthesis remains in use.
+        :type samples: SamplingMethod | str | list | NDArray
+        :return: Photometric phases or None if insufficient datapoints.
+        :rtype: NDArray | None
+        :raises ElisaAnalyticsTaskError: When ``samples`` parameter is invalid.
         """
-        kwargs = parameters.prepare_properties_set(self.initial_vector, self.fitable.keys(), self.constrained,
-                                                   self.fixed)
-        phases, kwargs = time_layer_resolver(self.x_data_reduced, pop=False, **kwargs)
+        kwargs: dict[str, Any] = parameters.prepare_properties_set(
+            self.initial_vector,
+            self.fitable.keys(),
+            self.constrained,
+            self.fixed,
+        )
+        preserve_phases = should_preserve_lc_input_phases(kwargs)
+        phases, kwargs = time_layer_resolver(
+            self.x_data_reduced, pop=False, preserve_phases=preserve_phases, **kwargs,
+        )
         if np.shape(phases)[0] < self.interp_treshold:
             return None
 
-        if samples == 'uniform':
-            diff = 1.0 / self.interp_treshold
-            return np.linspace(0.0 - diff, 1.0 + diff, num=self.interp_treshold + 2)
-        elif samples == 'adaptive':
-            logger.info('Generating equidistant samples along the light curve using adaptive sampling method')
-            return self.adaptive_sampling()
-        elif isinstance(samples, (list, np.ndarray)):
+        if isinstance(samples, (list, np.ndarray)):
             return np.sort(samples)
-        else:
-            raise ValueError(f'Parameter `samples` has to be either string with values `uniform` or `adaptive` or '
-                             f'array of phases in (0, 1) interval')
+        try:
+            method = SamplingMethod(samples)
+        except (ValueError, TypeError) as exc:
+            error_msg = (
+                "Parameter `samples` must be SamplingMethod.UNIFORM, SamplingMethod.ADAPTIVE, "
+                "their string values, or a manual phase list/array"
+            )
+            raise_elisa_analytics_task_error(error_msg, exc)
+        if method is SamplingMethod.UNIFORM:
+            return _synthesis_support(phases, self.interp_treshold, None, preserve_phases=preserve_phases)
+        logger.info("Generating equidistant samples along the light curve using adaptive sampling method")
+        support = self.adaptive_sampling()
+        return extend_phase_support(support, phases) if preserve_phases else support
 
-    def adaptive_sampling(self):
+    def adaptive_sampling(self) -> NDArray[Float]:
+        """Prepare phase support equidistant along the initial normalized light curve.
+
+        Synthesize a dense bolometric curve from the initial model, then interpolate
+        phases at equal arc-length intervals in the (phase, normalized flux) plane.
+        The returned phases need not be a subset of the dense synthesis phases.
+
+        :return: Photometric phases.
+        :rtype: NDArray[Float]
+        :raises ElisaInitialParametersError: If the initial model cannot be evaluated for sampling.
+        :raises ElisaPredictionAlignmentError: If synthesis reports a structural alignment error.
+        :raises ElisaUnexpectedError: If an unclassified evaluation or normalization failure occurs.
         """
-        Function generates sampling equidistantly along the curve defined by the initial vector.
+        phases, flux = self._synthesize_initial_bolometric_curve()
+        return self._sample_phases_by_curve_length(phases, flux, self.interp_treshold)
 
-        :return: numpy.array; photometric phases
+    def _synthesize_initial_bolometric_curve(self) -> tuple[NDArray[Float], NDArray[Float]]:
+        """Build dense phase/mean-normalized flux arrays for sampling during setup.
+
+        Candidate synthesis failures here describe the initial model, so they are
+        translated to fatal initial-parameter errors rather than fitting penalties.
         """
         n = 3 * settings.MAX_CURVE_DATAPOINTS
         diff = 1.0 / n
         x = np.linspace(0.0 - diff, 1.0 + diff, num=n)
 
-        kwargs = parameters.prepare_properties_set(self.initial_vector, self.fitable.keys(), self.constrained,
-                                                   self.fixed)
+        kwargs: dict[str, Any] = parameters.prepare_properties_set(
+            self.initial_vector,
+            self.fitable.keys(),
+            self.constrained,
+            self.fixed,
+        )
 
         kwargs = parameters.extend_json_with_atm_params(
             kwargs,
             atmosphere_model=self.atmosphere_model,
-            limb_darkening_coefficients=self.limb_darkening_coefficients
+            limb_darkening_coefficients=self.limb_darkening_coefficients,
         )
 
-        observer = Observer(passband='bolometric', system=None)
-        setattr(observer, 'system_cls', getattr(self.observer, 'system_cls'))
+        observer = Observer(passband="bolometric", system=None)
+        observer.system_cls = self.observer.system_cls
         try:
             synthetic = lc_model.synthetic_binary(x, self.discretization, observer, **kwargs)
-            synthetic, _ = normalize_light_curve(synthetic, kind='average')
-        except Exception:
-            raise RuntimeError('Your initial parameters are invalid and phase sampling could not be generated.')
+            synthetic, _ = normalize_light_curve(synthetic, kind=NormalizationKind.AVERAGE)
+        except (
+                ElisaAtmosphereError,
+                ElisaLimbDarkeningError,
+                ElisaParametersError,
+                ElisaSpotError,
+                MorphologyError,
+                ElisaTemperatureError,
+                PulsationModeError,
+                ElisaMaxIterationError,
+                ElisaNumericError,
+        ) as exc:
+            msg = "The initial model could not be evaluated to generate adaptive phase sampling."
+            raise_elisa_initial_parameters_error(msg, exc)
+        except (
+            ElisaInitialParametersError,
+            ElisaOperationInputError,
+            ElisaPassbandError,
+            ElisaPredictionAlignmentError,
+            ElisaSettingsError,
+            ElisaUnexpectedError,
+        ):
+            raise
+        except Exception as exc:  # noqa: BLE001 - preserve context for otherwise unclassified setup failures
+            msg = "Adaptive phase sampling failed while evaluating or normalizing the initial model."
+            raise_elisa_unexpected_error(msg, exc)
 
-        curve = np.column_stack((x, synthetic['bolometric']))
+        return x, synthetic["bolometric"]
+
+    @staticmethod
+    def _sample_phases_by_curve_length(
+        phases: NDArray[Float],
+        normalized_flux: NDArray[Float],
+        sample_count: int,
+    ) -> NDArray[Float]:
+        """Interpolate phases at equal arc-length intervals of a prepared curve.
+
+        This step only resamples the supplied curve; it does not build a model
+        or synthesize flux. Arc length uses the existing unweighted phase/flux metric.
+        """
+        curve = np.column_stack((phases, normalized_flux))
         lengths = np.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
-        crv_lengths = np.cumsum(np.concatenate(([0, ], lengths)))
-        segments = np.linspace(0, crv_lengths[-1], num=self.interp_treshold)
+        crv_lengths = np.cumsum(np.concatenate(([0], lengths)))
+        segments = np.linspace(0, crv_lengths[-1], num=sample_count)
 
-        return np.interp(segments, crv_lengths, x)
+        return np.interp(segments, crv_lengths, phases)
 
-    def coefficient_of_determination(self, model_parameters, data, discretization, interp_treshold):
+    def coefficient_of_determination(
+        self,
+        model_parameters: dict[str, Any],
+        data: dict[str, Any],
+        discretization: Float,
+        interp_treshold: int,
+    ) -> Float:
+        """Return R^2 for given model parameters and observed data.
+
+        :param model_parameters: Set of model parameters in JSON format.
+        :type model_parameters: dict[str, Any]
+        :param data: Observations in each filter.
+        :type data: dict[str, Any]
+        :param discretization: Discretization factor for the primary component.
+        :type discretization: float
+        :param interp_treshold: Threshold above which light curve will be interpolated.
+        :type interp_treshold: int
+        :return: Coefficient of determination (1.0 means a perfect fit).
+        :rtype: float
         """
-        Function returns R^2 for given model parameters and observed data.
-
-        :param model_parameters: Dict; set of model parameters in JSON format
-        :param data: Dict[str, elisa.analytics.dataset.base.LCData]; observations in each filter,
-        :param discretization: float; discretization factor for the primary component;
-        :param interp_treshold: int; Above this total number of datapoints, light curve will be interpolated
-                                     using model containing `interp_treshold` equidistant points per epoch
-        :return: float; coefficient of determination (1.0 means a perfect fit to the observations)
-        """
-        self.set_up(x0=parameters.BinaryInitialParameters(**model_parameters), data=data, passband=data.keys(),
-                    discretization=discretization, interp_treshold=interp_treshold, samples='uniform',
-                    observer_system_cls=BinarySystem)
-
-        r_squared_args = (self.x_data_reduced, self.y_data, self.observer.passband, discretization,
-                          self.x_data_reducer, 1.0 / self.interp_treshold, self.interp_treshold,
-                          self.observer.system_cls)
-        flat_result = parameters.deserialize_result(model_parameters)
-
-        r_dict = {key: value['value'] for key, value in flat_result.items()}
-        r_dict = parameters.extend_json_with_atm_params(
-            r_dict,
-            atmosphere_model=self.atmosphere_model,
-            limb_darkening_coefficients=self.limb_darkening_coefficients
+        self.set_up(
+            x0=parameters.BinaryInitialParameters(**model_parameters),
+            data=data,
+            passband=data.keys(),
+            discretization=discretization,
+            interp_treshold=interp_treshold,
+            samples=SamplingMethod.UNIFORM,
+            observer_system_cls=BinarySystem,
         )
 
+        flat_result = parameters.deserialize_result(model_parameters)
+        r_dict = {key: value["value"] for key, value in flat_result.items()}
         logger.info("Evaluating light curve for calculation of R^2.")
-        r_squared_result = lc_r_squared(lc_model.synthetic_binary, *r_squared_args, **r_dict)
+        r_squared_result = self.prediction_r_squared(r_dict)
         logger.info("Calculation of R^2 finished.")
         return r_squared_result
 
 
-def lc_r_squared(synthetic, *args, **x):
+def lc_r_squared(
+    synthetic: Callable[..., Any],
+    *args: Any,
+    fit_xs: Any = None,
+    x_data: Any = None,
+    **kwargs: Any,
+) -> float:
+    """Compute R^2 coefficient of determination between synthetic and observed light curves.
+
+    :param synthetic: Callable method for creating synthetic LC observations
+        (e.g., ``elisa.analytics.models.lc.synthetic_binary``).
+    :type synthetic: Callable[..., Any]
+    :param args: Tuple containing:
+
+        * ``x_data_reduced`` - Phases in AbstractFit.x_data_reduced slot.
+        * ``y_data`` - Dict[str, NDArray]; fluxes from observation normalized to max value.
+        * ``passband`` - Union[str, List[str]]; list of used photometric filters.
+        * ``discretization`` - Discretization factor for the primary component.
+        * ``x_data_reducer`` - Dict[str, NDArray]; mask stored in AbstractFit.x_data_reducer slot.
+        * ``diff`` - Float; auxiliary parameter for interpolation.
+        * ``interp_treshold`` - Int; threshold above which synthetic curves are interpolated.
+        * ``cls`` - BinarySystem; class used for observations.
+    :type args: Any
+    :param fit_xs: Prepared phase support from fitting. If omitted, use the
+        same uniform/direct support rule as fitting setup.
+    :param x_data: Optional original per-band coordinates for reducer validation.
+    :param kwargs: Model parameters to compute binary system.
+    :type kwargs: Any
+    :return: Coefficient of determination (1.0 means perfect fit).
+    :rtype: float
     """
-    Compute R^2 (coefficient of determination) between synthetic and observed light curves.
-
-    :param synthetic: callable; method for crating the synthetic LC observation
-                                (eg. elisa.anaytics.models.lc.synthetic_binary)
-    :param args: Tuple;
-    :**args**:
-        * :x_data_reduced: numpy.array; phases in AbstractFit.x_data_reduced slot
-        * :y_data: Dict[str, numpy.array]; supplied fluxes (lets say fluxes from observation) normalized to max value
-        * :passband: Union[str, List[str]]; list of used photometric filters
-        * :discretization: float; discretization factor for the primary component
-        * :x_data_reducer: Dict[str, numpy.array]; mask stored in AbstractFit.x_data_reducer slot
-        * :diff: float; auxiliary parameter for interpolation defining the spacing between evaluation phases if
-                        interpolation is active
-        * :interp_treshold: int; a number of observation points above which the synthetic curves will be calculated
-                                 using `interp_treshold` equally spaced points that will be subsequently
-                                 interpolated to the desired times of observation
-        * :cls: BinarySystem;
-
-    :param x: Dict; kwargs containing parameters to compute binary system, keyword arguments of `synthetic` function
-    :return: float; coefficient of determination (1.0 means a perfect fit to the observations)
-    """
-    x_data_reduced, y_data, passband, discretization, x_data_reducer, diff, interp_treshold, cls = args
-
-    x_data_reduced, kwargs = time_layer_resolver(x_data_reduced, pop=False, **x)
-    fit_xs = np.linspace(np.min(x_data_reduced) - diff, np.max(x_data_reduced) + diff, num=interp_treshold + 2) \
-        if np.shape(x_data_reduced)[0] > interp_treshold else x_data_reduced
+    x_data_reduced, y_data, passband, discretization, x_data_reducer, _diff, interp_treshold, cls = args
 
     observer = Observer(passband=passband, system=None)
-    observer._system_cls = cls
-    synthetic = synthetic(fit_xs, discretization, observer, **x)
+    observer.system_cls = cls
+    synthetic_result = predict_light_curves(
+        x_data_reduced,
+        y_data,
+        x_data_reducer,
+        discretization,
+        observer,
+        interp_treshold,
+        kwargs,
+        fit_xs=fit_xs,
+        x_data=x_data,
+        synthesis=synthetic,
+    )
 
-    if np.shape(fit_xs) != np.shape(x_data_reduced):
-        synthetic = {
-            fltr: interpolate.interp1d(fit_xs, curve, kind='cubic')(x_data_reduced)
-            for fltr, curve in synthetic.items()
-        }
-    synthetic = {band: synthetic[band][x_data_reducer[band]] for band in synthetic}
-    synthetic, _ = normalize_light_curve(synthetic, kind='average')
-
-    return r_squared(synthetic, y_data)
+    return r_squared(synthetic_result, y_data)
 
 
-def rv_r_squared(synthetic, *args, **x):
+def map_rv_predictions(
+    synthetic: dict[str, NDArray],
+    x_data_reduced: NDArray,
+    x_data_reducer: dict[str, NDArray],
+) -> dict[str, NDArray]:
+    """Select observed RV components and map their curves into observation order.
+
+    :param synthetic: Component curves on the full synthesis coordinate grid.
+        Extra components are ignored.
+    :param x_data_reduced: Coordinate grid supplied to RV synthesis.
+    :param x_data_reducer: Prepared component indices into that grid.
+    :returns: Curves in each component's original observation order.
+    :raises ElisaPredictionAlignmentError: If a required component is missing, or an
+        observed component's raw curve has the wrong shape or nonfinite values.
     """
-    Compute R^2 (coefficient of determination) between synthetic and observed RV curves.
+    if not x_data_reducer.keys() <= synthetic.keys():
+        msg = "RV synthesis and observation components differ"
+        raise_elisa_prediction_alignment_error(msg)
+    expected_shape = np.shape(x_data_reduced)
+    predictions = {}
+    for component, reducer in x_data_reducer.items():
+        curve = synthetic[component]
+        if np.shape(curve) != expected_shape:
+            msg = (
+                f"RV synthetic shape for {component} must match coordinate grid {expected_shape}, got {np.shape(curve)}"
+            )
+            raise_elisa_prediction_alignment_error(msg)
+        if not np.all(np.isfinite(curve)):
+            msg = f"RV synthetic values are nonfinite for {component}"
+            raise_elisa_numeric_error(msg)
+        predictions[component] = curve[reducer]
+    return predictions
 
-    :param synthetic: callable; method for crating the synthetic RV observation
-                                (eg. elisa.anaytics.models.rv.central_rv_synthetic)
-    :param args: Tuple;
-    :**args**:
-        * :x_data_reduced: numpy.array; phases in AbstractFit.x_data_reduced slot
-        * :y_data: Dict[str, numpy.array]; radial velocities for both components
-        * :x_data_reducer: Dict[str, numpy.array]; mask stored in AbstractFit.x_data_reducer slot
-        * :cls: Union[BinarySystem, RadialVelocitySystem];
-    :param x: Dict; kwargs containing parameters to compute radial velocities curve,
-                    keyword arguments of `synthetic` function
-    :return: float; coefficient of determination (1.0 means a perfect fit to the observations)
+
+def rv_r_squared(synthetic: Callable[..., Any], *args: Any, **kwargs: Any) -> float:
+    """Compute R^2 coefficient of determination between synthetic and observed RV curves.
+
+    :param synthetic: Callable method for creating synthetic RV observations
+        (e.g., ``elisa.analytics.models.rv.central_rv_synthetic``).
+    :type synthetic: Callable[..., Any]
+    :param args: Tuple containing:
+
+        * ``x_data_reduced`` - Phases in AbstractFit.x_data_reduced slot.
+        * ``y_data`` - Dict[str, NDArray]; radial velocities for both components.
+        * ``x_data_reducer`` - Dict[str, NDArray]; mask stored in AbstractFit.x_data_reducer slot.
+        * ``cls`` - Union[BinarySystem, RadialVelocitySystem]; class used for observations.
+    :type args: Any
+    :param kwargs: Model parameters to compute radial velocities curve.
+    :type kwargs: Any
+    :return: Coefficient of determination (1.0 means perfect fit).
+    :rtype: float
+    :raises ElisaPredictionAlignmentError: If raw RV components or shapes do not match the synthesis grid.
     """
     x_data_reduced, y_data, x_data_reducer, cls = args
 
-    observer = Observer(passband='bolometric', system=None)
-    observer._system_cls = cls
-    synthetic = synthetic(x_data_reduced, observer, **x)
-    synthetic = {comp: synthetic[comp][x_data_reducer[comp]] for comp in synthetic}
+    observer = Observer(passband="bolometric", system=None)
+    observer._system_cls = cls  # noqa: SLF001
+    synthetic_result = synthetic(x_data_reduced, observer, **kwargs)
+    synthetic_result = map_rv_predictions(synthetic_result, x_data_reduced, x_data_reducer)
 
-    return r_squared(synthetic, y_data)
+    return r_squared(synthetic_result, y_data)
 
 
-def r_squared(synthetic, observed):
+def r_squared(synthetic: dict[str, Any], observed: dict[str, Any]) -> Float:
+    """Return coefficient of determination between model and observations.
+
+    :param synthetic: Dictionary mapping component names to synthetic values.
+    :type synthetic: dict[str, Any]
+    :param observed: Dictionary mapping component names to observed values.
+    :type observed: dict[str, Any]
+    :return: Coefficient of determination (1.0 means perfect fit).
+    :rtype: float
     """
-    Returns coefficient of determination between model and observations
+    variability = sum(np.sum((observed[item] - np.mean(observed[item])) ** 2) for item in observed)
+    residual = sum(np.sum((synthetic[item] - observed[item]) ** 2) for item in observed)
 
-    :param synthetic: Dict[str, numpy.array];
-    :param observed: Dict[str, numpy.array];
-    :return: float; coefficient of determination (1.0 means a perfect fit to the observations)
-    """
-    variability = np.sum([np.sum(np.power(observed[item] - np.mean(observed[item]), 2)) for item in observed])
-    residual = np.sum([np.sum(np.power(synthetic[item] - observed[item], 2)) for item in observed])
-
+    # noinspection PyUnresolvedReferences
     return 1 - (residual / variability)
 
 
-def extend_observations_to_desired_interval(start_phase, stop_phase, x_data, y_data, y_err):
-    """
-    Extending the left and the right boundaries of the phase-folded observations to the desired phase interval.
+def extend_observations_to_desired_interval(
+    start_phase: Float,
+    stop_phase: Float,
+    x_data: dict[str, Any],
+    y_data: dict[str, Any],
+    y_err: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Extend left and right boundaries of phase-folded observations to desired interval.
 
-    :param start_phase: float;
-    :param stop_phase: float;
-    :param x_data: Dict;
-    :param y_data: Dict;
-    :param y_err: Dict;
-    :return: Tuple;
+    Extends the phase coverage of observational data by concatenating adjacent phase cycles
+    to allow for better interpolation and fitting at phase boundaries.
+
+    :param start_phase: Start phase of desired interval.
+    :type start_phase: float
+    :param stop_phase: Stop phase of desired interval.
+    :type stop_phase: float
+    :param x_data: Dictionary of phase data for each band.
+    :type x_data: dict[str, Any]
+    :param y_data: Dictionary of flux data for each band.
+    :type y_data: dict[str, Any]
+    :param y_err: Dictionary of flux errors for each band.
+    :type y_err: dict[str, Any]
+    :return: Tuple of (x_data, y_data, y_err) with extended observations.
+    :rtype: tuple[dict[str, Any], dict[str, Any], dict[str, Any]]
     """
     for item, curve in x_data.items():
-        phases_extended = np.concatenate((x_data[item] - 1.0, x_data[item], x_data[item] + 1.0))
+        phases_extended = np.concatenate((curve - 1.0, curve, curve + 1.0))
         phases_extended_filter = np.logical_and(start_phase < phases_extended, phases_extended < stop_phase)
         x_data[item] = phases_extended[phases_extended_filter]
 
@@ -473,87 +1068,151 @@ def extend_observations_to_desired_interval(start_phase, stop_phase, x_data, y_d
     return x_data, y_data, y_err
 
 
-def check_for_boundary_surface_potentials(result_dict, morphology=None):
-    """
-    Function checks if surface potential are within errors below critical potentials (which would break BinarySystem
-    initialization). If surface potential are below the critical value but still within errors, they are snapped to
-    critical potential.
+def check_for_boundary_surface_potentials(
+    result_dict: dict[str, dict[str, Any]],
+    morphology: str | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Check and correct surface potentials near critical values.
 
-    :param result_dict: Dict; flat dict of fit results
-    :param morphology: str; expected morphology
-    :return: Dict; corrected flat dict of fit results
+    Checks if surface potential values are within errors below critical potentials
+    (which would break BinarySystem initialization). If they are close but still within
+    errors, they are snapped to critical potential.
+    Component inner limits use their own spin at periastron. The outer Lagrange
+    limit and shared overcontact potential apply only to circular synchronous systems.
+
+    :param result_dict: Flat dictionary of fit results with confidence intervals.
+    :type result_dict: dict[str, dict[str, Any]]
+    :param morphology: Expected morphology ('over-contact' for synchronized potentials).
+    :type morphology: str | None
+    :return: Corrected flat dictionary of fit results.
+    :rtype: dict[str, dict[str, Any]]
     """
-    if "primary@surface_potential" not in result_dict.keys() or "secondary@surface_potential" not in result_dict.keys():
+    if "primary@surface_potential" not in result_dict or "secondary@surface_potential" not in result_dict:
         return result_dict
 
-    if result_dict['primary@surface_potential']['value'] == result_dict['secondary@surface_potential']['value']:
+    classical = result_dict["system@eccentricity"]["value"] == 0.0 and all(
+        result_dict.get(f"{component}@synchronicity", {}).get("value", 1.0) == 1.0
+        for component in settings.BINARY_COUNTERPARTS
+    )
+    if classical and (
+        result_dict["primary@surface_potential"]["value"] == result_dict["secondary@surface_potential"]["value"]
+    ):
         return result_dict
 
     for component in settings.BINARY_COUNTERPARTS:
         pot = result_dict[f"{component}@surface_potential"]
-        if "fixed" not in pot.keys() or "value" not in pot.keys():
+        if "fixed" not in pot or "value" not in pot:
             continue
 
-        sigma = pot["value"] - pot["confidence_interval"]["min"] if "confidence_interval" in pot.keys() else 0.001
+        sigma = pot["value"] - pot["confidence_interval"]["min"] if "confidence_interval" in pot else 0.001
 
-        synchronicity = result_dict[f"{component}@synchronicity"]["value"] \
-            if f"{component}@synchronicity" in result_dict.keys() else 1.0
+        synchronicity = (
+            result_dict[f"{component}@synchronicity"]["value"] if f"{component}@synchronicity" in result_dict else 1.0
+        )
 
-        mass_ratio = result_dict["system@mass_ratio"]["value"] \
-            if "system@mass_ratio" in result_dict.keys() \
-            else result_dict["secondary@mass"]["value"]/result_dict["primary@mass"]["value"]
+        mass_ratio = (
+            result_dict["system@mass_ratio"]["value"]
+            if "system@mass_ratio" in result_dict
+            else result_dict["secondary@mass"]["value"] / result_dict["primary@mass"]["value"]
+        )
 
         periastron_distance = 1 - result_dict["system@eccentricity"]["value"]
 
-        l1 = \
-            BinarySystem.critical_potential_static(
-                component=component,
-                components_distance=periastron_distance,
-                mass_ratio=mass_ratio,
-                synchronicity=synchronicity
-            )
+        inner_critical = BinarySystem.critical_potential_static(
+            component=component,
+            components_distance=periastron_distance,
+            mass_ratio=mass_ratio,
+            synchronicity=synchronicity,
+        )
 
-        # if resulting potential is too close critical potentials (within errors), it will snap potential to critical
-        # to avoid problems
-        if 5 * sigma >= l1 - pot["value"] >= 0.0:
-            pot["value"] = l1 + 1e-5 * sigma
+        # if resulting potential is too close critical potentials (within errors), it will snap potential
+        # to critical one to avoid problems
+        if 5 * sigma >= inner_critical - pot["value"] >= 0.0:
+            pot["value"] = inner_critical + 1e-5 * sigma
 
         # test for over-contact overflow trough L2 point
-        l2 = BinarySystem.libration_potentials_static(periastron_distance, mass_ratio)[2]
-        if 5 * sigma >= l2 - pot["value"] >= 0.0:
-            pot["value"] = l2 - 1e-5 * sigma
+        if classical:
+            l2 = BinarySystem.libration_potentials_static(periastron_distance, mass_ratio)[2]
+            if 5 * sigma >= l2 - pot["value"] >= 0.0:
+                pot["value"] = l2 - 1e-5 * sigma
 
-    if morphology == 'over-contact':
-        result_dict['secondary@surface_potential']['value'] = result_dict['primary@surface_potential']['value']
+    if classical and morphology == "over-contact":
+        result_dict["secondary@surface_potential"]["value"] = result_dict["primary@surface_potential"]["value"]
 
     return result_dict
 
 
-def eval_constraint_in_dict(input_dict):
+def _initial_parameter_definitions(definitions: Any) -> Any:
+    """Remove result metadata from scalar parameters in one section.
+
+    InitialParameter.DEFAULT defines the accepted input fields. Parameter names
+    and malformed definitions stay intact for BinaryInitialParameters to validate.
     """
-    Evaluates constraints defined supplied in the user given model parameters .
+    if not isinstance(definitions, dict):
+        return definitions
 
-    :param input_dict: Dict; standard JSON format of model parameters
-    :return: Dict; same as `input_dict` but with the values added/updated to the constrained parameters according to
-                   the values of dependent variable model parameters.
+    inputs = {}
+    for name, metadata in definitions.items():
+        if isinstance(metadata, dict):
+            inputs[name] = {
+                field: value for field, value in metadata.items() if field in parameters.InitialParameter.DEFAULT
+            }
+        else:
+            inputs[name] = metadata
+    return inputs
+
+
+def _result_initial_parameters(result: dict[str, Any]) -> BinaryInitialParameters:
+    """Convert saved model parameters to validated fit inputs.
+
+    Work on a copy: result fields such as R² and confidence intervals must remain
+    in the saved result, but must not be passed to initial-parameter constructors.
     """
-    input_dict1 = parameters.deserialize_result(input_dict)
-    result_dict = {key: val for key, val in input_dict1.items() if 'fixed' in val}
+    sections = ("system", *settings.BINARY_COUNTERPARTS, parameters.conf.NUISANCE_PARSER)
+    inputs = deepcopy({name: result[name] for name in sections if name in result})
 
-    reduced_dict = {key: val['value'] for key, val in result_dict.items()}
+    for name, section in inputs.items():
+        inputs[name] = _initial_parameter_definitions(section)
+        if name not in settings.BINARY_COUNTERPARTS or not isinstance(section, dict):
+            continue
 
-    b_parameters = BinaryInitialParameters(**input_dict)
+        # Spots and pulsations contain labeled parameter sets, rather than
+        # scalar parameter metadata. Keep their labels and collection structure.
+        for collection_name in ("spots", "pulsations"):
+            collection = section.get(collection_name)
+            if isinstance(collection, list):
+                inputs[name][collection_name] = [_initial_parameter_definitions(item) for item in collection]
+
+    # The existing validator checks names, structure, bounds and unique labels.
+    return BinaryInitialParameters(**inputs)
+
+
+def eval_constraint_in_dict(input_dict: dict[str, Any]) -> dict[str, Any]:
+    """Evaluate constraints and update parameter dictionary.
+
+    Evaluates constraints defined in the user-given model parameters and updates
+    the dictionary with constraint values based on dependent variables.
+
+    :param input_dict: Standard JSON format of model parameters.
+    :type input_dict: dict[str, Any]
+    :return: Same as ``input_dict`` but with values added/updated for constrained parameters.
+    :rtype: dict[str, Any]
+    """
+    b_parameters = _result_initial_parameters(input_dict)
+    result = deepcopy(input_dict)
+    input_dict1 = parameters.deserialize_result(result)
+
+    result_dict = {key: val for key, val in input_dict1.items() if "fixed" in val}
+    reduced_dict = {key: val["value"] for key, val in result_dict.items()}
     constraints = b_parameters.get_constrained(jsonify=False)
 
-    constrained_values = parameters.constraints_evaluator(reduced_dict, constraints)
-    result_dict.update(
-        {
-            key: {
-                'value': constrained_values[key],
-                'constraint': constraints[key].constraint,
-                'unit': constraints[key].unit
-            } for key, val in constrained_values.items()
-        })
+    # A marginal constrained median need not equal the constraint at marginal free medians.
+    for key in list(constraints):
+        previous = input_dict1[key]
+        if previous.get("estimate") == JOINT_POSTERIOR_PERCENTILES_ESTIMATE:
+            del constraints[key]
 
-    result_dict = parameters.serialize_result(result_dict)
-    return result_dict
+    constrained_values = parameters.constraints_evaluator(reduced_dict, constraints, raise_initial=False)
+    for key, value in constrained_values.items():
+        input_dict1[key].update(value=value, unit=constraints[key].unit)
+    return result

@@ -1,4 +1,5 @@
 """A setuptools based setup module.
+
 See:
 https://packaging.python.org/en/latest/distributing.html
 https://github.com/pypa/sampleproject
@@ -7,23 +8,30 @@ Pre-release steps
 -----------------
 
 1.  make sure all newly added data files are listed in `setup.py` in variable
-    `package_data`as well as in `MANIFEST.in` file
+    `package_data`, in `pyproject.toml` under `[tool.setuptools.package-data]`,
+    and in `MANIFEST.in`
 
-2.  make sure version information in following destinations is up to date:
+2.  make sure version information in following destinations is up-to-date:
 
-    - `version.py` in function `get_version()`
-    - `README.rst` in yellow version badge https://img.shields.io/badge/version-<VERSION>-yellow.svg
-    - in `src/elisa/__init__.py`, variable `__version__`
+    - `README.md` in yellow version badge https://img.shields.io/badge/version-<VERSION>-yellow.svg
+    - in `README.md`, installation text describing the current version
+    - in `src/elisa/__init__.py`, variable `__version__`; both `setup.py` and
+      `pyproject.toml` read this value dynamically
 
-3.  make sure that `CHANGELOG.rst` is up to date; content as well as release date and valid version
+3.  make sure that `CHANGELOG.md` is up-to-date; content as well as release date and valid version
 
 4.  make sure all newly added dependencies are listed in `requirements.txt` as well as in
-    `setup.py` in variable `install_requires`
+    `setup.py` in variable `install_requires` and `pyproject.toml` under
+    `[project].dependencies`. Keep `extras_require` synchronized with
+    `[project.optional-dependencies]` as well
 
 5.  make sure a latest docstsring documentation is generated and there is no error during Sphinx HTML build
-    (for more comprehensive information take a look into `docs/README.rst`)
+    (for more comprehensive information take a look into `docs/README.md`)
 
-6.  make sure setup.cfg contains all supported Python versions
+6.  keep supported Python versions synchronized across `setup.cfg` wheel tags,
+    `setup.py` (`python_requires` and classifiers), `pyproject.toml`
+    (`requires-python` and classifiers), and the README Python badge. Keep
+    shared project metadata in `setup.py` and `pyproject.toml` synchronized
 
 7.  commit changes
 
@@ -58,71 +66,104 @@ Pre-release steps
     >> twine upload dist/* -r pypi
 """
 
+from __future__ import annotations
+
 # Always prefer setuptools over distutils
-from setuptools import setup, find_packages
-# To use a consistent encoding
-from codecs import open
-from os import path
-from version import get_version
+# Use pathlib for path operations and Path.open for file IO
+from pathlib import Path
+
+from setuptools import find_packages, setup
+
+here = Path(__file__).parent
 
 
-here = path.dirname(__file__)
+def read_version() -> str:
+    """Read project version from `src/elisa/__init__.py`.
+
+    This helper returns the value of the ``__version__`` string defined in
+    the package's ``__init__.py``.  It uses :class:`pathlib.Path` for safe
+    cross-platform path handling and :meth:`Path.open` for file access.
+
+    :return: Version string, e.g. ``"0.1.0"``.
+    :rtype: str
+    :raises RuntimeError: When the ``__version__`` variable cannot be found.
+    """
+    version_file = here / "src" / "elisa" / "__init__.py"
+    with version_file.open(encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("__version__"):
+                delim = '"' if '"' in line else "'"
+                return line.split(delim)[1]
+    msg = "Unable to find __version__ string."
+    raise RuntimeError(msg)
+
 
 # Get the long description from the README file
-with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
-    long_description = "For more information visit https://github.com/mikecokina/elisa/blob/master/README.rst"
+
+long_description = (
+    "ELISA is a scientific software package for modeling eclipsing binary star systems. "
+    "It provides tools for computing light curves, radial velocity curves, and related "
+    "observables based on physically consistent stellar and orbital models. "
+    "The library is designed with numerical accuracy and extensibility in mind, "
+    "making it suitable for research, experimentation, and advanced analysis in "
+    "stellar astrophysics.\n\n"
+    "ELISA supports configurable system geometries, surface discretization, "
+    "radiative modeling, and observational simulation pipelines. "
+    "It enables detailed investigation of photometric and spectroscopic behavior "
+    "of interacting and detached binary systems.\n\n"
+    "The project is built on top of NumPy and SciPy and follows a modular architecture "
+    "that allows users to extend physical models, observational methods, and numerical "
+    "strategies. It is intended for developers and researchers working in computational "
+    "astronomy and binary star modeling."
+)
 
 setup(
-    name='elisa',
-    src_root='src',
-    version=get_version(),
+    name="elisa",
+    version=read_version(),
 
-    description='Eclipsing Binary Modeling Software',
+    python_requires=">=3.11",
+
+    description="Eclipsing Binary Modeling Software",
     long_description=long_description,
 
     # The project's main homepage.
-    url='https://github.com/mikecokina/elisa',
+    url="https://github.com/mikecokina/elisa",
 
     # Author details
-    author='Michal Cokina, Miroslav Fedurco',
-    author_email='mikecokina@gmail.com, mirofedurco@gmail.com',
+    author="Michal Cokina, Miroslav Fedurco",
+    author_email="mikecokina@gmail.com, mirofedurco@gmail.com",
 
-    # Choose your license
-    license='GPLv2',
+    # SPDX license expression and the bundled license text.
+    license="GPL-3.0-only",
+    license_files=["LICENCE"],
 
     classifiers=[
         # How mature is this project? Common values are
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
-        'Development Status :: 4 - Beta',
+        "Development Status :: 4 - Beta",
 
         # Indicate who your project is intended for
-        'Intended Audience :: Developers',
-        'Topic :: Scientific/Engineering :: Astronomy',
-
-        # Pick your license as you wish (should match "license" above)
-        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
+        "Intended Audience :: Developers",
+        "Topic :: Scientific/Engineering :: Astronomy",
 
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.
         # 'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9',
-        'Programming Language :: Python :: 3.10',
-        'Programming Language :: Python :: 3.11',
-        'Programming Language :: Python :: 3.12',
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
     ],
 
     # What does your project relate to?
-    keywords='eclipsing binaries astronomy analysis analytics physic',
+    keywords="eclipsing binaries astronomy analysis analytics physic",
 
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
     # packages=find_packages(where='src', exclude=["single_system"]),
-    packages=find_packages(where='src'),
+    packages=find_packages(where="src"),
 
     # Alternatively, if you want to distribute just a my_module.py, uncomment
     # this:
@@ -132,23 +173,25 @@ setup(
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
+
     install_requires=[
-        'astropy>=4.0.1,<=5.3.4',
-        'corner>=2.2.1',
-        'emcee>=3.0.1,<=3.1.6',
-        'jsonschema>=3.2.0',
-        'matplotlib>=3.3.2,<=3.7.5',
-        'numpy>=1.16.2,<=1.26.4',
-        'packaging<=24.2',
-        'pandas>=0.24.0,<=1.5.3',
-        'python-dateutil>=2.6.1,<=2.8.1',
-        'scipy>=1.0.0,<=1.11.4',
-        'tqdm>=4.43.0',
-        'parameterized>=0.7.4',
-        'numba>=0.51.2',
-        'requests>=2.26.0',
-        'setuptools<=75.8.0',
-        'wheel<=0.45.1',
+        # Python 3.11+ dependency floors
+        'astropy>=7.2.0',
+        'numpy>=2.4.2',
+        'pandas>=3.0.1',
+        'scipy>=1.17.1',
+
+        # Common deps
+        "corner>=2.2.3",
+        "emcee>=3.1.6",
+        "jsonschema>=4.26.0",
+        "matplotlib>=3.10.8",
+        "packaging>=26.0",
+        "python-dateutil>=2.9.0.post0",
+        "tqdm>=4.67.3",
+        "parameterized>=0.9.0",
+        "numba>=0.64.0",
+        "requests>=2.32.5",
     ],
 
     # List additional groups of dependencies here (e.g. development
@@ -156,27 +199,45 @@ setup(
     # for example:
     # $ pip install -e .[dev,test]
     extras_require={
-        'dev': [],
-        'test': ['coverage', 'parameterized>=0.7.4', 'pytest>=3.2.3,<=8.3.4'],
+        "dev": [
+            "setuptools>=82.0.0",
+            "wheel>=0.46.3",
+            "build",
+            "twine",
+            "ruff",
+        ],
+        "test": [
+            "playwright>=1.56",
+            "coverage",
+            "pytest>=9.0.2",
+            "parameterized>=0.9.0",
+        ],
+        "ui": [
+            "gradio~=6.10.0",
+            # UI runtime dependencies used by the Gradio desktop app
+            # pandas and matplotlib are already listed in install_requires
+            'pandas>=3.0.1',
+            "matplotlib>=3.10.8",
+            "pillow>=9.0.0",
+        ],
     },
 
     # If there are data files included in your packages that need to be
     # installed, specify them here.  If using Python 2.6 or less, then these
     # have to be included in MANIFEST.in as well.
     package_data={
-        'elisa': [
-            'passband/*',
-            'conf/*',
-            'conf/logging_schemas/*',
-            'schema_registry/*',
-            'schema_registry/schema_files/*',
-            'data/**',
+        "elisa": [
+            "passband/**",
+            "conf/**",
+            "schema_registry/**",
+            "data/**",
+            "ui/assets/**",
         ],
     },
 
     # Although 'package_data' is the preferred approach, in some case you may
-    # need to place data files outside of your packages. See:
-    # http://docs.python.org/3.4/distutils/setupscript.html#installing-additional-files # noqa
+    # need to place data files outside your packages. See:
+    # http://docs.python.org/3.4/distutils/setupscript.html#installing-additional-files
     # In this case, 'data_file' will be installed into '<sys.prefix>/my_data'
     data_files=[],
 
@@ -184,7 +245,7 @@ setup(
     # "scripts" keyword. Entry points provide cross-platform support and allow
     # pip to create the appropriate form of executable for the target platform.
     entry_points={
-        'console_scripts': [
+        "console_scripts": [
         ],
     },
 )

@@ -1,0 +1,151 @@
+from __future__ import annotations
+
+# The tests package selects Astropy constants before test-module imports.
+from pathlib import Path
+from typing import ClassVar
+
+import pytest
+
+from elisa import umpy as up
+from elisa.base.container import StarContainer, StarPropertiesContainer, SystemPropertiesContainer
+from elisa.binary_system.container import OrbitalPositionContainer
+from elisa.binary_system.system import BinarySystem
+from elisa.const import Position
+from elisa.single_system.container import SinglePositionContainer
+from tests import set_astropy_units
+from tests import utils as testutils
+from tests.utils import ElisaTestCase
+
+set_astropy_units()
+
+
+class StarContainerSerDeTestCase(ElisaTestCase):
+    props: ClassVar[list[str]] = [
+        "mass",
+        "t_eff",
+        "synchronicity",
+        "albedo",
+        "discretization_factor",
+        "polar_radius",
+        "equatorial_radius",
+        "gravity_darkening",
+        "surface_potential",
+        "pulsations",
+        "metallicity",
+        "polar_log_g",
+        "critical_surface_potential",
+        "side_radius",
+    ]
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS["detached"])
+        self.s.primary.discretization_factor = up.radians(10)
+        self.s.secondary.discretization_factor = up.radians(10)
+
+    def test_to_properties_container(self) -> None:
+        props_container = self.s.primary.to_properties_container()
+        assert isinstance(props_container, StarPropertiesContainer)
+        has_attr = [hasattr(props_container, atr) for atr in self.props]
+        assert all(has_attr)
+
+    def test_from_properties_container(self) -> None:
+        star = StarContainer.from_properties_container(self.s.primary.to_properties_container())
+        assert isinstance(star, StarContainer)
+        has_attr = [hasattr(star, atr) for atr in self.props]
+        assert all(has_attr)
+
+
+class OrbitalPositionContainerSerDeTestCase(ElisaTestCase):
+    props: ClassVar[list[str]] = ["semi_major_axis", "morphology", "mass_ratio", *list(BinarySystem.ALL_KWARGS)]
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS["detached-physical"])
+        self.s.primary.discretization_factor = up.radians(10)
+        self.s.secondary.discretization_factor = up.radians(10)
+
+    def test_to_properties_container(self) -> None:
+        props_container = self.s.to_properties_container()
+        assert isinstance(props_container, SystemPropertiesContainer)
+
+        has_attr = [hasattr(props_container, atr) for atr in self.props]
+        assert all(has_attr)
+
+    def test_from_binary_system(self) -> None:
+        system = OrbitalPositionContainer.from_binary_system(self.s, Position(0, 1.0, 0.0, 0.0, 0.0))
+        assert isinstance(system, OrbitalPositionContainer)
+        assert isinstance(system.primary, StarContainer)
+        assert isinstance(system.secondary, StarContainer)
+
+        has_attr = [hasattr(system, atr) for atr in self.props]
+        assert all(has_attr)
+
+
+class IndempotenceTestCase(ElisaTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.s = testutils.prepare_binary_system(
+            testutils.BINARY_SYSTEM_PARAMS["detached-physical"],
+            testutils.SPOTS_META["primary"],
+        )
+        self.s.primary.discretization_factor = up.radians(10)
+        self.single = testutils.prepare_single_system(
+            testutils.SINGLE_SYSTEM_PARAMS["spherical"],
+            testutils.SPOTS_META["primary"],
+        )
+        self.base_path = str(Path(__file__).resolve().parent)
+
+    @pytest.mark.requires_ld
+    def test_star_container_is_indempotent(self) -> None:
+        system = OrbitalPositionContainer.from_binary_system(self.s, Position(0, 1.0, 0.0, 0.0, 0.0))
+        system.build(components_distance=1.0)
+        star = system.primary
+
+        flatt_1 = star.flat_it()
+        flatt_2 = star.flat_it()
+        assert len(flatt_1.points) == len(flatt_2.points)
+
+    @pytest.mark.requires_ld
+    def test_orbital_position_container_is_indempotent(self) -> None:
+
+        system = OrbitalPositionContainer.from_binary_system(self.s, Position(0, 1.0, 0.0, 0.0, 0.0))
+        system.build(components_distance=1.0)
+        flatt_1 = system.flat_it()
+        flatt_2 = system.flat_it()
+        assert len(flatt_1.primary.points) == len(flatt_2.primary.points)
+
+    def test_single_position_container_is_indempotent(self) -> None:
+        system = SinglePositionContainer.from_single_system(self.single, Position(0, None, 0.0, None, 0.0))
+        system.build()
+        flatt_1 = system.flat_it()
+        flatt_2 = system.flat_it()
+        assert len(flatt_1.star.points) == len(flatt_2.star.points)
+
+
+@pytest.mark.parametrize(
+    ("method", "spots", "pulsations"),
+    [
+        ("symmetry_points", {0: object()}, {}),
+        ("mirror_face_values", {0: object()}, {}),
+        ("mirror_face_values", {}, {0: object()}),
+        ("symmetry_faces", {0: object()}, {}),
+        ("symmetry_faces", {}, {0: object()}),
+    ],
+)
+def test_asymmetric_surface_rejects_symmetry_contract(
+    method: str,
+    spots: dict[int, object] | dict[object, object],
+    pulsations: dict[int, object] | dict[object, object],
+) -> None:
+    import numpy as np
+
+    from elisa.analytics.binary_fit.failure_policy import SYNTHESIS_FAILURES
+    from elisa.base.error import ElisaUnexpectedError
+
+    star = StarContainer()
+    star.spots, star.pulsations = spots, pulsations
+    args = () if method == "symmetry_points" else (np.array([1.0]),)
+    with pytest.raises(ElisaUnexpectedError) as caught:
+        getattr(star, method)(*args)
+    assert not isinstance(caught.value, SYNTHESIS_FAILURES)

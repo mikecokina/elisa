@@ -1,185 +1,187 @@
+"""Utilities for pulsation mode calculations and transformations."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
-from .. import const, utils
-from .. base.types import INT
+
+from elisa import const, utils
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+    from elisa.base.container import StarContainer
+    from elisa.pulse.mode import PulsationMode
+    from elisa.types import Float
 
 
-def phase_correction(phase, synchronicity):
+def phase_correction(phase: Float, synchronicity: Float) -> Float:
+    """Calculate phase correction for mode axis drift.
+
+    :param phase: Rotation phase of the star.
+    :type phase: float
+    :param synchronicity: Synchronicity parameter for the mode.
+    :type synchronicity: float
+    :returns: Phase correction value in radians.
+    :rtype: float
     """
-    Calculate phase correction for mode axis drift.
+    if not np.isnan(synchronicity):
+        return (synchronicity - 1) * phase * const.FULL_ARC
+    return phase * const.FULL_ARC
 
-    :param synchronicity:
-    :param phase: float; rotation phase of the star
-    :return: float;
+
+def generate_tilt_coordinates(
+    star_container: StarContainer,
+    phase: Float,
+) -> tuple[Float, Float]:
+    """Generate tilt coordinates of pulsation modes.
+
+    Returns the azimuth and polar angle describing the orientation
+    of the pulsation mode axis in the stellar component frame. Theta is the
+    polar angle from +z, not geographic latitude. Mode 0 supplies the shared
+    axis and locking convention for every mode. Locking suppresses the axis
+    drift correction; it does not lock the harmonic's temporal phase.
+
+    :param star_container: Container object representing the star.
+    :type star_container: StarContainer
+    :param phase: Rotational/orbital phase supplied by the system wrapper.
+    :type phase: float
+    :returns: Tuple of (azimuthal_angle, polar_angle) in radians.
+    :rtype: tuple[float, float]
     """
-    return (synchronicity - 1) * phase * const.FULL_ARC if synchronicity is not np.nan else phase * const.FULL_ARC
+    # Shared mode-0 orientation is an existing convention, independent of each
+    # mode's own frequency and start phase.
+    if star_container.pulsations[0].tidally_locked:
+        phi_corr = 0.0
+    else:
+        phi_corr = phase_correction(phase, star_container.synchronicity)
 
-
-def generate_tilt_coordinates(star_container, phase):
-    """
-    Returns tilt coordinates of pulsation modes.
-
-    :param star_container: StarContainer;
-    :param phase: float; rotational orbital phase of the star
-    :return: Tuple[float, float];
-    """
-    phi_corr = phase_correction(phase, star_container.synchronicity) \
-        if not star_container.pulsations[0].tidally_locked else 0.0    # we presume that all modes have the same tilt
     phi = star_container.pulsations[0].mode_axis_phi + phi_corr
     theta = star_container.pulsations[0].mode_axis_theta
     return phi, theta
 
 
-def generate_time_exponential(mode, time):
-    """
-    Returns time dependent exponential used in `generate_spherical_harmonics`.
+def generate_time_exponential(mode: PulsationMode, time: Float) -> complex:
+    """Generate exp(-i*(omega*time+start_phase)) for the intrinsic oscillation.
 
-    :param mode: PulsationMode; PulsationMode; mode used to generate sph. harmonics
-    :param time: float; time at which evaluate spherical harmonics
-    :return: float; complex time dependent exponential
+    This factor is independent of axis-drift phase. Time is in seconds and the
+    angular frequency in radians per second; frame rotations are applied later.
+
+    :param mode: Pulsation mode object containing frequency and phase information.
+    :type mode: PulsationMode
+    :param time: Time at which to evaluate the exponential.
+    :type time: float
+    :returns: Complex time-dependent exponential factor.
+    :rtype: complex
     """
     exponent = mode.angular_frequency * time + mode.start_phase
     return np.exp(complex(0, -exponent))
 
 
-def generate_phase_shift(shift):
-    """
-    Returns factor that can shift complex displacement by an arbitrary angular phase `shift`.
+def generate_phase_shift(shift: Float) -> complex:
+    """Generate a phase shift factor for complex displacement transformation.
 
-    :param shift: float; rad
-    :return: numpy.complex;
+    :param shift: Angular phase shift in radians.
+    :type shift: float
+    :returns: Complex phase shift factor that can be applied to displacements.
+    :rtype: complex
     """
     return np.exp(complex(0, -shift))
 
 
-def tilt_mode_coordinates(points, phi, theta):
-    """
-    Function tilts spherical coordinates to desired position described by `phi`, `theta`.
+def tilt_mode_coordinates(
+    points: NDArray,
+    phi: Float,
+    theta: Float,
+) -> NDArray:
+    """Tilt spherical coordinates to desired position described by phi and theta.
 
-    :param points: numpy.array;
-    :param phi: float; azimuthal coordinate of the new polar axis
-    :param theta: float; latitude of the new polar axis
-    :return: numpy.array;
-    """
-    if theta != 0 or phi != 0:
-        tilted_phi, tilted_theta = utils.rotation_in_spherical(points[:, 1], points[:, 2], phi, theta)
-        ret_points = np.column_stack((points[:, 0], tilted_phi, tilted_theta))
+    This general point-coordinate utility expresses points in the tilted frame.
+    It is not the transformation of a displacement vector or an angular rate;
+    Cartesian pulsation vectors use mode_rotation instead.
 
-        return ret_points
-    else:
-        return points
-
-
-def derotate_surface_points(points_to_derotate, phi, theta):
-    """
-    Derotating surface points  into the base coordinate system after surface displacement for misalligned mode is
-    calculated.
-
-    :param points_to_derotate: numpy.array; surface points in tilted spherical coordinates
-    :param phi: float; azimuthal tilt of the input coordinate system
-    :param theta: float; latitudinal tilt of the input coordinate system
-    :return: numpy.array; derotated points in spherical coordinates
+    :param points: Array of spherical coordinates with shape (n_points, 3)
+                   where columns are [r, azimuth, polar angle from +z].
+    :type points: NDArray
+    :param phi: Azimuthal coordinate of the new polar axis in radians.
+    :type phi: float
+    :param theta: Polar angle of the new axis from stellar +z, in radians.
+    :type theta: float
+    :returns: Tilted spherical coordinates with same shape as input.
+    :rtype: NDArray
     """
     if theta != 0 or phi != 0:
-        derot_phi, derot_theta = \
-            utils.derotation_in_spherical(points_to_derotate[:, 1],
-                                          points_to_derotate[:, 2],
-                                          phi, theta)
-        return np.column_stack((points_to_derotate[:, 0], derot_phi, derot_theta))
-    else:
-        return points_to_derotate
-
-
-def derotate_surface_displacements(velocity, tilted_points, points, axis_phi, axis_theta):
-    """
-    Transform spherical perturbations from tilted coordinates to system alligned with rotation axis.
-
-    :param velocity: numpy.array; velocity in tilted spherical coordinates
-    :param tilted_points: numpy.array; spherical coordinates of surface points (unperturbed) in tilted coordinates
-    :param points: numpy.array; unperturbed surface points in spherical coordinates
-    :param axis_theta: float;
-    :param axis_phi: float;
-    :return: numpy.array; perturbations in spherical coordinates aligned with rotation axis
-    """
-    if axis_theta != 0 or axis_phi != 0:
-        pert_phis, pert_thetas = utils.derotation_in_spherical(
-            phi=tilted_points[:, 1] + velocity[:, 1],
-            theta=tilted_points[:, 2] + velocity[:, 2],
-            phi_rotation=axis_phi,
-            theta_rotation=axis_theta
+        tilted_phi, tilted_theta = utils.rotation_in_spherical(
+            points[:, 1],
+            points[:, 2],
+            phi,
+            theta,
         )
-
-        crit_amplitude = const.PI
-        d_phi = pert_phis - points[:, 1]
-        d_phi[d_phi > crit_amplitude] -= const.FULL_ARC
-
-        d_theta = (pert_thetas - points[:, 2])
-
-        return np.column_stack((velocity[:, 0], d_phi, d_theta))
-    else:
-        return velocity
+        return np.column_stack((points[:, 0], tilted_phi, tilted_theta))
+    return points
 
 
-def transform_spherical_displacement_to_cartesian(sph_displacement, surf_points, com_x):
+def derotate_surface_points(
+    points_to_derotate: NDArray,
+    phi: Float,
+    theta: Float,
+) -> NDArray:
+    """Transform surface points from tilted to base coordinate system.
+
+    This is the inverse point-coordinate operation of tilt_mode_coordinates.
+    It is available for coordinate diagnostics; physical pulsation vectors are
+    transformed directly by the Cartesian mode rotation.
+
+    :param points_to_derotate: Surface points in tilted spherical coordinates,
+                               shape (n_points, 3) with columns [r, azimuth, polar angle].
+    :type points_to_derotate: NDArray
+    :param phi: Azimuthal tilt of the input coordinate system in radians.
+    :type phi: float
+    :param theta: Polar tilt of the input coordinate system from stellar +z, in radians.
+    :type theta: float
+    :returns: Derotated points in spherical coordinates aligned with rotation axis.
+    :rtype: NDArray
     """
-    Transforms displacement d_r, d_phi, d_theta into spherical cartesian displacement d_x, d_y, d_z
+    if theta != 0 or phi != 0:
+        derot_phi, derot_theta = utils.derotation_in_spherical(
+            points_to_derotate[:, 1],
+            points_to_derotate[:, 2],
+            phi,
+            theta,
+        )
+        return np.column_stack((points_to_derotate[:, 0], derot_phi, derot_theta))
+    return points_to_derotate
 
-    :param sph_displacement: numpy.array; [[d_r1, d_phi1, d_theta1], ...]
-    :param surf_points: numpy.array; surface points in equilibrium in cartesian coordinates (from container)
-    :param com_x: numpy.float; x coordinate of centre of mass, assuming com = [com_x, 0, 0]
-    :return: numpy.array; [[d_x1, d_y1, d_z1], ...]
+
+def mode_rotation(phi: float, theta: float) -> NDArray:
+    """Return Q=R_z(phi)*R_y(theta), from mode axes to component Cartesian axes.
+
+    Angles are in radians; theta is the axis polar angle measured from stellar
+    +z. Q's third column is the pulsation-axis direction in component axes.
+    Arrays hold row vectors: use v_mode @ Q.T to return to component axes,
+    and n_component @ Q to express equilibrium directions in mode axes.
+    Rotating vectors preserves their physical units and avoids treating finite
+    angular coordinate differences as linear vector components.
     """
-    points = surf_points - np.array([com_x, 0, 0])[None, :]
-    r_xy2 = np.sum(np.power(points[:, :-1], 2), axis=1)
-    r_xy = np.sqrt(r_xy2)
-    r = np.sqrt(r_xy2 + np.power(points[:, 2], 2))
-    # z/(x^2+y^2)^0.5
-    z_rxy = np.zeros(r_xy.shape)
-    non_zero = r_xy != 0
-    z_rxy[non_zero] = points[non_zero, 2] / r_xy[non_zero]
-
-    matrix = np.empty((r.shape[0], 3, 3))
-    matrix[:, 0, 0], matrix[:, 1, 0], matrix[:, 2, 0] = points[:, 0] / r, -points[:, 1], points[:, 0] * z_rxy
-    matrix[:, 0, 1], matrix[:, 1, 1], matrix[:, 2, 1] = points[:, 1] / r,  points[:, 0], points[:, 1] * z_rxy
-    matrix[:, 0, 2], matrix[:, 1, 2], matrix[:, 2, 2] = points[:, 2] / r, 0.0, -r_xy
-
-    return np.sum(matrix * sph_displacement[:, :, None], axis=1)
+    cp, sp, ct, st = np.cos(phi), np.sin(phi), np.cos(theta), np.sin(theta)
+    return np.array([[cp*ct, -sp, cp*st], [sp*ct, cp, sp*st], [-st, 0., ct]])
 
 
-def horizontal_component(displacement, points, treat_poles=False):
+def spherical_vector_components(vectors: NDArray, points: NDArray) -> NDArray:
+    """Project Cartesian vectors onto orthonormal (r, phi, theta) directions.
+
+    All components retain the vector's physical units. Tangent components at a
+    pole depend on the chart meridian, while the vector and tangent norm do not.
+    These are not spherical coordinate increments or angular rates. In the
+    returned (r, phi, theta) order, theta points toward increasing polar angle
+    (away from +z), and phi toward increasing azimuth. Both inputs have shape
+    (n_points, 3); points contains (radius, azimuth, polar angle) in the same
+    component frame, with angles in radians. Radius does not scale a projection.
     """
-    Returns abs value of the horizontal displacement.
-
-    :param displacement: numpy.array; dr, dphi, dtheta
-    :param points: numpy.array; r, phi, theta
-    :param treat_poles: bool; remove invalid values for faces in contact with pole
-    :return:
-    """
-    # lambda - distance in theta
-    # TODO: avoid using sine
-    d_lambda = points[:, 0] * np.sin(points[:, 2]) * displacement[:, 1]
-    # nu - distance along theta
-    d_nu = points[:, 0] * displacement[:, 2]
-
-    distance = np.sqrt(np.power(d_lambda, 2) + np.power(d_nu, 2))
-    if treat_poles:
-        distance[distance >= 10*distance.mean()] = distance.mean()
-
-    return distance
-
-
-def pole_neighbours(star):
-    """
-    Finds indices of both poles and their neighbours.
-
-    :param star: StarContainer
-    :return:
-    """
-    poles = np.array([star.points_spherical[:, 2].argmax(), star.points_spherical[:, 2].argmin()], dtype=INT)
-    neighbour_idx = np.empty(2, dtype=INT)
-    for ii, pole in enumerate(poles):
-        in_face = (pole == star.faces).any(axis=1)
-        polar_face = (star.faces[in_face])[0]
-        neighbour_idx[ii] = (polar_face[pole != polar_face])[0]
-
-    star.pole_idx = poles
-    star.pole_idx_neighbour = neighbour_idx
+    phi, theta = points[:, 1], points[:, 2]
+    cp, sp, ct, st = np.cos(phi), np.sin(phi), np.cos(theta), np.sin(theta)
+    radial = np.column_stack((st*cp, st*sp, ct))
+    azimuth = np.column_stack((-sp, cp, np.zeros_like(phi)))
+    polar = np.column_stack((ct*cp, ct*sp, -st))
+    return np.column_stack([np.sum(vectors*basis, axis=1) for basis in (radial, azimuth, polar)])

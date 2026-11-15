@@ -6,7 +6,6 @@
             "format": "%(asctime)s - %(process)d - %(name)s - %(levelname)s: %(message)s"
         }
     },
-
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
@@ -15,52 +14,37 @@
             "stream": "ext://sys.stdout"
         }
     },
-
     "loggers": {
-        "main": {
-            "level": "INFO",
-            "handlers": ["console"],
-            "propagate": 0
-        },
-        "BinarySystem": {
+        "elisa.observer": {
             "level": "WARNING",
-            "handlers": ["console"],
-            "propagate": 0
+            "handlers": [],
+            "propagate": true
         },
-        "observer.observer": {
+        "elisa.binary_system": {
             "level": "WARNING",
-            "handlers": ["console"],
-            "propagate": 0
+            "handlers": [],
+            "propagate": true
         },
-        "binary_system.system": {
+        "elisa.atm": {
             "level": "WARNING",
-            "handlers": ["console"],
-            "propagate": 0
+            "handlers": [],
+            "propagate": true
         },
-        "observer.mp": {
+        "elisa.ld": {
             "level": "WARNING",
-            "handlers": ["console"],
-            "propagate": 0
+            "handlers": [],
+            "propagate": true
         },
-        "binary_system.curves.lc": {
+        "scipy": {
             "level": "WARNING",
-            "handlers": ["console"],
-            "propagate": 0
-        },
-        "analytics.binary_fit.plot": {
-            "level": "DEBUG",
-            "handlers": ["console"],
-            "propagate": 0
-        },
-        "binary_system.curves.curves": {
-            "level": "WARNING",
-            "handlers": ["console"],
-            "propagate": 0
+            "handlers": [],
+            "propagate": true
         }
     },
-
     "root": {
         "level": "DEBUG",
-        "handlers": ["console"]
+        "handlers": [
+            "console"
+        ]
     }
 }

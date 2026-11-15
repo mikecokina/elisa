@@ -1,24 +1,35 @@
-astropy>=4.0.1,<=5.3.4
-corner>=2.2.1
-emcee>=3.0.1,<=3.1.6
-jsonschema>=3.2.0
-matplotlib>=3.3.2,<=3.7.5
-numpy>=1.16.2,<=1.26.4
-pandas>=0.24.0,<=1.5.3
-packaging<=24.2
-pytest>=3.2.3,<=8.3.4
-python-dateutil>=2.6.1,<=2.8.1
-pytz>=2020.1
-six>=1.5
-scipy>=1.0.0,<=1.11.4
-tqdm>=4.43.0
-parameterized>=0.7.4
-numba>=0.51.2
-requests>=2.26.0
+# Documentation builds require Python >=3.12 (Sphinx 9.1).
+# Core deps (Python 3.11+)
+astropy>=7.2.0
+
+corner>=2.2.3
+emcee>=3.1.6
+jsonschema>=4.26.0
+
+matplotlib>=3.10.8
+
+numpy>=2.4.2
+
+pandas>=3.0.1
+
+packaging>=26.0
+pytest>=9.0.2
+python-dateutil>=2.9.0.post0
+pytz>=2025.2
+six>=1.17.0
+
+scipy>=1.17.1
+
+tqdm>=4.67.3
+parameterized>=0.9.0
+numba>=0.64.0
+requests>=2.32.5
 
 # dist build utils
-setuptools<=75.8.0
-wheel<=0.45.1
+setuptools>=82.0.0
+wheel>=0.46.3
 
-Sphinx<=8.1.3
-sphinx-rtd-theme<=3.0.2
+# UI modules are included by sphinx-apidoc; keep in sync with the ui extra.
+gradio~=6.10.0
+
+Sphinx==9.1.0

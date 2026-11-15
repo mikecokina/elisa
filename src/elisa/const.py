@@ -1,6 +1,11 @@
-import numpy as np
-from collections import namedtuple
+from __future__ import annotations
 
+from typing import TYPE_CHECKING, NamedTuple
+
+import numpy as np
+
+if TYPE_CHECKING:
+    from elisa.types import Float
 
 # DO NOT CHANGE ANYTHING
 
@@ -13,7 +18,7 @@ C = 299792458.0
 SPEED_OF_LIGHT = C
 PC = 3.08567758128e+16  # m
 
-BOLTZMAN_CONST = 1.380649e-23  # J⋅K−1
+BOLTZMAN_CONST = 1.380649e-23  # J⋅K−1  # noqa: RUF003
 STEFAN_BOLTZMAN_CONST = 5.670373e-8
 IDEAL_ADIABATIC_GRADIENT = 0.4
 
@@ -84,8 +89,24 @@ FALSE_FACE_PLACEHOLDER = np.array([-1, -1, -1])
 
 MAX_USABLE_FLOAT = np.finfo(float).max * np.finfo(float).eps
 
+
 # distance - distance between components (if applicable)
-Position = namedtuple('Position', ['idx', 'distance', 'azimuth', 'true_anomaly', 'phase'])
+class Position(NamedTuple):
+    """Orbital position parameters for a body.
+
+    :param idx: Index of the position sample.
+    :param distance: Radial distance from the barycenter.
+    :param azimuth: Azimuthal angle in the orbital plane.
+    :param true_anomaly: True anomaly angle.
+    :param phase: Orbital phase.
+    """
+
+    idx: int
+    distance: Float
+    azimuth: Float
+    true_anomaly: Float
+    phase: Float
+
 
 # constant for incrased spacing of points on the seams
 SEAM_CONST = 1.08

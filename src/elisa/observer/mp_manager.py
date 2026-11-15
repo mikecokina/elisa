@@ -1,35 +1,74 @@
-from multiprocessing.pool import Pool
+from __future__ import annotations
 
-from .. import utils
-from .. logger import getLogger
-from .. import settings
+import multiprocessing
+from typing import TYPE_CHECKING
 
-logger = getLogger('observer.mp')
+from elisa import settings
+from elisa.logger import getLogger
+from elisa.utils import renormalize_async_result, split_to_batches
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    # noinspection PyProtectedMember
+    from multiprocessing.context import BaseContext
+    from typing import Any
+
+    from numpy.typing import NDArray
+
+logger = getLogger(__name__)
 
 
-def manage_observations(fn, fn_args, position, **kwargs):
+def get_mp_context() -> BaseContext:
+    """Select a supported worker context without changing the application's default."""
+    method = "fork" if "fork" in multiprocessing.get_all_start_methods() else "spawn"
+    return multiprocessing.get_context(method)
+
+
+def initialize_worker(values: dict[str, Any]) -> None:
+    """Restore fresh-interpreter state without reopening logging resources."""
+    if multiprocessing.get_start_method() != "fork":
+        settings.restore_worker_settings(values)
+
+
+def manage_observations(
+        fn: Callable,
+        fn_args: tuple[Any, ...],
+        position: NDArray,
+        **kwargs: Any,
+) -> dict[str, Any]:
+    """Decide whether curve will be calculated using single or multi-process approach.
+
+    Manages calculation of curves using either a single process or a multi-process approach
+    depending on the number of positions and the configured number of processes. Batches
+    the positions and distributes them across workers if multiprocessing is used.
+
+    :param fn: Function used for curve integration.
+    :type fn: Callable
+    :param fn_args: Tuple of arguments for `fn` (excluding position and kwargs).
+    :type fn_args: tuple[Any, ...]
+    :param position: Array of positions (phases) to process.
+    :type position: NDArray
+    :param kwargs: Additional keyword arguments passed to `fn`.
+    :type kwargs: dict[str, Any]
+    :returns: Calculated curves (in each passband).
+    :rtype: dict[str, Any]
     """
-    Function decides whether curve will be calculated using single or multi-process approach.
-
-    :param fn: function used for curve integration
-    :param fn_args: Tuple; some of the argument in `fn`
-    :param position: List;
-    :param kwargs: Dict;
-    :return: Dict; calculated curves (in each passbands)
-    """
-    args = fn_args + (kwargs, )
+    args = (*fn_args, kwargs)
     if len(position) >= settings.NUMBER_OF_PROCESSES > 1:
         logger.info("starting multiprocessor workers")
-        phase_batches = utils.split_to_batches(array=position, n_proc=settings.NUMBER_OF_PROCESSES)
-        pool = Pool(processes=settings.NUMBER_OF_PROCESSES)
+        phase_batches = split_to_batches(array=position, n_proc=settings.NUMBER_OF_PROCESSES)
+        pool = get_mp_context().Pool(
+            processes=settings.NUMBER_OF_PROCESSES,
+            initializer=initialize_worker,
+            initargs=(settings.settings_serializer(),),
+        )
 
-        result = [pool.apply_async(fn, args[:2] + (batch, ) + args[2:]) for batch in phase_batches]
+        result = [pool.apply_async(fn, (*args[:2], batch, *args[2:])) for batch in phase_batches]
         pool.close()
         pool.join()
-        # this will return output in same order as was given on apply_async init
         result = [r.get() for r in result]
-        band_curves = utils.renormalize_async_result(result)
-        return band_curves
-    else:
-        args = args[:2] + (position, ) + args[2:]
-        return fn(*args)
+        return renormalize_async_result(result)
+    # argument has to follow singature e.g. produce_circ_sync_curves_mp(...) from c_managed.py
+    args = (*args[:2], position, *args[2:])
+    return fn(*args)

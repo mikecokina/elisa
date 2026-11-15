@@ -1,0 +1,359 @@
+"""Result and chain JSON regressions without optimization or sampling."""
+
+from __future__ import annotations
+
+import json
+from copy import deepcopy
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+import numpy as np
+import pytest
+from astropy.units import UnitBase
+
+from elisa.analytics.binary_fit.lc_fit import LCFitLeastSquares
+from elisa.analytics.binary_fit.mixins import MCMCMixin
+from elisa.analytics.binary_fit.rv_fit import RVFitLeastSquares
+from elisa.analytics.binary_fit.shared import AbstractFit
+from elisa.analytics.params import parameters
+from elisa.analytics.params.conf import DEFAULT_FLOAT_UNITS, JOINT_POSTERIOR_PERCENTILES_ESTIMATE
+from elisa.analytics.params.parameters import BinaryInitialParameters, InitialParameter
+from elisa.analytics.params.transform import BinaryInitialProperties
+from elisa.json_encoder import ElisaJSONEncoder
+
+if TYPE_CHECKING:
+    import elisa.analytics.binary_fit.lc_fit
+    import elisa.analytics.binary_fit.rv_fit
+
+
+@pytest.fixture(params=["lc", "rv"])
+def lsq_result(request: pytest.FixtureRequest) -> tuple[LCFitLeastSquares, str] | tuple[RVFitLeastSquares, str]:
+    if request.param == "lc":
+        fit = LCFitLeastSquares("detached", None, None)
+        free, constrained = "primary@t_eff", "secondary@t_eff"
+        free_meta = {"value": 6500.0, "fixed": False, "min": 5000.0, "max": 8000.0, "unit": "K"}
+        expression = "primary@t_eff * 0.8"
+    else:
+        fit = RVFitLeastSquares()
+        free, constrained = "system@asini", "system@mass_ratio"
+        free_meta = {"value": 10.0, "fixed": False, "min": 1.0, "max": 20.0, "unit": "solRad"}
+        expression = "system@asini * 0.07"
+    initial = BinaryInitialParameters(
+        **parameters.serialize_result(
+            {
+                free: free_meta,
+                constrained: {"constraint": expression},
+                "system@period": {"value": 2.0, "fixed": True, "unit": "d"},
+            },
+        ),
+    )
+    # Use the same result builder as LSQ completion, without running an optimizer.
+    flat = AbstractFit.eval_constrained_results(
+        {free: free_meta, "system@period": {"value": 2.0, "fixed": True, "unit": "d"}},
+        initial.get_constrained(),
+    )
+    fit.result = parameters.serialize_result(flat)
+    return fit, constrained
+
+
+def test_ordinary_result_serialization_is_unchanged(
+    tmp_path: Path,
+    lsq_result: tuple[elisa.analytics.binary_fit.lc_fit.LCFitLeastSquares | str, ...]
+    | tuple[elisa.analytics.binary_fit.rv_fit.RVFitLeastSquares | str, ...],
+) -> None:
+    fit, constrained = lsq_result
+    flat = parameters.deserialize_result(fit.result)
+    flat[constrained].pop("constraint")
+    flat[constrained]["fixed"] = True
+    fit.set_result(parameters.serialize_result(flat))
+    before = deepcopy(fit.result)
+    path = tmp_path / "ordinary.json"
+    fit.save_result(path)
+    assert path.read_text() == json.dumps(before, separators=(",", ": "), indent=4)
+    assert json.loads(path.read_text()) == before
+    assert fit.result == before
+
+
+def test_constrained_lsq_save_load_save(
+    tmp_path: Path,
+    lsq_result: tuple[elisa.analytics.binary_fit.lc_fit.LCFitLeastSquares | str, ...]
+    | tuple[elisa.analytics.binary_fit.rv_fit.RVFitLeastSquares | str, ...],
+) -> None:
+    fit, constrained = lsq_result
+    original = deepcopy(fit.result)
+    first, second = tmp_path / "first.json", tmp_path / "second.json"
+    fit.save_result(first)
+    assert json.loads(first.read_text()) == original
+    fit.load_result(first)
+    unit = fit.flat_result[constrained]["unit"]
+    assert isinstance(unit, UnitBase)  # Constraint reevaluation introduces this object.
+    fit.save_result(second)
+    assert json.loads(second.read_text()) == json.loads(first.read_text())
+    assert json.loads(second.read_text()) == original
+    assert fit.flat_result[constrained]["unit"] is unit
+
+
+def test_constrained_lsq_repeated_serialization(
+    tmp_path: Path,
+    lsq_result: tuple[elisa.analytics.binary_fit.lc_fit.LCFitLeastSquares | str, ...]
+    | tuple[elisa.analytics.binary_fit.rv_fit.RVFitLeastSquares | str, ...],
+) -> None:
+    fit, constrained = lsq_result
+    fit.set_result(fit.result)
+    unit = fit.flat_result[constrained]["unit"]
+    assert isinstance(unit, UnitBase)
+    expected = json.loads(json.dumps(fit.result, cls=ElisaJSONEncoder))
+    path = tmp_path / "repeated.json"
+    for _ in range(3):
+        fit.save_result(path)
+        assert json.loads(path.read_text()) == expected
+        assert fit.flat_result[constrained]["unit"] is unit
+        fit.load_result(path)
+        unit = fit.flat_result[constrained]["unit"]
+        assert isinstance(unit, UnitBase)
+
+
+@pytest.mark.parametrize("r_squared", [None, 0.9293699059562626, 0.0, -0.25])
+def test_result_loading_preserves_r_squared(
+    tmp_path: Path,
+    lsq_result: tuple[elisa.analytics.binary_fit.lc_fit.LCFitLeastSquares | str, ...]
+    | tuple[elisa.analytics.binary_fit.rv_fit.RVFitLeastSquares | str, ...],
+    r_squared: float | None,
+) -> None:
+    fit, constrained = lsq_result
+    if r_squared is not None:
+        fit.result["r_squared"] = {"value": r_squared, "unit": None}
+    expected = deepcopy(fit.result)
+    path = tmp_path / "r_squared.json"
+    for _ in range(2):
+        fit.save_result(path)
+        assert json.loads(path.read_text()) == expected
+        fit.load_result(path)
+        assert json.loads(json.dumps(fit.result, cls=ElisaJSONEncoder)) == expected
+        assert isinstance(fit.flat_result[constrained]["unit"], UnitBase)
+        assert ("r_squared" in fit.result) is (r_squared is not None)
+
+
+@pytest.mark.parametrize("name", DEFAULT_FLOAT_UNITS)
+def test_unit_objects_match_existing_parameter_metadata(name: str) -> None:
+    parameter = InitialParameter(BinaryInitialProperties, param=name, constraint="1")
+    encoded = json.dumps({"unit": DEFAULT_FLOAT_UNITS[name]}, cls=ElisaJSONEncoder)
+    assert json.loads(encoded) == {"unit": parameter.to_dict()["unit"]}
+
+
+def test_initial_parameter_json_representation_supports_numpy_scalars() -> None:
+    parameter = InitialParameter(BinaryInitialProperties, param="period", value=2.0, fixed=True, min=1.0, max=3.0)
+    parameter.value = np.float32(2.0)
+    parameter.fixed = np.bool_(True)
+    expected = {
+        "param": "period",
+        "value": 2.0,
+        "fixed": True,
+        "constraint": None,
+        "min": None,
+        "max": None,
+        "sigma": None,
+        "unit": "d",
+    }
+    assert json.loads(repr(parameter)) == expected
+    assert json.loads(str(parameter)) == expected
+
+
+@pytest.mark.parametrize("structured", [False, True])
+def test_chain_serialization_preserves_format_with_numpy_metadata(tmp_path: Path, structured: bool) -> None:
+    parameter = InitialParameter(
+        BinaryInitialProperties,
+        param="period",
+        value=2.0,
+        fixed=False,
+        min=1.0,
+        max=3.0,
+    )
+    parameter.fixed = np.bool_(False)
+    chain = np.array([[0.25], [0.75]])
+    norm = {"system@period": (np.int64(1), np.float32(3.0))}
+    kwargs = {"chain_shape": (1, 2, 1)} if structured else {}
+    path = MCMCMixin.save_flat_chain(
+        chain,
+        {"system@period": parameter},
+        norm,
+        str(tmp_path / "chain.json"),
+        **kwargs,
+    )
+    expected = {
+        "flat_chain": [[0.25], [0.75]],
+        "fitable_parameters": ["system@period"],
+        "normalization": {"system@period": [1, 3.0]},
+        "fitable": {"system@period": {**parameter.to_dict(), "fixed": False}},
+    }
+    if structured:
+        expected.update(chain_shape=[1, 2, 1], chain_order="step,walker,parameter")
+    assert json.loads(Path(path).read_text()) == expected
+
+
+@pytest.mark.parametrize("include_r_squared", [False, True])
+def test_mcmc_constrained_summary_survives_json_roundtrips(
+    tmp_path: Path,
+    mcmc_result: elisa.analytics.binary_fit.lc_fit.LCFitMCMC | elisa.analytics.binary_fit.rv_fit.RVFitMCMC,
+    include_r_squared: bool,
+) -> None:
+    initial = BinaryInitialParameters(
+        system={
+            "gamma": {"value": 0.0, "fixed": False, "min": -4.0, "max": 4.0},
+            "mass_ratio": {"constraint": "system@gamma**2"},
+        },
+    )
+    samples = np.array([-3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 3.5])
+    chain = ((samples + 4.0) / 8.0)[:, None]
+    normalization = {"system@gamma": (-4.0, 4.0)}
+    flat = MCMCMixin.resolve_mcmc_result(chain, initial.get_fitable(), normalization)
+    flat.update(
+        MCMCMixin.resolve_constrained_result(
+            chain,
+            initial.get_fitable(),
+            normalization,
+            initial.get_constrained(),
+            initial.get_fixed(),
+        ),
+    )
+    if include_r_squared:
+        flat["r_squared"] = {"value": 0.9876543210123456, "unit": None}
+    expected = deepcopy(flat["system@mass_ratio"])
+    assert expected["value"] == np.median(samples**2)
+    assert expected["value"] != np.median(samples) ** 2
+    assert expected["estimate"] == JOINT_POSTERIOR_PERCENTILES_ESTIMATE
+    mcmc_result.set_result(parameters.serialize_result(flat))
+    expected_result = parameters.serialize_result(flat)
+    path = tmp_path / "posterior.json"
+    for _ in range(3):
+        mcmc_result.save_result(path)
+        assert json.loads(path.read_text()) == expected_result
+        assert json.loads(path.read_text())["system"]["mass_ratio"] == expected
+        mcmc_result.load_result(path)
+        assert mcmc_result.flat_result["system@mass_ratio"] == expected
+        assert mcmc_result.result == expected_result
+
+
+def test_reload_preserves_metadata_without_exposing_it_to_initial_validation(
+    lsq_result: tuple[elisa.analytics.binary_fit.lc_fit.LCFitLeastSquares | str, ...]
+    | tuple[elisa.analytics.binary_fit.rv_fit.RVFitLeastSquares | str, ...],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from elisa.analytics.binary_fit import shared
+
+    fit, constrained = lsq_result
+    original = deepcopy(fit.result)
+    original["provenance"] = {"engine": "LSQ", "iterations": 12}
+    flat = parameters.deserialize_result(original)
+    flat[constrained]["confidence_interval"] = {"min": 0.1, "max": 0.9}
+    flat[constrained]["diagnostic"] = {"source": "saved fit"}
+    before = deepcopy(original)
+    validated = []
+
+    def validate_projection(**kwargs) -> BinaryInitialParameters:
+        validated.append(deepcopy(kwargs))
+        return BinaryInitialParameters(**kwargs)
+
+    monkeypatch.setattr(shared, "BinaryInitialParameters", validate_projection)
+    fit.set_result(original)
+    assert original == before
+    assert json.loads(json.dumps(fit.result, cls=ElisaJSONEncoder)) == before
+    assert "provenance" not in validated[0]
+    for metadata in parameters.deserialize_result(validated[0]).values():
+        assert set(metadata) <= InitialParameter.DEFAULT.keys()
+
+
+def test_reload_rejects_unknown_model_parameter_without_changing_previous_result(
+    lsq_result: tuple[elisa.analytics.binary_fit.lc_fit.LCFitLeastSquares | str, ...]
+    | tuple[elisa.analytics.binary_fit.rv_fit.RVFitLeastSquares | str, ...],
+) -> None:
+    from elisa.base.error import ElisaInvalidKwargsError
+
+    fit, _ = lsq_result
+    before = deepcopy(fit.result)
+    invalid = deepcopy(before)
+    invalid["system"]["peroid"] = {"value": 2.0, "fixed": True}
+    with pytest.raises(ElisaInvalidKwargsError, match="peroid"):
+        fit.set_result(invalid)
+    assert fit.result == before
+
+
+def test_reload_preserves_nested_spot_and_pulsation_metadata() -> None:
+    from elisa.analytics.binary_fit.shared import eval_constraint_in_dict
+
+    result = {
+        "system": {"period": {"value": 2.0, "fixed": False, "min": 1.0, "max": 3.0}},
+        "primary": {
+            "spots": [
+                {
+                    "label": "cool",
+                    "longitude": {"value": 30.0, "fixed": True, "confidence_interval": {"min": 29.0, "max": 31.0}},
+                },
+            ],
+            "pulsations": [{"label": "mode", "l": {"value": 1, "fixed": True, "diagnostic": "saved"}}],
+        },
+    }
+    before = deepcopy(result)
+    assert eval_constraint_in_dict(result) == before
+    assert result == before
+
+
+def test_reload_rejects_duplicate_phenomenon_paths(
+    lsq_result: tuple[elisa.analytics.binary_fit.lc_fit.LCFitLeastSquares | str, ...]
+    | tuple[elisa.analytics.binary_fit.rv_fit.RVFitLeastSquares | str, ...],
+) -> None:
+    from elisa.base.error import ElisaInitialParametersError
+
+    fit, _ = lsq_result
+    invalid = deepcopy(fit.result)
+    spot = {"label": "duplicate", "longitude": {"value": 30.0, "fixed": True}}
+    invalid.setdefault("primary", {})["spots"] = [spot, deepcopy(spot)]
+    with pytest.raises(ElisaInitialParametersError, match="multiple spots with same label"):
+        fit.set_result(invalid)
+
+
+def test_constraint_recalculation_updates_returned_result_but_preserves_posterior_summary() -> None:
+    from elisa.analytics.binary_fit.shared import eval_constraint_in_dict
+
+    original = {
+        "system": {
+            "gamma": {"value": 2.0, "fixed": False, "min": -4.0, "max": 4.0},
+            "mass_ratio": {"value": 999.0, "constraint": "system@gamma**2", "unit": None},
+            "asini": {
+                "value": 7.0,
+                "constraint": "system@gamma**2",
+                "unit": "solRad",
+                "confidence_interval": {"min": 3.0, "max": 11.0},
+                "estimate": JOINT_POSTERIOR_PERCENTILES_ESTIMATE,
+            },
+        },
+        "r_squared": {"value": 0.9, "unit": None},
+    }
+    before = deepcopy(original)
+
+    result = eval_constraint_in_dict(original)
+
+    assert result["system"]["mass_ratio"]["value"] == 4.0
+    assert result["system"]["mass_ratio"]["constraint"] == "system@gamma**2"
+    assert result["system"]["asini"] == before["system"]["asini"]
+    assert result["system"]["asini"]["value"] != 4.0
+    assert result["system"]["gamma"] == before["system"]["gamma"]
+    assert result["r_squared"] == before["r_squared"]
+    assert original == before
+
+
+@pytest.mark.parametrize(("section", "name"), [("primary", "tefff"), ("secondary", "tefff"), ("nuisance", "ln_ff")])
+def test_reload_rejects_invalid_names_in_other_model_sections(
+    lsq_result: tuple[elisa.analytics.binary_fit.lc_fit.LCFitLeastSquares | str, ...]
+    | tuple[elisa.analytics.binary_fit.rv_fit.RVFitLeastSquares | str, ...],
+    section: str,
+    name: str,
+) -> None:
+    from elisa.base.error import ElisaInvalidKwargsError
+
+    fit, _ = lsq_result
+    invalid = deepcopy(fit.result)
+    invalid.setdefault(section, {})[name] = {"value": 1.0, "fixed": True}
+
+    with pytest.raises(ElisaInvalidKwargsError, match=name):
+        fit.set_result(invalid)

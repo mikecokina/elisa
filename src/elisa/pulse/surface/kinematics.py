@@ -1,121 +1,159 @@
+"""Pulsation surface displacement, velocity, and acceleration calculations."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 
-from ... import settings
-from .. utils import generate_phase_shift
+from elisa import settings
+from elisa.base.error import raise_elisa_not_implemented_error, raise_elisa_pulsation_mode_error
+from elisa.pulse.utils import generate_phase_shift
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+    from elisa.pulse.mode import PulsationMode
 
 
-def calculate_horizontal_displacements(mode, thetas, harmonics_derivatives, radius, scale):
-    """
-    Calculate angular horizontal components of displacement.
+def calculate_radial_displacement(mode: PulsationMode, harmonics: NDArray) -> NDArray:
+    """Calculate radial displacement of surface points.
 
-    :param scale:
-    :param mode: PulsationMode;
-    :param thetas: numpy.array; 1D
-    :param harmonics_derivatives: numpy.array; column-wise - dY/dphi, dY/dtheta
-    :param radius:
-    :return:
-    """
-    if mode.l == 0:
-        return np.zeros(thetas.shape[0]), np.zeros(thetas.shape[0])
-    # TODO: remove this sin
-    sin_theta = np.sin(thetas)
-    theta_test = sin_theta != 0
+    Computes the radial component of pulsation-induced surface displacement
+    by multiplying the radial amplitude by the spherical harmonic values.
+    The result is a complex scalar length in metres, not a Cartesian x
+    component. Multiplying it by the equilibrium unit direction gives the
+    radial vector; container operations divide by the mesh-to-metre conversion
+    factor scale to store it in mesh-coordinate units.
 
-    # lambda - distance along phi
-    # nu - distance along theta coordinate
-    phi_displacement = np.zeros(thetas.shape, dtype=np.complex128)
-    phi_displacement[theta_test] = harmonics_derivatives[0, theta_test] / np.power(sin_theta[theta_test], 2)
-
-    d_lamda = radius * sin_theta * np.abs(phi_displacement)
-    theta_amp = np.abs(harmonics_derivatives[1])
-    d_nu = radius * theta_amp
-
-    dr = np.sqrt(np.mean(np.power(d_lamda, 2) + np.power(d_nu, 2)))
-    corr_factor = mode.horizontal_amplitude / (dr * scale)
-
-    phi_retval = np.zeros(thetas.shape, dtype=np.complex128)
-    phi_retval[theta_test] = corr_factor * phi_displacement[theta_test]
-    return phi_retval, corr_factor * harmonics_derivatives[1]
-
-
-# ________________________complex angular coordinates_______________________
-def calculate_displacement_coordinates(mode, points, harmonics, harmonics_derivatives, radius, scale=1.0):
-    """
-    Calculates surface displacement caused by given `mode`.
-
-    :param mode: elisa.pulse.mode.Mode;
-    :param points: numpy.array; in spherical coordinates
-    :param harmonics: numpy.array; Y_l^m
-    :param harmonics_derivatives: numpy.array; [dY/dphi, dY/dtheta]
-    :param radius: float; equivalent radius of the component
-    :param scale: numpy.float; scale of the perturbations
-    :return: numpy.array; complex
-    """
-    if settings.PULSATION_MODEL == 'uniform':
-        radial_displacement = calculate_radial_displacement(mode, harmonics) / scale
-        phi_displacement, theta_displacement = \
-            calculate_horizontal_displacements(mode, points[:, 2], harmonics_derivatives, radius, scale)
-
-        return np.column_stack((radial_displacement, phi_displacement, theta_displacement))
-    else:
-        raise NotImplementedError(f'Pulsation model: {settings.PULSATION_MODEL} is not implemented.')
-
-
-def calculate_mode_angular_displacement(displacement):
-    """
-    Calculates angular displacement from complex angular coordinates.
-
-    :param displacement: numpy.array; complex
-    :return: numpy.array;
-    """
-    return np.real(displacement)
-
-
-def calculate_radial_displacement(mode, harmonics):
-    """
-    Calculates radial displacement of surface points.
-
-    :param mode: PulsationMode;
-    :param harmonics: numpy.array; Y_l^m
-    :return: numpy.array; complex
+    :param mode: Pulsation mode object with radial amplitude.
+    :type mode: elisa.pulse.mode.PulsationMode
+    :param harmonics: Spherical harmonic values Y_l^m at surface points.
+    :type harmonics: NDArray
+    :returns: Complex radial displacement at each surface point.
+    :rtype: NDArray
     """
     return mode.radial_amplitude * harmonics
 
 
-# ________________________velocity coordinates_______________________
-def calculate_mode_derivatives(displacement, angular_frequency):
-    """
-    Calculates derivatives of angular displacement.
+def calculate_mode_derivatives(
+    displacement: NDArray,
+    angular_frequency: float,
+) -> NDArray:
+    """Calculate velocity from complex displacement.
 
-    :param displacement: numpy.array; complex
-    :param angular_frequency: np.float;
-    :return: numpy.array;
+    With D(t)=D_0*exp(-i*omega*t), d(Re(D))/dt=Re(-i*omega*D)
+    equals omega*Im(D). Equilibrium coordinates and the pulsation-axis
+    orientation are held fixed. The result retains the input length unit per
+    second; container operations multiply by the mesh-to-metre conversion factor
+    scale to obtain m/s from stored mesh-coordinate displacements.
+
+    This is an intrinsic harmonic derivative. Moving-frame transport and
+    material velocities of an evolving eccentric equilibrium surface are not
+    included.
+
+    :param displacement: Complex displacement vector.
+    :type displacement: NDArray
+    :param angular_frequency: Angular frequency of pulsation (omega = 2*pi*frequency).
+    :type angular_frequency: float
+    :returns: Velocity perturbation at each point.
+    :rtype: NDArray
     """
     return angular_frequency * np.imag(displacement)
 
 
-# _______________________acceleration coordinates_______________________
-def calculate_mode_second_derivatives(displacement, angular_frequency):
-    """
-    Calculates derivatives of angular displacement.
+def calculate_mode_second_derivatives(
+    displacement: NDArray,
+    angular_frequency: float,
+) -> NDArray:
+    """Calculate acceleration from complex displacement.
 
-    :param displacement: numpy.array; complex
-    :param angular_frequency: np.float;
-    :return: numpy.array;
+    Differentiating exp(-i*omega*t) twice gives -omega**2. Thus the second
+    derivative of Re(D) is -omega**2*Re(D), with the same frozen equilibrium
+    and orientation convention as calculate_mode_derivatives. Units are the
+    input length unit per second squared; container operations multiply by the
+    mesh-to-metre conversion factor scale to obtain m/s**2 from stored mesh
+    displacements. No frame-transport terms are added.
+
+    :param displacement: Complex displacement vector.
+    :type displacement: NDArray
+    :param angular_frequency: Angular frequency of pulsation (omega = 2*pi*frequency).
+    :type angular_frequency: float
+    :returns: Acceleration perturbation at each point.
+    :rtype: NDArray
     """
-    return - angular_frequency**2 * np.real(displacement)
+    return -(angular_frequency**2) * np.real(displacement)
 
 
-# _______________________temperature_perturbation_______________________
-def calculate_temperature_pert_factor(mode, scale):
-    """
-    Returns perturbation factor (delta T = T_factor * T) for surface temperature based on a treatment in Townsend 2003.
+def calculate_temperature_pert_factor(mode: PulsationMode) -> NDArray:
+    """Calculate the dimensionless temperature perturbation at mesh vertices.
 
-    :param mode: PulsationMode;
-    :param scale: float; system scale
-    :return: numpy.array;
+    The implementation evaluates f_T = beta * Re[exp(-i * delta) * Y], where
+    beta is the dimensionless temperature amplitude factor, delta is the
+    temperature phase shift, and Y includes the complex temporal phase.
+
+    For physical radial amplitude A_r in metres, the mesh-coordinate radial
+    displacement is D_r = (A_r / scale) * Y, where scale converts mesh lengths
+    to metres (1.0 for singles; semi-major axis in metres for binaries).
+    For nonzero A_r, (scale / A_r) * D_r = Y, so the displacement-based
+    expression beta * (scale / A_r) * Re[exp(-i * delta) * D_r] is equivalent.
+    The direct harmonic expression remains defined at A_r = 0: an explicitly
+    supplied nonzero beta still prescribes a temperature oscillation, whereas
+    the automatically derived beta vanishes with the velocity amplitude.
+
+    :param mode: Pulsation mode with evaluated complex harmonics.
+    :returns: Dimensionless temperature perturbation at mesh vertices.
+    :rtype: NDArray
     """
-    hrm_shift = np.real(
-        generate_phase_shift(mode.temperature_perturbation_phase_shift) * mode.complex_displacement[:, 0]
+    return mode.temperature_amplitude_factor * np.real(
+        generate_phase_shift(mode.temperature_perturbation_phase_shift) * mode.point_harmonics,
     )
-    return mode.temperature_amplitude_factor * hrm_shift * scale / mode.radial_amplitude
+
+
+def calculate_cartesian_displacement(
+        mode: PulsationMode,
+        directions: NDArray,
+        harmonics: NDArray,
+        gradient: NDArray,
+        radius: NDArray,
+        scale: float = 1.0,
+) -> NDArray:
+    """Construct a linear physical vector in the pulsation-axis frame.
+
+    For harmonic Y, radial unit direction n and dimensionless tangent gradient
+    g, construct ``D=A_r*Y*n + A_h*R*g/sqrt(mean(R**2*|g|**2))``, then divide
+    physical lengths by scale. The complex norm ``|g|**2`` sums the squared
+    magnitudes of all three Cartesian components, not just their real parts.
+    This discrete vertex RMS uses local equilibrium radii and no area weights.
+    In a distorted mesh it therefore differs from normalizing g alone.
+
+    Both input vectors are in pulsation axes, and g.n=0: horizontal means
+    tangent to the radial sphere, not to the distorted surface normal. A_r and
+    signed A_h are physical lengths in metres. Radii may be in metres or SMA
+    units because their common length scale cancels in the horizontal quotient.
+    The l=0 tangent contribution is absent, including when an explicit ratio
+    was supplied; amplitude assignment is not redefined here.
+
+    :param mode: Mode carrying physical radial and horizontal amplitude scales.
+    :param directions: Equilibrium unit directions, shape (n_points, 3).
+    :param harmonics: Complex normalized Y values, shape (n_points,).
+    :param gradient: Dimensionless complex tangent gradients, shape (n_points, 3).
+    :param radius: Local equilibrium radii, shape (n_points,).
+    :param scale: Mesh-to-metre length conversion factor: 1.0 for singles or the
+                  binary semi-major axis in metres. Both radial and horizontal
+                  physical displacement terms are divided by scale to return
+                  mesh-coordinate vectors; it does not rescale mode amplitudes.
+    :returns: Complex Cartesian vectors in the input frame, shape (n_points, 3),
+              in mesh length units (metres for singles, SMA units for binaries).
+    """
+    if settings.PULSATION_MODEL != "uniform":
+        return raise_elisa_not_implemented_error(
+            f"Surface displacement calculation is not implemented for pulsation model {settings.PULSATION_MODEL!r}.")
+    displacement = (calculate_radial_displacement(mode, harmonics)/scale)[:, None]*directions
+    if mode.l != 0 and mode.horizontal_amplitude != 0:
+        horizontal = radius[:, None]*gradient
+        rms = np.sqrt(np.mean(np.sum(np.abs(horizontal)**2, axis=1)))
+        if rms == 0:
+            raise_elisa_pulsation_mode_error("Horizontal displacement has zero discrete RMS.")
+        displacement += (mode.horizontal_amplitude/(scale*rms))*horizontal
+    return displacement

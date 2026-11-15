@@ -1,0 +1,142 @@
+[build-system]
+requires = ["setuptools>=82.0.0", "wheel>=0.46.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "elisa"
+dynamic = ["version"]
+description = "Eclipsing Binary Modeling Software"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.11"
+license = "GPL-3.0-only"
+license-files = ["LICENCE"]
+authors = [
+    { name = "Michal Cokina", email = "mikecokina@gmail.com" },
+    { name = "Miroslav Fedurco", email = "mirofedurco@gmail.com" },
+]
+keywords = ["eclipsing binaries", "astronomy", "analysis", "analytics", "physic"]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+
+dependencies = [
+    # Python 3.11+ floors
+    'astropy>=7.2.0',
+    'numpy>=2.4.2',
+    'pandas>=3.0.1',
+    'scipy>=1.17.1',
+    # Common deps
+    "corner>=2.2.3",
+    "emcee>=3.1.6",
+    "jsonschema>=4.26.0",
+    "matplotlib>=3.10.8",
+    "packaging>=26.0",
+    "python-dateutil>=2.9.0.post0",
+    "tqdm>=4.67.3",
+    "parameterized>=0.9.0",
+    "numba>=0.64.0",
+    "requests>=2.32.5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "setuptools>=82.0.0",
+    "wheel>=0.46.3",
+    "build",
+    "twine",
+    "ruff"
+]
+test = [
+    "playwright>=1.56",
+    "coverage",
+    "pytest>=9.0.2",
+    "parameterized>=0.9.0",
+]
+
+ui = [
+    "gradio~=6.10.0",
+    # UI runtime dependencies used by the Gradio desktop app
+    # pandas and matplotlib are already listed in [project].dependencies but
+    # are included here for clarity when installing the `ui` extras.
+    'pandas>=3.0.1',
+    "matplotlib>=3.10.8",
+    "pillow>=9.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/mikecokina/elisa"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+elisa = [
+    "passband/**",
+    "conf/**",
+    "schema_registry/**",
+    "data/**",
+    "ui/assets/**",
+]
+
+[tool.setuptools.dynamic]
+# This expects `__version__ = "x.y.z"` in src/elisa/__init__.py
+version = { attr = "elisa.__version__" }
+
+
+[tool.ruff]
+force-exclude = true
+
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["ALL"]
+
+ignore = [
+    # Type annotations
+    "ANN002",  # Missing type annotation for *args
+    "ANN003",  # Missing type annotation for **kwargs
+    "ANN401",  # Allow Any annotations
+
+    # Documentation
+    "CPY001",  # Missing copyright notice
+    "D100",    # Missing module docstring
+    "D101",    # Missing class docstring
+    "D102",    # Missing method docstring
+    "D103",    # Missing function docstring
+    "D104",    # Missing package docstring
+    "D105",    # Missing magic method docstring
+    "D107",    # Missing __init__ docstring
+    "D203",    # Blank line before class docstring
+    "D213",    # Multiline docstring summary on second line
+
+    # Style and complexity
+    "PLR0913",  # Too many function arguments
+    "PLR0917",  # Too many positional arguments
+    "ERA001",   # Commented-out code
+    "EXE002",   # Missing executable permission for shebang
+    "F405",     # Names potentially undefined from wildcard imports
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "S101",     # Pytest assertions.
+    "PLR2004",  # Scientific reference values.
+    "SLF001",   # Testing internal APIs.
+    "FBT001",
+    "FBT002",
+    "FBT003",   # Boolean test cases and mock signatures.
+    "EM101",
+    "TRY003",   # Intentional exception messages.
+    "PLC0415",  # Local imports for test isolation.
+]

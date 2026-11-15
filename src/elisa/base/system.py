@@ -1,92 +1,184 @@
+from __future__ import annotations
+
+from abc import ABCMeta, abstractmethod
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
+
 import numpy as np
 
-from typing import Dict, Union
-from abc import ABCMeta, abstractmethod
-from .. base.body import Body
-from .. logger import getLogger
-from .. import utils
-from .. pulse import pulsations
+from elisa import const, utils
+from elisa import umpy as up
 from elisa import units as u
+from elisa.base.body import Body
+from elisa.base.error import (
+    raise_elisa_initial_parameters_error,
+    raise_elisa_unexpected_error,
+)
+from elisa.base.parameter_tracking import (
+    ParameterTracking,
+    parameter_is_explicit,
+    suspend_tracking_during_initialization,
+)
 from elisa.base.surface.temperature import interpolate_bolometric_gravity_darkening
-from elisa import const
+from elisa.base.transform import scalar_transform
+from elisa.logger import getLogger
+from elisa.pulse import pulsations
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from elisa.types import Float
 
 
-logger = getLogger('base.system')
+TBody = TypeVar("TBody", bound=Body)
+
+logger = getLogger(__name__)
 
 
-class System(metaclass=ABCMeta):
-    """
-    Abstract class defining System.
-    Following arguments are implemented as common any of child instances.
+class System(ParameterTracking, Generic[TBody], metaclass=ABCMeta):
+    """Abstract base class representing a celestial system.
+
+    Concrete system implementations (binary, single star) extend this class
+    and provide component-specific behavior. The type parameter specifies
+    the body type shared by all components.
     """
 
     ID = 1
-    MANDATORY_KWARGS = []
-    OPTIONAL_KWARGS = []
-    ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
+    MANDATORY_KWARGS: tuple[str, ...] = ()
+    OPTIONAL_KWARGS: tuple[str, ...] = ()
+    ALL_KWARGS: tuple[str, ...] = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    STAR_MANDATORY_KWARGS = []
-    STAR_OPTIONAL_KWARGS = []
-    STAR_ALL_KWARGS = STAR_MANDATORY_KWARGS + STAR_OPTIONAL_KWARGS
+    STAR_MANDATORY_KWARGS: tuple[str, ...] = ()
+    STAR_OPTIONAL_KWARGS: tuple[str, ...] = ()
+    STAR_ALL_KWARGS: tuple[str, ...] = STAR_MANDATORY_KWARGS + STAR_OPTIONAL_KWARGS
 
-    def __init__(self, name=None, **kwargs):
+    def __init__(self, name: str | None = None, **kwargs: Any) -> None:
+        """Initialize the base System.
+
+        :param name: Optional name of the system; a numeric ID is assigned if
+            omitted.
+        :type name: str | None
+        :param kwargs: Additional keyword arguments to set as attributes.
+        :type kwargs: Any
+        :returns: None
+        :rtype: None
+        """
         # default params
-        self.inclination: float = np.nan
-        self.period: float = np.nan
-        self.t0: float = np.nan
-        self.gamma: float = np.nan
-        self.additional_light: float = 0.0
-        self.distance: float = 10 * const.PC
+        self.inclination: Float = np.nan
+        self.period: Float = np.nan
+        self.t0: Float = np.nan
+        self.gamma: Float = np.nan
+        self.additional_light: Float = 0.0
+        self.distance: Float = 10 * const.PC
 
-        self._components: Union[None, Dict] = None
+        self._components: dict[str, TBody] = {}
 
         if utils.is_empty(name):
             self.name = str(System.ID)
-            logger.debug(f"name of class instance {self.__class__.__name__} autoset to {self.name}")
+            logger.debug(
+                "name of class instance %s autoset to %s",
+                self.__class__.__name__,
+                self.name,
+            )
             self.__class__.ID += 1
         else:
             self.name = str(name)
 
+        # apply any provided kwargs to the instance
+        if kwargs:
+            self.init_properties(**kwargs)
+
     @property
     @abstractmethod
-    def components(self):
-        pass
+    def components(self) -> dict[str, TBody]:
+        """Mapping of component name to component instance.
+
+        :returns: Dictionary of component instances.
+        :rtype: dict[str, TBody]
+        """
+        ...
 
     @abstractmethod
-    def compute_lightcurve(self, *args, **kwargs):
-        pass
+    def compute_lightcurve(self, *args: Any, **kwargs: Any) -> Any:
+        """Compute light curve for the system.
+
+        Subclasses must implement the integration over the surface and
+        return a mapping of passband/component to flux arrays.
+
+        :param args: Positional arguments forwarded to concrete implementation.
+        :type args: Any
+        :param kwargs: Keyword arguments forwarded to concrete implementation.
+        :type kwargs: Any
+        :returns: Implementation-defined return value (typically phases and
+            fluxes mapping).
+        :rtype: Any
+        """
+        ...
 
     @abstractmethod
-    def init(self):
-        pass
+    def init(self) -> None:
+        """Perform any expensive initialisation required before computations.
+
+        :returns: None
+        :rtype: None
+        """
+        ...
 
     @abstractmethod
-    def transform_input(self, *args, **kwargs):
-        pass
+    def transform_input(self, *args: Any, **kwargs: Any) -> Any:
+        """Transform and validate input parameters for the system.
+
+        :param args: Positional inputs.
+        :type args: Any
+        :param kwargs: Keyword inputs.
+        :type kwargs: Any
+        :returns: Transformed input structure.
+        :rtype: Any
+        """
+        ...
 
     @classmethod
     @abstractmethod
-    def from_json(cls, data, _verify, _kind_of):
-        pass
+    def from_json(cls, data: dict, *, _verify: bool, _kind_of: str) -> System[TBody]:
+        """Create a system instance from a JSON-like data structure.
+
+        :param data: Parsed JSON data.
+        :type data: dict
+        :param _verify: Whether to verify input completeness.
+        :type _verify: bool
+        :param _kind_of: Kind of system (used by concrete implementations).
+        :type _kind_of: str
+        :returns: New System instance.
+        :rtype: System[TBody]
+        """
+        ...
 
     @property
     @abstractmethod
-    def default_input_units(self):
-        pass
+    def default_input_units(self) -> Any:
+        """Return mapping of expected input units for this system.
+
+        :returns: Unit mapping for input parameters.
+        :rtype: Any
+        """
+        ...
 
     @property
     @abstractmethod
-    def default_internal_units(self):
-        pass
+    def default_internal_units(self) -> Any:
+        """Return internal unit mapping used by this system implementation.
 
-    def to_json(self):
+        :returns: Internal units mapping.
+        :rtype: Any
         """
-        Serialize System instance to JSON.
+        ...
 
-        :return: Dict; JSON serializable
+    def to_json(self) -> dict[str, Any]:
+        """Serialize System instance to JSON.
+
+        :returns: Dict; JSON serializable
+        :rtype: dict[str, Any]
         """
-
-        sys_units: Union[u.DefaultBinarySystemUnits, u.DefaultStarUnits] = self.default_internal_units
+        sys_units: Any = self.default_internal_units
         sys_input = self.default_input_units
 
         spot_units = u.DefaultSpotUnits
@@ -95,130 +187,204 @@ class System(metaclass=ABCMeta):
         mode_input = u.DefaultPulsationsInputUnits
         mode_units = u.DefaultPulsationsUnits
 
-        json_data = {
+        json_data: dict[str, Any] = {
             "system": {
-                attr: (getattr(self, attr) * sys_units.system[attr]).to(sys_input['system'][attr]).value
+                attr: (getattr(self, attr) * sys_units.system[attr]).to(sys_input["system"][attr]).value
                 for attr in self.ALL_KWARGS
-            }
+            },
         }
 
         for component, instance in self.components.items():
-            json_data.update({component: {
+            comp_dict: dict[str, Any] = {
                 attr: (getattr(instance, attr) * sys_units[component][attr]).to(sys_input[component][attr]).value
-                for attr in self.STAR_ALL_KWARGS if getattr(instance, attr) is not None
-            }})
+                for attr in self.STAR_ALL_KWARGS
+                if getattr(instance, attr) is not None
+            }
 
-            for item in ['atmosphere', 'limb_darkening_coefficients']:
-                if getattr(instance, item, None):
-                    json_data[component].update({item: getattr(instance, item)})
+            if parameter_is_explicit(instance, "atmosphere"):
+                comp_dict["atmosphere"] = instance.atmosphere
+            if getattr(instance, "limb_darkening_coefficients", None):
+                comp_dict["limb_darkening_coefficients"] = instance.limb_darkening_coefficients
 
             if instance.has_spots():
-                spot_list = list()
-                for spot in instance.spots.values():
-                    spot_list.append({
+                # noinspection PyUnresolvedReferences
+                spot_list: list[dict[str, Any]] = [
+                    {
                         attr: (getattr(spot, attr) * spot_units[attr]).to(spot_input[attr]).value
                         for attr in spot.ALL_KWARGS
-                    })
-                json_data[component].update(dict(spots=spot_list))
+                    }
+                    for spot in instance.spots.values()
+                ]
+                comp_dict["spots"] = spot_list
 
-            if instance.has_pulsations():
-                mode_list = list()
-                for mode in instance.pulsations.values():
-                    mode_list.append({
+            # this is just to avoid warning about instance not having pulsations in static type checker
+            if hasattr(instance, "pulsations") and instance.has_pulsations():
+                mode_list: list[dict[str, Any]] = [
+                    {
                         attr: (getattr(mode, attr) * mode_units[attr]).to(mode_input[attr]).value
-                        if attr != 'tidally_locked' else getattr(mode, attr) for attr in mode.ALL_KWARGS
-                    })
-                json_data[component].update(dict(pulsations=mode_list))
+                        if attr != "tidally_locked"
+                        else getattr(mode, attr)
+                        for attr in mode.ALL_KWARGS
+                    }
+                    for mode in instance.pulsations.values()
+                ]
+                comp_dict["pulsations"] = mode_list
+
+            json_data[component] = comp_dict
 
         return json_data
 
-    def assign_pulsations_amplitudes(self, normalisation_constant=1.0):
-        """
-        Function assigns amplitudes of displacement to each mode based on radial velocity amplitude.
+    @suspend_tracking_during_initialization
+    def assign_pulsations_amplitudes(self, normalisation_constant: Float = 1.0) -> None:
+        """Assign physical pulsation displacement amplitudes to component modes.
 
-        :param normalisation_constant: float;
+        :param normalisation_constant: Mesh-to-metre length conversion factor passed
+                                       to the amplitude calculation to convert
+                                       component equivalent radii to metres.
+                                       Use 1.0 for single stars or the orbital
+                                       semi-major axis in metres for binaries.
+        :type normalisation_constant: elisa.types.Float
+        :returns: None
+        :rtype: None
         """
-        for component, component_instance in self._components.items():
+        for component_instance in self._components.values():
             if component_instance.has_pulsations():
                 pulsations.assign_amplitudes(component_instance, normalisation_constant)
 
-    def init_properties(self, **kwargs):
-        """
-        Setup system properties from input.
+    @suspend_tracking_during_initialization
+    def init_properties(self, **kwargs: Any) -> None:
+        """Initialise system attributes from keyword arguments.
 
-        :param kwargs: Dict; all supplied input properties
+        :param kwargs: Mapping of attribute names to values.
+        :type kwargs: Any
+        :returns: None
+        :rtype: None
         """
-        logger.debug(f"initialising properties of system {self.name}, values: {kwargs}")
-        for kwarg in kwargs:
-            setattr(self, kwarg, kwargs[kwarg])
+        logger.debug("initialising properties of system %s, values: %s", self.name, kwargs)
+        for kwarg, value in kwargs.items():
+            setattr(self, kwarg, value)
 
-    def has_pulsations(self):
-        """
-        Resolve whether any of components has pulsation.
+    def has_pulsations(self) -> bool:
+        """Return True if any component has pulsations.
 
-        :return: bool;
+        :returns: True when at least one component has pulsations.
+        :rtype: bool
         """
-        return any([instance.has_pulsations() for instance in self.components.values()])
+        return any(instance.has_pulsations() for instance in self.components.values())
 
-    def has_spots(self):
-        """
-        Resolve whether any of components has spots.
+    def has_spots(self) -> bool:
+        """Return True if any component has spots.
 
-        :return: bool;
+        :returns: True when at least one component has spots.
+        :rtype: bool
         """
-        return any([instance.has_spots() for instance in self.components.values()])
+        return any(instance.has_spots() for instance in self.components.values())
 
     @staticmethod
-    def object_params_validity_check(components, mandatory_kwargs):
-        """
-        Checking if star instances have all additional attributes set properly.
+    def object_params_validity_check(components: dict[str, Body], mandatory_kwargs: Sequence[str]) -> None:
+        """Validate that provided component objects are correctly initialised.
 
-        :param components: str;
-        :param mandatory_kwargs: List;
+        Current attributes are authoritative, including values assigned after
+        construction. Explicit input provenance distinguishes omitted default NaNs from
+        explicitly supplied or subsequently computed invalid numerical values.
+
+        :param components: Mapping of component name to component instance.
+        :type components: dict[str, elisa.base.body.Body]
+        :param mandatory_kwargs: Sequence of attribute names required on each component.
+        :type mandatory_kwargs: Sequence[str]
+        :raises ElisaUnexpectedError: If a component or required attribute violates the object contract.
+        :raises ElisaInitialParametersError: If required model properties were not supplied.
+        :raises ElisaParametersError: If current required property values are numerically or physically invalid.
+        :returns: None
+        :rtype: None
         """
         for component, component_instance in components.items():
+            # Model construction must supply Body objects, not raw parameter values.
             if not isinstance(component_instance, Body):
-                raise TypeError(f"Component `{component}` is not instance of class {Body.__name__}")
+                message = f"Component `{component}` is not instance of class {Body.__name__}"
+                raise_elisa_unexpected_error(message)
 
-        # checking if system components have all mandatory parameters initialised
-        missing_kwargs = []
         for component, component_instance in components.items():
-            for kwarg in mandatory_kwargs:
-                if utils.is_empty(getattr(component_instance, kwarg)):
-                    missing_kwargs.append(f"`{kwarg}`")
+            System._validate_required_component_properties(component, component_instance, mandatory_kwargs)
 
-            if len(missing_kwargs) != 0:
-                raise ValueError(f'Mising argument(s): {", ".join(missing_kwargs)} '
-                                 f'in {component} component Star class')
+    @staticmethod
+    def _validate_required_component_properties(
+        component: str,
+        instance: Body,
+        required: Sequence[str],
+    ) -> None:
+        """Separate incomplete stellar configuration from invalid current values."""
+        missing: list[str] = []
+        values: dict[str, Any] = {}
+        for name in required:
+            if not hasattr(instance, name):
+                msg = f"Component {component!r} lacks the required internal attribute {name!r}."
+                raise_elisa_unexpected_error(msg)
+            value = getattr(instance, name)
+            # Body/Star initialize omitted properties with the np.nan singleton.
+            # Only identity and explicit input provenance
+            # identify an untouched sentinel. Never use is_empty/isnan here:
+            # a new NaN from arithmetic is an invalid candidate, not omission.
+            untouched_default = not parameter_is_explicit(instance, name) and value is up.NaN
+            if value is None or untouched_default:
+                missing.append(f"`{name}`")
+            else:
+                values[name] = value
+        if missing:
+            msg = f"Missing argument(s): {', '.join(missing)} in {component} component Star class."
+            raise_elisa_initial_parameters_error(msg)
 
-    def kwargs_serializer(self):
-        """
-        Creating dictionary of keyword arguments of System class in order to be able to reinitialize the class
-        instance in init().
+        # Validate without rebuilding/mutating the star. Required attributes use
+        # internal units, whereas property validators accept constructor units.
+        # This matters for mass (kg) and polar_log_g (SI dex), especially during
+        # SingleSystem.init(), which retains the star's derived surface state.
+        for name, value in values.items():
+            input_value = value
+            if not isinstance(value, u.Quantity):
+                numeric_value = scalar_transform(value, parameter=f"{component}.{name}")
+                internal_unit = getattr(u.DefaultStarUnits, name, u.dimensionless_unscaled)
+                input_value = numeric_value * internal_unit
+            instance.transform_input(**{name: input_value})
 
-        :return: Dict;
+    def kwargs_serializer(self) -> dict[str, Any]:
+        """Serialize system keyword arguments for re-initialisation.
+
+        :returns: Mapping of argument names to serializable values.
+        :rtype: dict[str, Any]
         """
         cls_name = type(self).__name__
-        serialized_kwargs = dict()
+        serialized_kwargs: dict[str, Any] = {}
         for kwarg in self.ALL_KWARGS:
             value = getattr(self, kwarg)
             if isinstance(value, u.Quantity):
-                serialized_kwargs[kwarg] = getattr(self, kwarg)
+                serialized_kwargs[kwarg] = value
             else:
                 def_unit = getattr(u.default_unit_map[cls_name], kwarg)
                 serialized_kwargs[kwarg] = value if def_unit == u.dimensionless_unscaled else value * def_unit
         return serialized_kwargs
 
-    def setup_betas(self):
+    @suspend_tracking_during_initialization
+    def setup_betas(self) -> None:
+        """Set up default gravity darkening parameters for components.
+
+        :returns: None
+        :rtype: None
         """
-        Setup of default gravity darkening components.
-        """
-        for component, instance in self.components.items():
+        for instance in self.components.values():
             if utils.is_empty(instance.gravity_darkening):
                 instance.gravity_darkening = interpolate_bolometric_gravity_darkening(instance.t_eff)
 
     setup_gravity_darkening = setup_betas
 
     @abstractmethod
-    def get_positions_method(self, *args, **kwargs):
-        pass
+    def get_positions_method(self, *args: Any, **kwargs: Any) -> Any:
+        """Return a callable that computes orbital positions for this system.
+
+        :param args: Positional arguments forwarded to concrete implementation.
+        :type args: Any
+        :param kwargs: Keyword arguments forwarded to concrete implementation.
+        :type kwargs: Any
+        :returns: Callable that computes positions or an appropriate descriptor.
+        :rtype: Any
+        """
+        ...

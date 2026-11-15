@@ -1,50 +1,94 @@
-from ... binary_system.system import BinarySystem
-from .. models.serializers import (
+"""Synthetic light curve generation for binary system fitting."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+from elisa.analytics.models.serializers import (
     serialize_primary_kwargs,
     serialize_secondary_kwargs,
-    serialize_system_kwargs
+    serialize_system_kwargs,
 )
+from elisa.binary_system.system import BinarySystem
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+    from elisa.observer.observer import Observer
+    from elisa.types import Float
 
 
-def prepare_binary(discretization=5, _verify=False, **kwargs):
-    """
-    Setup binary system from initial parameter object.
-    If `metallicity` is not supplied 0 is used to initialize the parameter. Similarly, default value of `synchronicity`
-    parameter is 1.0.
+def prepare_binary(
+    *,
+    discretization: Float = 5,
+    _verify: bool = False,
+    **kwargs: Any,
+) -> BinarySystem:
+    """Set up binary system from initial parameters.
 
-    :param _verify: bool; verify input json
-    :param discretization: float; primary component's surface discretization factor
-    :param kwargs: Dict; complete set of model parameters in flat format {'parameter@name': value, }
-    :return: elisa.binary_system.system.BinarySystem
+    Creates a BinarySystem instance from a complete set of model parameters
+    in flat format. Default values are applied for parameters not explicitly
+    supplied:
+
+    * If ``metallicity`` is not provided, 0 is used
+    * If ``synchronicity`` is not provided, 1.0 is used
+
+    :param discretization: Primary component's surface discretization factor.
+    :type discretization: Float
+    :param _verify: Verify input JSON parameters for correctness.
+    :type _verify: bool
+    :param kwargs: Complete set of model parameters in flat format
+        (format: ``{'parameter@name': value, ...}``).
+    :type kwargs: dict[str, Any]
+    :returns: Initialized binary system instance.
+    :rtype: BinarySystem
     """
     kwargs.update({"primary@discretization_factor": discretization})
     primary_kwargs = serialize_primary_kwargs(**kwargs)
     secondary_kwargs = serialize_secondary_kwargs(**kwargs)
     system_kwargs = serialize_system_kwargs(**kwargs)
-    json = {
-        "primary": dict(**primary_kwargs),
-        "secondary": dict(**secondary_kwargs),
-        "system": dict(**system_kwargs)
+
+    json_config = {
+        "primary": primary_kwargs,
+        "secondary": secondary_kwargs,
+        "system": system_kwargs,
     }
-    return BinarySystem.from_json(json, _verify=_verify)
+
+    return BinarySystem.from_json(json_config, _verify=_verify)
 
 
-def synthetic_binary(phases, discretization, observer, **kwargs):
+def synthetic_binary(
+    phases: NDArray[Float],
+    discretization: Float,
+    observer: Observer,
+    **kwargs: Any,
+) -> dict[str, NDArray[Float]]:
+    """Generate synthetic light curve for binary system.
+
+    Generates a synthetic light curve of a binary system based on a set of
+    model parameters. The function returns light curves in the specified
+    passband(s) normalized to the baseline flux.
+
+    The structure of ``kwargs`` follows the flat format used in the
+    BinarySystem.from_json() function, employing
+    ``{'parameter@name': value, ...}`` instead of nested structure.
+    Default units are as defined in ``elisa.units``.
+
+    :param phases: Orbital phases (in range 0-1) for which LC will be generated.
+    :type phases: NDArray[Float]
+    :param discretization: Primary component's surface discretization factor.
+    :type discretization: Float
+    :param observer: Observer instance with passband and system configuration.
+    :type observer: Observer
+    :param kwargs: Model parameters in flat format. Available parameters include
+        system, primary, and secondary component parameters (see
+        BinarySystem.from_json() for full parameter list).
+    :type kwargs: dict[str, Any]
+    :returns: Light curves in format ``{'passband_name': normalized_LC}``.
+    :rtype: dict[str, NDArray[Float]]
     """
-    Function returns synthetic light curve of binary system based on a set of model parameters.
-
-    :param phases: Union[List, numpy.array]; photometric phases in which the curves will be generated
-    :param discretization: float; primary component's surface discretization factor
-    :param observer: elisa.observer.observer.Observer; observer instance
-    :param kwargs: Dict; The structure of the `kwargs` is similar to the input JSON used in BinarySystem.from_json()
-                         function, with exception of using the flat format {'parameter@name': value, } instead of the
-                         nested structure. The default units for parameters are the default input units
-                         (see elisa.units).
-
-    :return: Dict[str, numpy.array]; light curves in in format {'passband_name': LC in filter}
-    """
-    binary = prepare_binary(discretization, **kwargs)
-    observer._system = binary
+    binary = prepare_binary(discretization=discretization, **kwargs)
+    observer._system = binary  # noqa: SLF001
 
     lc = observer.observe.lc(phases=phases, normalize=True)
     return lc[1]

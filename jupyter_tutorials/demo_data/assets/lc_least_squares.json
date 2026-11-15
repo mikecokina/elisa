@@ -1,107 +1,107 @@
 {
     "primary": {
         "surface_potential": {
-            "value": 5.839732738258324,
+            "value": 6.208824696193814,
             "fixed": false,
-            "unit": null,
+            "unit": "",
             "min": 5.0,
             "max": 10.0
+        },
+        "albedo": {
+            "value": 1.0,
+            "fixed": true,
+            "unit": ""
+        },
+        "gravity_darkening": {
+            "value": 1.0,
+            "fixed": true,
+            "unit": ""
+        },
+        "metallicity": {
+            "value": 0.0,
+            "fixed": true,
+            "unit": ""
         },
         "t_eff": {
             "value": 7022.0,
             "fixed": true,
             "unit": "K"
         },
-        "metallicity": {
-            "value": 0.0,
-            "fixed": true,
-            "unit": null
-        },
-        "albedo": {
-            "value": 1.0,
-            "fixed": true,
-            "unit": null
-        },
-        "gravity_darkening": {
-            "value": 1.0,
-            "fixed": true,
-            "unit": null
-        },
         "synchronicity": {
-            "value": 1.067023114720607,
+            "value": 1.0634694733008514,
             "constraint": "(1 + system@eccentricity)**2 / (1 - system@eccentricity**2)**(3.0/2.0)",
-            "unit": null
+            "unit": ""
         }
     },
     "secondary": {
-        "t_eff": {
-            "value": 6792.792152432664,
-            "fixed": false,
-            "unit": "K",
-            "min": 6700.0,
-            "max": 7300.0
-        },
         "surface_potential": {
-            "value": 5.730320827413121,
+            "value": 5.54263977750006,
             "fixed": false,
-            "unit": null,
+            "unit": "",
             "min": 4.0,
             "max": 10.0
         },
-        "metallicity": {
-            "value": 0.0,
-            "fixed": true,
-            "unit": null
+        "t_eff": {
+            "value": 6917.524542671011,
+            "fixed": false,
+            "unit": "K",
+            "min": 3500.0,
+            "max": 10000.0
         },
         "albedo": {
             "value": 1.0,
             "fixed": true,
-            "unit": null
+            "unit": ""
         },
         "gravity_darkening": {
             "value": 1.0,
             "fixed": true,
-            "unit": null
+            "unit": ""
+        },
+        "metallicity": {
+            "value": 0.0,
+            "fixed": true,
+            "unit": ""
         },
         "synchronicity": {
-            "value": 1.067023114720607,
+            "value": 1.0634694733008514,
             "constraint": "(1 + system@eccentricity)**2 / (1 - system@eccentricity**2)**(3.0/2.0)",
-            "unit": null
+            "unit": ""
         }
     },
     "system": {
         "eccentricity": {
-            "value": 0.03216641337922912,
+            "value": 0.030525774451478305,
             "fixed": false,
-            "unit": null,
+            "unit": "",
             "min": 0.0,
             "max": 0.1
         },
         "argument_of_periastron": {
-            "value": 197.93357072045416,
+            "value": 172.90161636647744,
             "fixed": false,
             "unit": "deg",
             "min": 0.0,
             "max": 360.0
         },
         "inclination": {
-            "value": 76.25921575266591,
+            "value": 76.33994225263483,
             "fixed": false,
             "unit": "deg",
             "min": 65.0,
             "max": 90.0
         },
         "additional_light": {
-            "value": 0.0139519290453899,
+            "value": 9.25443486420011e-11,
             "fixed": false,
-            "unit": null,
+            "unit": "",
             "min": 0.0,
             "max": 0.5
         },
         "phase_shift": {
-            "value": 7.378292900384054e-05,
+            "value": -0.00017604529709729436,
             "fixed": false,
-            "unit": null,
+            "unit": "",
             "min": -0.02,
             "max": 0.02
         },
@@ -113,23 +113,23 @@
         "mass_ratio": {
             "value": 1.08,
             "fixed": true,
-            "unit": null
+            "unit": ""
         },
         "semi_major_axis": {
-            "value": 11.529984846957985,
+            "value": 11.526025272815918,
             "constraint": "11.2 / sin(radians(system@inclination))",
             "unit": "solRad"
         }
     },
     "nuisance": {
         "ln_f": {
-            "value": -20,
+            "value": -20.0,
             "fixed": true,
             "unit": null
         }
     },
     "r_squared": {
-        "value": 0.9988616734017153,
+        "value": 0.9992295986829135,
         "unit": null
     }
 }

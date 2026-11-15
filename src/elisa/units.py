@@ -1,15 +1,20 @@
-import sys
+from __future__ import annotations
+
 import builtins
+import sys
 from importlib import import_module
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
+    from astropy.units import UnitBase
 
 builtins._ASTROPY_SETUP_ = True
 
 # DO NOT CHANGE ANYTHING (including default units) !!!
 
-if 'astropy.units' in sys.modules:
-    u = sys.modules['astropy.units']
-else:
-    u = import_module('astropy.units')
+u = sys.modules["astropy.units"] if "astropy.units" in sys.modules else import_module("astropy.units")
 
 # DO NOT CHANGE THIS!!!
 MASS_UNIT = u.kg
@@ -19,26 +24,26 @@ TIME_UNIT = u.s
 ARC_UNIT = u.rad
 PERIOD_UNIT = u.d
 VELOCITY_UNIT = DISTANCE_UNIT / TIME_UNIT
-ACCELERATION_UNIT = DISTANCE_UNIT / TIME_UNIT ** 2
+ACCELERATION_UNIT = DISTANCE_UNIT / TIME_UNIT**2
 LOG_ACCELERATION_UNIT = u.dex(ACCELERATION_UNIT)
 FREQUENCY_UNIT = u.Hz
 ANGULAR_FREQUENCY_UNIT = u.rad / u.s
 LUMINOSITY_UNIT = u.W
-RADIANCE_UNIT = u.W / (u.m ** 2 * u.sr)
+RADIANCE_UNIT = u.W / (u.m**2 * u.sr)
 
 # astropy units to avoid annoying undefined warning across the code
 deg = u.deg
 degree = u.degree
 rad = u.rad
 km = u.km
-solMass = u.solMass
-deg_C = u.deg_C
+solMass = u.solMass  # noqa: N816
+deg_C = u.deg_C  # noqa: N816
 m = u.m
 cm = u.cm
 d = u.d
 s = u.s
 W = u.W
-solRad = u.solRad
+solRad = u.solRad  # noqa: N816
 K = u.K
 dimensionless_unscaled = u.dimensionless_unscaled
 kg = u.kg
@@ -52,13 +57,14 @@ Unit = u.Unit
 Quantity = u.quantity.Quantity
 Dex = u.Dex
 
+
 # DEFAULT PARAMETER UNITS -- DO NOT CHANGE!!! --------------------------------------------------------------------------
 
 
-class BaseUnits(object):
+class BaseUnits:
     @classmethod
-    def __iter__(cls):
-        for varname in cls.__dict__.keys():
+    def __iter__(cls) -> Generator[tuple[str, UnitBase | BaseUnits | bool | str], None, None]:
+        for varname in cls.__dict__:
             if str(varname).startswith("_"):
                 continue
             _unit = getattr(cls, varname)
@@ -66,18 +72,24 @@ class BaseUnits(object):
                 _unit = _unit.to_string()
             yield varname, _unit
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: str) -> UnitBase | BaseUnits | bool | str:
         return getattr(self, item)
 
-    def as_dict(self):
-        _dict_repr = dict()
+    def as_dict(self) -> dict[str, str | dict | bool]:
+        """Return a dictionary representation of the class.
+
+        Return a dictionary representation of the class,
+        where keys are parameter names and values are their units
+        (as strings) or nested dictionaries for nested BaseUnits.
+        """
+        _dict_repr = {}
         for key, val in self:
             if isinstance(val, Unit):
                 _val_repr = val.to_string()
             elif isinstance(val, BaseUnits):
                 _val_repr = val.as_dict()
             elif isinstance(val, bool):
-                _val_repr = 'boolean'
+                _val_repr = "boolean"
             else:
                 _val_repr = str(val)
 
@@ -101,7 +113,7 @@ class _DefaultSpotUnits(BaseUnits):
 
 
 class _DefaultPulsationsUnits(BaseUnits):
-    l = dimensionless_unscaled
+    l = dimensionless_unscaled  # noqa: E741
     m = dimensionless_unscaled
     amplitude = VELOCITY_UNIT
     frequency = FREQUENCY_UNIT
@@ -204,18 +216,17 @@ DefaultBinarySystemUnits = _DefaultBinarySystemUnits()
 DefaultSingleSystemUnits = _DefaultSingleSystemUnits()
 
 default_unit_map = {
-    'SingleSystem': DefaultSingleSystemUnits.system,
-    'BinarySystem': DefaultBinarySystemUnits.system,
-    'Star': DefaultStarUnits,
-    'Spot': DefaultSpotUnits,
-
+    "SingleSystem": DefaultSingleSystemUnits.system,
+    "BinarySystem": DefaultBinarySystemUnits.system,
+    "Star": DefaultStarUnits,
+    "Spot": DefaultSpotUnits,
 }
 
 # DEFAULT ELISa OUTTER/USER INPUT UNITS (MORE CONVENIENT FOR USER BUT NOT SO MUCH FOR PROGRAMMER) ----------------------
 
 DEFAULT_INCLINATION_INPUT_UNIT = deg
 DEFAULT_PERIOD_INPUT_UNIT = d
-DEFAULT_GAMMA_INPUT_UNIT = m/s
+DEFAULT_GAMMA_INPUT_UNIT = m / s
 DISTANCE_TO_OBS_INPUT_UNIT = pc
 
 
@@ -228,7 +239,7 @@ class _DefaultSpotInputUnits(BaseUnits):
 
 
 class _DefaultPulsationsInputUnits(BaseUnits):
-    l = dimensionless_unscaled
+    l = dimensionless_unscaled  # noqa: E741
     m = dimensionless_unscaled
     amplitude = VELOCITY_UNIT
     frequency = u.d ** (-1)
@@ -248,7 +259,7 @@ class _DefaultStarInputUnits(BaseUnits):
     gravity_darkening = dimensionless_unscaled
     albedo = dimensionless_unscaled
     discretization_factor = deg
-    polar_log_g = u.dex(cm / s ** 2)
+    polar_log_g = u.dex(cm / s**2)
     equivalent_radius = solRad
     limb_darkening_coefficients = dimensionless_unscaled
     spots = _DefaultSpotInputUnits()
@@ -319,7 +330,6 @@ class _DefaultSingleSystemInputUnits(BaseUnits):
         limb_darkening_coefficients = _DefaultStarInputUnits.limb_darkening_coefficients
         spots = _DefaultSpotInputUnits()
         pulsations = _DefaultPulsationsInputUnits()
-
 
     system = __DefaultSingleSystemInputUnits()
     star = __DefaultSingleSystemStarInputUnits()
