@@ -625,9 +625,9 @@ class Settings(_Const):
             if candidate.CUDA:
                 try:
                     # noinspection PyUnresolvedReferences
-                    import cumpy  # noqa: PLC0415
+                    import cupy  # noqa: PLC0415
 
-                    if not cumpy.cuda.is_available():
+                    if not cupy.cuda.is_available():
                         candidate.CUDA = False
                         warnings.warn(
                             "You have no CUDA enabled/available on your device. Runtime continue with CPU.",
@@ -637,7 +637,8 @@ class Settings(_Const):
 
                 except ImportError:
                     warnings.warn(
-                        "You need to install `pytorch` with cuda to be able to use CUDA features. Fallback to CPU.",
+                        "You need to install `cupy` with CUDA support to be "
+                        "able to use CUDA features. Fallback to CPU.",
                         UserWarning,
                         stacklevel=2,
                     )

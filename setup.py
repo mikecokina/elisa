@@ -8,22 +8,30 @@ Pre-release steps
 -----------------
 
 1.  make sure all newly added data files are listed in `setup.py` in variable
-    `package_data`as well as in `MANIFEST.in` file
+    `package_data`, in `pyproject.toml` under `[tool.setuptools.package-data]`,
+    and in `MANIFEST.in`
 
 2.  make sure version information in following destinations is up-to-date:
 
     - `README.md` in yellow version badge https://img.shields.io/badge/version-<VERSION>-yellow.svg
-    - in `src/elisa/__init__.py`, variable `__version__`
+    - in `README.md`, installation text describing the current version
+    - in `src/elisa/__init__.py`, variable `__version__`; both `setup.py` and
+      `pyproject.toml` read this value dynamically
 
 3.  make sure that `CHANGELOG.md` is up-to-date; content as well as release date and valid version
 
 4.  make sure all newly added dependencies are listed in `requirements.txt` as well as in
-    `setup.py` in variable `install_requires`
+    `setup.py` in variable `install_requires` and `pyproject.toml` under
+    `[project].dependencies`. Keep `extras_require` synchronized with
+    `[project.optional-dependencies]` as well
 
 5.  make sure a latest docstsring documentation is generated and there is no error during Sphinx HTML build
     (for more comprehensive information take a look into `docs/README.md`)
 
-6.  make sure setup.cfg contains all supported Python versions
+6.  keep supported Python versions synchronized across `setup.cfg` wheel tags,
+    `setup.py` (`python_requires` and classifiers), `pyproject.toml`
+    (`requires-python` and classifiers), and the README Python badge. Keep
+    shared project metadata in `setup.py` and `pyproject.toml` synchronized
 
 7.  commit changes
 
@@ -225,6 +233,7 @@ setup(
             "conf/**",
             "schema_registry/**",
             "data/**",
+            "ui/assets/**",
         ],
     },
 
