@@ -381,6 +381,7 @@ class Plot:
         :param subtract_equilibrium: bool; select the intrinsic diagnostic described below
         :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
                                              produced figure
+
         With ``subtract_equilibrium=True`` (requires pulsations): ``radius``
         gives the mean radial projection of Cartesian displacement in equilibrium
         directions, not finite radius differences; ``velocity`` gives intrinsic
@@ -394,19 +395,20 @@ class Plot:
         intrinsic diagnostics. Their values, and those of ``normal_radiance``
         and ``radiance``, are unaffected by this flag.
 
-        :**available colormap options**:
-            * :'gravity_acceleration': surface distribution of gravity acceleration,
-            * :'temperature': surface distribution of the effective temperature,
-            * :'velocity': absolute values of surface elements velocities with respect to the observer,
-            * :'radial_velocity': radial component of the surface element velocities relative to the observer,
-            * :'normal_radiance': surface element radiance perpendicular to the surface element,
-            * :'radiance': projected directional radiance `L_normal * LD(mu) * mu`,
+        **Available colormap options:**
+
+            * ``gravity_acceleration``: surface distribution of gravity acceleration,
+            * ``temperature``: surface distribution of the effective temperature,
+            * ``velocity``: absolute values of surface elements velocities with respect to the observer,
+            * ``radial_velocity``: radial component of the surface element velocities relative to the observer,
+            * ``normal_radiance``: surface element radiance perpendicular to the surface element,
+            * ``radiance``: projected directional radiance `L_normal * LD(mu) * mu`,
               with separate limb-darkening and projected-area factors,
-            * :'radius': distance of the surface elements from the center of mass
-            * :'horizontal_displacement': distribution of the horizontal component of surface displacement
-            * :'horizontal_acceleration': distribution of horizontal component surface acceleration
-            * :'v_r_perturbed': radial component of the pulsation velocity (perpendicular towards
-            * :'v_horizontal_perturbed': horizontal component of the pulsation  velocity
+            * ``radius``: distance of the surface elements from the center of mass
+            * ``horizontal_displacement``: distribution of the horizontal component of surface displacement
+            * ``horizontal_acceleration``: distribution of horizontal component surface acceleration
+            * ``v_r_perturbed``: radial component of the pulsation velocity (perpendicular towards
+            * ``v_horizontal_perturbed``: horizontal component of the pulsation  velocity
 
         :return: Union[None, matplotlib.pyplot.figure]
         """
