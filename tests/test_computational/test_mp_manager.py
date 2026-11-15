@@ -111,6 +111,7 @@ def test_mcmc_sampling_with_real_emcee(workers: int) -> None:
     fit.normalized_sigma = MethodType(MCMCFit.normalized_sigma, fit)
     fit.prepare_priors = MethodType(MCMCFit.prepare_priors, fit)
     fit._initialize_ensemble = MethodType(MCMCFit._initialize_ensemble, fit)
+    fit._sampling_log_prob_fn = MethodType(MCMCFit._sampling_log_prob_fn, fit)
     with (
         settings.override(NUMBER_OF_PROCESSES=1, NUMBER_OF_MCMC_PROCESSES=workers, REFLECTION_EFFECT_ITERATIONS=37),
         patch("elisa.analytics.binary_fit.mcmc.get_mp_context", wraps=mp_manager.get_mp_context) as context,
