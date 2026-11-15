@@ -24,6 +24,7 @@ from elisa.analytics.binary_fit.summary import (
     simple_rv_fit_summary,
 )
 from elisa.base.error import ElisaMonteCarloError
+from elisa.observer.mp_manager import initialize_worker
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -76,7 +77,11 @@ class TestManageChainEvaluation:
             result = _manage_chain_evaluation(mock_chain, mock_eval_func, "test_arg")
 
             assert isinstance(result, np.ndarray)
-            mock_pool_class.assert_called_once_with(processes=2)
+            mock_pool_class.assert_called_once_with(
+                processes=2,
+                initializer=initialize_worker,
+                initargs=(settings.settings_serializer(),),
+            )
             mock_pool.close.assert_called_once()
             mock_pool.join.assert_called_once()
 
