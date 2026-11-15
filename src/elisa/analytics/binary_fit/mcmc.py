@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from contextlib import contextmanager
+from copy import copy
 from typing import TYPE_CHECKING, Any
 
 import emcee
@@ -41,7 +42,7 @@ from elisa.logger import getPersistentLogger
 from elisa.observer.mp_manager import get_mp_context, initialize_worker
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
     from multiprocessing.pool import Pool
 
     from numpy.typing import NDArray
@@ -317,6 +318,15 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         )
         return xn_renorm, kwargs
 
+    def _sampling_log_prob_fn(self, *, parallel: bool) -> Callable[[NDArray[Float]], Float]:
+        """Prepare the posterior callback without transferring previous chains to workers."""
+        if not parallel:
+            return self.ln_probability
+
+        worker_fit = copy(self)
+        worker_fit.last_sampler = None
+        return worker_fit.ln_probability
+
     def _fit(
         self,
         nwalkers: int,
@@ -369,7 +379,6 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         kwargs: dict[str, Any] = {
             "nwalkers": nwalkers,
             "ndim": ndim,
-            "log_prob_fn": self.ln_probability,
         }
         from elisa.analytics.binary_fit.mcmc_diagnostics import RunDiagnostics  # noqa: PLC0415
 
@@ -378,7 +387,11 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
         with RunDiagnostics(
             None, self._initialization_diagnostics, fit_id if save else None,
         ) as diagnostics, _mcmc_pool(diagnostics) as pool:
-            sampler = emcee.EnsembleSampler(pool=pool, **kwargs)  # type: ignore[arg-type]
+            sampler = emcee.EnsembleSampler(
+                pool=pool,
+                log_prob_fn=self._sampling_log_prob_fn(parallel=pool is not None),
+                **kwargs,
+            )
             self.worker(
                 sampler,
                 p0,
