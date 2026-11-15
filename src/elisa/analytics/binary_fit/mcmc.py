@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from contextlib import contextmanager
+from copy import copy
 from typing import TYPE_CHECKING, Any
 
 import emcee
@@ -371,6 +372,11 @@ class MCMCFit(AbstractFit, mixins.MCMCMixin, metaclass=ABCMeta):
             "ndim": ndim,
             "log_prob_fn": self.ln_probability,
         }
+        if settings.NUMBER_OF_MCMC_PROCESSES > 1:
+            # Keep previous chains out of the bound likelihood sent to workers.
+            worker_fit = copy(self)
+            worker_fit.last_sampler = None
+            kwargs["log_prob_fn"] = worker_fit.ln_probability
         from elisa.analytics.binary_fit.mcmc_diagnostics import RunDiagnostics  # noqa: PLC0415
 
         if save:
