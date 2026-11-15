@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Historical release identifiers are preserved as originally published.
 Planned work is tracked in the [roadmap](ROADMAP.md).
 
-## 1.0.0
+## 1.0.0 - 2026-11-15
 
 ### Scientific modeling and fitting
 
