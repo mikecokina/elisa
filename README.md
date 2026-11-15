@@ -2,7 +2,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.11--3.14-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-GPLv3-green.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
-[![Version](https://img.shields.io/badge/Version-1.0.0-yellow.svg)](https://github.com/mikecokina/elisa/commits/feature/optimizations)
+[![Version](https://img.shields.io/badge/Version-1.0.0-yellow.svg)](https://github.com/mikecokina/elisa/commits/release/1.0.0)
 [![Build](https://img.shields.io/badge/Build-setuptools-blue.svg)](https://pypi.org/project/setuptools/)
 [![Build](https://img.shields.io/badge/OS-Linux|Windows-magenta.svg)](https://en.wikipedia.org/wiki/Operating_system)
 
@@ -66,10 +66,10 @@ Install the latest stable release from PyPI:
 pip install elisa
 ```
 
-Install the current development source (version **1.0.0**) from GitHub:
+Install the **1.0.0** release branch from GitHub:
 
 ```bash
-pip install git+https://github.com/mikecokina/elisa.git@feature/optimizations
+pip install git+https://github.com/mikecokina/elisa.git@release/1.0.0
 ```
 
 ---
@@ -81,7 +81,7 @@ pip install -e ".[dev,test]"
 ```
 
 The `dev`, `test`, and `ui` extras provide development tools, test tools, and the desktop UI, respectively.
-The stable PyPI release may differ from the development source documented here.
+The published PyPI version may differ from the release branch documented here.
 
 ### Optional: Jupyter Notebooks
 
