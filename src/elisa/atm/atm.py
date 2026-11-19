@@ -54,6 +54,9 @@ logger = getLogger(__name__)
 P = ParamSpec("P")
 R = TypeVar("R")
 
+# Target about 2 MiB per float64 array, with at least one full spectrum per batch.
+_BLACKBODY_BATCH_ELEMENTS = 262_144
+
 
 # * 1e-7 * 1e4 * 1e10 * (1.0/const.PI)
 
@@ -344,7 +347,9 @@ class NaiveInterpolatedAtm:
 
         For a set of temperatures and passbands, this returns a mapping
         from passband name to a 1D numpy array (type FLOAT) containing the
-        integrated flux for each input face.
+        integrated flux for each input face. Evaluate the Planck function once
+        per distinct temperature and wavelength, then integrate each passband
+        on its original grid before mapping radiances back to faces.
 
         :param temperature: Array of temperatures (K).
         :type temperature: NDArray
@@ -353,12 +358,36 @@ class NaiveInterpolatedAtm:
             values (one per face).
         :rtype: dict[str, numpy.typing.NDArray[elisa.types.Float]]
         """
-        # setup multiplicators to convert quantities to SI
-        flux_mult, wave_mult = const.PI, 1e-10
-        # obtain localized atmospheres in matrix
-        localized_atms = NaiveInterpolatedAtm.arange_black_body_localized_atms(temperature, kwargs["passband"])
-        # integrate flux
-        return compute_normal_radiances(localized_atms, flux_mult=flux_mult, wave_mult=wave_mult)
+        passbands = kwargs["passband"]
+        if not passbands:
+            return {}
+        if np.ndim(temperature) != 1 or not np.size(temperature):
+            spectra = NaiveInterpolatedAtm.arange_black_body_localized_atms(temperature, passbands)
+            return compute_normal_radiances(spectra, flux_mult=const.PI, wave_mult=1e-10)
+
+        temperatures, inverse = np.unique(temperature, return_inverse=True)
+        standard = get_standard_wavelengths()
+        waves = {band: _blackbody_wavelengths(standard, pb) for band, pb in passbands.items()}
+        waves_si = {band: wave * passbands[band].wave_to_si_mult for band, wave in waves.items()}
+        shared_wave = np.unique(np.concatenate(list(waves_si.values())))
+        filters = {
+            band: (wave, passbands[band].akima(wave), np.searchsorted(shared_wave, waves_si[band]))
+            for band, wave in waves.items()
+        }
+
+        radiances = {band: np.empty(temperatures.size) for band in passbands}
+        batch_size = max(1, _BLACKBODY_BATCH_ELEMENTS // max(1, shared_wave.size))
+        for start in range(0, temperatures.size, batch_size):
+            rows = slice(start, start + batch_size)
+            spectrum = planck_function(shared_wave, temperatures[rows, None])
+            for band, (wave, response, columns) in filters.items():
+                # Keep clipping and Simpson integration on the filter's own wavelength grid.
+                flux = spectrum.take(columns, axis=1) * response
+                np.nan_to_num(flux, copy=False)
+                np.maximum(flux, 0.0, out=flux)
+                radiances[band][rows] = compute_normal_intensity(flux, wave, flux_mult=const.PI, wave_mult=1e-10)
+
+        return {band: values[inverse] for band, values in radiances.items()}
 
     @staticmethod
     def arange_black_body_localized_atms(
@@ -381,28 +410,7 @@ class NaiveInterpolatedAtm:
         temperature, reverse_map = np.unique(temperature, return_inverse=True)
 
         for band, pb_container in passband_containers.items():
-            # how many wavelengths generate based on standard
-            mask = np.logical_and(
-                np.less_equal(standard_wavelength, pb_container.right_bandwidth),
-                np.greater_equal(standard_wavelength, pb_container.left_bandwidth),
-            )
-            hm_waves = len(standard_wavelength[mask])
-            # wavelenghts in angstrom
-            wavelengths = np.sort(
-                np.unique(
-                    np.concatenate(
-                        [
-                            np.linspace(
-                                pb_container.left_bandwidth,
-                                pb_container.right_bandwidth,
-                                hm_waves,
-                                endpoint=True,
-                            ),
-                            standard_wavelength[mask],
-                        ],
-                    ),
-                ),
-            )
+            wavelengths = _blackbody_wavelengths(standard_wavelength, pb_container)
 
             # compute flux in flam, apply passband and replace possible NaNs
             flux = np.nan_to_num(
@@ -1964,6 +1972,13 @@ def correct_normal_radiance_to_optical_depth(
             normal_radiances[star][band] = normal_radiance / coeff
 
     return normal_radiances
+
+
+def _blackbody_wavelengths(standard: NDArray, passband: PassbandContainer) -> NDArray:
+    """Sample the passband endpoints and its native wavelength grid for blackbody synthesis."""
+    left, right = passband.left_bandwidth, passband.right_bandwidth
+    selected = standard[(standard >= left) & (standard <= right)]
+    return np.union1d(np.linspace(left, right, selected.size), selected)
 
 
 def planck_function(
