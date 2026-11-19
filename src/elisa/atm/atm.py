@@ -54,8 +54,9 @@ logger = getLogger(__name__)
 P = ParamSpec("P")
 R = TypeVar("R")
 
-# Target about 2 MiB per float64 array, with at least one full spectrum per batch.
 _BLACKBODY_BATCH_ELEMENTS = 262_144
+# Each element is one temperature at one wavelength. At 8 bytes per value, 262,144 elements use 2 MiB.
+# Each batch includes at least one full spectrum, even if it exceeds this target.
 
 
 # * 1e-7 * 1e4 * 1e10 * (1.0/const.PI)
